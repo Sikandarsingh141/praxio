@@ -1,0 +1,166 @@
+<section class="requests-page" aria-labelledby="requests-title">
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">CUSTOMER MANAGEMENT</span>
+      <h1 id="requests-title">Repair requests</h1>
+      <p>Review requests shared specifically with your shop and respond with a quotation.</p>
+    </div>
+  </header>
+
+  @if (pageData(); as data) {
+    <section class="summary-grid" aria-label="Repair request summary">
+      <article>
+        <span class="summary-icon" aria-hidden="true">▣</span>
+        <div><span>Total requests</span><strong>{{ data.summary.total }}</strong></div>
+      </article>
+      <article>
+        <span class="summary-icon" aria-hidden="true">＋</span>
+        <div><span>New requests</span><strong>{{ data.summary.new }}</strong></div>
+      </article>
+      <article>
+        <span class="summary-icon" aria-hidden="true">◷</span>
+        <div><span>Pending responses</span><strong>{{ data.summary.pending }}</strong></div>
+      </article>
+      <article>
+        <span class="summary-icon" aria-hidden="true">✓</span>
+        <div><span>Accepted requests</span><strong>{{ data.summary.accepted }}</strong></div>
+      </article>
+      <article>
+        <span class="summary-icon" aria-hidden="true">⊗</span>
+        <div><span>Declined requests</span><strong>{{ data.summary.declined }}</strong></div>
+      </article>
+    </section>
+  }
+
+  <section class="list-panel">
+    <div class="filter-row">
+      <label class="search-control">
+        <span class="visually-hidden">Search repair requests</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.8" />
+          <path d="m16 16 4.5 4.5" />
+        </svg>
+        <input
+          type="search"
+          [ngModel]="searchText()"
+          (ngModelChange)="updateSearch($event)"
+          placeholder="Search ID, customer, appliance…"
+        />
+      </label>
+      <label class="sort-control">
+        <span>Sort</span>
+        <select [ngModel]="sort()" (ngModelChange)="updateSort($event)">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </label>
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
+      />
+    </div>
+
+    @if (pageData(); as data) {
+      <div class="tabs" role="tablist" aria-label="Filter repair requests">
+        @for (tab of tabs; track tab.value) {
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="activeTab() === tab.value"
+            [class.active]="activeTab() === tab.value"
+            (click)="selectTab(tab.value)"
+          >
+            {{ tab.label }} <span>({{ tabCount(tab.value, data.summary) }})</span>
+          </button>
+        }
+      </div>
+    }
+
+    @if (error()) {
+      <div class="state error" role="alert">
+        <p>{{ error() }}</p>
+        <button type="button" (click)="load()">Try again</button>
+      </div>
+    } @else if (loading()) {
+      <div class="state" role="status">Loading repair requests…</div>
+    } @else if (pageData()?.requests?.length) {
+      <div class="request-list">
+        @for (request of pageData()!.requests; track request._id) {
+          <article class="request-card">
+            <span class="appliance-icon" aria-hidden="true">▣</span>
+            <div class="request-summary">
+                <span class="request-id">Request #{{ request._id.slice(-8).toUpperCase() }}</span>
+                <h2>{{ request.appliance }}</h2>
+                <p class="customer-name">{{ request.customer.fullName }}</p>
+                <p class="description">{{ request.description }}</p>
+            </div>
+            <div class="request-meta">
+              <span>
+                <i aria-hidden="true">▣</i>
+                Submitted {{ request.createdAt | date: 'medium' }}
+              </span>
+              <span>
+                <i aria-hidden="true">▤</i>
+                {{ request.brand || 'Brand not provided'
+                }}{{ request.model ? ' · ' + request.model : '' }}
+              </span>
+              <span><i aria-hidden="true">⌖</i>{{ location(request) }}</span>
+              @if (request.preferredServiceDate) {
+                <span>
+                  <i aria-hidden="true">◷</i>
+                  Preferred {{ request.preferredServiceDate | date: 'mediumDate' }}
+                </span>
+              }
+              @if (request.shopResponse.responseDeadline) {
+                <span>
+                  <i aria-hidden="true">◷</i>
+                  Respond by {{ request.shopResponse.responseDeadline | date: 'medium' }}
+                </span>
+              }
+              <span>
+                <i aria-hidden="true">⌂</i>
+                {{
+                  request.serviceType === 'home_service'
+                    ? 'Home service'
+                    : request.serviceType === 'shop_visit'
+                      ? 'Shop visit'
+                      : 'Service type not specified'
+                }}
+              </span>
+            </div>
+            <div class="request-actions">
+              <span class="status-badge" [attr.data-status]="request.shopResponse.status">
+                {{ responseStatus(request) }}
+              </span>
+              <a class="open-link" [routerLink]="['/shop/repair-requests', request._id]"
+                >View request <span aria-hidden="true">→</span></a
+              >
+            </div>
+          </article>
+        }
+      </div>
+      <footer class="pagination">
+        <span>Page {{ pageData()!.page }} · {{ pageData()!.total }} total</span>
+        <div>
+          <button type="button" [disabled]="pageData()!.page <= 1" (click)="changePage(-1)">
+            Previous
+          </button>
+          <button
+            type="button"
+            [disabled]="pageData()!.page * pageData()!.limit >= pageData()!.total"
+            (click)="changePage(1)"
+          >
+            Next
+          </button>
+        </div>
+      </footer>
+    } @else {
+      <div class="state empty">
+        <span aria-hidden="true">▤</span>
+        <h2>No requests in this view</h2>
+        <p>New requests shared with your approved shop will appear here.</p>
+      </div>
+    }
+  </section>
+</section>

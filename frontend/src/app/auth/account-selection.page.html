@@ -1,0 +1,68 @@
+<section class="registration-page" aria-labelledby="selection-title">
+  <div class="page-intro">
+    <span class="page-eyebrow">WELCOME TO PRAXIO</span>
+    <h1 id="selection-title">Create Your Praxio Account</h1>
+    <p>Choose how you want to use Praxio.</p>
+  </div>
+
+  <div class="account-options">
+    <article class="account-card customer-card">
+      <div class="account-illustration customer-illustration" aria-hidden="true">
+        <svg viewBox="0 0 64 64">
+          <circle cx="32" cy="21" r="10" />
+          <path d="M13 54c1-11 8-17 19-17s18 6 19 17" />
+          <path d="m45 13 3 3 6-7" />
+        </svg>
+      </div>
+      <span class="card-kicker">FOR YOUR HOME & DEVICES</span>
+      <h2>Customer Account</h2>
+      <p class="card-description">
+        Find trusted repair professionals nearby and get your electronics repaired conveniently.
+      </p>
+      <ul>
+        <li>Find nearby repair shops</li>
+        <li>Create repair requests</li>
+        <li>Compare quotations</li>
+        <li>Chat with technicians</li>
+        <li>Track repair progress</li>
+      </ul>
+      <a class="account-action customer-action" routerLink="/auth/register/customer">
+        Continue as Customer
+        <span aria-hidden="true">→</span>
+      </a>
+    </article>
+
+    <article class="account-card shop-card">
+      <div class="account-illustration shop-illustration" aria-hidden="true">
+        <svg viewBox="0 0 64 64">
+          <path d="M12 27h40v28H12z" />
+          <path d="m9 27 5-16h36l5 16" />
+          <path d="M9 27c0 5 8 7 11 1 3 6 10 5 12-1 2 6 9 7 12 1 3 6 11 4 11-1" />
+          <path d="M23 55V39h13v16M42 39h5v7h-5z" />
+        </svg>
+      </div>
+      <span class="card-kicker">FOR REPAIR PROFESSIONALS</span>
+      <h2>Shop Account</h2>
+      <p class="card-description">
+        Grow your repair business, connect with customers and manage repair services.
+      </p>
+      <ul>
+        <li>Register your business</li>
+        <li>Receive customer requests</li>
+        <li>Submit quotations</li>
+        <li>Manage repair jobs</li>
+        <li>Manage technicians</li>
+        <li>Track business performance</li>
+      </ul>
+      <a class="account-action shop-action" routerLink="/auth/register/shop">
+        Register as Shop
+        <span aria-hidden="true">→</span>
+      </a>
+    </article>
+  </div>
+
+  <p class="signin-prompt">
+    Already have an account?
+    <a routerLink="/auth/login">Sign In</a>
+  </p>
+</section>

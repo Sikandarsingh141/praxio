@@ -1,0 +1,144 @@
+<div class="admin-portal">
+  <header class="admin-header">
+    <a class="admin-brand" routerLink="/admin" aria-label="Praxio administration">
+      <span class="brand-mark">P</span>
+      <span>Praxio <small>ADMINISTRATION</small></span>
+    </a>
+    <form class="admin-search" role="search" (submit)="searchAdmin($event)">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.8" cy="10.8" r="6.3" />
+        <path d="m16 16 4 4" />
+      </svg>
+      <input
+        name="search"
+        aria-label="Search administration"
+        placeholder="Search users, shops, repair requests, quotations..."
+      />
+      <kbd>Ctrl + K</kbd>
+    </form>
+    <div class="admin-account">
+      <app-notification-center (opened)="closeAccountMenu()" />
+      <div class="account-menu">
+        <button
+          class="account-menu-trigger"
+          type="button"
+          [attr.aria-expanded]="accountMenuOpen()"
+          aria-haspopup="menu"
+          (click)="toggleAccountMenu()"
+        >
+          @if (authService.currentUser()?.profileImageUrl; as profileImageUrl) {
+            <img class="profile-avatar" [src]="profileImageUrl" alt="" />
+          } @else {
+            <span class="profile-avatar avatar-placeholder" aria-hidden="true">
+              {{ getUserInitial() }}
+            </span>
+          }
+          <span class="account-name">{{ getUserFullName() }}</span>
+          <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+        @if (accountMenuOpen()) {
+          <div class="account-dropdown" role="menu">
+            <div class="dropdown-identity">
+              <strong>{{ getUserFullName() }}</strong>
+              <span>{{ authService.currentUser()?.email }}</span>
+            </div>
+            <button
+              class="dropdown-item sign-out-menu-item"
+              type="button"
+              role="menuitem"
+              [disabled]="signingOut()"
+              (click)="closeAccountMenu(); signOut()"
+            >
+              {{ signingOut() ? 'Signing out…' : 'Sign out' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+  <div class="admin-body">
+    <aside class="admin-sidebar" aria-label="Administration navigation">
+      <p class="sidebar-title">ADMIN TOOLS</p>
+      <a
+        class="admin-nav"
+        routerLink="/admin"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 13h6V4H4zm10 7h6v-9h-6zm0-16v3h6V4zM4 20h6v-3H4z" /></svg
+        >Dashboard</a
+      >
+      <a
+        class="admin-nav"
+        routerLink="/admin/users"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{
+          paths: 'exact',
+          queryParams: 'exact',
+          matrixParams: 'ignored',
+          fragment: 'ignored',
+        }"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3 20v-1a6 6 0 0 1 12 0v1zm13-9a3 3 0 1 0-1-5.8M18 14a5 5 0 0 1 3 5v1h-3" /></svg
+        >User management</a
+      >
+      <a class="admin-nav" routerLink="/admin/repair-jobs" routerLinkActive="active"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" /></svg
+        >Repair monitoring</a
+      >
+      <a class="admin-nav" routerLink="/admin/disputes" routerLinkActive="active"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3 3.5 7v5c0 5 3.6 8 8.5 9 4.9-1 8.5-4 8.5-9V7zM12 8v5M12 16h.01" /></svg
+        >Disputes</a
+      >
+      <span class="admin-nav unavailable" aria-disabled="true"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z" /></svg
+        >Reviews <small>Soon</small></span
+      >
+      <a
+        class="admin-nav"
+        routerLink="/admin/users"
+        [queryParams]="{ accountType: 'shop' }"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{
+          paths: 'exact',
+          queryParams: 'exact',
+          matrixParams: 'ignored',
+          fragment: 'ignored',
+        }"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 10h18M5 10l1-6h12l1 6v10H5zM9 20v-6h6v6" /></svg
+        >Shops</a
+      >
+      <a
+        class="admin-nav"
+        routerLink="/admin/users"
+        [queryParams]="{ accountType: 'customer' }"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{
+          paths: 'exact',
+          queryParams: 'exact',
+          matrixParams: 'ignored',
+          fragment: 'ignored',
+        }"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3 20v-1a6 6 0 0 1 12 0v1zm13-9a3 3 0 1 0-1-5.8M18 14a5 5 0 0 1 3 5v1h-3" /></svg
+        >Customers</a
+      >
+      <span class="admin-nav unavailable" aria-disabled="true"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 4h16v16H4zM8 8h8m-8 4h8m-8 4h5" /></svg
+        >Marketplace settings <small>Soon</small></span
+      >
+    </aside>
+    <main class="admin-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

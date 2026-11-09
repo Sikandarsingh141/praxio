@@ -1,0 +1,789 @@
+<div class="shop-register-layout">
+  <aside class="shop-benefits" aria-label="Benefits of joining Praxio">
+    <div class="shop-illustration" aria-hidden="true">
+      <svg viewBox="0 0 280 250">
+        <circle cx="140" cy="122" r="106" fill="#e7f7e9" />
+        <ellipse cx="140" cy="218" rx="100" ry="15" fill="#d6f0dc" />
+        <rect x="106" y="91" width="126" height="111" rx="7" fill="#fff" />
+        <rect x="118" y="115" width="102" height="87" rx="3" fill="#d9ebdd" />
+        <path d="M101 101h136l-12-29h-112l-12 29Z" fill="#078137" />
+        <path
+          d="M101 101h24v20h-10c-8 0-14-6-14-14v-6Zm48 0h24v20h-24v-20Zm48 0h24v6c0 8-6 14-14 14h-10v-20Z"
+          fill="#fff"
+        />
+        <rect x="132" y="142" width="30" height="60" rx="3" fill="#83b893" />
+        <rect x="170" y="139" width="38" height="28" rx="2" fill="#f8fcf8" />
+        <path d="M189 139v28m-19-14h38" stroke="#83b893" stroke-width="3" />
+        <rect x="132" y="79" width="78" height="19" rx="5" fill="#075f2a" />
+        <text x="171" y="92" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">
+          REPAIR SHOP
+        </text>
+        <circle cx="77" cy="119" r="21" fill="#f3a286" />
+        <path
+          d="M57 116c1-21 11-31 25-31 16 0 24 11 22 29l-7-7-4-10c-7 7-18 10-34 10l-2 9Z"
+          fill="#202c31"
+        />
+        <path d="M46 190c2-42 14-59 32-59s31 17 33 59l-15 17H60l-14-17Z" fill="#078137" />
+        <path d="m60 145 17 17 18-17 8 12-17 17H68l-17-17 9-12Z" fill="#fff" />
+        <rect x="71" y="166" width="17" height="20" rx="4" fill="#075f2a" />
+        <text x="79.5" y="180" fill="#fff" font-size="10" font-weight="700" text-anchor="middle">
+          P
+        </text>
+        <path
+          d="m50 187-16 13m79-13 13 13"
+          stroke="#f3a286"
+          stroke-linecap="round"
+          stroke-width="9"
+        />
+        <circle cx="222" cy="61" r="21" fill="#fff" />
+        <circle cx="222" cy="61" r="16" fill="#078137" />
+        <path
+          d="m214 61 5 5 10-11"
+          fill="none"
+          stroke="#fff"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="3"
+        />
+      </svg>
+    </div>
+    <div class="shop-benefit">
+      <span class="shop-benefit-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3 4 14h6l-1 7 11-12h-7l1-6Z" /></svg>
+      </span>
+      <span
+        ><strong>Grow your business</strong
+        ><small>Get repair requests from real customers.</small></span
+      >
+    </div>
+    <div class="shop-benefit">
+      <span class="shop-benefit-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <circle cx="9" cy="8" r="4" />
+          <path d="M2 21v-2a7 7 0 0 1 14 0v2H2Zm15-13a4 4 0 1 1 0 8m2 2a5 5 0 0 1 3 4v1h-4" />
+        </svg>
+      </span>
+      <span
+        ><strong>Build trust</strong
+        ><small>Showcase your shop, services, and customer reviews.</small></span
+      >
+    </div>
+    <div class="shop-benefit">
+      <span class="shop-benefit-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M3 19h4v-7H3v7Zm7 0h4V8h-4v11Zm7 0h4V4h-4v15Z" /></svg>
+      </span>
+      <span
+        ><strong>Increase revenue</strong
+        ><small>Get more visibility and steady business.</small></span
+      >
+    </div>
+  </aside>
+
+  <section class="registration-page shop-registration" aria-labelledby="shop-register-title">
+    <a class="back-link" routerLink="/auth/register">
+      <span aria-hidden="true">←</span> Choose another account type
+    </a>
+
+    <header class="page-intro">
+      <span class="page-eyebrow">SHOP PARTNER ACCOUNT</span>
+      <h1 id="shop-register-title">Register your <span>repair business</span></h1>
+      <p>Share a few details to introduce your business to the Praxio community.</p>
+    </header>
+
+    <div class="registration-card">
+      <nav class="stepper shop-wizard-stepper" aria-label="Shop registration steps">
+        @for (stepName of stepNames; track stepName; let index = $index) {
+          <button
+            type="button"
+            class="step-item"
+            [class.step-active]="currentStep() === index"
+            [class.step-complete]="currentStep() > index"
+            [disabled]="index >= currentStep()"
+            [attr.aria-current]="currentStep() === index ? 'step' : null"
+            (click)="goToStep(index)"
+          >
+            <span class="step-number">{{ index + 1 }}</span>
+            <span class="step-label">{{ stepName }}</span>
+          </button>
+        }
+      </nav>
+
+      @if (successMessage()) {
+        <p class="approval-note" role="status">{{ successMessage() }}</p>
+      }
+      @if (errorMessage()) {
+        <p class="form-error" role="alert">{{ errorMessage() }}</p>
+        <button
+          type="button"
+          class="secondary-action"
+          [disabled]="retryingPayment()"
+          (click)="retryPayment()"
+        >
+          {{ retryingPayment() ? 'Opening secure payment…' : 'Resume payment' }}
+        </button>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        @switch (currentStep()) {
+          @case (0) {
+            <fieldset>
+              <legend>Owner information</legend>
+              <div class="field">
+                <label for="owner-name">Owner name</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 21a8 8 0 0 0-16 0" />
+                    <circle cx="12" cy="8" r="4" />
+                  </svg>
+                  <input
+                    id="owner-name"
+                    type="text"
+                    formControlName="ownerFullName"
+                    autocomplete="name"
+                    required
+                  />
+                </div>
+                @if (form.controls.ownerFullName.touched && form.controls.ownerFullName.invalid) {
+                  <span class="field-error">Enter the owner’s name.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-email">Email address</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="m4 7 8 6 8-6" />
+                  </svg>
+                  <input
+                    id="shop-email"
+                    type="email"
+                    formControlName="email"
+                    autocomplete="email"
+                    required
+                  />
+                </div>
+                @if (form.controls.email.touched && form.controls.email.invalid) {
+                  <span class="field-error">Enter a valid email address.</span>
+                }
+              </div>
+              <div class="field field-full">
+                <label for="shop-mobile">Mobile number</label>
+                <div class="phone-field">
+                  <label class="visually-hidden" for="shop-country-code"
+                    >Country calling code</label
+                  >
+                  <select
+                    id="shop-country-code"
+                    formControlName="countryCode"
+                    autocomplete="tel-country-code"
+                    aria-label="Country calling code"
+                  >
+                    @for (country of phoneCountryCodes; track country.code) {
+                      <option [value]="country.code">
+                        {{ country.code }} {{ country.country }}
+                      </option>
+                    }
+                  </select>
+                  <div class="icon-field">
+                    <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M7 3h3l1.5 4-2 1.5a15 15 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 5 5.2 2 2 0 0 1 7 3Z"
+                      />
+                    </svg>
+                    <input
+                      id="shop-mobile"
+                      type="tel"
+                      formControlName="mobileNumber"
+                      autocomplete="tel-national"
+                      inputmode="numeric"
+                      maxlength="10"
+                      placeholder="10-digit mobile number"
+                      required
+                    />
+                  </div>
+                </div>
+                <span class="input-hint">Enter 10 digits, without the country code.</span>
+                @if (form.controls.mobileNumber.touched && form.controls.mobileNumber.invalid) {
+                  <span class="field-error">Enter a 10-digit mobile number.</span>
+                }
+                @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
+                  <span class="field-error">Choose a country calling code.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-profile-image">
+                  Profile photo <span class="optional">(optional)</span>
+                </label>
+                <!-- <p class="input-hint">
+                  Add a clear photo of the shop owner. JPEG, PNG, or WebP up to 1 MB.
+                </p> -->
+                <div class="shop-image-control">
+                  <label class="shop-image-dropzone" for="shop-profile-image">
+                    <span class="shop-image-upload-icon" aria-hidden="true">↥</span>
+                    <span class="shop-image-upload-copy">
+                      @if (profileImageName()) {
+                        <strong>{{ profileImageName() }}</strong>
+                        <small>Ready to upload</small>
+                      } @else {
+                        <strong>Upload profile photo</strong>
+                        <small>Choose a clear photo of the shop owner.</small>
+                      }
+                    </span>
+                    <span class="shop-image-upload-button">
+                      {{ profileImageName() ? 'Change file' : 'Choose file' }}
+                    </span>
+                    <input
+                      id="shop-profile-image"
+                      class="visually-hidden"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      aria-label="Upload profile photo"
+                      (change)="selectProfileImage($event)"
+                    />
+                  </label>
+                  @if (profileImageData()) {
+                    <button type="button" class="shop-image-remove" (click)="removeProfileImage()">
+                      Remove
+                    </button>
+                  }
+                </div>
+                @if (profileImageError()) {
+                  <span class="field-error" role="alert">{{ profileImageError() }}</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-image">
+                  Shop photo <span class="optional">(optional)</span>
+                </label>
+                <!-- <span class="input-hint">
+                  Storefront or logo image. JPEG, PNG, or WebP up to 256 KB.
+                </span> -->
+                <div class="shop-image-control">
+                  <label class="shop-image-dropzone" for="shop-image">
+                    <span class="shop-image-upload-icon" aria-hidden="true">↥</span>
+                    <span class="shop-image-upload-copy">
+                      @if (shopImageName()) {
+                        <strong>{{ shopImageName() }}</strong>
+                        <small>Ready to upload</small>
+                      } @else {
+                        <strong>Upload shop photo</strong>
+                        <small>Choose a storefront or logo.</small>
+                      }
+                    </span>
+                    <span class="shop-image-upload-button">
+                      {{ shopImageName() ? 'Change file' : 'Choose file' }}
+                    </span>
+                    <input
+                      id="shop-image"
+                      class="visually-hidden"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      aria-label="Upload shop image"
+                      (change)="selectShopImage($event)"
+                    />
+                  </label>
+                  @if (shopImageData()) {
+                    <button type="button" class="shop-image-remove" (click)="removeShopImage()">
+                      Remove
+                    </button>
+                  }
+                </div>
+                @if (shopImageError()) {
+                  <span class="field-error" role="alert">{{ shopImageError() }}</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-password">Password</label>
+                <div class="password-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="4" y="10" width="16" height="11" rx="2" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2" />
+                  </svg>
+                  <input
+                    id="shop-password"
+                    [type]="passwordVisible() ? 'text' : 'password'"
+                    formControlName="password"
+                    autocomplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    [attr.aria-label]="passwordVisible() ? 'Hide password' : 'Show password'"
+                    [attr.aria-pressed]="passwordVisible()"
+                    (click)="togglePasswordVisibility('password')"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      @if (passwordVisible()) {
+                        <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                        <path
+                          d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5.5 0 9 7 9 7a14.6 14.6 0 0 1-3.1 3.8M6.2 6.2C3.9 7.7 3 12 3 12s3.5 7 9 7c1 0 1.9-.2 2.7-.5"
+                        />
+                      } @else {
+                        <path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      }
+                    </svg>
+                  </button>
+                </div>
+                @if (form.controls.password.touched && form.controls.password.invalid) {
+                  <span class="field-error"
+                    >Use 8+ characters with uppercase, lowercase, and a number.</span
+                  >
+                }
+              </div>
+              <div class="field">
+                <label for="shop-confirm-password">Confirm password</label>
+                <div class="password-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="4" y="10" width="16" height="11" rx="2" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2" />
+                  </svg>
+                  <input
+                    id="shop-confirm-password"
+                    [type]="confirmPasswordVisible() ? 'text' : 'password'"
+                    formControlName="confirmPassword"
+                    autocomplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    [attr.aria-label]="
+                      confirmPasswordVisible()
+                        ? 'Hide confirmation password'
+                        : 'Show confirmation password'
+                    "
+                    [attr.aria-pressed]="confirmPasswordVisible()"
+                    (click)="togglePasswordVisibility('confirmPassword')"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      @if (confirmPasswordVisible()) {
+                        <path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                        <path
+                          d="M9.9 5.2A10.8 10.8 0 0 1 12 5c5.5 0 9 7 9 7a14.6 14.6 0 0 1-3.1 3.8M6.2 6.2C3.9 7.7 3 12 3 12s3.5 7 9 7c1 0 1.9-.2 2.7-.5"
+                        />
+                      } @else {
+                        <path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      }
+                    </svg>
+                  </button>
+                </div>
+                @if (
+                  form.controls.confirmPassword.touched && form.controls.confirmPassword.invalid
+                ) {
+                  <span class="field-error">Confirm your password.</span>
+                } @else if (
+                  form.controls.confirmPassword.touched && form.hasError('passwordMismatch')
+                ) {
+                  <span class="field-error">Passwords do not match.</span>
+                }
+              </div>
+            </fieldset>
+          }
+          @case (1) {
+            <fieldset>
+              <legend>Business information</legend>
+              <div class="field">
+                <label for="shop-name">Shop or business name</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 9h.01M15 9h.01" />
+                  </svg>
+                  <input
+                    id="shop-name"
+                    type="text"
+                    formControlName="shopName"
+                    autocomplete="organization"
+                    required
+                  />
+                </div>
+                @if (form.controls.shopName.touched && form.controls.shopName.invalid) {
+                  <span class="field-error">Enter a business name.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="business-type">Business type</label>
+                <div class="icon-field icon-field-select">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16M4 12h16M4 19h16" />
+                    <circle cx="8" cy="5" r="1.5" />
+                    <circle cx="15" cy="12" r="1.5" />
+                    <circle cx="10" cy="19" r="1.5" />
+                  </svg>
+                  <select id="business-type" formControlName="businessType" required>
+                    <option value="" disabled>Select a business type</option>
+                    @for (businessType of businessTypes; track businessType) {
+                      <option [value]="businessType">{{ businessType }}</option>
+                    }
+                  </select>
+                </div>
+                @if (form.controls.businessType.touched && form.controls.businessType.invalid) {
+                  <span class="field-error">Choose a business type.</span>
+                }
+              </div>
+              <div class="field field-full">
+                <label for="business-description">Business description</label>
+                <div class="icon-field icon-field-textarea">
+                  <svg class="field-icon field-icon-top" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16M4 10h16M4 15h10M4 20h10" />
+                  </svg>
+                  <textarea
+                    id="business-description"
+                    formControlName="description"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                  ></textarea>
+                </div>
+                @if (form.controls.description.touched && form.controls.description.invalid) {
+                  <span class="field-error">Add a short description (up to 1,000 characters).</span>
+                }
+              </div>
+              <div class="field">
+                <label for="experience">Years of experience</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  <input
+                    id="experience"
+                    type="number"
+                    formControlName="yearsOfExperience"
+                    min="0"
+                    max="100"
+                    required
+                  />
+                </div>
+                @if (
+                  form.controls.yearsOfExperience.touched && form.controls.yearsOfExperience.invalid
+                ) {
+                  <span class="field-error">Enter a value between 0 and 100.</span>
+                }
+              </div>
+            </fieldset>
+          }
+          @case (2) {
+            <fieldset>
+              <legend>Shop location</legend>
+              <div class="field field-full">
+                <label for="shop-address">Location</label>
+                <span class="input-hint">
+                  Type a shop address or area and choose a suggested location to fill the address
+                  details and map coordinates.
+                </span>
+                <div class="address-input-wrapper">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                    <circle cx="12" cy="10" r="2.5" />
+                  </svg>
+                  <input
+                    id="shop-address"
+                    type="text"
+                    formControlName="address"
+                    autocomplete="off"
+                    placeholder="Search shop location"
+                    #location
+                    (input)="onAddressInput(location)"
+                    (keydown)="onAddressKeydown($event)"
+                    (blur)="onAddressBlur()"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="shop-address-suggestions"
+                    [attr.aria-expanded]="addressSuggestionsVisible()"
+                    [attr.aria-activedescendant]="
+                      activeAddressSuggestion() >= 0
+                        ? 'shop-address-option-' + activeAddressSuggestion()
+                        : null
+                    "
+                    required
+                  />
+                  @if (addressSuggestionsVisible()) {
+                    <div
+                      id="shop-address-suggestions"
+                      class="address-suggestions"
+                      role="listbox"
+                      aria-label="Shop location suggestions"
+                    >
+                      @if (addressSuggestionsLoading()) {
+                        <div class="address-suggestion-status" role="status">
+                          Searching addresses…
+                        </div>
+                      } @else if (addressSuggestions().length) {
+                        @for (
+                          suggestion of addressSuggestions();
+                          track suggestion.label;
+                          let i = $index
+                        ) {
+                          <button
+                            type="button"
+                            class="address-suggestion"
+                            role="option"
+                            [id]="'shop-address-option-' + i"
+                            [attr.aria-selected]="activeAddressSuggestion() === i"
+                            (mousedown)="$event.preventDefault()"
+                            (click)="selectAddress(suggestion)"
+                          >
+                            {{ suggestion.label }}
+                          </button>
+                        }
+                      } @else {
+                        <div class="address-suggestion-status">
+                          No address suggestions found. You can continue entering the address
+                          manually.
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+                @if (addressLookupMessage()) {
+                  <span class="input-hint" role="status">{{ addressLookupMessage() }}</span>
+                }
+                @if (form.controls.address.touched && form.controls.address.invalid) {
+                  <span class="field-error">Enter or select your shop location.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-city">City</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-5h6v5M9 10h.01M15 10h.01" />
+                  </svg>
+                  <input
+                    id="shop-city"
+                    type="text"
+                    formControlName="city"
+                    autocomplete="address-level2"
+                    required
+                  />
+                </div>
+                @if (form.controls.city.touched && form.controls.city.invalid) {
+                  <span class="field-error">Enter a city.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-state">State or region</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m3 7 6-3 6 3 6-3v13l-6 3-6-3-6 3V7Z" />
+                    <path d="M9 4v13m6-10v13" />
+                  </svg>
+                  <input
+                    id="shop-state"
+                    type="text"
+                    formControlName="state"
+                    autocomplete="address-level1"
+                    required
+                  />
+                </div>
+                @if (form.controls.state.touched && form.controls.state.invalid) {
+                  <span class="field-error">Enter a state or region.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="shop-country">Country</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18M12 3a15 15 0 0 1 0 18m0-18a15 15 0 0 0 0 18" />
+                  </svg>
+                  <input
+                    id="shop-country"
+                    type="text"
+                    formControlName="country"
+                    autocomplete="country-name"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label for="shop-postal">Postal code</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <path d="M7 9h4m-4 3h10m-10 3h7" />
+                  </svg>
+                  <input
+                    id="shop-postal"
+                    type="text"
+                    formControlName="postalCode"
+                    autocomplete="postal-code"
+                    required
+                  />
+                </div>
+                @if (form.controls.postalCode.touched && form.controls.postalCode.invalid) {
+                  <span class="field-error">Enter a valid postal code.</span>
+                }
+              </div>
+              <div class="field field-full">
+                <label for="shop-landmark">Landmark <span class="optional">(optional)</span></label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m12 22 7-7a9.9 9.9 0 1 0-14 0l7 7Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <input id="shop-landmark" type="text" formControlName="landmark" />
+                </div>
+              </div>
+              <div class="field field-full location-field">
+                <span class="input-hint">
+                  Add your shop’s map location so customers and Admins can find it.
+                </span>
+                <div class="location-actions">
+                  <button type="button" class="secondary-action" (click)="useCurrentLocation()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                    Use my current location
+                  </button>
+                  @if (
+                    form.controls.latitude.value !== null && form.controls.longitude.value !== null
+                  ) {
+                    <a
+                      class="location-map-link"
+                      [href]="mapUrl(form.controls.latitude.value!, form.controls.longitude.value!)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z" />
+                        <path d="M9 3v15m6-12v15" />
+                      </svg>
+                      View shop location in Google Maps
+                    </a>
+                  }
+                </div>
+                @if (
+                  form.controls.latitude.value !== null && form.controls.longitude.value !== null
+                ) {
+                  <span class="input-hint">
+                    Latitude: {{ form.controls.latitude.value }} · Longitude:
+                    {{ form.controls.longitude.value }}
+                  </span>
+                }
+                @if (locationMessage()) {
+                  <span class="input-hint" role="status">{{ locationMessage() }}</span>
+                }
+              </div>
+            </fieldset>
+          }
+          @case (3) {
+            <fieldset>
+              <legend>Services you offer</legend>
+              <p class="step-description">Select all services that your business provides.</p>
+              <div class="service-options">
+                @for (service of services; track service) {
+                  <label
+                    class="service-option"
+                    [class.service-selected]="isServiceSelected(service.name)"
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="isServiceSelected(service.name)"
+                      (change)="toggleService(service.name, $event)"
+                    />
+                    <span class="service-icon" aria-hidden="true">
+                      @switch (service.icon) {
+                        @case ('refrigerator') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="5" y="2.5" width="14" height="19" rx="2" />
+                            <path d="M5 11h14M8 6v2m0 6v3" />
+                          </svg>
+                        }
+                        @case ('air-conditioner') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="9" rx="2" />
+                            <path
+                              d="M7 17c0 2-1 2-1 4m7-4c0 2-1 2-1 4m7-4c0 2-1 2-1 4M7 8h.01M10 8h7"
+                            />
+                          </svg>
+                        }
+                        @case ('washing-machine') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="4" y="2.5" width="16" height="19" rx="2" />
+                            <circle cx="12" cy="13" r="5" />
+                            <path d="M7 6h.01M10 6h7" />
+                          </svg>
+                        }
+                        @case ('television') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="14" rx="2" />
+                            <path d="m8 22 4-4 4 4M8 2l4 2 4-2" />
+                          </svg>
+                        }
+                        @case ('mobile') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="6" y="2" width="12" height="20" rx="2" />
+                            <path d="M10 5h4m-3 14h2" />
+                          </svg>
+                        }
+                        @case ('laptop') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="5" y="3" width="14" height="14" rx="1.5" />
+                            <path d="M2 20h20l-2-3H4l-2 3Z" />
+                          </svg>
+                        }
+                        @case ('fan') {
+                          <svg viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="2" />
+                            <path
+                              d="M12 10c-1-8 6-7 6-4 0 2-2 4-4 5m-4 2c-7 4-10-2-7-4 2-1 4 0 7 1m4 2c5 6 0 10-3 8-2-1-2-4-1-7"
+                            />
+                          </svg>
+                        }
+                        @case ('cooler') {
+                          <svg viewBox="0 0 24 24">
+                            <rect x="4" y="3" width="16" height="18" rx="2" />
+                            <path
+                              d="M4 8h16m-12 4h.01M12 12h.01M16 12h.01m-8 4h.01M12 16h.01M16 16h.01"
+                            />
+                          </svg>
+                        }
+                      }
+                    </span>
+                    <span class="service-name">{{ service.name }}</span>
+                  </label>
+                }
+              </div>
+              @if (form.controls.services.touched && form.controls.services.invalid) {
+                <span class="field-error">Select at least one service.</span>
+              }
+            </fieldset>
+          }
+        }
+
+        @if (currentStep() === stepNames.length - 1 && pushConfigured) {
+          <label class="terms-row">
+            <input type="checkbox" formControlName="enableNotifications" />
+            <span>Enable browser notifications for registration updates (optional).</span>
+          </label>
+        }
+        @if (pushWarning()) {
+          <p class="form-notice" role="status">{{ pushWarning() }}</p>
+        }
+
+        <div class="form-actions">
+          @if (currentStep() > 0) {
+            <button type="button" class="secondary-action" (click)="previous()">Back</button>
+          } @else {
+            <a class="secondary-action" routerLink="/auth/register">Cancel</a>
+          }
+          @if (currentStep() === stepNames.length - 1) {
+            <button type="submit" class="primary-action" [disabled]="submitting()">
+              {{ submitting() ? 'Submitting…' : 'Create shop account and pay' }}
+            </button>
+          } @else {
+            <button type="button" class="primary-action" (click)="next()">Continue</button>
+          }
+        </div>
+      </form>
+
+      <p class="form-footer">
+        Already have an account?
+        <a routerLink="/auth/login">Sign in</a>
+      </p>
+    </div>
+  </section>
+</div>

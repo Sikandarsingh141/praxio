@@ -1,0 +1,449 @@
+<section class="admin-dashboard" aria-labelledby="admin-title">
+  <header class="page-header">
+    <div>
+      <span class="page-kicker">MARKETPLACE OPERATIONS</span>
+      <h1 id="admin-title">{{ pageTitle() }}</h1>
+      <p class="page-intro">{{ pageDescription() }}</p>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="feedback error" role="alert">{{ errorMessage() }}</p>
+  }
+  @if (noticeMessage()) {
+    <p class="feedback success" role="status">{{ noticeMessage() }}</p>
+  }
+
+  @if (accountTypeFilter() === 'all') {
+    <section class="summary-grid" aria-label="User summary">
+      @if (statistics(); as summary) {
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('all')">
+          <span class="summary-icon users-icon" aria-hidden="true">♧</span>
+          <span>Total users</span><strong>{{ summary.totalUsers | number }}</strong>
+        </button>
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('customer')">
+          <span class="summary-icon customer-icon" aria-hidden="true">♙</span>
+          <span>Customers</span><strong>{{ summary.totalCustomers | number }}</strong>
+        </button>
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('shop')">
+          <span class="summary-icon shop-icon" aria-hidden="true">⌂</span>
+          <span>Repair shops</span><strong>{{ summary.totalRepairShops | number }}</strong>
+        </button>
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('pending')">
+          <span class="summary-icon pending-icon" aria-hidden="true">◷</span>
+          <span>Pending approvals</span><strong>{{ summary.pendingApprovals | number }}</strong>
+        </button>
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('active')">
+          <span class="summary-icon active-icon" aria-hidden="true">✓</span>
+          <span>Active</span><strong>{{ summary.activeUsers | number }}</strong>
+        </button>
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('inactive')">
+          <span class="summary-icon inactive-icon" aria-hidden="true">Ⅱ</span>
+          <span>Inactive</span><strong>{{ summary.inactiveUsers | number }}</strong>
+        </button>
+        <button type="button" class="summary-card" (click)="setStatisticsFilter('suspended')">
+          <span class="summary-icon suspended-icon" aria-hidden="true">⊗</span>
+          <span>Suspended</span><strong>{{ summary.suspendedUsers | number }}</strong>
+        </button>
+      } @else if (statisticsLoading()) {
+        <p class="summary-loading" role="status">Loading user statistics…</p>
+      }
+    </section>
+  } @else if (statistics(); as summary) {
+    <section class="summary-grid" aria-label="Account summary">
+      <article class="summary-card">
+        <span
+          class="summary-icon"
+          [class.shop-icon]="accountTypeFilter() === 'shop'"
+          [class.customer-icon]="accountTypeFilter() === 'customer'"
+          aria-hidden="true"
+        >
+          {{ accountTypeFilter() === 'shop' ? '⌂' : '♙' }}
+        </span>
+        <span>Total {{ accountTypeFilter() === 'shop' ? 'shops' : 'customers' }}</span>
+        <strong>{{
+          (accountTypeFilter() === 'shop' ? summary.totalRepairShops : summary.totalCustomers)
+            | number
+        }}</strong>
+      </article>
+    </section>
+  }
+
+  <section class="request-panel" [attr.aria-label]="pageTitle() + ' accounts'">
+    <div class="panel-toolbar">
+      <div class="status-tabs" aria-label="Filter by registration status">
+        @for (status of ['all', 'pending', 'approved', 'declined', 'suspended']; track status) {
+          <button
+            type="button"
+            [class.selected]="statusFilter() === status"
+            [attr.aria-pressed]="statusFilter() === status"
+            (click)="setStatusFilter($any(status))"
+          >
+            {{
+              status === 'all'
+                ? accountTypeFilter() === 'shop'
+                  ? 'All shops'
+                  : accountTypeFilter() === 'customer'
+                    ? 'All customers'
+                    : 'All users'
+                : (status | titlecase)
+            }}
+            @if (status === 'all' && statistics(); as summary) {
+              <span>
+                {{
+                  accountTypeFilter() === 'shop'
+                    ? summary.totalRepairShops
+                    : accountTypeFilter() === 'customer'
+                      ? summary.totalCustomers
+                      : summary.totalUsers
+                }}
+              </span>
+            }
+            @if (status === 'pending' && statistics(); as summary) {
+              <span>{{ summary.pendingApprovals }}</span>
+            }
+          </button>
+        }
+      </div>
+      <span class="request-count">
+        {{ total() | number }}
+        {{
+          accountTypeFilter() === 'shop'
+            ? 'shop'
+            : accountTypeFilter() === 'customer'
+              ? 'customer'
+              : 'user'
+        }}{{ total() === 1 ? '' : 's' }}
+      </span>
+    </div>
+
+    <div class="filters">
+      <label class="search-field">
+        <span class="filter-label"
+          >Search
+          {{
+            accountTypeFilter() === 'shop'
+              ? 'shops'
+              : accountTypeFilter() === 'customer'
+                ? 'customers'
+                : 'users'
+          }}</span
+        >
+        <div>
+          <input
+            #searchInput
+            type="search"
+            [value]="searchText()"
+            (input)="updateSearch(searchInput.value)"
+            placeholder="Search by name, email, phone, or user ID..."
+          />
+          <button type="button" (click)="search(searchInput.value)">Search</button>
+        </div>
+      </label>
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
+      />
+      <label class="type-filter">
+        <span>Sort by</span>
+        <select [value]="sortBy()" (change)="updateSort($event)">
+          <option value="registrationDate">Registration date</option>
+          <option value="name">Name</option>
+          <option value="status">Approval status</option>
+        </select>
+      </label>
+      <button type="button" class="sort-order" (click)="toggleSortOrder()">
+        {{ sortOrder() === 'asc' ? 'Ascending' : 'Descending' }}
+      </button>
+    </div>
+
+    @if (loading()) {
+      <div class="empty-state" role="status">Loading registration requests…</div>
+    } @else if (requests().length === 0) {
+      <div class="empty-state">
+        <h2>
+          No
+          {{
+            accountTypeFilter() === 'shop'
+              ? 'shops'
+              : accountTypeFilter() === 'customer'
+                ? 'customers'
+                : 'users'
+          }}
+          found
+        </h2>
+        <p>
+          @if (accountTypeFilter() === 'shop') {
+            New repair shop registrations will appear here after submission.
+          } @else if (accountTypeFilter() === 'customer') {
+            New customer registrations will appear here after submission.
+          } @else {
+            New Customer and Shop registrations will appear here after submission.
+          }
+        </p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">User</th>
+              <th scope="col">Contact</th>
+              <th scope="col">User type</th>
+              <th scope="col">Registered</th>
+              <th scope="col">Approval</th>
+              <th scope="col">Account</th>
+              <th scope="col">Payment</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of requests(); track request.id) {
+              <tr>
+                <td data-label="User">
+                  <div class="user-cell">
+                    <span class="user-avatar" aria-hidden="true">
+                      {{
+                        (request.shopName || request.applicantName || request.email).charAt(0)
+                          | uppercase
+                      }}
+                    </span>
+                    <div class="user-details">
+                      <a
+                        class="user-profile-link"
+                        [routerLink]="['/admin/users', request.userId]"
+                        [attr.aria-label]="
+                          'View profile for ' + (request.applicantName || request.email)
+                        "
+                      >
+                        <strong>{{ request.shopName || request.applicantName || '—' }}</strong>
+                      </a>
+                      @if (request.shopName && request.shopName !== request.applicantName) {
+                        <span class="shop-name">{{ request.applicantName }}</span>
+                      }
+                      @if (request.businessType) {
+                        <span class="shop-name">{{ request.businessType }}</span>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td data-label="Contact">
+                  <div class="contact-cell">
+                    <span><i aria-hidden="true">✉</i>{{ request.email }}</span>
+                    <span
+                      ><i aria-hidden="true">⌕</i>{{ request.countryCode }}
+                      {{ request.mobileNumber || '—' }}</span
+                    >
+                  </div>
+                </td>
+                <td data-label="Role">
+                  <span class="role-badge" [class.shop-role]="request.accountType === 'shop'">
+                    {{ request.accountType === 'customer' ? 'Customer' : 'Shop' }}
+                  </span>
+                </td>
+                <td data-label="Registered">{{ request.submittedAt | date: 'mediumDate' }}</td>
+                <td data-label="Approval">
+                  <span
+                    class="status-badge"
+                    [class.pending]="request.registrationStatus === 'pending'"
+                    [class.approved]="request.registrationStatus === 'approved'"
+                    [class.declined]="request.registrationStatus === 'declined'"
+                  >
+                    {{ request.registrationStatus | titlecase }}
+                  </span>
+                  @if (request.declineReason) {
+                    <span class="decline-reason">{{ request.declineReason }}</span>
+                  }
+                </td>
+                <td data-label="Account">
+                  <span
+                    class="status-badge"
+                    [class.approved]="request.accountStatus === 'active'"
+                    [class.inactive]="request.accountStatus === 'inactive'"
+                    [class.suspended]="request.accountStatus === 'suspended'"
+                  >
+                    {{ request.accountStatus ? (request.accountStatus | titlecase) : 'Not set' }}
+                  </span>
+                </td>
+                <td data-label="Payment">
+                  @if (request.accountType === 'shop') {
+                    <span
+                      class="status-badge"
+                      [class.approved]="request.paymentStatus === 'paid'"
+                      [class.pending]="request.paymentStatus !== 'paid'"
+                    >
+                      {{ request.paymentStatus === 'paid' ? 'Paid' : 'Unpaid' }}
+                    </span>
+                    @if (request.subscriptionPlan) {
+                      <span class="shop-name">{{ request.subscriptionPlan }}</span>
+                    }
+                    @if (request.paymentAmountCents !== null) {
+                      <span class="shop-name">
+                        {{
+                          request.paymentAmountCents / 100
+                            | currency: request.paymentCurrency || 'USD'
+                        }}
+                      </span>
+                    }
+                    @if (request.paidAt) {
+                      <span class="shop-name">Paid {{ request.paidAt | date: 'mediumDate' }}</span>
+                    }
+                  } @else {
+                    <span class="no-action">Not required</span>
+                  }
+                </td>
+                <td data-label="Actions">
+                  <div class="row-actions">
+                    @if (request.registrationStatus === 'pending') {
+                      <button
+                        type="button"
+                        class="approve-button"
+                        [disabled]="
+                          !!activeAction() ||
+                          (request.accountType === 'shop' && request.paymentStatus !== 'paid')
+                        "
+                        [attr.title]="
+                          request.accountType === 'shop' && request.paymentStatus !== 'paid'
+                            ? 'Payment is required before approval'
+                            : null
+                        "
+                        (click)="approve(request)"
+                      >
+                        {{ activeAction() === request.id + ':approve' ? 'Approving…' : 'Accept' }}
+                      </button>
+                    }
+                    @if (
+                      request.registrationStatus === 'approved' &&
+                      request.accountStatus === 'active'
+                    ) {
+                      <button
+                        type="button"
+                        class="account-action-button"
+                        [disabled]="!!activeAction()"
+                        (click)="beginAccountAction(request, 'deactivate')"
+                      >
+                        Deactivate
+                      </button>
+                    } @else if (
+                      request.registrationStatus === 'approved' &&
+                      (request.accountStatus === 'inactive' ||
+                        request.accountStatus === 'suspended')
+                    ) {
+                      <button
+                        type="button"
+                        class="account-action-button"
+                        [disabled]="!!activeAction()"
+                        (click)="beginAccountAction(request, 'activate')"
+                      >
+                        Reactivate
+                      </button>
+                    }
+                    <details class="action-menu">
+                      <summary aria-label="More account actions" title="More actions">⋮</summary>
+                      <div class="action-menu-content">
+                        @if (request.registrationStatus === 'pending') {
+                          <button
+                            type="button"
+                            class="menu-danger"
+                            [disabled]="!!activeAction()"
+                            (click)="beginDecline(request)"
+                          >
+                            Decline registration
+                          </button>
+                        }
+                        @if (
+                          request.registrationStatus === 'approved' &&
+                          request.accountStatus === 'active'
+                        ) {
+                          <button
+                            type="button"
+                            class="menu-danger"
+                            [disabled]="!!activeAction()"
+                            (click)="beginAccountAction(request, 'suspend')"
+                          >
+                            Suspend account
+                          </button>
+                        }
+                        <a [routerLink]="['/admin/users', request.userId]">Manage account</a>
+                      </div>
+                    </details>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <label>
+          Rows per page
+          <select [value]="pageSize()" (change)="updatePageSize($event)">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <span class="pagination-summary">
+          Showing {{ firstVisibleUser | number }}–{{ lastVisibleUser | number }} of
+          {{ total() | number }} users
+        </span>
+        <div class="pagination-controls" aria-label="User list pages">
+          <button
+            type="button"
+            aria-label="First page"
+            [disabled]="page() <= 1 || loading()"
+            (click)="goToPage(1)"
+          >
+            «
+          </button>
+          <button
+            type="button"
+            aria-label="Previous page"
+            [disabled]="page() <= 1 || loading()"
+            (click)="changePage(-1)"
+          >
+            ‹
+          </button>
+          @for (pageNumber of visiblePages; track pageNumber) {
+            <button
+              type="button"
+              [class.current-page]="page() === pageNumber"
+              [attr.aria-current]="page() === pageNumber ? 'page' : null"
+              [disabled]="loading()"
+              (click)="goToPage(pageNumber)"
+            >
+              {{ pageNumber }}
+            </button>
+          }
+          <button
+            type="button"
+            aria-label="Next page"
+            [disabled]="page() >= totalPages() || loading()"
+            (click)="changePage(1)"
+          >
+            ›
+          </button>
+          <button
+            type="button"
+            aria-label="Last page"
+            [disabled]="page() >= totalPages() || loading()"
+            (click)="goToPage(totalPages())"
+          >
+            »
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+
+  @if (confirmation(); as currentConfirmation) {
+    <app-confirmation-dialog
+      [config]="currentConfirmation.dialog"
+      (confirmed)="confirmDecision($event)"
+      (cancelled)="cancelConfirmation()"
+    />
+  }
+</section>

@@ -1,0 +1,187 @@
+<section class="repair-monitor" aria-labelledby="monitor-title">
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">REPAIR OPERATIONS</span>
+      <h1 id="monitor-title">Repair monitoring</h1>
+      <p>Review repair progress, customer-reported issues, and verified feedback.</p>
+    </div>
+    @if (view() === 'jobs') {
+      <button type="button" class="export-button" [disabled]="!jobs().length" (click)="exportRepairs()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" /></svg>
+        Export
+      </button>
+    }
+  </header>
+
+  @if (exportMessage()) {
+    <p class="export-message" role="status">{{ exportMessage() }}</p>
+  }
+
+  @if (view() === 'jobs') {
+    <section class="summary-grid" aria-label="Repair statistics for selected period" [attr.aria-busy]="overviewLoading()">
+      <article class="summary-card">
+        <span class="summary-icon total-icon" aria-hidden="true">⚒</span>
+        <strong>{{ overview()?.repairs?.total ?? '—' }}</strong>
+        <span>Total repairs</span>
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon progress-icon" aria-hidden="true">⟳</span>
+        <strong>{{ overview() ? countStatus('in_progress') : '—' }}</strong>
+        <span>In progress</span>
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon completed-icon" aria-hidden="true">✓</span>
+        <strong>{{ overview() ? countStatus('completed', 'repair_completed') : '—' }}</strong>
+        <span>Completed</span>
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon disputed-icon" aria-hidden="true">⚠</span>
+        <strong>{{ overview() ? countStatus('disputed') : '—' }}</strong>
+        <span>Disputed</span>
+      </article>
+    </section>
+  }
+
+  <nav class="monitor-tabs" aria-label="Repair monitoring views">
+    <button type="button" [class.active]="view() === 'jobs'" [attr.aria-pressed]="view() === 'jobs'" (click)="setView('jobs')"><span aria-hidden="true">⚒</span> Repair jobs</button>
+    <button type="button" [class.active]="view() === 'reviews'" [attr.aria-pressed]="view() === 'reviews'" (click)="setView('reviews')"><span aria-hidden="true">☆</span> Customer reviews</button>
+  </nav>
+
+  @if (view() === 'jobs') {
+    <div class="filter-row">
+      <label class="repair-search">
+        <span class="visually-hidden">Search repairs</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
+        <input type="search" [value]="searchText()" (input)="updateSearch($any($event.target).value)" placeholder="Search by repair ID, customer, shop, or device..." />
+      </label>
+      <label class="toolbar-select">
+        <span>Status</span>
+        <select [value]="status()" (change)="setStatus($event)">
+          <option value="all">All statuses</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="in_progress">In progress</option>
+          <option value="on_hold">On hold</option>
+          <option value="repair_completed">Repair completed</option>
+          <option value="ready_for_pickup">Ready for pickup</option>
+          <option value="picked_up">Picked up</option>
+          <option value="completed">Completed</option>
+          <option value="disputed">Disputed</option>
+        </select>
+      </label>
+      <label class="toolbar-select date-select">
+        <span>Date</span>
+        <select [value]="dateRange()" (change)="setDateRange($event)">
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="month">This month</option>
+        </select>
+      </label>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="state-card error" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" (click)="retry()">Try again</button>
+    </div>
+  } @else if (loading()) {
+    <div class="state-card" role="status">Loading repair activity…</div>
+  } @else if (view() === 'jobs' && !jobs().length) {
+    <div class="state-card">No repair jobs match this status.</div>
+  } @else if (view() === 'reviews' && !reviews().length) {
+    <div class="state-card">No verified repair reviews have been submitted yet.</div>
+  } @else {
+    @if (view() === 'jobs') {
+      <div class="monitor-list">
+        @for (job of jobs(); track job._id) {
+          <article class="monitor-card" [class.disputed-card]="job.repairJob.status === 'disputed'" [class.completed-card]="job.repairJob.status === 'completed' || job.repairJob.status === 'repair_completed'">
+            <div class="repair-main-row">
+              <span class="appliance-icon" aria-hidden="true">⚙</span>
+              <div class="appliance-info">
+                <span class="request-id">REPAIR #{{ job._id.slice(-8).toUpperCase() }}</span>
+                <h2>{{ job.appliance }}</h2>
+                <p class="description">{{ job.description }}</p>
+              </div>
+              <div class="repair-meta">
+                <div class="meta-person"><span aria-hidden="true">♙</span><div>{{ job.customer.fullName || 'Customer' }}<small>{{ job.customer.email || 'Contact unavailable' }}</small></div></div>
+                <div class="meta-shop"><span aria-hidden="true">⌂</span>{{ job.shopName || 'Repair shop' }}</div>
+                <div class="meta-amount"><span aria-hidden="true">₹</span>{{ job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : '—' }}</div>
+                <div class="meta-date"><span aria-hidden="true">▣</span>{{ job.createdAt | date: 'MMM d, y' }}</div>
+              </div>
+              <span class="status-badge" [attr.data-status]="job.repairJob.status">
+                {{ job.repairJob.status.replaceAll('_', ' ') | titlecase }}
+              </span>
+              <a class="details-link" [routerLink]="['/admin/repair-jobs', job._id]">View details <span aria-hidden="true">→</span></a>
+              <details class="card-menu">
+                <summary aria-label="Repair actions">⋮</summary>
+                <div><a [routerLink]="['/admin/repair-jobs', job._id]">View repair details</a></div>
+              </details>
+            </div>
+            @if (job.repairJob.history?.length) {
+              <ol class="repair-timeline" aria-label="Repair progress">
+                @for (event of job.repairJob.history | slice: 0:4; track $index) {
+                  <li>
+                    <span class="timeline-check" aria-hidden="true">✓</span>
+                    <div><strong>{{ event.action.replaceAll('_', ' ') | titlecase }}</strong><time>{{ event.at | date: 'MMM d, h:mm a' }}</time></div>
+                  </li>
+                }
+              </ol>
+            }
+            @if (job.repairJob.disputeDescription) {
+              <p class="issue-note"><strong>Customer issue:</strong> {{ job.repairJob.disputeDescription }}</p>
+            }
+            @if (job.repairJob.completionDescription) {
+              <p class="completion-note"><strong>Completion summary:</strong> {{ job.repairJob.completionDescription }}</p>
+            }
+            @if (job.repairJob.history?.length) {
+              <details>
+                <summary>View status history</summary>
+                <ol class="history-list">
+                  @for (event of job.repairJob.history; track $index) {
+                    <li><strong>{{ event.action.replaceAll('_', ' ') | titlecase }}</strong><time>{{ event.at | date: 'medium' }}</time>@if (event.notes) { <p>{{ event.notes }}</p> }</li>
+                  }
+                </ol>
+              </details>
+            }
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="monitor-list">
+        @for (review of reviews(); track review._id) {
+          <article class="monitor-card review-card">
+            <header class="card-heading">
+              <div>
+                <span class="request-id">{{ review.appliance || 'Repair' }} · {{ review.createdAt | date: 'mediumDate' }}</span>
+                <h2>{{ review.title || 'Customer review' }}</h2>
+              </div>
+              <span class="rating-badge">{{ review.overallRating }}/5</span>
+            </header>
+            <p class="review-text">{{ review.reviewText }}</p>
+            <dl class="job-data">
+              <div><dt>Customer</dt><dd>{{ review.customerName || 'Customer' }}</dd></div>
+              <div><dt>Shop</dt><dd>{{ review.shopName || 'Repair shop' }}</dd></div>
+              <div><dt>Verified</dt><dd>{{ review.verifiedAt | date: 'mediumDate' }}</dd></div>
+              <div><dt>Recommend shop</dt><dd>{{ review.wouldRecommend ? 'Yes' : 'No' }}</dd></div>
+            </dl>
+            <p class="rating-details">
+              Quality {{ review.repairQuality }}/5 · Communication {{ review.communication }}/5 ·
+              Professionalism {{ review.professionalism }}/5 · Timeliness {{ review.timeliness }}/5 ·
+              Value {{ review.valueForMoney }}/5
+            </p>
+            @if (review.liked) { <p class="review-detail"><strong>Liked:</strong> {{ review.liked }}</p> }
+            @if (review.improvement) { <p class="review-detail"><strong>Improvement:</strong> {{ review.improvement }}</p> }
+          </article>
+        }
+      </div>
+    }
+
+    <footer class="pagination" aria-label="Repair monitoring pagination">
+      <span>{{ total() }} total · Page {{ page() }} of {{ totalPages() }}</span>
+      <div>
+        <button type="button" [disabled]="page() <= 1" (click)="changePage(-1)">Previous</button>
+        <button type="button" [disabled]="page() >= totalPages()" (click)="changePage(1)">Next</button>
+      </div>
+    </footer>
+  }
+</section>

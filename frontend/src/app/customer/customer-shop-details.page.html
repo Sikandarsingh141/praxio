@@ -1,0 +1,92 @@
+<section class="shop-details-page" aria-labelledby="shop-details-title">
+  <a class="back-link" routerLink="/customer/shops">← Back to shop search</a>
+  @if (loading()) {
+    <div class="state-card" role="status">Loading shop details…</div>
+  } @else if (error()) {
+    <div class="state-card error" role="alert">{{ error() }}</div>
+  } @else if (shop(); as shop) {
+    <header class="shop-hero">
+      <div class="identity">
+        @if (shop.logoUrl) {
+          <img class="shop-logo" [src]="shop.logoUrl" [alt]="shop.shopName + ' logo'" />
+        } @else {
+          <span class="shop-logo shop-initials" aria-hidden="true">
+            {{ shop.shopName.slice(0, 1).toUpperCase() }}
+          </span>
+        }
+        <div>
+          <span class="eyebrow">APPROVED PRAXIO REPAIR SHOP</span>
+          <h1 id="shop-details-title">{{ shop.shopName }}</h1>
+          <p>{{ shop.businessType }}</p>
+        </div>
+      </div>
+      <a
+        class="primary-button"
+        [routerLink]="['/customer/shops']"
+        [queryParams]="{ shop: shop.id }"
+      >
+        Request repair
+      </a>
+    </header>
+
+    <div class="details-grid">
+      <section class="detail-card business-card">
+        <span class="section-kicker">BUSINESS INFORMATION</span>
+        <p>{{ shop.description || 'No business description has been provided.' }}</p>
+        <dl>
+          <div>
+            <dt>Experience</dt>
+            <dd>{{ shop.yearsOfExperience }} years</dd>
+          </div>
+          <div>
+            <dt>Address</dt>
+            <dd>{{ address || 'Address not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd>{{ shop.phone || 'Phone number not provided' }}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>
+              <a [href]="'mailto:' + shop.email">{{ shop.email }}</a>
+            </dd>
+          </div>
+          <div>
+            <dt>Working hours</dt>
+            <dd>Not provided by this shop</dd>
+          </div>
+          <div>
+            <dt>Availability</dt>
+            <dd>Live availability not provided</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="detail-card services-card">
+        <span class="section-kicker">SUPPORTED SERVICES</span>
+        <div class="service-list">
+          @for (service of shop.services; track service) {
+            <span>{{ service }}</span>
+          } @empty {
+            <p>No services have been listed.</p>
+          }
+        </div>
+        <div class="review-empty">
+          <strong>Ratings and reviews</strong>
+          <span>Review data is not available yet.</span>
+        </div>
+      </section>
+
+      <section class="detail-card location-card">
+        <span class="section-kicker">SHOP LOCATION</span>
+        <p>{{ address || 'Shop address not provided' }}</p>
+        @if (shop.location) {
+          <app-shop-results-map [shops]="shopList()" />
+        } @else {
+          <div class="missing-location">This shop has no saved map coordinates.</div>
+        }
+      </section>
+    </div>
+  }
+</section>

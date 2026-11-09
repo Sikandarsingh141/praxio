@@ -1,0 +1,656 @@
+@if (job; as job) {
+  <section class="workflow-panel" aria-labelledby="inspection-title">
+    <header class="workflow-header">
+      <div>
+        <span class="section-kicker">REPAIR AUTHORIZATION</span>
+        <h2 id="inspection-title">Repair Inspection</h2>
+        <p>Inspect the customer's device and identify the actual issue before starting repair.</p>
+      </div>
+      <span class="workflow-status">{{ job.status.replaceAll('_', ' ') }}</span>
+    </header>
+
+    <section class="customer-device" aria-label="Customer device information">
+      <h3>Customer device information</h3>
+      <dl>
+        <div>
+          <dt>Customer</dt>
+          <dd>{{ request.customer.fullName }}</dd>
+        </div>
+        <div>
+          <dt>Device</dt>
+          <dd>
+            {{ request.appliance }}{{ request.brand ? ' · ' + request.brand : ''
+            }}{{ request.model ? ' · ' + request.model : '' }}
+          </dd>
+        </div>
+        <div>
+          <dt>Request ID</dt>
+          <dd>#{{ request._id.slice(-8).toUpperCase() }}</dd>
+        </div>
+        @if (acceptedQuotation; as quotation) {
+          <div>
+            <dt>Original accepted quotation</dt>
+            <dd>{{ quotation.amount | currency: quotation.currency }}</dd>
+          </div>
+        }
+      </dl>
+      <p class="original-problem">
+        <strong>Customer's original problem:</strong> {{ request.description }}
+      </p>
+      @if (request.photos.length) {
+        <div class="workflow-images">
+          @for (photo of request.photos; track $index) {
+            <img
+              [src]="photo.data"
+              [alt]="'Customer device image ' + ($index + 1)"
+              loading="lazy"
+            />
+          }
+        </div>
+      }
+    </section>
+
+    @if (error()) {
+      <p class="workflow-error" role="alert">{{ error() }}</p>
+    }
+    @if (notice()) {
+      <p class="workflow-notice" role="status">{{ notice() }}</p>
+    }
+
+    @if (job.status === 'confirmed' || job.status === 'inspection_pending') {
+      <div class="workflow-callout">
+        <p>Complete an inspection report before any repair work begins.</p>
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="submitting()"
+          (click)="startInspection()"
+        >
+          {{ submitting() ? 'Starting…' : 'Start Inspection / Checking' }}
+        </button>
+      </div>
+    }
+
+    @if (job.status === 'inspection_in_progress') {
+      <form class="workflow-form" (ngSubmit)="saveInspection('submit')">
+        <h3>Inspection and diagnosis</h3>
+        <label>
+          Identified problem *
+          <textarea
+            rows="3"
+            maxlength="2000"
+            required
+            [ngModel]="identifiedProblem()"
+            (ngModelChange)="identifiedProblem.set($event)"
+            name="identifiedProblem"
+          ></textarea>
+        </label>
+        <label>
+          Inspection findings *
+          <textarea
+            rows="3"
+            maxlength="2000"
+            required
+            [ngModel]="findings()"
+            (ngModelChange)="findings.set($event)"
+            name="findings"
+          ></textarea>
+        </label>
+        <label>
+          Required repair work *
+          <textarea
+            rows="3"
+            maxlength="2000"
+            required
+            [ngModel]="requiredRepairWork()"
+            (ngModelChange)="requiredRepairWork.set($event)"
+            name="requiredRepairWork"
+          ></textarea>
+        </label>
+        <fieldset class="parts-fieldset">
+          <legend>Parts required</legend>
+          @for (part of inspectionParts(); track $index; let index = $index) {
+            <div class="part-row">
+              <label
+                >Part name<input
+                  [ngModel]="part.name"
+                  (ngModelChange)="updatePart('inspection', index, 'name', $event)"
+                  [name]="'inspection-part-' + index"
+                  maxlength="120"
+              /></label>
+              <label
+                >Qty<input
+                  type="number"
+                  min="1"
+                  step="1"
+                  [ngModel]="part.quantity"
+                  (ngModelChange)="updatePart('inspection', index, 'quantity', $event)"
+                  [name]="'inspection-qty-' + index"
+              /></label>
+              <label
+                >Price each<input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="part.unitPrice"
+                  (ngModelChange)="updatePart('inspection', index, 'unitPrice', $event)"
+                  [name]="'inspection-price-' + index"
+              /></label>
+              <button
+                type="button"
+                class="text-button"
+                (click)="removePart('inspection', index)"
+                [disabled]="inspectionParts().length === 1"
+              >
+                Remove
+              </button>
+            </div>
+          }
+          <button type="button" class="text-button" (click)="addPart('inspection')">
+            Add part
+          </button>
+        </fieldset>
+        <div class="cost-grid">
+          <label
+            >Labour charges<input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="inspectionLabour()"
+              (ngModelChange)="inspectionLabour.set(+$event || 0)"
+              name="inspectionLabour"
+          /></label>
+          <label
+            >Inspection charges<input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="inspectionCharge()"
+              (ngModelChange)="inspectionCharge.set(+$event || 0)"
+              name="inspectionCharge"
+          /></label>
+          <label
+            >Other charges<input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="inspectionOtherCharges()"
+              (ngModelChange)="inspectionOtherCharges.set(+$event || 0)"
+              name="inspectionOtherCharges"
+          /></label>
+          <label
+            >Estimated repair time<input
+              type="number"
+              min="0"
+              step="0.5"
+              [ngModel]="inspectionTime()"
+              (ngModelChange)="inspectionTime.set($event === '' ? null : +$event)"
+              name="inspectionTime"
+          /></label>
+          <label
+            >Time unit<select
+              [ngModel]="inspectionTimeUnit()"
+              (ngModelChange)="inspectionTimeUnit.set($event)"
+              name="inspectionTimeUnit"
+            >
+              <option value="hours">Hours</option>
+              <option value="days">Days</option>
+            </select></label
+          >
+          <label
+            >Repair warranty<input
+              maxlength="1000"
+              [ngModel]="inspectionWarranty()"
+              (ngModelChange)="inspectionWarranty.set($event)"
+              name="inspectionWarranty"
+          /></label>
+        </div>
+        <label
+          >Inspection images<input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            (change)="chooseImages($event, 'inspection')"
+        /></label>
+        @if (inspectionImagesError()) {
+          <p class="workflow-error" role="alert">{{ inspectionImagesError() }}</p>
+        }
+        <p class="file-count">{{ inspectionImages().length }} inspection image(s) selected</p>
+        <p class="file-count">
+          Previously saved images are kept unless you choose replacement images.
+        </p>
+        <label
+          >Message to customer<textarea
+            rows="2"
+            maxlength="2000"
+            [ngModel]="inspectionMessage()"
+            (ngModelChange)="inspectionMessage.set($event)"
+            name="inspectionMessage"
+          ></textarea>
+        </label>
+        <div class="cost-summary">
+          <h4>Inspection estimate</h4>
+          <p>
+            Parts total
+            <strong>{{ inspectionPartsTotal() | currency: acceptedQuotation?.currency }}</strong>
+          </p>
+          <p>
+            Labour <strong>{{ inspectionLabour() | currency: acceptedQuotation?.currency }}</strong>
+          </p>
+          <p>
+            Inspection and other charges
+            <strong>{{
+              inspectionCharge() + inspectionOtherCharges() | currency: acceptedQuotation?.currency
+            }}</strong>
+          </p>
+          <p class="total-line">
+            Estimated repair total
+            <strong>{{ inspectionTotal() | currency: acceptedQuotation?.currency }}</strong>
+          </p>
+          @if (acceptedQuotation) {
+            <p class="cost-explanation">
+              Original accepted quotation:
+              {{ acceptedQuotation.amount | currency: acceptedQuotation.currency }}. This inspection
+              estimate is a separate revised amount and will not change the original quotation.
+            </p>
+          }
+        </div>
+        <div class="workflow-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="submitting()"
+            (click)="saveInspection('draft')"
+          >
+            Save as Draft
+          </button>
+          <button type="submit" class="primary-button" [disabled]="submitting()">
+            {{ submitting() ? 'Sending…' : 'Submit Inspection & Request Approval' }}
+          </button>
+        </div>
+      </form>
+    }
+
+    @if (job.inspection; as inspection) {
+      @if (
+        job.status === 'awaiting_customer_approval' ||
+        job.status === 'inspection_approved' ||
+        job.status === 'repair_declined'
+      ) {
+        <section class="report-summary">
+          <h3>
+            {{
+              job.status === 'inspection_approved'
+                ? 'Customer-approved inspection'
+                : 'Submitted inspection report'
+            }}
+          </h3>
+          <p><strong>Identified problem:</strong> {{ inspection.identifiedProblem }}</p>
+          <p><strong>Findings:</strong> {{ inspection.findings }}</p>
+          <p><strong>Required repair work:</strong> {{ inspection.requiredRepairWork }}</p>
+          @if (inspection.parts.length) {
+            <h4>Parts</h4>
+            @for (part of inspection.parts; track $index) {
+              <p>
+                {{ part.name }} · {{ part.quantity }} ×
+                {{ part.unitPrice | currency: acceptedQuotation?.currency }} =
+                <strong>{{ part.total | currency: acceptedQuotation?.currency }}</strong>
+              </p>
+            }
+          }
+          <p>Labour: {{ inspection.labourCharge | currency: acceptedQuotation?.currency }}</p>
+          <p>
+            Inspection and other charges:
+            {{
+              inspection.inspectionCharges + inspection.otherCharges
+                | currency: acceptedQuotation?.currency
+            }}
+          </p>
+          <p class="total-line">
+            Inspection estimate:
+            <strong>{{ inspection.estimatedTotal | currency: acceptedQuotation?.currency }}</strong>
+          </p>
+          @if (acceptedQuotation) {
+            <p>
+              Original accepted quotation:
+              {{ acceptedQuotation.amount | currency: acceptedQuotation.currency }} (unchanged)
+            </p>
+          }
+          @if (inspection.estimatedTimeValue) {
+            <p>
+              Estimated completion: {{ inspection.estimatedTimeValue }}
+              {{ inspection.estimatedTimeUnit }}
+            </p>
+          }
+          @if (inspection.warranty) {
+            <p>Warranty: {{ inspection.warranty }}</p>
+          }
+          @if (inspection.message) {
+            <p>Message: {{ inspection.message }}</p>
+          }
+          @if (inspection.images.length) {
+            <div class="workflow-images">
+              @for (photo of inspection.images; track $index) {
+                <img [src]="photo.data" [alt]="'Inspection image ' + ($index + 1)" loading="lazy" />
+              }
+            </div>
+          }
+        </section>
+      }
+    }
+
+    @if (job.status === 'awaiting_customer_approval') {
+      <p class="workflow-callout" role="status">
+        Waiting for the customer to approve or decline this inspection estimate.
+      </p>
+    }
+    @if (job.status === 'inspection_approved') {
+      <div class="workflow-callout">
+        <p>
+          The customer approved the inspection estimate. No repair work is authorized until you
+          start the repair.
+        </p>
+        <p class="total-line">
+          Approved repair amount:
+          <strong>{{ approvedTotal | currency: acceptedQuotation?.currency }}</strong>
+        </p>
+        <button
+          type="button"
+          class="primary-button"
+          [disabled]="submitting()"
+          (click)="startRepair()"
+        >
+          Start Repair
+        </button>
+      </div>
+    }
+    @if (job.status === 'repair_declined') {
+      <p class="workflow-callout" role="status">
+        The customer declined this estimate. Do not start the repair.
+      </p>
+    }
+
+    @if (
+      job.status === 'in_progress' ||
+      job.status === 'on_hold' ||
+      job.status === 'repair_completed' ||
+      job.status === 'ready_for_pickup' ||
+      job.status === 'picked_up' ||
+      job.status === 'completed' ||
+      job.status === 'disputed'
+    ) {
+      <section class="cost-summary">
+        <h3>Repair cost summary</h3>
+        @if (acceptedQuotation) {
+          <p>
+            Original accepted quotation
+            <strong>{{ acceptedQuotation.amount | currency: acceptedQuotation.currency }}</strong>
+          </p>
+        }
+        <p>
+          Initial inspection estimate
+          <strong>{{
+            job.approvedRepairAmount ?? 0 | currency: acceptedQuotation?.currency
+          }}</strong>
+        </p>
+        <p>
+          Approved additional charges
+          <strong>{{
+            job.approvedAdditionalCharges ?? 0 | currency: acceptedQuotation?.currency
+          }}</strong>
+        </p>
+        <p>
+          Pending additional-charge requests
+          <strong>{{ pendingAdditionalTotal | currency: acceptedQuotation?.currency }}</strong>
+        </p>
+        <p>
+          Rejected additional charges
+          <strong>{{ rejectedAdditionalTotal | currency: acceptedQuotation?.currency }}</strong>
+        </p>
+        <p class="total-line">
+          Current approved repair total
+          <strong>{{ approvedTotal | currency: acceptedQuotation?.currency }}</strong>
+        </p>
+        <p class="cost-explanation">
+          Pending and rejected requests are not included. No payment is collected by approving an
+          estimate.
+        </p>
+      </section>
+
+      @if (job.additionalChargeRequests?.length) {
+        <section class="report-summary">
+          <h3>Additional charge requests</h3>
+          @for (charge of job.additionalChargeRequests; track charge._id) {
+            <article class="charge-card">
+              <strong>{{ charge.issue || 'Saved draft' }}</strong>
+              <span class="workflow-status">{{ charge.status }}</span>
+              @if (charge.reason) {
+                <p>{{ charge.reason }}</p>
+              }
+              @if (charge.repairDescription) {
+                <p>{{ charge.repairDescription }}</p>
+              }
+              @if (charge.parts.length) {
+                @for (part of charge.parts; track $index) {
+                  <p>
+                    {{ part.name }} · {{ part.quantity }} ×
+                    {{ part.unitPrice | currency: acceptedQuotation?.currency }}
+                  </p>
+                }
+              }
+              <p>
+                Parts {{ charge.partsTotal | currency: acceptedQuotation?.currency }} · Labour
+                {{ charge.labourCharge | currency: acceptedQuotation?.currency }} · Other
+                {{ charge.otherCharges | currency: acceptedQuotation?.currency }}
+              </p>
+              <p>Requested {{ charge.amount | currency: acceptedQuotation?.currency }}</p>
+              @if (charge.blocksRepair) {
+                <p class="workflow-error">Repair is paused pending the customer's decision.</p>
+              }
+            </article>
+          }
+        </section>
+      }
+
+      @if (job.status === 'in_progress' || job.status === 'on_hold') {
+        @if (!additionalFormOpen()) {
+          <button type="button" class="secondary-button" (click)="additionalFormOpen.set(true)">
+            Request Additional Charges
+          </button>
+        } @else {
+          <form class="workflow-form" (ngSubmit)="submitAdditionalCharges('submit')">
+            <h3>Request additional charges</h3>
+            <p>Do not perform this additional work unless the customer approves it.</p>
+            <label
+              >Additional issue found *<textarea
+                rows="2"
+                maxlength="2000"
+                required
+                [ngModel]="additionalIssue()"
+                (ngModelChange)="additionalIssue.set($event)"
+                name="additionalIssue"
+              ></textarea>
+            </label>
+            <label
+              >Reason for additional work *<textarea
+                rows="2"
+                maxlength="2000"
+                required
+                [ngModel]="additionalReason()"
+                (ngModelChange)="additionalReason.set($event)"
+                name="additionalReason"
+              ></textarea>
+            </label>
+            <label
+              >Additional repair description *<textarea
+                rows="2"
+                maxlength="2000"
+                required
+                [ngModel]="additionalDescription()"
+                (ngModelChange)="additionalDescription.set($event)"
+                name="additionalDescription"
+              ></textarea>
+            </label>
+            <fieldset class="parts-fieldset">
+              <legend>Additional parts</legend>
+              @for (part of additionalParts(); track $index; let index = $index) {
+                <div class="part-row">
+                  <label
+                    >Part name<input
+                      [ngModel]="part.name"
+                      (ngModelChange)="updatePart('additional', index, 'name', $event)"
+                      [name]="'additional-part-' + index"
+                      maxlength="120"
+                  /></label>
+                  <label
+                    >Qty<input
+                      type="number"
+                      min="1"
+                      step="1"
+                      [ngModel]="part.quantity"
+                      (ngModelChange)="updatePart('additional', index, 'quantity', $event)"
+                      [name]="'additional-qty-' + index"
+                  /></label>
+                  <label
+                    >Price each<input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      [ngModel]="part.unitPrice"
+                      (ngModelChange)="updatePart('additional', index, 'unitPrice', $event)"
+                      [name]="'additional-price-' + index"
+                  /></label>
+                  <button
+                    type="button"
+                    class="text-button"
+                    (click)="removePart('additional', index)"
+                    [disabled]="additionalParts().length === 1"
+                  >
+                    Remove
+                  </button>
+                </div>
+              }
+              <button type="button" class="text-button" (click)="addPart('additional')">
+                Add part
+              </button>
+            </fieldset>
+            <div class="cost-grid">
+              <label
+                >Additional labour<input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="additionalLabour()"
+                  (ngModelChange)="additionalLabour.set(+$event || 0)"
+                  name="additionalLabour"
+              /></label>
+              <label
+                >Other charges<input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [ngModel]="additionalOtherCharges()"
+                  (ngModelChange)="additionalOtherCharges.set(+$event || 0)"
+                  name="additionalOtherCharges"
+              /></label>
+              <label
+                >Additional time<input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  [ngModel]="additionalTime()"
+                  (ngModelChange)="additionalTime.set($event === '' ? null : +$event)"
+                  name="additionalTime"
+              /></label>
+              <label
+                >Time unit<select
+                  [ngModel]="additionalTimeUnit()"
+                  (ngModelChange)="additionalTimeUnit.set($event)"
+                  name="additionalTimeUnit"
+                >
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select></label
+              >
+            </div>
+            <label
+              >Supporting images<input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                (change)="chooseImages($event, 'additional')"
+            /></label>
+            @if (additionalImagesError()) {
+              <p class="workflow-error" role="alert">{{ additionalImagesError() }}</p>
+            }
+            <p class="file-count">{{ additionalImages().length }} supporting image(s) selected</p>
+            <p class="file-count">
+              Previously saved images are kept unless you choose replacement images.
+            </p>
+            <label
+              >Message to customer<textarea
+                rows="2"
+                maxlength="2000"
+                [ngModel]="additionalMessage()"
+                (ngModelChange)="additionalMessage.set($event)"
+                name="additionalMessage"
+              ></textarea>
+            </label>
+            <label class="pause-option"
+              ><input
+                type="checkbox"
+                [ngModel]="blocksRepair()"
+                (ngModelChange)="blocksRepair.set($event)"
+                name="blocksRepair"
+              />
+              This issue prevents the original repair from continuing safely; pause the repair until
+              the customer responds.</label
+            >
+            <div class="cost-summary">
+              <p>
+                Original customer-approved amount
+                <strong>{{ approvedTotal | currency: acceptedQuotation?.currency }}</strong>
+              </p>
+              <p>
+                Previously approved additional charges
+                <strong>{{
+                  job.approvedAdditionalCharges ?? 0 | currency: acceptedQuotation?.currency
+                }}</strong>
+              </p>
+              <p>
+                Newly requested amount
+                <strong>{{ additionalTotal() | currency: acceptedQuotation?.currency }}</strong>
+              </p>
+              <p class="total-line">
+                Updated total if approved
+                <strong>{{
+                  approvedTotal + additionalTotal() | currency: acceptedQuotation?.currency
+                }}</strong>
+              </p>
+            </div>
+            <div class="workflow-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="submitting()"
+                (click)="submitAdditionalCharges('draft')"
+              >
+                Save as Draft
+              </button>
+              <button type="submit" class="primary-button" [disabled]="submitting()">
+                Send Additional Charge Request
+              </button>
+            </div>
+          </form>
+        }
+      }
+    }
+    @if (confirmation(); as dialog) {
+      <app-confirmation-dialog
+        [config]="dialog"
+        (confirmed)="confirmStartRepair()"
+        (cancelled)="cancelConfirmation()"
+      />
+    }
+  </section>
+}

@@ -1,0 +1,605 @@
+<section class="request-details-page" aria-labelledby="request-details-title">
+  <a class="back-link" routerLink="/shop/repair-requests">← Back to repair requests</a>
+  @if (loading()) {
+    <div class="state-card" role="status">Loading repair request…</div>
+  } @else if (error()) {
+    <div class="state-card error" role="alert">{{ error() }}</div>
+  } @else if (request(); as request) {
+    @if (success()) {
+      <p class="success-message" role="status">{{ success() }}</p>
+    }
+    <header class="request-hero">
+      <span class="appliance-icon" aria-hidden="true">▣</span>
+      <div class="request-hero-copy">
+        <span class="eyebrow">REQUEST #{{ request._id.slice(-8).toUpperCase() }}</span>
+        <h1 id="request-details-title">{{ request.appliance }}</h1>
+        <p>
+          {{ request.brand || 'Brand not provided'
+          }}{{ request.model ? ' · ' + request.model : '' }}
+        </p>
+      </div>
+      <span class="status-badge" [attr.data-status]="request.shopResponse.status">
+        {{
+          request.shopResponse.status === 'quotation_submitted'
+            ? 'Quotation submitted'
+            : request.shopResponse.status.replace('_', ' ')
+        }}
+      </span>
+    </header>
+
+    @if (request.repairJob) {
+      <app-shop-repair-workflow [request]="request" (requestUpdated)="setRequest($event)" />
+    }
+
+    <div class="detail-grid">
+      <section class="detail-card customer-card">
+        <h2 class="card-heading">
+          <span class="card-icon" aria-hidden="true">♙</span>
+          Customer information
+        </h2>
+        <h3 class="customer-title">{{ request.customer.fullName }}</h3>
+        <dl>
+          <div>
+            <dt><span aria-hidden="true">✉</span>Email</dt>
+            <dd>{{ request.customer.email || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt><span aria-hidden="true">⌕</span>Phone</dt>
+            <dd>{{ request.customer.phone || 'Not provided' }}</dd>
+          </div>
+          <div>
+            <dt><span aria-hidden="true">⌖</span>Location</dt>
+            <dd>
+              @if (request.customer.location; as location) {
+                <a
+                  [href]="
+                    'https://www.google.com/maps/search/?api=1&query=' +
+                    location.latitude +
+                    ',' +
+                    location.longitude
+                  "
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >{{ location.latitude }}, {{ location.longitude }} · Open map</a
+                >
+              } @else {
+                Location not provided
+              }
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="detail-card repair-card">
+        <h2 class="card-heading">
+          <span class="card-icon" aria-hidden="true">⚒</span>
+          Repair information
+        </h2>
+        <dl>
+          <div>
+            <dt><span aria-hidden="true">▣</span>Submitted</dt>
+            <dd>{{ request.createdAt | date: 'medium' }}</dd>
+          </div>
+          <div>
+            <dt><span aria-hidden="true">▣</span>Preferred date</dt>
+            <dd>
+              {{
+                request.preferredServiceDate
+                  ? (request.preferredServiceDate | date: 'mediumDate')
+                  : 'Not specified'
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt><span aria-hidden="true">⚙</span>Service type</dt>
+            <dd>
+              {{
+                request.serviceType === 'home_service'
+                  ? 'Home service'
+                  : request.serviceType === 'shop_visit'
+                    ? 'Shop visit'
+                    : 'Not specified'
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt><span aria-hidden="true">▤</span>Response deadline</dt>
+            <dd>
+              {{
+                request.shopResponse.responseDeadline
+                  ? (request.shopResponse.responseDeadline | date: 'medium')
+                  : 'No deadline configured'
+              }}
+            </dd>
+          </div>
+        </dl>
+        <p class="problem-description">{{ request.description }}</p>
+      </section>
+
+      <section class="detail-card photos-card">
+        <h2 class="card-heading">
+          <span class="card-icon" aria-hidden="true">▧</span>
+          Uploaded photos <small>({{ request.photos.length }})</small>
+        </h2>
+        @if (request.photos.length) {
+          <div class="photo-grid">
+            @for (photo of request.photos; track $index) {
+              <a [href]="photo.data" target="_blank" rel="noopener noreferrer">
+                <img [src]="photo.data" [alt]="'Repair photo ' + ($index + 1)" />
+              </a>
+            }
+          </div>
+        } @else {
+          <p>No photos were attached.</p>
+        }
+      </section>
+
+      @if (request.quotations.length) {
+        <section class="detail-card quotations-card">
+          <span class="section-kicker">QUOTATION HISTORY</span>
+          @for (quotation of request.quotations; track quotation._id) {
+            <article class="quotation-history">
+              <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+              <span>{{ quotation.status }} · {{ quotation.createdAt | date: 'medium' }}</span>
+              <p>{{ quotation.message }}</p>
+            </article>
+          }
+        </section>
+      }
+    </div>
+
+    @if (request.repairJob; as job) {
+      <section
+        class="repair-workflow"
+        [class.workflow-active]="
+          job.status === 'in_progress' ||
+          job.status === 'on_hold' ||
+          job.status === 'repair_completed' ||
+          job.status === 'ready_for_pickup' ||
+          job.status === 'picked_up' ||
+          job.status === 'completed' ||
+          job.status === 'disputed'
+        "
+        aria-labelledby="repair-workflow-title"
+      >
+        <header class="workflow-heading">
+          <div>
+            <span class="section-kicker">CONFIRMED REPAIR</span>
+            <h2 id="repair-workflow-title">Repair progress</h2>
+          </div>
+          <span class="status-badge" [attr.data-status]="job.status">
+            {{ job.status.replaceAll('_', ' ') }}
+          </span>
+        </header>
+
+        @if (job.completionDescription) {
+          <dl class="repair-summary">
+            <div>
+              <dt>Completion summary</dt>
+              <dd>{{ job.completionDescription }}</dd>
+            </div>
+            <div>
+              <dt>Work performed</dt>
+              <dd>{{ job.workPerformed }}</dd>
+            </div>
+            @if (job.partsReplaced) {
+              <div>
+                <dt>Parts replaced</dt>
+                <dd>{{ job.partsReplaced }}</dd>
+              </div>
+            }
+            @if (job.finalNotes) {
+              <div>
+                <dt>Final notes</dt>
+                <dd>{{ job.finalNotes }}</dd>
+              </div>
+            }
+          </dl>
+        }
+        @if (job.pickupInstructions) {
+          <p class="pickup-summary">
+            <strong>Pickup instructions:</strong> {{ job.pickupInstructions }}
+          </p>
+        }
+        @if (job.disputeDescription) {
+          <p class="decline-note"><strong>Customer issue:</strong> {{ job.disputeDescription }}</p>
+        }
+        @if (repairFormError()) {
+          <p class="form-error" role="alert">{{ repairFormError() }}</p>
+        }
+
+        @if (job.status === 'on_hold') {
+          <div class="workflow-actions">
+            <label>
+              <span>Progress note (optional)</span>
+              <input
+                type="text"
+                maxlength="1000"
+                [ngModel]="progressNotes()"
+                (ngModelChange)="progressNotes.set($event)"
+                placeholder="Share an update with the customer"
+              />
+            </label>
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="repairActionSubmitting()"
+              (click)="startRepair()"
+            >
+              {{
+                repairActionSubmitting()
+                  ? 'Updating…'
+                  : job.status === 'on_hold'
+                    ? 'Resume repair'
+                    : 'Start repair'
+              }}
+            </button>
+          </div>
+        } @else if (job.status === 'in_progress') {
+          <div class="workflow-actions">
+            <label>
+              <span>Progress note (optional)</span>
+              <input
+                type="text"
+                maxlength="1000"
+                [ngModel]="progressNotes()"
+                (ngModelChange)="progressNotes.set($event)"
+                placeholder="Explain why work is paused, if applicable"
+              />
+            </label>
+            <button
+              type="button"
+              class="secondary-button"
+              [disabled]="repairActionSubmitting()"
+              (click)="holdRepair()"
+            >
+              Place on hold
+            </button>
+          </div>
+          <form class="workflow-form" (ngSubmit)="completeRepair()">
+            <h3>Record repair completion</h3>
+            <label>
+              <span>Completion summary *</span>
+              <textarea
+                name="completionDescription"
+                rows="2"
+                maxlength="2000"
+                required
+                [ngModel]="completionDescription()"
+                (ngModelChange)="completionDescription.set($event)"
+              ></textarea>
+            </label>
+            <label>
+              <span>Work performed *</span>
+              <textarea
+                name="workPerformed"
+                rows="2"
+                maxlength="2000"
+                required
+                [ngModel]="workPerformed()"
+                (ngModelChange)="workPerformed.set($event)"
+              ></textarea>
+            </label>
+            <label>
+              <span>Parts replaced (optional)</span>
+              <input
+                name="partsReplaced"
+                maxlength="1000"
+                [ngModel]="partsReplaced()"
+                (ngModelChange)="partsReplaced.set($event)"
+              />
+            </label>
+            <label>
+              <span>Final notes (optional)</span>
+              <textarea
+                name="finalNotes"
+                rows="2"
+                maxlength="2000"
+                [ngModel]="finalNotes()"
+                (ngModelChange)="finalNotes.set($event)"
+              ></textarea>
+            </label>
+            <button type="submit" class="primary-button" [disabled]="repairActionSubmitting()">
+              {{ repairActionSubmitting() ? 'Saving…' : 'Mark repair complete' }}
+            </button>
+          </form>
+        } @else if (job.status === 'repair_completed') {
+          <form class="workflow-form" (ngSubmit)="markReadyForPickup()">
+            <h3>Notify customer for pickup</h3>
+            <label>
+              <span>Pickup instructions *</span>
+              <textarea
+                name="pickupInstructions"
+                rows="2"
+                maxlength="1000"
+                required
+                [ngModel]="pickupInstructions()"
+                (ngModelChange)="pickupInstructions.set($event)"
+                placeholder="Shop address, hours, or pickup requirements"
+              ></textarea>
+            </label>
+            <label>
+              <span>Message (optional)</span>
+              <textarea
+                name="pickupMessage"
+                rows="2"
+                maxlength="500"
+                [ngModel]="pickupMessage()"
+                (ngModelChange)="pickupMessage.set($event)"
+              ></textarea>
+            </label>
+            <button type="submit" class="primary-button" [disabled]="repairActionSubmitting()">
+              {{ repairActionSubmitting() ? 'Sending…' : 'Mark ready for pickup' }}
+            </button>
+          </form>
+        } @else {
+          <p class="workflow-note">
+            @if (job.status === 'ready_for_pickup') {
+              The customer has been notified. Waiting for pickup confirmation.
+            } @else if (job.status === 'picked_up') {
+              Customer pickup is confirmed. Waiting for their repair review.
+            } @else if (job.status === 'disputed') {
+              The customer reported an issue. Follow up with them to resolve it.
+            } @else {
+              This repair is complete.
+            }
+          </p>
+        }
+      </section>
+    }
+
+    @if (request.shopResponse.status === 'declined') {
+      <p class="decline-note">Declined: {{ request.shopResponse.declineReason }}</p>
+    }
+    @if (request.shopResponse.status === 'expired') {
+      <p class="decline-note">This request has expired and cannot be answered.</p>
+    }
+    @if (canRespond()) {
+      <div class="primary-actions">
+        <button type="button" class="primary-button" (click)="quotationOpen.set(true)">
+          <span aria-hidden="true">✓</span> Accept &amp; Submit Quotation
+        </button>
+        <button type="button" class="decline-button" (click)="declineOpen.set(true)">
+          <span aria-hidden="true">×</span> Decline Request
+        </button>
+      </div>
+    }
+  }
+
+  @if (quotationOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="dialog quotation-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="quotation-title"
+      >
+        <header>
+          <div>
+            <span class="section-kicker">SHOP RESPONSE</span>
+            <h2 id="quotation-title">Submit quotation</h2>
+          </div>
+          <button
+            type="button"
+            class="dialog-close"
+            aria-label="Close quotation form"
+            (click)="quotationOpen.set(false)"
+          >
+            ×
+          </button>
+        </header>
+        <div class="form-grid">
+          <label
+            ><span>Inspection / visiting charge</span
+            ><input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="inspectionCharge()"
+              (ngModelChange)="inspectionCharge.set($event)"
+          /></label>
+          <label
+            ><span>Parts cost</span
+            ><input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="partsCost()"
+              (ngModelChange)="partsCost.set($event)"
+          /></label>
+          <label
+            ><span>Labour charge</span
+            ><input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="labourCharge()"
+              (ngModelChange)="labourCharge.set($event)"
+          /></label>
+          <label
+            ><span>Additional charges</span
+            ><input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="additionalCharges()"
+              (ngModelChange)="additionalCharges.set($event)"
+          /></label>
+          <div class="total-row">
+            <span>Total estimated amount</span><strong>{{ total() | currency: 'INR' }}</strong>
+          </div>
+          <label
+            ><span>Estimated completion (days)</span
+            ><input
+              type="number"
+              min="1"
+              max="365"
+              required
+              [ngModel]="completionDays()"
+              (ngModelChange)="completionDays.set($event)"
+          /></label>
+          <label
+            ><span>Quotation valid for (days)</span
+            ><input
+              type="number"
+              min="1"
+              max="365"
+              required
+              [ngModel]="validityDays()"
+              (ngModelChange)="validityDays.set($event)"
+          /></label>
+          <label class="full-width"
+            ><span>Quotation summary <b>*</b></span
+            ><textarea
+              rows="3"
+              maxlength="1000"
+              [ngModel]="message()"
+              (ngModelChange)="message.set($event)"
+              placeholder="Describe the estimate and terms"
+            ></textarea>
+          </label>
+          <label class="full-width"
+            ><span>Proposed solution</span
+            ><textarea
+              rows="2"
+              maxlength="2000"
+              [ngModel]="proposedSolution()"
+              (ngModelChange)="proposedSolution.set($event)"
+            ></textarea>
+          </label>
+          <label
+            ><span>Warranty information</span
+            ><input maxlength="500" [ngModel]="warranty()" (ngModelChange)="warranty.set($event)"
+          /></label>
+          <label
+            ><span>Additional notes</span
+            ><input maxlength="1000" [ngModel]="notes()" (ngModelChange)="notes.set($event)"
+          /></label>
+        </div>
+        @if (quotationConfirming()) {
+          <section class="quotation-review" aria-label="Quotation summary">
+            <h3>Review quotation before submission</h3>
+            <p>{{ message() }}</p>
+            <dl>
+              <div>
+                <dt>Inspection</dt>
+                <dd>{{ inspectionCharge() | currency: 'INR' }}</dd>
+              </div>
+              <div>
+                <dt>Parts</dt>
+                <dd>{{ partsCost() | currency: 'INR' }}</dd>
+              </div>
+              <div>
+                <dt>Labour</dt>
+                <dd>{{ labourCharge() | currency: 'INR' }}</dd>
+              </div>
+              <div>
+                <dt>Additional</dt>
+                <dd>{{ additionalCharges() | currency: 'INR' }}</dd>
+              </div>
+              <div>
+                <dt>Completion time</dt>
+                <dd>{{ completionDays() }} days</dd>
+              </div>
+              <div>
+                <dt>Validity</dt>
+                <dd>{{ validityDays() }} days</dd>
+              </div>
+              <div class="review-total">
+                <dt>Total estimate</dt>
+                <dd>{{ total() | currency: 'INR' }}</dd>
+              </div>
+            </dl>
+          </section>
+        }
+        @if (formError()) {
+          <p class="form-error" role="alert">{{ formError() }}</p>
+        }
+        <footer>
+          @if (quotationConfirming()) {
+            <button type="button" class="secondary-button" (click)="quotationConfirming.set(false)">
+              Back to edit
+            </button>
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="submitting()"
+              (click)="submitQuotation()"
+            >
+              {{ submitting() ? 'Submitting…' : 'Confirm & submit' }}
+            </button>
+          } @else {
+            <button type="button" class="secondary-button" (click)="quotationOpen.set(false)">
+              Cancel
+            </button>
+            <button type="button" class="primary-button" (click)="reviewQuotation()">
+              Review quotation
+            </button>
+          }
+        </footer>
+      </section>
+    </div>
+  }
+
+  @if (declineOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section
+        class="dialog decline-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="decline-title"
+      >
+        <header>
+          <div>
+            <span class="section-kicker">REQUEST RESPONSE</span>
+            <h2 id="decline-title">Decline request</h2>
+          </div>
+          <button
+            type="button"
+            class="dialog-close"
+            aria-label="Close decline form"
+            (click)="declineOpen.set(false)"
+          >
+            ×
+          </button>
+        </header>
+        <p>Choose a reason. The customer will be notified.</p>
+        <label class="reason-control"
+          ><span>Reason <b>*</b></span
+          ><select [ngModel]="declineReason()" (ngModelChange)="declineReason.set($event)">
+            <option value="">Select a reason</option>
+            @for (reason of reasons; track reason) {
+              <option [value]="reason">{{ reason }}</option>
+            }
+          </select></label
+        >
+        @if (declineReason() === 'Other') {
+          <label class="reason-control"
+            ><span>Custom reason</span
+            ><textarea
+              rows="3"
+              maxlength="500"
+              [ngModel]="customDeclineReason()"
+              (ngModelChange)="customDeclineReason.set($event)"
+            ></textarea>
+          </label>
+        }
+        @if (formError()) {
+          <p class="form-error" role="alert">{{ formError() }}</p>
+        }
+        <footer>
+          <button type="button" class="secondary-button" (click)="declineOpen.set(false)">
+            Cancel</button
+          ><button
+            type="button"
+            class="decline-button"
+            [disabled]="submitting()"
+            (click)="declineRequest()"
+          >
+            {{ submitting() ? 'Declining…' : 'Confirm decline' }}
+          </button>
+        </footer>
+      </section>
+    </div>
+  }
+</section>

@@ -1,0 +1,521 @@
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.auth-shell {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  padding: 0 clamp(1.25rem, 5vw, 5rem);
+  background: radial-gradient(ellipse at 75% 15%, rgb(74 126 100 / 9%), transparent 36%), #f7f8f6;
+}
+
+.auth-header,
+.auth-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(100%, 1180px);
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 auto;
+}
+
+.auth-header {
+  min-height: 88px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #20302b;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: #315d4b;
+  color: #fff;
+}
+
+.header-note,
+.auth-footer {
+  color: #718078;
+  font-size: 0.84rem;
+}
+
+.auth-main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(100%, 1180px);
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  align-items: center;
+  gap: clamp(2rem, 8vw, 7rem);
+  margin: 0 auto;
+  padding: 3rem 0 5rem;
+}
+
+.auth-main.registration-mode {
+  display: block;
+  width: min(100%, 940px);
+  padding: 2rem 0 3rem;
+}
+
+.registration-mode .welcome-copy {
+  display: none;
+}
+
+.registration-mode .auth-panel {
+  width: 100%;
+}
+
+.welcome-copy {
+  max-width: 520px;
+}
+
+.eyebrow {
+  color: #315d4b;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 1.2rem 0;
+  color: #20302b;
+  font-size: clamp(2.5rem, 5vw, 4.4rem);
+  font-weight: 720;
+  letter-spacing: -0.055em;
+  line-height: 1.05;
+}
+
+.welcome-copy p {
+  max-width: 440px;
+  margin: 0;
+  color: #68776f;
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.auth-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-footer {
+  min-height: 72px;
+  border-top: 1px solid #e4e9e5;
+}
+
+.login-shell {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 78% 16%, rgb(62 183 111 / 12%), transparent 34%),
+    radial-gradient(ellipse at 18% 72%, rgb(225 246 230 / 38%), transparent 40%), #fff;
+}
+
+.login-shell .brand {
+  color: #111d29;
+  font-size: 1.5rem;
+}
+
+.login-shell .brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.8rem;
+  background: linear-gradient(145deg, #078137, #056a30);
+  font-size: 1.2rem;
+}
+
+.login-shell::after {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 8.5rem;
+  background: linear-gradient(170deg, rgb(232 248 237 / 74%), rgb(216 241 224 / 70%));
+  clip-path: polygon(
+    0 40%,
+    12% 58%,
+    26% 82%,
+    40% 90%,
+    54% 76%,
+    67% 72%,
+    82% 86%,
+    100% 56%,
+    100% 100%,
+    0 100%
+  );
+  content: '';
+}
+
+.login-footer {
+  display: none;
+}
+
+.account-selection-shell {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 80% 16%, rgb(62 183 111 / 10%), transparent 34%), #fff;
+}
+
+.account-selection-footer {
+  display: none;
+}
+
+.customer-registration-shell {
+  overflow: hidden;
+  background: radial-gradient(ellipse at 82% 18%, rgb(62 183 111 / 10%), transparent 34%), #fff;
+}
+
+.customer-registration-shell .auth-header {
+  min-height: 64px;
+}
+
+.customer-registration-shell .brand {
+  color: #111d29;
+  font-size: 1.3rem;
+}
+
+.customer-registration-shell .brand-mark {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(145deg, #078137, #056a30);
+}
+
+.customer-registration-shell::after {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 5.5rem;
+  background: linear-gradient(170deg, rgb(232 248 237 / 74%), rgb(216 241 224 / 70%));
+  clip-path: polygon(
+    0 42%,
+    14% 56%,
+    29% 82%,
+    43% 92%,
+    58% 76%,
+    72% 70%,
+    86% 86%,
+    100% 58%,
+    100% 100%,
+    0 100%
+  );
+  content: '';
+}
+
+.customer-registration-footer {
+  display: none;
+}
+
+.customer-registration-mode.auth-main {
+  display: grid;
+  width: min(100%, 1000px);
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  padding: 0.25rem 0 0.75rem;
+}
+
+.account-selection-mode {
+  width: min(100%, 1060px);
+  align-self: center;
+  padding: 0.75rem 0 1rem;
+}
+
+@media (max-height: 800px) and (min-width: 761px) {
+  .account-selection-shell .auth-header {
+    min-height: 64px;
+  }
+
+  .account-selection-mode {
+    padding-block: 0.5rem;
+  }
+
+  .customer-registration-shell .auth-header {
+    min-height: 48px;
+  }
+}
+
+.login-mode {
+  width: min(100%, 1200px);
+  grid-template-columns: minmax(0, 1fr) minmax(440px, 508px);
+  gap: clamp(3rem, 8vw, 7rem);
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.login-mode .welcome-copy {
+  max-width: 580px;
+}
+
+.login-mode .eyebrow {
+  display: inline-flex;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: #e8f7e9;
+  color: #087c34;
+  font-size: 0.77rem;
+  letter-spacing: 0.1em;
+}
+
+.login-mode h1 {
+  margin: 1.55rem 0 1.2rem;
+  color: #111d29;
+  font-size: clamp(3.25rem, 5vw, 4.45rem);
+  letter-spacing: -0.06em;
+  line-height: 1.02;
+}
+
+.login-mode .headline-accent {
+  position: relative;
+  display: block;
+  width: fit-content;
+  color: #078137;
+}
+
+.login-mode .headline-accent::after {
+  position: absolute;
+  right: 14%;
+  bottom: -0.3rem;
+  left: 28%;
+  height: 0.36rem;
+  border-top: 4px solid #079541;
+  border-radius: 50%;
+  content: '';
+  transform: rotate(-3deg);
+}
+
+.login-mode .welcome-copy > p {
+  max-width: 34rem;
+  color: #536171;
+  font-size: 1.18rem;
+  line-height: 1.6;
+}
+
+.auth-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.auth-benefit {
+  display: grid;
+  justify-items: start;
+  gap: 0.3rem;
+  color: #17212d;
+}
+
+.benefit-icon {
+  display: grid;
+  width: 3.8rem;
+  height: 3.8rem;
+  margin-bottom: 0.25rem;
+  place-items: center;
+  border-radius: 1rem;
+  background: #e9f8eb;
+  color: #078137;
+}
+
+.benefit-icon svg {
+  width: 1.8rem;
+  height: 1.8rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.benefit-title {
+  font-size: 0.97rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.benefit-caption {
+  color: #687583;
+  font-size: 0.9rem;
+}
+
+.login-mode .auth-panel {
+  max-width: 508px;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  .login-mode {
+    width: min(100%, 1000px);
+    grid-template-columns: minmax(0, 1fr) minmax(370px, 440px);
+    gap: clamp(1rem, 2.5vw, 1.75rem);
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .login-mode h1 {
+    font-size: clamp(2rem, 3.5vw, 2.6rem);
+  }
+
+  .login-mode .welcome-copy > p {
+    font-size: 1rem;
+  }
+
+  .auth-benefits {
+    gap: 0.5rem;
+    margin-top: 1.6rem;
+  }
+
+  .benefit-icon {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  .benefit-title {
+    font-size: 0.78rem;
+  }
+
+  .benefit-caption {
+    font-size: 0.72rem;
+  }
+
+  .login-mode .auth-panel {
+    max-width: 440px;
+  }
+
+  .account-selection-mode {
+    width: min(100%, 920px);
+  }
+
+  .customer-registration-mode.auth-main {
+    width: min(100%, 1000px);
+  }
+}
+
+@media (max-height: 700px) and (min-width: 761px) {
+  .auth-header {
+    min-height: 64px;
+  }
+
+  .login-mode {
+    padding-top: 0.25rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .login-mode .card-heading {
+    margin-bottom: 0.85rem;
+  }
+
+  .login-mode .auth-benefits {
+    margin-top: 1.2rem;
+  }
+}
+
+@media (max-height: 720px) and (min-width: 761px) {
+  .customer-registration-mode.auth-main {
+    min-height: 0;
+    padding-block: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .auth-shell {
+    padding-inline: 1.25rem;
+  }
+
+  .customer-registration-shell .auth-header {
+    min-height: 56px;
+  }
+
+  .auth-header {
+    min-height: 72px;
+  }
+
+  .header-note,
+  .auth-footer span:last-child {
+    display: none;
+  }
+
+  .auth-main {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    align-content: center;
+    padding: 2rem 0 3rem;
+  }
+
+  .auth-main.registration-mode {
+    padding-block: 1.5rem 2rem;
+  }
+
+  .account-selection-mode {
+    padding-block: 1rem 1.25rem;
+  }
+
+  .customer-registration-mode.auth-main {
+    display: block;
+    padding-block: 0.35rem 1.5rem;
+  }
+
+  .login-mode {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding-top: 1.25rem;
+    padding-bottom: 3rem;
+  }
+
+  .login-mode h1 {
+    font-size: clamp(2.8rem, 12vw, 3.8rem);
+  }
+
+  .auth-benefits {
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .benefit-icon {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  .benefit-title {
+    font-size: 0.83rem;
+  }
+
+  .benefit-caption {
+    font-size: 0.74rem;
+  }
+
+  h1 {
+    max-width: 520px;
+    font-size: clamp(2.4rem, 12vw, 3.5rem);
+  }
+
+  .auth-footer {
+    min-height: 56px;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-mode .auth-panel {
+    min-width: 0;
+  }
+
+  .auth-benefits {
+    gap: 0.45rem;
+  }
+}

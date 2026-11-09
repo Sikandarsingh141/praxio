@@ -1,0 +1,162 @@
+<div class="role-portal shop-portal">
+  <header class="portal-header">
+    <a class="portal-brand" routerLink="/shop" aria-label="Praxio shop portal">
+      <span class="brand-mark">P</span>
+      <span>Praxio <small>SHOP PORTAL</small></span>
+    </a>
+    <form
+      class="global-search"
+      role="search"
+      (submit)="$event.preventDefault(); searchShopActivity()"
+    >
+      <label class="visually-hidden" for="shop-global-search">Search shop activity</label>
+      <input
+        id="shop-global-search"
+        type="search"
+        placeholder="Search repair requests, quotations, or customers..."
+        [value]="searchQuery()"
+        (input)="updateSearchQuery($event)"
+      />
+      <button type="submit" [disabled]="searchLoading()">Search</button>
+      @if (searchResults() !== null || searchLoading() || searchError()) {
+        <div class="global-search-results">
+          @if (searchLoading()) {
+            <p role="status">Searching repair requests and quotations…</p>
+          } @else if (searchError()) {
+            <p class="search-error" role="alert">{{ searchError() }}</p>
+          } @else if (searchResults()?.length) {
+            <div role="list" aria-label="Search results">
+              @for (result of searchResults(); track result.id) {
+                <a
+                  role="listitem"
+                  [routerLink]="result.route"
+                  [queryParams]="result.queryParams"
+                  (click)="closeGlobalSearch()"
+                >
+                  <strong>{{ result.title }}</strong>
+                  <span>{{ result.details }}</span>
+                  <small>{{ result.kind === 'request' ? 'Repair request' : 'Quotation' }}</small>
+                </a>
+              }
+            </div>
+          } @else {
+            <p>No matching repair requests or quotations found.</p>
+          }
+          <button type="button" class="close-search" (click)="closeGlobalSearch()">Close</button>
+        </div>
+      }
+    </form>
+    <div class="header-account">
+      <app-notification-center (opened)="closeAccountMenu()" />
+      <div class="account-menu">
+        <button
+          class="account-menu-trigger"
+          type="button"
+          [attr.aria-expanded]="accountMenuOpen()"
+          aria-haspopup="menu"
+          (click)="toggleAccountMenu()"
+        >
+          @if (authService.currentUser()?.profileImageUrl; as profileImageUrl) {
+            <img class="profile-avatar" [src]="profileImageUrl" alt="" />
+          } @else {
+            <span class="profile-avatar avatar-placeholder" aria-hidden="true">
+              {{ getShopInitial() }}
+            </span>
+          }
+          <span class="account-name">{{ shopName() || getUserFirstName() }}</span>
+          <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+        @if (accountMenuOpen()) {
+          <div class="account-dropdown" role="menu">
+            <div class="dropdown-identity">
+              <strong>
+                {{ shopName() || authService.currentUser()?.fullName || 'Your account' }}
+              </strong>
+              <span>{{ authService.currentUser()?.email }}</span>
+              @if (shopNameError()) {
+                <small class="shop-name-error" role="status">{{ shopNameError() }}</small>
+              }
+            </div>
+            <a
+              class="dropdown-item"
+              routerLink="/shop/profile"
+              role="menuitem"
+              (click)="closeAccountMenu()"
+            >
+              Business profile
+            </a>
+            <button
+              class="dropdown-item sign-out-menu-item"
+              type="button"
+              role="menuitem"
+              [disabled]="signingOut()"
+              (click)="closeAccountMenu(); signOut()"
+            >
+              {{ signingOut() ? 'Signing out…' : 'Sign out' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+  <div class="portal-body">
+    <aside class="portal-sidebar" aria-label="Shop portal navigation">
+      <p class="sidebar-title">SHOP MANAGEMENT</p>
+      <a
+        class="portal-nav"
+        routerLink="/shop"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+        </svg>
+        Overview
+      </a>
+      <a class="portal-nav" routerLink="/shop/repair-requests" routerLinkActive="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
+        </svg>
+        Repair requests
+      </a>
+      <a class="portal-nav" routerLink="/shop/quotations" routerLinkActive="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
+        </svg>
+        Quotations
+      </a>
+      <a class="portal-nav" routerLink="/shop/disputes" routerLinkActive="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3 3.5 7v5c0 5 3.6 8 8.5 9 4.9-1 8.5-4 8.5-9V7zM12 8v5M12 16h.01" />
+        </svg>
+        Disputes
+      </a>
+      <a class="portal-nav" routerLink="/shop/reviews" routerLinkActive="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z" />
+        </svg>
+        Reviews
+      </a>
+      <span class="portal-nav unavailable" aria-disabled="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="9" cy="8" r="3" />
+          <path
+            d="M3 20v-1a6 6 0 0 1 12 0v1zM17 11a3 3 0 1 0-1-5.8M18 14a5 5 0 0 1 3 5v1h-3"
+          />
+        </svg>
+        Technicians <small>Coming Soon</small>
+      </span>
+      <a class="portal-nav" routerLink="/shop/profile" routerLinkActive="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 20V8l8-5 8 5v12zM8 20v-6h8v6M8 9h.01M12 9h.01M16 9h.01" />
+        </svg>
+        Business profile
+      </a>
+    </aside>
+    <main class="portal-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

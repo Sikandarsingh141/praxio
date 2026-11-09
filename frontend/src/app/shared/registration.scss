@@ -1,0 +1,202 @@
+@mixin registrationStyles {
+  .registration-page {
+    width: min(100%, 850px);
+    margin: 0 auto;
+  }
+
+  .page-intro {
+    text-align: center;
+  }
+
+  .page-eyebrow {
+    color: #668271;
+    font-size: 0.66rem;
+    font-weight: 780;
+    letter-spacing: 0.13em;
+  }
+
+  .page-intro h1 {
+    margin: 0.65rem 0 0.45rem;
+    color: #26382e;
+    font-size: clamp(1.75rem, 4vw, 2.3rem);
+    font-weight: 740;
+    letter-spacing: -0.05em;
+  }
+
+  .page-intro p {
+    margin: 0;
+    color: #78867e;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .registration-card {
+    width: min(100%, 620px);
+    margin: 1.6rem auto 0;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border: 1px solid #e6ece7;
+    border-radius: 1.1rem;
+    background: #fff;
+    box-shadow: 0 16px 42px rgb(34 54 42 / 6%);
+  }
+
+  .registration-card form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 1rem;
+  }
+
+  .registration-card label {
+    display: block;
+    margin: 0.9rem 0 0.38rem;
+    color: #35493d;
+    font-size: 0.78rem;
+    font-weight: 650;
+  }
+
+  .registration-card input:not([type='checkbox']),
+  .registration-card select,
+  .registration-card textarea {
+    width: 100%;
+    min-height: 2.85rem;
+    padding: 0.68rem 0.8rem;
+    border: 1px solid #dfe7df;
+    border-radius: 0.65rem;
+    background: #fff;
+    color: #293d31;
+    outline: none;
+  }
+
+  .registration-card textarea {
+    min-height: 6rem;
+    resize: vertical;
+  }
+
+  .registration-card input:focus,
+  .registration-card select:focus,
+  .registration-card textarea:focus {
+    border-color: #668d75;
+    box-shadow: 0 0 0 3px rgb(49 93 75 / 12%);
+  }
+
+  .field,
+  .field-full,
+  .terms-row,
+  .form-error,
+  .form-notice,
+  .form-actions,
+  .signup-submit,
+  .field-error {
+    grid-column: 1 / -1;
+  }
+
+  .field-error {
+    margin-top: 0.3rem;
+    color: #b42332;
+    font-size: 0.72rem;
+  }
+
+  .terms-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    color: #64746a;
+    font-size: 0.77rem;
+    line-height: 1.5;
+  }
+
+  .terms-row input {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+    margin: 0.1rem 0 0;
+    accent-color: #315d4b;
+  }
+
+  .terms-row a {
+    color: #315d4b;
+    font-weight: 650;
+  }
+
+  .signup-submit,
+  .form-actions button,
+  .form-actions a {
+    display: inline-flex;
+    min-height: 2.85rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1rem;
+    border: 1px solid #315d4b;
+    border-radius: 0.68rem;
+    background: #315d4b;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 680;
+    text-decoration: none;
+  }
+
+  .signup-submit:hover:not(:disabled),
+  .form-actions button:hover:not(:disabled) {
+    background: #274c3c;
+  }
+
+  .signup-submit:disabled,
+  .form-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+  }
+
+  .form-notice,
+  .form-error {
+    margin: 1rem 0 0;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.65rem;
+    font-size: 0.78rem;
+    line-height: 1.55;
+  }
+
+  .form-notice {
+    background: #f0f6f1;
+    color: #45634e;
+  }
+
+  .form-error {
+    background: #fff1f1;
+    color: #a52b36;
+  }
+
+  .form-footer {
+    margin: 1.25rem 0 0;
+    color: #78867e;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .form-footer a {
+    color: #315d4b;
+    font-weight: 700;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #5e7567;
+    font-size: 0.78rem;
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .back-link:hover {
+    color: #315d4b;
+  }
+
+  @media (max-width: 560px) {
+    .registration-card form {
+      grid-template-columns: 1fr;
+    }
+  }
+}

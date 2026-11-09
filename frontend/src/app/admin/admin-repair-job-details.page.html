@@ -1,0 +1,195 @@
+<section class="repair-details" aria-labelledby="repair-title" [attr.aria-busy]="loading()">
+  <a class="back-link" routerLink="/admin/repair-jobs"><span aria-hidden="true">←</span> Back to repair monitoring</a>
+
+  @if (loading()) {
+    <div class="state-card" role="status">Loading repair details…</div>
+  } @else if (error()) {
+    <div class="state-card error" role="alert">
+      <p>{{ error() }}</p>
+      @if (job() === null && error().includes('could not be loaded')) {
+        <button type="button" (click)="retry()">Try again</button>
+      }
+    </div>
+  } @else if (job(); as repair) {
+    <header class="detail-header">
+      <div class="appliance-icon" aria-hidden="true">⚙</div>
+      <div class="identity">
+        <span class="eyebrow">REPAIR MONITORING · #{{ repair._id.slice(-8).toUpperCase() }}</span>
+        <h1 id="repair-title">{{ repair.appliance }}</h1>
+        <p>{{ repair.description }}</p>
+        <div class="header-meta">
+          <span class="status-badge" [attr.data-status]="repair.repairJob.status">
+            <span aria-hidden="true">●</span> {{ repair.repairJob.status.replaceAll('_', ' ') | titlecase }}
+          </span>
+          <span class="header-chip">▣ Created: {{ repair.createdAt | date: 'MMM d, y' }}</span>
+          @if (repair.serviceType) {
+            <span class="header-chip">⌂ {{ repair.serviceType.replace('_', ' ') | titlecase }}</span>
+          }
+        </div>
+      </div>
+    </header>
+
+    <nav class="detail-tabs" aria-label="Repair details sections">
+      <button type="button" [class.active]="activeTab() === 'overview'" [attr.aria-pressed]="activeTab() === 'overview'" (click)="setTab('overview')"><span aria-hidden="true">▦</span> Overview</button>
+      <button type="button" [class.active]="activeTab() === 'history'" [attr.aria-pressed]="activeTab() === 'history'" (click)="setTab('history')"><span aria-hidden="true">◷</span> Status history</button>
+      <button type="button" [class.active]="activeTab() === 'documents'" [attr.aria-pressed]="activeTab() === 'documents'" (click)="setTab('documents')"><span aria-hidden="true">▧</span> Documents ({{ documentCount(repair) }})</button>
+      <button type="button" [class.active]="activeTab() === 'notes'" [attr.aria-pressed]="activeTab() === 'notes'" (click)="setTab('notes')"><span aria-hidden="true">▤</span> Notes ({{ notes(repair).length }})</button>
+    </nav>
+
+    @if (activeTab() === 'overview') {
+      <section class="lifecycle" aria-label="Repair lifecycle">
+        <ol>
+          @for (stage of timeline(repair); track stage.label) {
+            <li [attr.data-state]="stage.state">
+              <span class="stage-marker" aria-hidden="true">{{ stage.state === 'upcoming' ? '' : '✓' }}</span>
+              <strong>{{ stage.label }}</strong>
+              <time>{{ stage.at ? (stage.at | date: 'MMM d, h:mm a') : '—' }}</time>
+            </li>
+          }
+        </ol>
+      </section>
+
+      <div class="detail-grid">
+        <section class="detail-card request-card" aria-labelledby="request-heading">
+          <h2 id="request-heading"><span aria-hidden="true">⚒</span> Repair request</h2>
+          <dl>
+            <div><dt>Appliance</dt><dd>{{ repair.appliance }}</dd></div>
+            <div><dt>Brand / model</dt><dd>{{ repair.brand || '—' }} / {{ repair.model || '—' }}</dd></div>
+            <div><dt>Service type</dt><dd>{{ repair.serviceType ? (repair.serviceType.replace('_', ' ') | titlecase) : '—' }}</dd></div>
+            <div><dt>Preferred service date</dt><dd>{{ repair.preferredServiceDate ? (repair.preferredServiceDate | date: 'MMM d, y') : '—' }}</dd></div>
+            <div><dt>Request created</dt><dd>{{ repair.createdAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+            <div><dt>Last updated</dt><dd>{{ repair.updatedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="detail-card customer-card" aria-labelledby="customer-heading">
+          <h2 id="customer-heading"><span aria-hidden="true">♙</span> Customer</h2>
+          <dl>
+            <div><dt>Name</dt><dd>{{ repair.customer.fullName || 'Customer' }}</dd></div>
+            <div><dt>Email</dt><dd>{{ repair.customer.email || '—' }}</dd></div>
+            <div><dt>Phone</dt><dd>{{ repair.customer.countryCode }} {{ repair.customer.mobileNumber || '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="detail-card shop-card" aria-labelledby="shop-heading">
+          <h2 id="shop-heading"><span aria-hidden="true">⌂</span> Assigned repair shop</h2>
+          <dl>
+            <div><dt>Shop</dt><dd>{{ repair.shopName || 'Repair shop' }}</dd></div>
+            <div><dt>Contact</dt><dd>{{ repair.shop?.fullName || '—' }}</dd></div>
+            <div><dt>Email</dt><dd>{{ repair.shop?.email || '—' }}</dd></div>
+            <div><dt>Phone</dt><dd>{{ repair.shop?.countryCode }} {{ repair.shop?.mobileNumber || '—' }}</dd></div>
+            <div><dt>Location</dt><dd>{{ shopLocation(repair) || '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="detail-card quotation-card" aria-labelledby="quotation-heading">
+          <h2 id="quotation-heading"><span aria-hidden="true">▤</span> Accepted quotation</h2>
+          @if (repair.quotation; as quotation) {
+            <dl>
+              <div><dt>Amount</dt><dd>{{ quotation.amount | currency: quotation.currency }}</dd></div>
+              <div><dt>Status</dt><dd><span class="inline-status accepted">{{ quotation.status | titlecase }}</span></dd></div>
+              <div><dt>Submitted</dt><dd>{{ quotation.createdAt ? (quotation.createdAt | date: 'MMM d, y, h:mm a') : '—' }}</dd></div>
+              <div><dt>Valid until</dt><dd>{{ quotation.validUntil ? (quotation.validUntil | date: 'MMM d, y') : '—' }}</dd></div>
+              <div><dt>Estimated duration</dt><dd>{{ quotation.estimatedDays !== undefined ? quotation.estimatedDays + ' days' : '—' }}</dd></div>
+            </dl>
+            @if (quotation.proposedSolution || quotation.message) {
+              <p class="detail-copy">{{ quotation.proposedSolution || quotation.message }}</p>
+            }
+          } @else {
+            <p class="empty-note">Quotation details are unavailable.</p>
+          }
+        </section>
+
+        @if (repair.repairJob.workPerformed || repair.repairJob.partsReplaced || repair.repairJob.completionDescription || repair.repairJob.finalNotes || repair.repairJob.pickupInstructions || repair.repairJob.approvedRepairAmount !== undefined) {
+          <section class="detail-card completion-card" aria-labelledby="completion-heading">
+            <h2 id="completion-heading"><span aria-hidden="true">✓</span> Repair and completion</h2>
+            <dl>
+              <div><dt>Approved repair amount</dt><dd>{{ repair.repairJob.approvedRepairAmount !== undefined ? (repair.repairJob.approvedRepairAmount | currency: (repair.quotation?.currency || 'INR')) : '—' }}</dd></div>
+              <div><dt>Work performed</dt><dd>{{ repair.repairJob.workPerformed || '—' }}</dd></div>
+              <div><dt>Parts replaced</dt><dd>{{ repair.repairJob.partsReplaced || '—' }}</dd></div>
+              <div><dt>Completion summary</dt><dd>{{ repair.repairJob.completionDescription || '—' }}</dd></div>
+              <div><dt>Pickup instructions</dt><dd>{{ repair.repairJob.pickupInstructions || '—' }}</dd></div>
+              <div><dt>Pickup message</dt><dd>{{ repair.repairJob.pickupMessage || '—' }}</dd></div>
+              <div><dt>Final notes</dt><dd>{{ repair.repairJob.finalNotes || '—' }}</dd></div>
+            </dl>
+          </section>
+        }
+
+        @if (repair.repairJob.disputeDescription || repair.repairJob.disputeResolution) {
+          <section class="detail-card dispute-card" aria-labelledby="dispute-heading">
+            <h2 id="dispute-heading"><span aria-hidden="true">!</span> Dispute</h2>
+            <dl>
+              <div><dt>Issue reported</dt><dd>{{ repair.repairJob.disputeDescription || '—' }}</dd></div>
+              <div><dt>Resolution</dt><dd>{{ repair.repairJob.disputeResolution || '—' }}</dd></div>
+              <div><dt>Status</dt><dd><span class="inline-status open">{{ repair.repairJob.disputeResolution ? 'Resolved' : 'Open' }}</span></dd></div>
+            </dl>
+            <a class="dispute-link" routerLink="/admin/disputes">▣ View dispute details <span aria-hidden="true">→</span></a>
+          </section>
+        }
+
+        @if (repair.repairJob.inspection; as inspection) {
+          <section class="detail-card inspection-card" aria-labelledby="inspection-heading">
+            <h2 id="inspection-heading"><span aria-hidden="true">⌕</span> Inspection report</h2>
+            <dl>
+              <div><dt>Identified problem</dt><dd>{{ inspection.identifiedProblem || '—' }}</dd></div>
+              <div><dt>Findings</dt><dd>{{ inspection.findings || '—' }}</dd></div>
+              <div><dt>Recommended repair</dt><dd>{{ inspection.requiredRepairWork || '—' }}</dd></div>
+              <div><dt>Estimate total</dt><dd>{{ inspection.estimatedTotal !== undefined ? (inspection.estimatedTotal | currency: (repair.quotation?.currency || 'INR')) : '—' }}</dd></div>
+            </dl>
+          </section>
+        }
+      </div>
+
+      <section class="detail-card history-card" aria-labelledby="history-heading">
+        <h2 id="history-heading"><span aria-hidden="true">◷</span> Repair status history <span class="count-badge">{{ repair.repairJob.history?.length ?? 0 }} activities</span></h2>
+        @if (repair.repairJob.history?.length) {
+          <ol class="history-list">
+            @for (event of repair.repairJob.history; track $index) {
+              <li>
+                <span class="history-dot" aria-hidden="true"></span>
+                <span class="history-action">{{ event.action.replaceAll('_', ' ') | titlecase }}</span>
+                <span class="history-note">{{ event.notes || '—' }}</span>
+                <time>{{ event.at | date: 'MMM d, y, h:mm:ss a' }}</time>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="empty-note">No status history is available.</p>
+        }
+      </section>
+    } @else if (activeTab() === 'history') {
+      <section class="detail-card tab-panel" aria-labelledby="full-history-heading">
+        <h2 id="full-history-heading"><span aria-hidden="true">◷</span> Status history <span class="count-badge">{{ repair.repairJob.history?.length ?? 0 }} activities</span></h2>
+        @if (repair.repairJob.history?.length) {
+          <ol class="history-list">
+            @for (event of repair.repairJob.history; track $index) {
+              <li><span class="history-dot" aria-hidden="true"></span><span class="history-action">{{ event.action.replaceAll('_', ' ') | titlecase }}</span><span class="history-note">{{ event.notes || '—' }}</span><time>{{ event.at | date: 'MMM d, y, h:mm:ss a' }}</time></li>
+            }
+          </ol>
+        } @else { <p class="empty-note">No status history is available.</p> }
+      </section>
+    } @else if (activeTab() === 'documents') {
+      <section class="detail-card tab-panel" aria-labelledby="documents-heading">
+        <h2 id="documents-heading"><span aria-hidden="true">▧</span> Repair documents <span class="count-badge">{{ documentCount(repair) }} documents</span></h2>
+        @if (documents(repair).length) {
+          <div class="document-grid">
+            @for (document of documents(repair); track $index) {
+              <figure><img [src]="document.data.startsWith('data:') ? document.data : 'data:' + document.mimeType + ';base64,' + document.data" [alt]="document.label" /><figcaption>{{ document.label }}</figcaption></figure>
+            }
+          </div>
+        } @else { <p class="empty-note">No documents have been added to this repair.</p> }
+      </section>
+    } @else {
+      <section class="detail-card tab-panel" aria-labelledby="notes-heading">
+        <h2 id="notes-heading"><span aria-hidden="true">▤</span> Repair notes <span class="count-badge">{{ notes(repair).length }} notes</span></h2>
+        @if (notes(repair).length) {
+          <ol class="notes-list">
+            @for (note of notes(repair); track $index) {
+              <li><div><strong>{{ note.label | titlecase }}</strong>@if (note.at) { <time>{{ note.at | date: 'MMM d, y, h:mm a' }}</time> }</div><p>{{ note.text }}</p></li>
+            }
+          </ol>
+        } @else { <p class="empty-note">No notes have been added to this repair.</p> }
+      </section>
+    }
+  }
+</section>

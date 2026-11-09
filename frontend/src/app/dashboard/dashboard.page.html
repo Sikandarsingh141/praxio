@@ -1,0 +1,225 @@
+<section class="dashboard" aria-labelledby="dashboard-title">
+  <div class="page-heading">
+    <div>
+      <span class="eyebrow">YOUR REPAIR, MADE EASIER</span>
+      <h1 id="dashboard-title">Your dashboard</h1>
+      <p>Everything you need for your next repair, all in one place.</p>
+    </div>
+    <span class="preview-badge">Customer portal</span>
+  </div>
+
+  <section class="welcome-banner" aria-labelledby="welcome-title">
+    <div class="welcome-copy">
+      <h2 id="welcome-title">Let’s get your device back to its best.</h2>
+      <span class="welcome-underline" aria-hidden="true"></span>
+      <p>Find an approved local expert and keep your repair request in one place.</p>
+      <div class="welcome-actions">
+        <a class="welcome-button primary" routerLink="/customer/shops">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="10.8" cy="10.8" r="6.3" />
+            <path d="m16 16 4 4" />
+          </svg>
+          Find a repair shop
+        </a>
+        <a class="welcome-button secondary" routerLink="/customer/shops">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 10h18v10H3zM2 10l2-6h16l2 6M8 20v-6h8v6" />
+          </svg>
+          Explore shops
+        </a>
+      </div>
+    </div>
+    <div class="welcome-art" aria-hidden="true">
+      <svg viewBox="0 0 560 280" focusable="false">
+        <circle cx="390" cy="135" r="205" fill="#b3e1c1" opacity=".36" />
+        <circle cx="410" cy="305" r="220" fill="#97d3a9" opacity=".24" />
+        <g fill="none" stroke="#159c56" stroke-linecap="round" stroke-width="5">
+          <path d="m115 52 16 15m-4-31 6 22m26-15-2 20" />
+        </g>
+        <g transform="translate(95 145)" stroke-linejoin="round">
+          <path d="M5 43V31a38 38 0 0 1 76 0v12" fill="none" stroke="#f8fffb" stroke-width="12" />
+          <rect
+            x="1"
+            y="34"
+            width="17"
+            height="43"
+            rx="8"
+            fill="#f8fffb"
+            stroke="#d5e5dc"
+            stroke-width="4"
+          />
+          <rect
+            x="68"
+            y="34"
+            width="17"
+            height="43"
+            rx="8"
+            fill="#42c487"
+            stroke="#d5e5dc"
+            stroke-width="4"
+          />
+        </g>
+        <g transform="translate(195 55)">
+          <rect x="12" y="0" width="230" height="155" rx="12" fill="#253a32" />
+          <rect x="23" y="10" width="208" height="132" rx="5" fill="#006342" />
+          <path d="M35 128a120 120 0 0 1 190-71v85H35Z" fill="#19a76a" opacity=".55" />
+          <path d="M0 155h255l20 18H-17Z" fill="#a9bbb3" />
+          <path d="M105 157h46l7 6h-60Z" fill="#6a7c74" />
+        </g>
+        <g transform="translate(430 120) rotate(5)">
+          <rect width="83" height="147" rx="15" fill="#243b32" />
+          <rect x="6" y="8" width="71" height="131" rx="10" fill="#006344" />
+          <path d="M6 105a82 82 0 0 1 71-45v79H6Z" fill="#14a469" opacity=".72" />
+        </g>
+        <g transform="translate(445 14)">
+          <path
+            d="M12 0h60a12 12 0 0 1 12 12v48a12 12 0 0 1-12 12H48L31 91V72H12A12 12 0 0 1 0 60V12A12 12 0 0 1 12 0Z"
+            fill="#10a65d"
+          />
+          <path
+            d="m51 19 10-7a13 13 0 0 1-15 17l-26 26a7 7 0 0 1-10-10l26-26a13 13 0 0 1 17-15l-7 10 5 5Zm-5 25 19 19"
+            fill="none"
+            stroke="#fff"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="6"
+          />
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="stats-grid" aria-label="Repair request overview">
+    @for (stat of requestStats(); track stat.label) {
+      <article class="stat-card" [attr.data-tone]="stat.tone">
+        <div class="stat-card-top">
+          <span class="stat-icon" aria-hidden="true">
+            @switch (stat.icon) {
+              @case ('requests') {
+                <svg viewBox="0 0 24 24">
+                  <rect x="5" y="4" width="14" height="17" rx="2" />
+                  <path d="M9 4.5h6M9 10h6M9 14h6M9 18h3" />
+                </svg>
+              }
+              @case ('open') {
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+              }
+              @case ('active') {
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M14.7 6.3a5 5 0 0 0-6.4 6.4l-5.1 5.1a2.1 2.1 0 0 0 3 3l5.1-5.1a5 5 0 0 0 6.4-6.4l-3.1 3.1-2.8-.6-.6-2.8 3.5-2.7Z"
+                  />
+                </svg>
+              }
+              @default {
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="m8 12 2.5 2.5L16.5 9" />
+                </svg>
+              }
+            }
+          </span>
+          <strong class="stat-value">
+            {{ statsError() ? '—' : loadingStats() ? '…' : stat.value }}
+          </strong>
+        </div>
+        <span class="stat-label">{{ stat.label }}</span>
+        <span class="stat-note">{{
+          statsError() || (loadingStats() ? 'Loading activity' : stat.note)
+        }}</span>
+      </article>
+    }
+  </section>
+
+  <section class="content-section services-section" aria-labelledby="services-title">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">WHAT NEEDS FIXING?</span>
+        <h2 id="services-title">Explore repair services</h2>
+      </div>
+      <span class="section-note">Choose a service to find matching shops</span>
+    </div>
+
+    <div class="service-grid">
+      @for (service of services; track service.name) {
+        <a
+          class="service-card {{ service.tint }}"
+          [routerLink]="['/customer/shops']"
+          [queryParams]="{ service: service.service }"
+        >
+          <span class="service-illustration" aria-hidden="true">{{ service.short }}</span>
+          <span>{{ service.name }}</span>
+        </a>
+      }
+    </div>
+  </section>
+
+  <div class="lower-grid">
+    <section class="content-section nearby-section" aria-labelledby="nearby-title">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">LOCAL EXPERTS</span>
+          <h2 id="nearby-title">Repair shops near you</h2>
+        </div>
+      </div>
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">⌖</span>
+        <h3>Find a repair expert near you</h3>
+        <p>Search approved shops by location and the repair service you need.</p>
+        <a class="dashboard-link" routerLink="/customer/shops">Find repair shops</a>
+      </div>
+    </section>
+
+    <section class="content-section requests-section" aria-labelledby="requests-title">
+      <div class="section-heading">
+        <div>
+          <span class="section-kicker">YOUR ACTIVITY</span>
+          <h2 id="requests-title">Recent requests</h2>
+        </div>
+      </div>
+      @if (loadingStats()) {
+        <div class="empty-state compact-empty" role="status">Loading your repair activity…</div>
+      } @else if (statsError()) {
+        <div class="empty-state compact-empty" role="alert">
+          <p>{{ statsError() }}</p>
+          <a class="dashboard-link" routerLink="/customer/repair-requests">Open repair requests</a>
+        </div>
+      } @else if (recentRequests().length) {
+        <div class="recent-request-list">
+          @for (request of recentRequests(); track request._id) {
+            <a class="recent-request" routerLink="/customer/repair-requests">
+              <span>
+                <strong>{{ request.appliance }} </strong>
+                <small>{{ request.createdAt | date: 'mediumDate' }}</small>
+              </span>
+              <span
+                class="recent-request-status"
+                [class.active]="requestStatusLabel(request) === 'Active'"
+                [class.completed]="requestStatusLabel(request) === 'Completed'"
+                [class.disputed]="requestStatusLabel(request) === 'Disputed'"
+                [class.cancelled]="requestStatusLabel(request) === 'Cancelled'"
+              >
+                {{ requestStatusLabel(request) }}
+              </span>
+            </a>
+          }
+          <a class="dashboard-link" routerLink="/customer/repair-requests">View all requests</a>
+        </div>
+      } @else {
+        <div class="empty-state compact-empty">
+          <span class="empty-icon request-icon" aria-hidden="true">▤</span>
+          <h3>No repair requests yet</h3>
+          <p>Your repair requests and shop quotations will appear here.</p>
+          <a class="dashboard-link" routerLink="/customer/repair-requests">View requests</a>
+        </div>
+      }
+    </section>
+  </div>
+
+  <p class="preview-disclaimer">
+    Shop ratings, reviews, hours, and availability are shown only when shops provide those details.
+  </p>
+</section>

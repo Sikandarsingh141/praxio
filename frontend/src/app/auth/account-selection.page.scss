@@ -1,0 +1,288 @@
+@use '../shared/registration';
+
+.account-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.15rem;
+}
+
+.account-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: clamp(1.1rem, 2vw, 1.5rem);
+  border: 1px solid #e6ece7;
+  border-radius: 1.15rem;
+  background: #fff;
+  box-shadow: 0 16px 42px rgb(34 54 42 / 5%);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.account-card:hover {
+  border-color: #b8cdbd;
+  box-shadow: 0 20px 50px rgb(34 54 42 / 9%);
+  transform: translateY(-3px);
+}
+
+.shop-card:hover {
+  border-color: #dfc7a6;
+}
+
+.account-illustration {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  place-items: center;
+  border-radius: 1rem;
+}
+
+.account-illustration svg {
+  width: 2.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.customer-illustration {
+  background: #edf4ee;
+  color: #426d51;
+}
+
+.shop-illustration {
+  background: #f7f0e5;
+  color: #8d6a3d;
+}
+
+.card-kicker {
+  color: #789080;
+  font-size: 0.64rem;
+  font-weight: 760;
+  letter-spacing: 0.11em;
+}
+
+.shop-card .card-kicker {
+  color: #9a7b51;
+}
+
+.account-card h2 {
+  margin: 0.35rem 0 0.35rem;
+  color: #293d31;
+  font-size: 1.45rem;
+  letter-spacing: -0.035em;
+}
+
+.card-description {
+  min-height: 2.7rem;
+  margin: 0;
+  color: #718078;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.account-card ul {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0;
+  color: #526459;
+  font-size: 0.78rem;
+  list-style: none;
+}
+
+.account-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.account-card li::before {
+  display: inline-grid;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf4ee;
+  color: #426d51;
+  content: '✓';
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+
+.shop-card li::before {
+  background: #f7f0e5;
+  color: #8d6a3d;
+}
+
+.account-action {
+  display: flex;
+  min-height: 2.65rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid #315d4b;
+  border-radius: 0.7rem;
+  background: #315d4b;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 680;
+  text-decoration: none;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+
+.account-action:hover {
+  background: #274c3c;
+  text-decoration: none;
+}
+
+.account-action:focus-visible {
+  outline: 3px solid #8eaf98;
+  outline-offset: 3px;
+}
+
+.shop-action {
+  border-color: #8a6a41;
+  background: #8a6a41;
+}
+
+.shop-action:hover {
+  background: #725532;
+}
+
+.signin-prompt {
+  margin: 1rem 0 0;
+  color: #758279;
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+.signin-prompt a {
+  margin-left: 0.2rem;
+  color: #315d4b;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .account-options {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+    margin-top: 1.4rem;
+  }
+
+  .account-card {
+    padding: 1.25rem;
+  }
+
+  .account-illustration {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .card-description {
+    min-height: 0;
+  }
+
+  .account-card ul {
+    margin: 0.9rem 0 1.1rem;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 641px) {
+  .account-options {
+    gap: 0.8rem;
+    margin-top: 0.75rem;
+  }
+
+  .account-card {
+    padding: 0.95rem 1.15rem;
+  }
+
+  .account-illustration {
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .account-illustration svg {
+    width: 1.8rem;
+  }
+
+  .account-card h2 {
+    font-size: 1.25rem;
+  }
+
+  .card-description {
+    min-height: 2.3rem;
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+
+  .account-card ul {
+    gap: 0.28rem;
+    margin-block: 0.55rem 0.75rem;
+    font-size: 0.72rem;
+  }
+
+  .account-card li::before {
+    width: 0.9rem;
+    height: 0.9rem;
+    font-size: 0.58rem;
+  }
+
+  .account-action {
+    min-height: 2.35rem;
+    padding-block: 0.5rem;
+  }
+
+  .signin-prompt {
+    margin-top: 0.65rem;
+  }
+}
+
+@media (max-height: 650px) and (min-width: 761px) {
+  .account-options {
+    margin-top: 0.4rem;
+  }
+
+  .account-card {
+    padding-block: 0.7rem;
+  }
+
+  .account-illustration {
+    width: 2rem;
+    height: 2rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .account-illustration svg {
+    width: 1.5rem;
+  }
+
+  .account-card ul {
+    gap: 0.2rem;
+    margin-block: 0.4rem 0.55rem;
+  }
+
+  .account-action {
+    min-height: 2.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-card,
+  .account-action {
+    transition: none;
+  }
+}

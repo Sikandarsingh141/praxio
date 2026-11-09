@@ -1,0 +1,316 @@
+.workflow-card {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0.9rem 0;
+  padding: clamp(1rem, 3vw, 1.3rem);
+  border: 1px solid #e0e9ed;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #334b58;
+}
+
+.workflow-heading,
+.workflow-heading > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.workflow-heading h2 {
+  margin: 0.3rem 0 0;
+  color: #334b58;
+  font-size: 1rem;
+}
+
+.eyebrow {
+  color: #708793;
+  font-size: 0.64rem;
+  font-weight: 720;
+  letter-spacing: 0.1em;
+}
+
+.status-badge {
+  align-self: flex-start;
+  padding: 0.35rem 0.6rem;
+  border-radius: 99px;
+  background: #edf3f5;
+  color: #537183;
+  font-size: 0.67rem;
+  text-transform: capitalize;
+}
+
+.device-summary {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.device-summary div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.device-summary dt,
+.workflow-card small {
+  color: #7d8b92;
+  font-size: 0.68rem;
+}
+
+.device-summary dd {
+  margin: 0;
+  color: #455e6a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.report-section {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.report-section h3,
+.cost-summary h3 {
+  margin: 0;
+  color: #3a5663;
+  font-size: 0.85rem;
+}
+
+.report-section p,
+.charge-card p,
+.cost-summary p,
+.workflow-card > p {
+  margin: 0;
+  color: #647a84;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.part-list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.part-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: #617680;
+  font-size: 0.73rem;
+}
+
+.part-list strong,
+.total-line strong {
+  color: #344f5c;
+}
+
+.cost-summary {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem;
+  border: 1px solid #e3eaed;
+  border-radius: 0.65rem;
+  background: #f7fafb;
+}
+
+.cost-summary p,
+.total-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.total-line {
+  padding-top: 0.6rem;
+  border-top: 1px solid #dfe8eb;
+  color: #334f5c !important;
+  font-weight: 730;
+}
+
+.original-quote {
+  background: #fbfcfc;
+}
+
+.original-quote h3 {
+  margin: 0;
+  color: #546b75;
+  font-size: 0.78rem;
+}
+
+.workflow-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.workflow-images img {
+  width: 5.5rem;
+  height: 5.5rem;
+  border: 1px solid #dfe8eb;
+  border-radius: 0.55rem;
+  object-fit: cover;
+}
+
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.primary-button,
+.secondary-button,
+.decline-button {
+  min-height: 2.45rem;
+  padding: 0.58rem 0.85rem;
+  border: 1px solid #426e82;
+  border-radius: 0.52rem;
+  background: #426e82;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 690;
+}
+
+.secondary-button {
+  border-color: #d7e2e6;
+  background: #fff;
+  color: #466575;
+}
+
+.decline-button {
+  border-color: #c77b72;
+  background: #fff;
+  color: #a24f47;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.decline-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.decision-state,
+.pause-warning {
+  margin: 0;
+  padding: 0.7rem;
+  border-radius: 0.55rem;
+  background: #f1f7f3;
+  color: #3e6d50;
+  font-size: 0.75rem;
+}
+
+.pause-warning {
+  background: #fff8eb;
+  color: #8a6531;
+}
+
+.charge-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid #e9eef0;
+}
+
+.charge-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.charge-card h3 {
+  margin: 0;
+  color: #3d5662;
+  font-size: 0.85rem;
+}
+
+.charge-card h4 {
+  margin: 0;
+  color: #58707a;
+  font-size: 0.76rem;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(20 31 37 / 48%);
+}
+
+.decision-dialog {
+  display: grid;
+  width: min(30rem, 100%);
+  gap: 0.85rem;
+  padding: 1.2rem;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 1rem 3rem rgb(20 31 37 / 20%);
+}
+
+.decision-dialog h2 {
+  margin: 0;
+  color: #334b58;
+  font-size: 1rem;
+}
+
+.decision-dialog p {
+  margin: 0;
+  color: #647a84;
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.decision-dialog label {
+  display: grid;
+  gap: 0.4rem;
+  color: #526a75;
+  font-size: 0.73rem;
+}
+
+.decision-dialog textarea {
+  width: 100%;
+  padding: 0.65rem;
+  border: 1px solid #dce5e8;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+.dialog-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.7rem;
+  border-radius: 0.55rem;
+  background: #f5f8f9;
+}
+
+.workflow-error,
+.workflow-notice {
+  margin: 0;
+  color: #a14c43;
+  font-size: 0.76rem;
+}
+
+.workflow-notice {
+  color: #33744a;
+}
+
+@media (max-width: 560px) {
+  .decision-actions {
+    display: grid;
+  }
+
+  .decision-actions button {
+    width: 100%;
+  }
+}

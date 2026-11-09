@@ -1,0 +1,263 @@
+:host {
+  display: block;
+}
+
+.shop-profile-page {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  color: #23313b;
+}
+
+.profile-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.page-eyebrow,
+.section-eyebrow {
+  color: #60776a;
+  font-size: 0.67rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+.profile-heading h1 {
+  margin: 0.35rem 0 0;
+  color: #22323d;
+  font-size: clamp(1.8rem, 4vw, 2.45rem);
+  letter-spacing: -0.04em;
+}
+
+.profile-heading p {
+  margin: 0.5rem 0 0;
+  color: #74828b;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.status-pill {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #e8dfc7;
+  border-radius: 999px;
+  background: #fbf7ed;
+  color: #80642c;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.status-pill.approved {
+  border-color: #cce3d2;
+  background: #eff8f1;
+  color: #39704a;
+}
+
+.status-pill.declined {
+  border-color: #f0d2d0;
+  background: #fff3f2;
+  color: #a34842;
+}
+
+.status-pill.suspended,
+.status-pill.inactive {
+  border-color: #f0d2d0;
+  background: #fff3f2;
+  color: #a34842;
+}
+
+.profile-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-card,
+.status-card {
+  min-width: 0;
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+  border: 1px solid #e2e8e5;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 4px 16px rgb(34 50 61 / 3%);
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-color: #eadfc6;
+  background: #fffdf8;
+}
+
+.status-card.status-approved {
+  border-color: #cfe2d4;
+  background: #f7fbf8;
+}
+
+.status-card.status-declined {
+  border-color: #edd4d2;
+  background: #fff9f8;
+}
+
+.status-card.status-suspended,
+.status-card.status-inactive {
+  border-color: #edd4d2;
+  background: #fff9f8;
+}
+
+.status-icon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: #f3ead4;
+  color: #80642c;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.status-approved .status-icon {
+  background: #e2f1e6;
+  color: #39704a;
+}
+
+.status-declined .status-icon {
+  background: #f8e5e3;
+  color: #a34842;
+}
+
+.status-suspended .status-icon,
+.status-inactive .status-icon {
+  background: #f8e5e3;
+  color: #a34842;
+}
+
+.status-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.status-copy h2 {
+  margin: 0;
+  color: #30434f;
+  font-size: 0.95rem;
+}
+
+.status-copy p {
+  margin: 0.35rem 0 0;
+  color: #687982;
+  font-size: 0.79rem;
+  line-height: 1.55;
+}
+
+.status-copy .status-detail {
+  color: #8c4d48;
+}
+
+.primary-action {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.6rem;
+  background: #344f68;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.primary-action:hover {
+  background: #273f55;
+}
+
+.section-heading {
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid #edf1ef;
+}
+
+.section-heading h2 {
+  margin: 0.3rem 0 0;
+  color: #30434f;
+  font-size: 1.05rem;
+}
+
+.profile-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.15rem 2rem;
+  margin: 0;
+}
+
+.profile-card dl > div {
+  min-width: 0;
+}
+
+dt {
+  color: #7b8991;
+  font-size: 0.73rem;
+}
+
+dd {
+  overflow-wrap: anywhere;
+  margin: 0.3rem 0 0;
+  color: #354a56;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.feedback {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 0.7rem;
+  font-size: 0.8rem;
+}
+
+.feedback.error {
+  background: #fff0ef;
+  color: #a63d34;
+}
+
+.loading-state {
+  color: #74828b;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 680px) {
+  .profile-heading {
+    align-items: flex-start;
+  }
+
+  .profile-card dl {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .profile-heading {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .status-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .status-copy {
+    flex-basis: calc(100% - 3.5rem);
+  }
+
+  .status-card .primary-action {
+    margin-left: 3.5rem;
+  }
+}

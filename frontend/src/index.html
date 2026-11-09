@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Praxio | Find. Repair. Relax.</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f7f8f6" />
+    <script src="runtime-config.js"></script>
+    <script>
+      (() => {
+        let mapsPromise;
+        window.praxioLoadGoogleMaps = (apiKey) => {
+          if (window.google?.maps?.importLibrary) {
+            return Promise.resolve(window.google);
+          }
+          if (!apiKey) {
+            return Promise.reject(new Error('Google Maps API key is not configured.'));
+          }
+          if (mapsPromise) {
+            return mapsPromise;
+          }
+
+          mapsPromise = new Promise((resolve, reject) => {
+            const scriptId = 'praxio-google-maps-script';
+            let script = document.getElementById(scriptId);
+            const onLoad = () => {
+              if (window.google?.maps?.importLibrary) {
+                resolve(window.google);
+              } else {
+                script?.remove();
+                mapsPromise = undefined;
+                reject(new Error('Google Maps loaded without the JavaScript API.'));
+              }
+            };
+            const onError = () => {
+              script?.remove();
+              mapsPromise = undefined;
+              reject(new Error('Google Maps JavaScript API failed to load.'));
+            };
+
+            if (!script) {
+              script = document.createElement('script');
+              script.id = scriptId;
+              const url = new URL('https://maps.googleapis.com/maps/api/js');
+              url.searchParams.set('key', apiKey);
+              url.searchParams.set('libraries', 'places');
+              url.searchParams.set('v', 'weekly');
+              url.searchParams.set('loading', 'async');
+              script.src = url.toString();
+              script.async = true;
+              script.defer = true;
+            }
+            script.addEventListener('load', onLoad, { once: true });
+            script.addEventListener('error', onError, { once: true });
+            if (!script.isConnected) {
+              document.head.appendChild(script);
+            }
+          });
+          return mapsPromise;
+        };
+
+        const apiKey = window.PraxioConfig?.googleMapsApiKey;
+        if (apiKey) {
+          window.praxioLoadGoogleMaps(apiKey).catch((error) => {
+            console.error('Google Maps JavaScript API could not be loaded.', error);
+          });
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

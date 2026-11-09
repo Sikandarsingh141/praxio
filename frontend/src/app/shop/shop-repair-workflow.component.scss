@@ -1,0 +1,292 @@
+.workflow-panel {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: clamp(1rem, 3vw, 1.4rem);
+  border: 1px solid #dfe9df;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #34483b;
+}
+
+.workflow-header,
+.workflow-header > div,
+.customer-device dl,
+.cost-grid,
+.workflow-actions,
+.part-row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.workflow-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.workflow-header h2,
+.workflow-form h3,
+.report-summary h3,
+.cost-summary h3,
+.customer-device h3 {
+  margin: 0;
+  color: #334b3d;
+}
+
+.workflow-header p,
+.workflow-form > p,
+.customer-device > p,
+.report-summary p,
+.cost-summary p {
+  margin: 0;
+  color: #6f7e73;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.workflow-status {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: #eef5ef;
+  color: #456b50;
+  font-size: 0.67rem;
+  text-transform: capitalize;
+}
+
+.section-kicker {
+  color: #688271;
+  font-size: 0.64rem;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+}
+
+.customer-device,
+.report-summary,
+.cost-summary,
+.workflow-callout {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  border: 1px solid #e6ede7;
+  border-radius: 0.7rem;
+  background: #f8faf8;
+}
+
+.customer-device dl {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  margin: 0;
+}
+
+.customer-device dt {
+  color: #87948a;
+  font-size: 0.66rem;
+}
+
+.customer-device dd {
+  margin: 0.15rem 0 0;
+  color: #3e5546;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.original-problem {
+  padding-top: 0.65rem;
+  border-top: 1px solid #e6ede7;
+}
+
+.workflow-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.workflow-images img {
+  width: 5.5rem;
+  height: 5.5rem;
+  border: 1px solid #dfe9df;
+  border-radius: 0.55rem;
+  object-fit: cover;
+}
+
+.workflow-callout {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  background: #f5faf5;
+}
+
+.workflow-form {
+  display: grid;
+  gap: 0.85rem;
+  padding-top: 0.2rem;
+}
+
+.workflow-form label,
+.part-row label {
+  display: grid;
+  gap: 0.35rem;
+  color: #596c5e;
+  font-size: 0.72rem;
+}
+
+.workflow-form input,
+.workflow-form select,
+.workflow-form textarea,
+.part-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid #dce5dd;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #34483b;
+  font: inherit;
+}
+
+.workflow-form input[type='file'] {
+  padding: 0.45rem;
+}
+
+.workflow-form textarea {
+  resize: vertical;
+}
+
+.parts-fieldset {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #e1e9e2;
+  border-radius: 0.6rem;
+}
+
+.parts-fieldset legend {
+  padding: 0 0.25rem;
+  color: #536959;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.part-row {
+  grid-template-columns: minmax(8rem, 2fr) minmax(4rem, 0.7fr) minmax(7rem, 1fr) auto;
+  align-items: end;
+}
+
+.cost-grid {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.cost-summary {
+  background: #f5faf5;
+}
+
+.cost-summary h4 {
+  margin: 0;
+  color: #334b3d;
+  font-size: 0.82rem;
+}
+
+.cost-summary p,
+.total-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cost-summary strong,
+.total-line {
+  color: #314d3a;
+}
+
+.cost-explanation,
+.file-count {
+  color: #7b897f !important;
+  font-size: 0.7rem !important;
+}
+
+.workflow-actions {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, max-content));
+  justify-content: end;
+}
+
+.primary-button,
+.secondary-button,
+.text-button {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #d6e2d8;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #315d4b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.73rem;
+  font-weight: 680;
+}
+
+.primary-button {
+  border-color: #3c7655;
+  background: #3c7655;
+  color: #fff;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.text-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.text-button {
+  min-height: auto;
+  padding: 0.35rem;
+  border: 0;
+  color: #51745b;
+}
+
+.charge-card {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid #e6ede7;
+}
+
+.charge-card .workflow-status {
+  justify-self: start;
+}
+
+.pause-option {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: start;
+}
+
+.pause-option input {
+  width: auto;
+  margin-top: 0.15rem;
+}
+
+.workflow-error,
+.workflow-notice {
+  margin: 0;
+  color: #a14c43;
+  font-size: 0.75rem;
+}
+
+.workflow-notice {
+  color: #33744a;
+}
+
+@media (max-width: 650px) {
+  .workflow-header,
+  .workflow-callout {
+    grid-template-columns: 1fr;
+  }
+
+  .part-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-actions {
+    grid-template-columns: 1fr;
+  }
+}

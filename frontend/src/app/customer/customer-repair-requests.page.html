@@ -1,0 +1,434 @@
+<section class="requests-page" aria-labelledby="requests-title">
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">YOUR REPAIRS</span>
+      <h1 id="requests-title">My Repair Requests</h1>
+      <p>Track and manage all your repair requests in one place.</p>
+    </div>
+    <a class="primary-link" routerLink="/customer/shops">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+      Find a Repair Shop
+    </a>
+  </header>
+
+  <div class="request-toolbar">
+    <nav class="status-tabs" aria-label="Filter requests by status" role="tablist">
+      @for (tab of statusTabs; track tab.key) {
+        <button
+          type="button"
+          role="tab"
+          class="status-tab"
+          [class.selected]="selectedStatus() === tab.key"
+          [attr.aria-selected]="selectedStatus() === tab.key"
+          (click)="selectStatus(tab.key)"
+        >
+          {{ tab.label }} <span>{{ statusCount(tab.key) }}</span>
+        </button>
+      }
+    </nav>
+    <div class="request-controls">
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
+      />
+      <label class="sort-control">
+        <span class="visually-hidden">Sort repair requests</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 4v15m0 0-3-3m3 3 3-3M17 20V5m0 0-3 3m3-3 3 3" />
+        </svg>
+        <select
+          aria-label="Sort requests"
+          [ngModel]="sortOrder()"
+          (ngModelChange)="sortOrder.set($event)"
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+        <span class="sort-chevron" aria-hidden="true">⌄</span>
+      </label>
+    </div>
+  </div>
+
+  @if (actionMessage()) {
+    <p class="action-success" role="status">{{ actionMessage() }}</p>
+  }
+
+  @if (error()) {
+    <div class="state-card error" role="alert">
+      <p>{{ error() }}</p>
+      <button type="button" (click)="loadRequests()">Try again</button>
+    </div>
+  } @else if (loading()) {
+    <div class="state-card" role="status">Loading your repair requests…</div>
+  } @else if (!requests().length || !visibleRequests().length) {
+    <div class="state-card empty">
+      <span aria-hidden="true">▤</span>
+      <h2>
+        {{
+          !requests().length && !hasAppliedFilters() && selectedStatus() === 'all'
+            ? 'No repair requests yet'
+            : 'No matching repair requests'
+        }}
+      </h2>
+      <p>
+        {{
+          hasAppliedFilters() || selectedStatus() !== 'all'
+            ? 'Try adjusting or clearing your filters.'
+            : 'Select one or more approved shops to send your first request.'
+        }}
+      </p>
+      <a class="primary-link" routerLink="/customer/shops">Search repair shops</a>
+    </div>
+  } @else {
+    @if (actionError()) {
+      <p class="action-error" role="alert">{{ actionError() }}</p>
+    }
+    <div class="request-list">
+      @for (request of visibleRequests(); track request._id) {
+        <article class="request-card">
+          <div class="request-summary">
+            @if (request.photos?.length) {
+              <div class="request-photos" aria-label="Repair request photos">
+                <img
+                  [src]="request.photos?.[0]?.data"
+                  [alt]="'Repair photo 1 for ' + request.appliance"
+                  loading="lazy"
+                />
+              </div>
+            } @else {
+              <div class="request-photo-placeholder" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="4" width="16" height="16" rx="3" />
+                  <path d="M8 15h8M9 10h6" />
+                </svg>
+              </div>
+            }
+            <div class="request-identity">
+              <h2>{{ request.appliance }}</h2>
+              <p class="description">{{ request.description }}</p>
+              @if (request.brand || request.model) {
+                <p class="repair-device">
+                  {{ request.brand || 'Brand not provided'
+                  }}{{ request.model ? ' · ' + request.model : '' }}
+                </p>
+              }
+              <span class="request-id">Request ID: {{ request._id.slice(-8).toUpperCase() }}</span>
+              <span class="request-date">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="6" width="16" height="14" rx="2" />
+                  <path d="M8 4v4m8-4v4M4 10h16" />
+                </svg>
+                {{ request.createdAt | date: 'mediumDate' }}
+              </span>
+              @if (canEditRequest(request)) {
+                <button
+                  type="button"
+                  class="edit-request-button"
+                  [disabled]="updating() === request._id"
+                  (click)="openEdit(request)"
+                >
+                  Edit request
+                </button>
+              }
+            </div>
+          </div>
+          <section class="quotation-section" aria-label="Shop quotations">
+            <h3>Quotations</h3>
+            @if (request.shops?.length) {
+              <div class="shop-responses" aria-label="Shop responses">
+                @for (shop of request.shops; track shop.id) {
+                  @if (shop.responseStatus === 'declined') {
+                    <p class="shop-response declined">
+                      <strong>{{ shop.name }}</strong>
+                      <span class="response-badge">Declined</span>
+                      @if (shop.declineReason) {
+                        <small>{{ shop.declineReason }}</small>
+                      }
+                    </p>
+                  } @else if (shop.responseStatus === 'new' || shop.responseStatus === 'pending') {
+                    <p class="shop-response">
+                      <strong>{{ shop.name }}</strong>
+                      <span class="response-badge pending">Awaiting response</span>
+                    </p>
+                  }
+                }
+              </div>
+            }
+            @if (request.quotations.length) {
+              @for (quote of request.quotations; track quote._id) {
+                <article class="quote-card">
+                  <div class="quote-heading">
+                    <strong>{{ shopName(request, quote.shopId) }}</strong>
+                    <span class="response-badge" [attr.data-status]="quote.status">
+                      {{ quote.status | titlecase }}
+                    </span>
+                  </div>
+                  <p class="quote-amount">{{ quote.amount | currency: quote.currency }}</p>
+                  <details class="quote-details">
+                    <summary>View quotation details</summary>
+                    <p>{{ quote.message }}</p>
+                    @if (
+                      quote.inspectionCharge ||
+                      quote.partsCost ||
+                      quote.labourCharge ||
+                      quote.additionalCharges
+                    ) {
+                      <dl class="quote-breakdown">
+                        @if (quote.inspectionCharge) {
+                          <div>
+                            <dt>Inspection</dt>
+                            <dd>{{ quote.inspectionCharge | currency: quote.currency }}</dd>
+                          </div>
+                        }
+                        @if (quote.partsCost) {
+                          <div>
+                            <dt>Parts</dt>
+                            <dd>{{ quote.partsCost | currency: quote.currency }}</dd>
+                          </div>
+                        }
+                        @if (quote.labourCharge) {
+                          <div>
+                            <dt>Labour</dt>
+                            <dd>{{ quote.labourCharge | currency: quote.currency }}</dd>
+                          </div>
+                        }
+                        @if (quote.additionalCharges) {
+                          <div>
+                            <dt>Additional charges</dt>
+                            <dd>{{ quote.additionalCharges | currency: quote.currency }}</dd>
+                          </div>
+                        }
+                      </dl>
+                    }
+                    @if (quote.proposedSolution) {
+                      <p class="quote-detail">
+                        <strong>Proposed solution:</strong> {{ quote.proposedSolution }}
+                      </p>
+                    }
+                    @if (quote.warrantyInformation) {
+                      <p class="quote-detail">
+                        <strong>Warranty:</strong> {{ quote.warrantyInformation }}
+                      </p>
+                    }
+                    @if (quote.additionalNotes) {
+                      <p class="quote-detail">
+                        <strong>Notes:</strong> {{ quote.additionalNotes }}
+                      </p>
+                    }
+                    @if (quote.estimatedDays !== undefined) {
+                      <span class="estimate">Estimated time: {{ quote.estimatedDays }} days</span>
+                    }
+                    @if (quote.validUntil) {
+                      <span class="estimate"
+                        >Valid until {{ quote.validUntil | date: 'mediumDate' }}</span
+                      >
+                    }
+                  </details>
+                  @if (quote.status === 'sent' || quote.status === 'pending') {
+                    <div class="quote-actions">
+                      <button
+                        type="button"
+                        class="accept"
+                        [disabled]="updating() === quote._id"
+                        (click)="setQuotationStatus(quote._id, 'accepted')"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        class="decline"
+                        [disabled]="updating() === quote._id"
+                        (click)="setQuotationStatus(quote._id, 'declined')"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  }
+                </article>
+              }
+            } @else {
+              <p class="no-quotes">
+                Waiting for a separate quotation from
+                @for (shopId of request.shopIds; track shopId; let last = $last) {
+                  {{ shopName(request, shopId) }}{{ last ? '.' : ', ' }}
+                }
+              </p>
+            }
+          </section>
+          <aside class="request-actions">
+            <span
+              class="status"
+              [class.active]="requestStatusLabel(request) === 'Active'"
+              [class.completed]="requestStatusLabel(request) === 'Completed'"
+              [class.disputed]="requestStatusLabel(request) === 'Disputed'"
+              [class.cancelled]="requestStatusLabel(request) === 'Cancelled'"
+            >
+              {{ requestStatusLabel(request) }}
+            </span>
+            <a
+              class="repair-progress-link"
+              [routerLink]="['/customer/repair-requests', request._id]"
+            >
+              View details
+            </a>
+          </aside>
+        </article>
+      }
+    </div>
+  }
+
+  @if (editRequest(); as request) {
+    <div class="customer-request-edit">
+      <div class="edit-backdrop" (click)="closeEdit()" role="presentation">
+        <section
+          class="edit-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-request-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="edit-dialog-header">
+            <div>
+              <span class="eyebrow">UPDATE YOUR REQUEST</span>
+              <h2 id="edit-request-title">Edit repair request</h2>
+              <p>Changes are available only before any shop submits a quotation.</p>
+            </div>
+            <button
+              type="button"
+              class="edit-close"
+              aria-label="Close edit request"
+              [disabled]="savingEdit()"
+              (click)="closeEdit()"
+            >
+              ×
+            </button>
+          </header>
+
+          @if (editError()) {
+            <p class="action-error" role="alert">{{ editError() }}</p>
+          }
+
+          <div class="edit-fields">
+            <label>
+              Appliance or device
+              <input
+                type="text"
+                maxlength="100"
+                [ngModel]="editAppliance()"
+                (ngModelChange)="editAppliance.set($event)"
+              />
+            </label>
+            <div class="edit-row">
+              <label>
+                Brand
+                <input
+                  type="text"
+                  maxlength="100"
+                  [ngModel]="editBrand()"
+                  (ngModelChange)="editBrand.set($event)"
+                />
+              </label>
+              <label>
+                Model
+                <input
+                  type="text"
+                  maxlength="100"
+                  [ngModel]="editModel()"
+                  (ngModelChange)="editModel.set($event)"
+                />
+              </label>
+            </div>
+            <label>
+              Preferred service date
+              <input
+                type="date"
+                [ngModel]="editPreferredDate()"
+                (ngModelChange)="editPreferredDate.set($event)"
+              />
+            </label>
+            <label>
+              Service type
+              <select [ngModel]="editServiceType()" (ngModelChange)="editServiceType.set($event)">
+                <option value="shop_visit">Shop visit</option>
+                <option value="home_service">Home service</option>
+              </select>
+            </label>
+            <label>
+              Describe the problem
+              <textarea
+                rows="4"
+                maxlength="2000"
+                [ngModel]="editDescription()"
+                (ngModelChange)="editDescription.set($event)"
+              ></textarea>
+            </label>
+
+            <fieldset class="shop-selection">
+              <legend>Repair shops ({{ selectedEditShops().length }} of 5 selected)</legend>
+              @if (!editableShops().length) {
+                <p>Loading available shops…</p>
+              } @else {
+                @for (shop of editableShops(); track shop.id) {
+                  <label class="shop-choice">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedEditShops().includes(shop.id)"
+                      [disabled]="
+                        !selectedEditShops().includes(shop.id) && selectedEditShops().length >= 5
+                      "
+                      (change)="toggleEditShop(shop.id)"
+                    />
+                    <span>{{ shop.shopName }}</span>
+                  </label>
+                }
+              }
+            </fieldset>
+
+            <label class="photo-edit">
+              Replace request photos (optional; up to 4, 1 MB each)
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                (change)="onEditPhotoSelection($event)"
+              />
+            </label>
+            <p class="photo-note">
+              Existing photos are kept unless you choose replacement photos or remove them.
+            </p>
+            @if (editPhotos().length) {
+              <p class="photo-note">{{ editPhotos().length }} replacement photo(s) selected.</p>
+            } @else {
+              <label class="remove-photos-choice">
+                <input
+                  type="checkbox"
+                  [checked]="removeExistingPhotos()"
+                  (change)="removeExistingPhotos.set($any($event.target).checked)"
+                />
+                Remove existing photos
+              </label>
+            }
+            @if (editPhotoError()) {
+              <p class="action-error" role="alert">{{ editPhotoError() }}</p>
+            }
+          </div>
+
+          <footer class="edit-actions">
+            <button
+              type="button"
+              class="cancel-edit"
+              [disabled]="savingEdit()"
+              (click)="closeEdit()"
+            >
+              Cancel
+            </button>
+            <button type="button" class="save-edit" [disabled]="savingEdit()" (click)="saveEdit()">
+              {{ savingEdit() ? 'Saving…' : 'Save changes' }}
+            </button>
+          </footer>
+        </section>
+      </div>
+    </div>
+  }
+</section>

@@ -1,0 +1,52 @@
+<section class="auth-card" aria-labelledby="register-title">
+  <div class="card-heading">
+    <span class="card-eyebrow">GET STARTED</span>
+    <h2 id="register-title">Create your account</h2>
+    <p>Use your email and a strong password to sign up.</p>
+  </div>
+
+  @if (successMessage()) {
+    <p class="success-message" role="status">{{ successMessage() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="error-message" role="alert">{{ errorMessage() }}</p>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label for="register-email">Email address</label>
+    <input
+      id="register-email"
+      type="email"
+      formControlName="email"
+      autocomplete="email"
+      placeholder="you@example.com"
+      required
+    />
+    @if (form.controls.email.touched && form.controls.email.invalid) {
+      <span class="field-error">Enter a valid email address.</span>
+    }
+
+    <label for="register-password">Password</label>
+    <input
+      id="register-password"
+      type="password"
+      formControlName="password"
+      autocomplete="new-password"
+      placeholder="At least 8 characters"
+      required
+    />
+    @if (form.controls.password.touched && form.controls.password.invalid) {
+      <span class="field-error">Use 8+ characters with uppercase, lowercase, and a number.</span>
+    }
+
+    <p class="password-hint">Include uppercase and lowercase letters and at least one number.</p>
+    <button type="submit" [disabled]="submitting()">
+      {{ submitting() ? 'Creating account…' : 'Create account' }}
+    </button>
+  </form>
+
+  <p class="form-footer">
+    Already have an account?
+    <a routerLink="/login">Sign in</a>
+  </p>
+</section>

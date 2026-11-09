@@ -1,0 +1,102 @@
+:host {
+  position: relative;
+  z-index: 1000;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(18 28 35 / 58%);
+}
+
+.dialog-panel {
+  width: min(100%, 28rem);
+  padding: 1.5rem;
+  border: 1px solid #e1e7eb;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 1.5rem 4rem rgb(15 29 38 / 24%);
+}
+
+.dialog-panel h2 {
+  margin: 0;
+  color: #263b48;
+  font-size: 1.15rem;
+}
+
+.dialog-panel > p {
+  margin: 0.65rem 0 0;
+  color: #657681;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.reason-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  color: #465b68;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.reason-field textarea {
+  width: 100%;
+  min-height: 5rem;
+  padding: 0.65rem;
+  border: 1px solid #d5dfe5;
+  border-radius: 0.55rem;
+  color: #344a57;
+  font: inherit;
+  font-weight: 400;
+  resize: vertical;
+}
+
+.reason-error {
+  margin: 0.45rem 0 0 !important;
+  color: #a63d34 !important;
+  font-size: 0.75rem !important;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.35rem;
+}
+
+.dialog-actions button {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.cancel-button {
+  border-color: #dce4e8 !important;
+  background: #fff;
+  color: #526671;
+}
+
+.confirm-button {
+  background: #344f68;
+  color: #fff;
+}
+
+.confirm-button.destructive {
+  background: #a63d34;
+}
+
+.dialog-actions button:focus-visible,
+.reason-field textarea:focus-visible {
+  outline: 3px solid #8bb9e8;
+  outline-offset: 2px;
+}

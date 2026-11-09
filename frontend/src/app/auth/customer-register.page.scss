@@ -1,0 +1,102 @@
+@use '../shared/registration';
+
+@include registration.registrationStyles;
+
+.registration-card {
+  max-width: 680px;
+}
+
+.registration-card input:not([type='checkbox']),
+.registration-card select,
+.registration-card textarea {
+  border-color: #d7dfe6;
+  border-radius: 0.6rem;
+}
+
+.registration-card input:focus,
+.registration-card select:focus,
+.registration-card textarea:focus {
+  border-color: #168047;
+  box-shadow: 0 0 0 3px rgb(22 128 71 / 12%);
+}
+
+.input-hint {
+  display: block;
+  margin-top: 0.3rem;
+  color: #8a978f;
+  font-size: 0.68rem;
+}
+
+.phone-field {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 0.45fr) minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+.phone-field select {
+  min-width: 0;
+  padding-inline: 0.65rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.signup-submit {
+  width: 100%;
+  margin-top: 1.15rem;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 2.9rem;
+}
+
+.registration-card .icon-field input:not([type='checkbox']),
+.registration-card .password-field input:not([type='checkbox']) {
+  padding-left: 2.5rem;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  padding: 0.4rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: #426d51;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.password-toggle svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.password-toggle:hover {
+  background: #edf4ee;
+}
+
+.form-footer a {
+  margin-left: 0.2rem;
+}

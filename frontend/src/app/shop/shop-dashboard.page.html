@@ -1,0 +1,322 @@
+<section class="shop-dashboard" aria-labelledby="shop-dashboard-title">
+  <header class="dashboard-header">
+    <div>
+      <span class="page-kicker">PRAXIO BUSINESS</span>
+      <h1 id="shop-dashboard-title">Shop dashboard</h1>
+      <p class="page-intro">A live view of customer requests, quotations, repairs, and reviews.</p>
+    </div>
+    <div class="header-actions">
+      <app-common-filter
+        [config]="dateFilterConfig"
+        [appliedFilters]="appliedDateFilters()"
+        (filtersChange)="applyDateFilters($event)"
+      />
+      <button
+        class="refresh-button"
+        type="button"
+        [attr.aria-busy]="dashboardLoading()"
+        (click)="refreshDashboard()"
+      >
+        <span aria-hidden="true">⟳</span>
+        {{ dashboardLoading() ? 'Refreshing…' : 'Refresh data' }}
+      </button>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="feedback error" role="alert">{{ errorMessage() }}</p>
+  }
+  <section class="welcome-card" aria-labelledby="welcome-shop-title">
+    <div class="welcome-icon" aria-hidden="true">
+      {{ shopName() ? shopName().slice(0, 1).toUpperCase() : 'P' }}
+    </div>
+    <div>
+      <h2 id="welcome-shop-title">Welcome{{ shopName() ? ', ' + shopName() : '' }}</h2>
+      <p>Your shop activity and performance, based on your saved records.</p>
+    </div>
+    <span class="status-badge">Approved account</span>
+  </section>
+
+  <section class="dashboard-section" aria-labelledby="overview-title">
+    <header class="section-heading">
+      <div>
+        <span class="section-kicker">BUSINESS OVERVIEW</span>
+        <h2 id="overview-title">Performance summary</h2>
+        <p>Filter dashboard metrics and activity lists by date.</p>
+      </div>
+    </header>
+
+    @if (dashboardError()) {
+      <div class="dashboard-state error" role="alert">
+        <p>{{ dashboardError() }}</p>
+        <button type="button" (click)="loadDashboard()">Try again</button>
+      </div>
+    } @else if (dashboardLoading() && !dashboard()) {
+      <div class="dashboard-state" role="status">Loading dashboard metrics…</div>
+    } @else if (dashboard(); as data) {
+      <div class="metric-grid">
+        <a class="metric-card" routerLink="/shop/repair-requests">
+          <span class="metric-label"><i aria-hidden="true">▣</i>Repair requests</span>
+          <strong>{{ data.requests.total }}</strong>
+          <small>{{ data.requests.new }} new · {{ data.requests.pending }} awaiting response</small>
+        </a>
+        <a class="metric-card" routerLink="/shop/quotations">
+          <span class="metric-label"><i aria-hidden="true">▤</i>Quotations submitted</span>
+          <strong>{{ data.quotations.total }}</strong>
+          <small>{{ data.quotations.pending }} pending customer response</small>
+        </a>
+        <a class="metric-card" routerLink="/shop/quotations">
+          <span class="metric-label"><i aria-hidden="true">♧</i>Accepted quotations</span>
+          <strong>{{ data.quotations.accepted }}</strong>
+          <small
+            >{{ data.quotations.rejected }} rejected · {{ data.quotations.expired }} expired</small
+          >
+        </a>
+        <a class="metric-card" routerLink="/shop/repair-requests">
+          <span class="metric-label"><i aria-hidden="true">ϟ</i>Active repairs</span>
+          <strong>{{ data.repairs.active }}</strong>
+          <small>{{ data.repairs.ready_for_pickup }} ready for pickup</small>
+        </a>
+        <a class="metric-card" routerLink="/shop/reviews">
+          <span class="metric-label"><i aria-hidden="true">☆</i>Customer rating</span>
+          <strong>{{
+            data.reviews.averageRating === null
+              ? '—'
+              : (data.reviews.averageRating | number: '1.1-2')
+          }}</strong>
+          <small>{{ data.reviews.total }} verified reviews</small>
+        </a>
+        <article class="metric-card financial-card">
+          <span class="metric-label"><i aria-hidden="true">▤</i>Repair revenue</span>
+          @if (data.revenue.available && data.revenue.amount !== undefined) {
+            <strong>{{ data.revenue.amount | currency: data.revenue.currency }}</strong>
+            <small>Recorded repair payments</small>
+          } @else {
+            <strong>Not available</strong>
+            <small>
+              {{ data.revenue.reason || 'Payment and settlement records are not configured.' }}
+            </small>
+          }
+        </article>
+      </div>
+
+      <div class="dashboard-columns">
+        <article class="panel trend-panel">
+          <header class="panel-heading">
+            <div>
+              <h3>Quotation activity</h3>
+              <p>Submitted quotations by day</p>
+            </div>
+            <a routerLink="/shop/quotations">View quotations</a>
+          </header>
+          @if (data.quotations.trend.length) {
+            <div class="trend-list" aria-label="Daily quotation submissions">
+              @for (day of data.quotations.trend; track day._id) {
+                <div class="trend-row">
+                  <time>{{ day._id | date: 'MMM d' : 'UTC' }}</time>
+                  <span class="trend-track"
+                    ><span [style.width.%]="trendWidth(day.count, data.quotations.trend)"></span
+                  ></span>
+                  <strong>{{ day.count }}</strong>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="panel-empty">No quotation activity in this date range.</p>
+          }
+        </article>
+        <article class="panel repair-panel">
+          <header class="panel-heading">
+            <div>
+              <h3>Repair pipeline</h3>
+              <p>Current workflow status</p>
+            </div>
+            <a routerLink="/shop/repair-requests">Manage repairs</a>
+          </header>
+          <div class="pipeline-grid">
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">✓</span>
+              <span>Confirmed</span><strong>{{ data.repairs.confirmed }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">⌕</span>
+              <span>Inspection pending</span><strong>{{ data.repairs.inspection_pending }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">⚙</span>
+              <span>Inspecting</span><strong>{{ data.repairs.inspection_in_progress }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">◷</span>
+              <span>Awaiting customer approval</span
+              ><strong>{{ data.repairs.awaiting_customer_approval }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">✓</span>
+              <span>Inspection approved</span
+              ><strong>{{ data.repairs.inspection_approved }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">×</span>
+              <span>Repair declined</span><strong>{{ data.repairs.repair_declined }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">⌁</span>
+              <span>In progress</span><strong>{{ data.repairs.in_progress }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">Ⅱ</span>
+              <span>On hold</span><strong>{{ data.repairs.on_hold }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">✓</span>
+              <span>Repair complete</span><strong>{{ data.repairs.repair_completed }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">▤</span>
+              <span>Ready for pickup</span><strong>{{ data.repairs.ready_for_pickup }}</strong>
+            </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">□</span>
+              <span>Picked up</span><strong>{{ data.repairs.picked_up }}</strong>
+            </div>
+          </div>
+        </article>
+      </div>
+    }
+  </section>
+
+  <section class="requests-section" aria-labelledby="incoming-requests-title">
+    <header class="section-heading">
+      <div>
+        <span class="section-kicker">CUSTOMER ACTIVITY</span>
+        <h2 id="incoming-requests-title">Incoming repair requests</h2>
+        <p>Recent requests shared with your shop, ready to review and quote.</p>
+      </div>
+      <a class="view-all-link" routerLink="/shop/repair-requests">View all requests</a>
+    </header>
+
+    @if (dashboard(); as data) {
+      @if (data.requests.recent.length) {
+        <div class="recent-requests">
+          @for (request of data.requests.recent.slice(0, 3); track request._id) {
+            <article class="recent-request">
+              <span class="request-device-icon" aria-hidden="true">▣</span>
+              <div class="recent-request-main">
+                <span class="request-id">REQUEST #{{ request._id.slice(-8).toUpperCase() }}</span>
+                <h3>{{ request.appliance }}</h3>
+                <p>
+                  {{ request.customer?.fullName || 'Customer' }} ·
+                  {{ request.createdAt | date: 'mediumDate' }}
+                </p>
+                <p class="request-description">{{ request.description }}</p>
+              </div>
+              <div class="recent-request-action">
+                <span
+                  class="request-status"
+                  [attr.data-status]="request.repairJob?.status || request.shopResponse.status"
+                >
+                  {{
+                    (request.repairJob?.status || request.shopResponse.status).replaceAll('_', ' ')
+                      | titlecase
+                  }}
+                </span>
+                <a [routerLink]="['/shop/repair-requests', request._id]">
+                  {{ request.repairJob ? 'View repair status' : 'Review request' }}
+                </a>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="dashboard-state empty">
+          <h3>No incoming requests yet</h3>
+          <p>No requests were shared with your shop in this date range.</p>
+        </div>
+      }
+    } @else if (dashboardLoading()) {
+      <div class="dashboard-state" role="status">Loading incoming requests…</div>
+    } @else {
+      <div class="dashboard-state error" role="alert">
+        <p>Incoming requests could not be loaded.</p>
+        <button type="button" (click)="loadDashboard()">Try again</button>
+      </div>
+    }
+  </section>
+
+  @if (dashboard(); as data) {
+    <div class="dashboard-columns lower-columns">
+      <div class="recent-side-panels">
+        <section class="panel" aria-labelledby="recent-quotations-title">
+          <header class="panel-heading">
+            <div>
+              <h2 id="recent-quotations-title">Recent quotations</h2>
+              <p>Latest responses from customers</p>
+            </div>
+            <a routerLink="/shop/quotations">All quotations</a>
+          </header>
+          @if (data.quotations.recent.length) {
+            <div class="compact-list">
+              @for (quotation of data.quotations.recent; track quotation._id) {
+                <article>
+                  <div>
+                    <strong>{{ quotation.appliance || 'Repair quotation' }}</strong>
+                    <span
+                      >{{ quotation.customerName || 'Customer' }} ·
+                      {{ quotation.createdAt | date: 'mediumDate' }}</span
+                    >
+                  </div>
+                  <div class="compact-meta">
+                    <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                    <span class="request-status" [attr.data-status]="quotation.status">{{
+                      quotationStatusLabel(quotation.status)
+                    }}</span>
+                  </div>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="panel-empty">No quotations in this date range.</p>
+          }
+        </section>
+
+        <section class="panel" aria-labelledby="recent-reviews-title">
+          <header class="panel-heading">
+            <div>
+              <h2 id="recent-reviews-title">Recent reviews</h2>
+              <p>Verified customer feedback</p>
+            </div>
+            <a routerLink="/shop/reviews">All reviews</a>
+          </header>
+          @if (data.reviews.recent.length) {
+            <div class="compact-list review-list">
+              @for (review of data.reviews.recent; track review._id) {
+                <article>
+                  <div class="review-heading">
+                    <span class="review-avatar" aria-hidden="true">
+                      {{ (review.customerName || 'Customer').slice(0, 1).toUpperCase() }}
+                    </span>
+                    <strong>{{ review.customerName || 'Customer' }}</strong>
+                    <span
+                      class="review-stars"
+                      [attr.aria-label]="review.overallRating + ' out of 5 stars'"
+                    >
+                      {{
+                        '★'.repeat(review.overallRating) + '☆'.repeat(5 - review.overallRating)
+                      }}
+                    </span>
+                  </div>
+                  <p>{{ review.title || review.reviewText }}</p>
+                  <span>{{ review.createdAt | date: 'mediumDate' }}</span>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="panel-empty">No reviews in this date range.</p>
+          }
+        </section>
+      </div>
+
+    </div>
+  }
+</section>

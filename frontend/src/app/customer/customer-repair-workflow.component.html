@@ -1,0 +1,509 @@
+@if (job; as job) {
+  @if (error()) {
+    <p class="workflow-error" role="alert">{{ error() }}</p>
+  }
+  @if (notice()) {
+    <p class="workflow-notice" role="status">{{ notice() }}</p>
+  }
+
+  @if (job.status === 'inspection_pending') {
+    <p class="workflow-notice" role="status">
+      The repair shop will inspect your device and send you a diagnosis and estimate to review.
+    </p>
+  }
+  @if (job.status === 'inspection_in_progress') {
+    <p class="workflow-notice" role="status">
+      The repair shop is inspecting your device. You will be notified when the report is ready.
+    </p>
+  }
+
+  @if (inspection; as report) {
+    @if (
+      job.status === 'awaiting_customer_approval' ||
+      job.status === 'inspection_approved' ||
+      job.status === 'repair_declined'
+    ) {
+      <section class="workflow-card" aria-labelledby="inspection-report-title">
+        <header class="workflow-heading">
+          <div>
+            <span class="eyebrow">SHOP DIAGNOSIS</span>
+            <h2 id="inspection-report-title">Repair inspection report</h2>
+          </div>
+          <span class="status-badge">{{ report.status.replaceAll('_', ' ') }}</span>
+        </header>
+
+        <dl class="device-summary">
+          <div>
+            <dt>Repair shop</dt>
+            <dd>{{ request.shop?.name || 'Repair shop' }}</dd>
+          </div>
+          <div>
+            <dt>Device</dt>
+            <dd>
+              {{ request.appliance }}{{ request.brand ? ' · ' + request.brand : ''
+              }}{{ request.model ? ' · ' + request.model : '' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Original repair problem</dt>
+            <dd>{{ request.description }}</dd>
+          </div>
+        </dl>
+
+        @if (report.identifiedProblem) {
+          <section class="report-section">
+            <h3>Identified problem</h3>
+            <p>{{ report.identifiedProblem }}</p>
+          </section>
+        }
+        @if (report.findings) {
+          <section class="report-section">
+            <h3>Inspection findings</h3>
+            <p>{{ report.findings }}</p>
+          </section>
+        }
+        @if (report.requiredRepairWork) {
+          <section class="report-section">
+            <h3>Required repair work</h3>
+            <p>{{ report.requiredRepairWork }}</p>
+          </section>
+        }
+
+        @if (report.parts.length) {
+          <section class="report-section">
+            <h3>Parts and prices</h3>
+            <ul class="part-list">
+              @for (part of report.parts; track $index) {
+                <li>
+                  <span
+                    >{{ part.name }} · {{ part.quantity }} ×
+                    {{ part.unitPrice | currency: request.acceptedQuotation?.currency }}</span
+                  ><strong>{{ part.total | currency: request.acceptedQuotation?.currency }}</strong>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        <section class="cost-summary" aria-label="Inspection estimate breakdown">
+          <h3>Inspection estimate</h3>
+          <p>
+            Parts
+            <strong>{{ report.partsTotal | currency: request.acceptedQuotation?.currency }}</strong>
+          </p>
+          <p>
+            Labour
+            <strong>{{
+              report.labourCharge | currency: request.acceptedQuotation?.currency
+            }}</strong>
+          </p>
+          <p>
+            Inspection charges
+            <strong>{{
+              report.inspectionCharges | currency: request.acceptedQuotation?.currency
+            }}</strong>
+          </p>
+          <p>
+            Other charges
+            <strong>{{
+              report.otherCharges | currency: request.acceptedQuotation?.currency
+            }}</strong>
+          </p>
+          <p class="total-line">
+            Revised inspection estimate
+            <strong>{{
+              report.estimatedTotal | currency: request.acceptedQuotation?.currency
+            }}</strong>
+          </p>
+        </section>
+
+        <section class="cost-summary original-quote">
+          <h3>Original accepted quotation</h3>
+          <p>
+            {{ request.acceptedQuotation?.amount | currency: request.acceptedQuotation?.currency }}
+          </p>
+          <small
+            >The shop's inspection estimate is shown separately. The original quotation has not been
+            overwritten.</small
+          >
+        </section>
+
+        <dl class="device-summary">
+          @if (report.estimatedTimeValue) {
+            <div>
+              <dt>Estimated repair time</dt>
+              <dd>{{ report.estimatedTimeValue }} {{ report.estimatedTimeUnit }}</dd>
+            </div>
+          }
+          @if (report.warranty) {
+            <div>
+              <dt>Repair warranty</dt>
+              <dd>{{ report.warranty }}</dd>
+            </div>
+          }
+        </dl>
+        @if (report.message) {
+          <section class="report-section">
+            <h3>Message from the shop</h3>
+            <p>{{ report.message }}</p>
+          </section>
+        }
+        @if (request.photos?.length || report.images.length) {
+          <section class="report-section">
+            <h3>Device and inspection images</h3>
+            <div class="workflow-images">
+              @for (photo of request.photos ?? []; track $index) {
+                <img
+                  [src]="photo.data"
+                  [alt]="'Customer device image ' + ($index + 1)"
+                  loading="lazy"
+                />
+              }
+              @for (photo of report.images; track $index) {
+                <img
+                  [src]="photo.data"
+                  [alt]="'Shop inspection image ' + ($index + 1)"
+                  loading="lazy"
+                />
+              }
+            </div>
+          </section>
+        }
+
+        @if (job.status === 'awaiting_customer_approval') {
+          <div class="decision-actions">
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="submitting()"
+              (click)="approvalDialogOpen.set(true)"
+            >
+              Approve Estimate
+            </button>
+            <button
+              type="button"
+              class="decline-button"
+              [disabled]="submitting()"
+              (click)="declineDialogOpen.set(true)"
+            >
+              Decline Repair
+            </button>
+          </div>
+        } @else if (job.status === 'inspection_approved') {
+          <p class="decision-state" role="status">
+            You approved this estimate. The shop will start the repair after it confirms the start.
+          </p>
+        } @else if (job.status === 'repair_declined') {
+          <p class="decision-state" role="status">You declined this inspection estimate.</p>
+          @if (report.decisionReason) {
+            <p><strong>Your reason:</strong> {{ report.decisionReason }}</p>
+          }
+        }
+      </section>
+
+      @if (approvalDialogOpen()) {
+        <div class="dialog-backdrop" role="presentation">
+          <section
+            class="decision-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="approve-title"
+          >
+            <h2 id="approve-title">Authorize this repair?</h2>
+            <p>
+              By confirming, you authorize the shop to repair the device for the inspection estimate
+              shown below. This approval does not charge your payment method.
+            </p>
+            <p class="dialog-total">
+              Final estimated amount
+              <strong>{{
+                report.estimatedTotal | currency: request.acceptedQuotation?.currency
+              }}</strong>
+            </p>
+            <div class="decision-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="submitting()"
+                (click)="approvalDialogOpen.set(false)"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="primary-button"
+                [disabled]="submitting()"
+                (click)="approveInspection()"
+              >
+                {{ submitting() ? 'Approving…' : 'Confirm approval' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+
+      @if (declineDialogOpen()) {
+        <div class="dialog-backdrop" role="presentation">
+          <section
+            class="decision-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="decline-title"
+          >
+            <h2 id="decline-title">Decline this repair estimate?</h2>
+            <p>The shop will not be allowed to start this repair under the estimate.</p>
+            <label
+              >Reason (optional)<textarea
+                rows="3"
+                maxlength="500"
+                [ngModel]="decisionReason()"
+                (ngModelChange)="decisionReason.set($event)"
+              ></textarea>
+            </label>
+            <div class="decision-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="submitting()"
+                (click)="declineDialogOpen.set(false)"
+              >
+                Keep estimate
+              </button>
+              <button
+                type="button"
+                class="decline-button"
+                [disabled]="submitting()"
+                (click)="declineInspection()"
+              >
+                {{ submitting() ? 'Declining…' : 'Confirm decline' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+    }
+  }
+
+  @if (
+    job.status === 'in_progress' ||
+    job.status === 'on_hold' ||
+    job.status === 'repair_completed' ||
+    job.status === 'ready_for_pickup' ||
+    job.status === 'picked_up' ||
+    job.status === 'completed' ||
+    job.status === 'disputed'
+  ) {
+    <section class="workflow-card" aria-labelledby="cost-summary-title">
+      <header class="workflow-heading"><h2 id="cost-summary-title">Repair cost summary</h2></header>
+      <div class="cost-summary">
+        <p>
+          Original accepted quotation
+          <strong>{{
+            request.acceptedQuotation?.amount | currency: request.acceptedQuotation?.currency
+          }}</strong>
+        </p>
+        <p>
+          Initial approved inspection estimate
+          <strong>{{
+            job.approvedRepairAmount ?? 0 | currency: request.acceptedQuotation?.currency
+          }}</strong>
+        </p>
+        <p>
+          Approved additional charges
+          <strong>{{
+            job.approvedAdditionalCharges ?? 0 | currency: request.acceptedQuotation?.currency
+          }}</strong>
+        </p>
+        <p>
+          Pending additional-charge requests
+          <strong>{{ pendingTotal | currency: request.acceptedQuotation?.currency }}</strong>
+        </p>
+        <p>
+          Rejected additional charges
+          <strong>{{ rejectedTotal | currency: request.acceptedQuotation?.currency }}</strong>
+        </p>
+        <p class="total-line">
+          Current approved repair total
+          <strong>{{ approvedTotal | currency: request.acceptedQuotation?.currency }}</strong>
+        </p>
+        <small
+          >Pending and rejected charges are excluded. Approving an estimate does not automatically
+          collect payment.</small
+        >
+      </div>
+    </section>
+
+    @if (hasReviewedAdditionalCharges) {
+      <section class="workflow-card" aria-labelledby="additional-charges-title">
+        <header class="workflow-heading">
+          <h2 id="additional-charges-title">Additional charge requests</h2>
+        </header>
+        @for (charge of job.additionalChargeRequests; track charge._id) {
+          @if (charge.status !== 'draft') {
+            <article class="charge-card">
+              <header>
+                <h3>{{ charge.issue }}</h3>
+                <span class="status-badge">{{ charge.status }}</span>
+              </header>
+              <p><strong>Reason for additional work:</strong> {{ charge.reason }}</p>
+              <p><strong>Repair description:</strong> {{ charge.repairDescription }}</p>
+              @if (charge.parts.length) {
+                <h4>Additional parts</h4>
+                <ul class="part-list">
+                  @for (part of charge.parts; track $index) {
+                    <li>
+                      <span
+                        >{{ part.name }} · {{ part.quantity }} ×
+                        {{ part.unitPrice | currency: request.acceptedQuotation?.currency }}</span
+                      ><strong>{{
+                        part.total | currency: request.acceptedQuotation?.currency
+                      }}</strong>
+                    </li>
+                  }
+                </ul>
+              }
+              <p>
+                Parts {{ charge.partsTotal | currency: request.acceptedQuotation?.currency }} ·
+                Labour {{ charge.labourCharge | currency: request.acceptedQuotation?.currency }} ·
+                Other {{ charge.otherCharges | currency: request.acceptedQuotation?.currency }}
+              </p>
+              @if (charge.estimatedTimeValue) {
+                <p>
+                  Additional time: {{ charge.estimatedTimeValue }} {{ charge.estimatedTimeUnit }}
+                </p>
+              }
+              @if (charge.message) {
+                <p><strong>Shop message:</strong> {{ charge.message }}</p>
+              }
+              @if (charge.images.length) {
+                <div class="workflow-images">
+                  @for (photo of charge.images; track $index) {
+                    <img
+                      [src]="photo.data"
+                      [alt]="'Additional issue image ' + ($index + 1)"
+                      loading="lazy"
+                    />
+                  }
+                </div>
+              }
+              <div class="cost-summary">
+                <p>
+                  Original approved repair amount
+                  <strong>{{
+                    approvedTotal | currency: request.acceptedQuotation?.currency
+                  }}</strong>
+                </p>
+                <p>
+                  Additional amount requested
+                  <strong>{{
+                    charge.amount | currency: request.acceptedQuotation?.currency
+                  }}</strong>
+                </p>
+                <p class="total-line">
+                  New approved total if accepted
+                  <strong>{{
+                    approvedTotal + charge.amount | currency: request.acceptedQuotation?.currency
+                  }}</strong>
+                </p>
+              </div>
+              @if (charge.blocksRepair) {
+                <p class="pause-warning">
+                  The shop paused repair work because this issue requires approval.
+                </p>
+              }
+              @if (charge.status === 'pending') {
+                <div class="decision-actions">
+                  <button
+                    type="button"
+                    class="primary-button"
+                    [disabled]="submitting()"
+                    (click)="openChargeDecision(charge, 'accept')"
+                  >
+                    Accept Additional Charges
+                  </button>
+                  <button
+                    type="button"
+                    class="decline-button"
+                    [disabled]="submitting()"
+                    (click)="openChargeDecision(charge, 'decline')"
+                  >
+                    Decline Additional Charges
+                  </button>
+                </div>
+              }
+              @if (charge.decisionReason) {
+                <p><strong>Decision reason:</strong> {{ charge.decisionReason }}</p>
+              }
+            </article>
+          }
+        }
+      </section>
+    }
+  }
+
+  @if (confirmingCharge(); as charge) {
+    <div class="dialog-backdrop" role="presentation">
+      <section
+        class="decision-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="charge-decision-title"
+      >
+        <h2 id="charge-decision-title">
+          {{
+            chargeDecision() === 'accept'
+              ? 'Approve additional repair work?'
+              : 'Decline additional repair work?'
+          }}
+        </h2>
+        <p>{{ charge.issue }} · {{ charge.repairDescription }}</p>
+        <p class="dialog-total">
+          Requested amount
+          <strong>{{ charge.amount | currency: request.acceptedQuotation?.currency }}</strong>
+        </p>
+        @if (chargeDecision() === 'accept') {
+          <p class="dialog-total">
+            Updated approved total
+            <strong>{{
+              approvedTotal + charge.amount | currency: request.acceptedQuotation?.currency
+            }}</strong>
+          </p>
+        } @else {
+          <label
+            >Reason (optional)<textarea
+              rows="3"
+              maxlength="500"
+              [ngModel]="decisionReason()"
+              (ngModelChange)="decisionReason.set($event)"
+            ></textarea>
+          </label>
+        }
+        <div class="decision-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="submitting()"
+            (click)="confirmingCharge.set(null)"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            [class.primary-button]="chargeDecision() === 'accept'"
+            [class.decline-button]="chargeDecision() === 'decline'"
+            [disabled]="submitting()"
+            (click)="submitChargeDecision()"
+          >
+            {{
+              submitting()
+                ? 'Saving…'
+                : chargeDecision() === 'accept'
+                  ? 'Confirm approval'
+                  : 'Confirm decline'
+            }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
+}

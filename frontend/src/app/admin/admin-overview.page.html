@@ -1,0 +1,308 @@
+<section class="overview-page" aria-labelledby="overview-title" [attr.aria-busy]="loading()">
+  <header class="overview-header">
+    <div>
+      <span class="page-kicker">PRAXIO ADMIN OVERVIEW</span>
+      <h1 id="overview-title">Welcome back, {{ adminName }} <span aria-hidden="true">👋</span></h1>
+      <p>Here’s what’s happening across your repair marketplace.</p>
+    </div>
+    <div class="header-tools">
+      <label class="date-select">
+        <span class="visually-hidden">Dashboard date range</span>
+        <select [value]="range()" (change)="selectRange($event)">
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="month">This month</option>
+          <option value="last-month">Last month</option>
+          <option value="year">This year</option>
+          <option value="custom">Custom range</option>
+        </select>
+      </label>
+      @if (range() === 'custom') {
+        <label class="custom-date">
+          <span class="visually-hidden">From date</span>
+          <input type="date" [value]="fromDate()" (change)="updateDate('from', $event)" />
+        </label>
+        <label class="custom-date">
+          <span class="visually-hidden">To date</span>
+          <input type="date" [value]="toDate()" (change)="updateDate('to', $event)" />
+        </label>
+      }
+      @if (overview(); as data) {
+        <span class="today">
+          {{ data.range.from | date: 'MMM d, y':'UTC' }} – {{ data.range.to | date: 'MMM d, y':'UTC' }} UTC
+        </span>
+      }
+      <button type="button" class="refresh-button" (click)="refresh()" [disabled]="loading()">
+        <span aria-hidden="true">⟳</span>
+        {{ loading() ? 'Refreshing…' : 'Refresh data' }}
+      </button>
+    </div>
+  </header>
+
+  @if (errorMessage()) {
+    <p class="feedback error" role="alert">{{ errorMessage() }}</p>
+  }
+  @if (loading() && !overview()) {
+    <div class="loading-state" role="status">Loading marketplace data…</div>
+  } @else if (overview(); as data) {
+    <section class="kpi-grid" aria-label="Marketplace key performance indicators">
+      <a class="kpi-card" routerLink="/admin/users" [queryParams]="{ accountType: 'customer' }">
+        <span class="kpi-top"><i aria-hidden="true">♙</i><span>Total customers</span></span>
+        <strong>{{ data.users.customers.total | number }}</strong>
+        <small><b>↑ {{ data.users.customers.new }}</b> new</small>
+      </a>
+      <a class="kpi-card" routerLink="/admin/users" [queryParams]="{ accountType: 'shop' }">
+        <span class="kpi-top"><i aria-hidden="true">⌂</i><span>Repair shops</span></span>
+        <strong>{{ data.users.shops.total | number }}</strong>
+        <small><b>↑ {{ data.users.shops.approved }}</b> approved · {{ data.users.shops.pending }} pending</small>
+      </a>
+      <a class="kpi-card" routerLink="/admin" fragment="repair-analytics">
+        <span class="kpi-top"><i aria-hidden="true">⚒</i><span>Repair requests</span></span>
+        <strong>{{ data.repairs.total | number }}</strong>
+        <small><b>↑ {{ data.repairs.new }}</b> new</small>
+      </a>
+      <a class="kpi-card" routerLink="/admin" fragment="quotation-analytics">
+        <span class="kpi-top"><i aria-hidden="true">▤</i><span>Quotations</span></span>
+        <strong>{{ data.quotations.total | number }}</strong>
+        <small><b>↑ {{ data.quotations.acceptanceRate }}%</b> acceptance rate</small>
+      </a>
+      <a class="kpi-card" routerLink="/admin/repair-jobs">
+        <span class="kpi-top"><i aria-hidden="true">✓</i><span>Completed repairs</span></span>
+        <strong>{{ data.repairs.completed | number }}</strong>
+        <small>{{ data.repairs.completionRate }}% of total requests</small>
+      </a>
+      <a class="kpi-card revenue-card" routerLink="/admin" fragment="revenue-overview">
+        <span class="kpi-top"><i aria-hidden="true">▥</i><span>Platform revenue</span></span>
+        <strong>Not available</strong>
+        <small>No transaction records</small>
+      </a>
+    </section>
+
+    <div class="dashboard-grid primary-grid">
+      <section class="panel trend-panel" aria-labelledby="trend-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="trend-title">Marketplace activity</h2>
+            <p>Registrations, repair requests, and quotations over time.</p>
+          </div>
+          @if (loading()) { <span class="subtle-status">Updating…</span> }
+        </div>
+        @if (data.trends.length) {
+          <div class="trend-plot">
+            <div class="y-axis" aria-hidden="true"><span>{{ trendMax }}</span><span>{{ trendMax / 2 | number: '1.0-0' }}</span><span>0</span></div>
+            <div class="trend-chart" role="img" aria-label="Marketplace activity trend line chart">
+              <svg viewBox="0 0 600 190" preserveAspectRatio="none" aria-hidden="true">
+                <line x1="0" y1="174" x2="600" y2="174" class="chart-gridline" />
+                <line x1="0" y1="126" x2="600" y2="126" class="chart-gridline" />
+                <line x1="0" y1="78" x2="600" y2="78" class="chart-gridline" />
+                <line x1="0" y1="30" x2="600" y2="30" class="chart-gridline" />
+                <polyline [attr.points]="trendPoints('customers')" class="trend-line customers-line" />
+                <polyline [attr.points]="trendPoints('shops')" class="trend-line shops-line" />
+                <polyline [attr.points]="trendPoints('repairs')" class="trend-line repairs-line" />
+                <polyline [attr.points]="trendPoints('quotations')" class="trend-line quotations-line" />
+              </svg>
+            </div>
+          </div>
+          <div class="trend-labels">
+            @for (point of data.trends; track point.period; let index = $index) {
+              @if (index === 0 || index === data.trends.length - 1 || index % 7 === 0) {
+                <span>{{ trendLabel(point.period) }}</span>
+              }
+            }
+          </div>
+          <div class="chart-legend">
+            <span class="legend-customers">Customers</span>
+            <span class="legend-shops">Shops</span>
+            <span class="legend-repairs">Repair requests</span>
+            <span class="legend-quotations">Quotations</span>
+          </div>
+        } @else {
+          <p class="empty-state">No activity was recorded for this date range.</p>
+        }
+      </section>
+
+      <section id="repair-analytics" class="panel repair-panel" aria-labelledby="repair-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="repair-title">Repair requests</h2>
+            <p>Current workflow status and selected-period requests.</p>
+          </div>
+        </div>
+        <div class="repair-overview">
+          <div class="metric-list">
+            <div><span>Total requests</span><strong>{{ data.repairs.total | number }}</strong></div>
+            <div><span>Awaiting shop response</span><strong>{{ data.repairs.pendingShopResponses | number }}</strong></div>
+            <div><span>Accepted by a shop</span><strong>{{ data.repairs.accepted | number }}</strong></div>
+            <div><span>Declined</span><strong>{{ data.repairs.declined | number }}</strong></div>
+            <div><span>Expired</span><strong>{{ data.repairs.expired | number }}</strong></div>
+            <div><span>Completed</span><strong>{{ data.repairs.completed | number }}</strong></div>
+          </div>
+          <div class="repair-chart" aria-label="Repair status summary">
+            <div class="donut" [style.background]="repairRing(data)">
+              <div><strong>{{ data.repairs.total | number }}</strong><span>Total</span></div>
+            </div>
+            <div class="donut-legend">
+              <span><i class="open-dot"></i>Open ({{ repairStatusCount(data, 'open') }})</span>
+              <span><i class="progress-dot"></i>In progress ({{ repairProgressCount(data) }})</span>
+              <span><i class="complete-dot"></i>Completed ({{ data.repairs.completed }})</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="dashboard-grid activity-grid">
+      <section class="panel" aria-labelledby="activity-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="activity-title">Recent platform activity</h2>
+            <p>Latest registrations, requests, and admin actions.</p>
+          </div>
+          <a class="text-link" routerLink="/admin/users">View all</a>
+        </div>
+        @if (data.recentActivities.length) {
+          <ol class="activity-list">
+            @for (activity of data.recentActivities | slice: 0:5; track activity.type + activity.id) {
+              <li>
+                <span class="activity-dot"></span>
+                <div class="activity-copy">
+                  <a [href]="activity.link">{{ activity.description | titlecase }}</a>
+                  @if (activity.relatedName) { <span>{{ activity.relatedName }}</span> }
+                </div>
+                <time>{{ activity.createdAt | date: 'short':'UTC' }}</time>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="empty-state">No recent activity is available.</p>
+        }
+      </section>
+
+      <section id="recent-repairs-panel" class="panel recent-repairs-panel" aria-labelledby="recent-repairs-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="recent-repairs-title">Recent repair requests</h2>
+            <p>Latest customer requests in the marketplace.</p>
+          </div>
+          <a class="text-link" routerLink="/admin/repair-jobs">View all</a>
+        </div>
+        @if (data.recentRepairs.length) {
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Request ID</th><th>Customer</th><th>Category</th><th>Status</th></tr></thead>
+              <tbody>
+                @for (repair of data.recentRepairs | slice: 0:5; track repair.id) {
+                  <tr>
+                    <td><code>{{ repair.id | slice: 0:8 }}</code></td>
+                    <td><a class="text-link" [routerLink]="['/admin/users', repair.customerId]">{{ repair.customerName }}</a></td>
+                    <td>{{ repair.appliance }}</td>
+                    <td><span class="status-pill">{{ repair.status | titlecase }}</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty-state">No repair requests have been submitted yet.</p>
+        }
+      </section>
+
+      <section class="panel category-panel" aria-labelledby="category-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="category-title">Popular repair categories</h2>
+            <p>Based on requests in the selected period.</p>
+          </div>
+        </div>
+        @if (data.categories.length) {
+          <ol class="category-list">
+            @for (category of data.categories | slice: 0:6; track category.name) {
+              <li>
+                <div class="category-label"><span>{{ category.name }}</span><strong>{{ category.count | number }}</strong></div>
+                <div class="progress-track category-track"><span [style.width]="category.percentage + '%'"></span></div>
+                <small>{{ category.percentage }}% of requests</small>
+              </li>
+            }
+          </ol>
+        } @else {
+          <p class="empty-state">No category data for this period.</p>
+        }
+      </section>
+    </div>
+
+    <section class="secondary-grid" aria-label="Additional marketplace insights">
+      <section class="panel" aria-labelledby="growth-title">
+        <div class="panel-heading">
+          <div><h2 id="growth-title">Customer &amp; shop growth</h2><p>Account lifecycle and recent registrations.</p></div>
+        </div>
+        <div class="growth-grid">
+          <div class="growth-column">
+            <h3>Customers</h3>
+            <div class="growth-counts"><span>{{ data.users.customers.active }} active</span><span>{{ data.users.customers.inactive }} inactive</span><span>{{ data.users.customers.suspended }} suspended</span></div>
+          </div>
+          <div class="growth-column">
+            <h3>Repair shops</h3>
+            <div class="growth-counts"><span>{{ data.users.shops.active }} active</span><span>{{ data.users.shops.inactive }} inactive</span><span>{{ data.users.shops.suspended }} suspended</span></div>
+          </div>
+        </div>
+        <h3 class="subsection-title">Recently registered</h3>
+        @if (data.recentRegistrations.length) {
+          <ul class="recent-users">
+            @for (user of data.recentRegistrations | slice: 0:5; track user.id) {
+              <li><a [routerLink]="['/admin/users', user.id]">{{ user.name }}</a><span>{{ user.accountType === 'shop' ? 'Repair shop' : 'Customer' }}</span><time>{{ user.createdAt | date: 'mediumDate':'UTC' }}</time></li>
+            }
+          </ul>
+        } @else { <p class="empty-inline">No registrations yet.</p> }
+      </section>
+
+      <section id="quotation-analytics" class="panel" aria-labelledby="quotation-title">
+        <div class="panel-heading">
+          <div><h2 id="quotation-title">Quotations</h2><p>Submitted, accepted, rejected, and expired.</p></div>
+          <span class="panel-total">{{ data.quotations.acceptanceRate }}% accepted</span>
+        </div>
+        <div class="quotation-kpis">
+          <div><span>Total</span><strong>{{ data.quotations.total | number }}</strong></div>
+          <div><span>Pending</span><strong>{{ data.quotations.pending | number }}</strong></div>
+          <div><span>Accepted</span><strong>{{ data.quotations.accepted | number }}</strong></div>
+          <div><span>Rejected</span><strong>{{ data.quotations.rejected | number }}</strong></div>
+          <div><span>Expired</span><strong>{{ data.quotations.expired | number }}</strong></div>
+        </div>
+        <h3 class="subsection-title">Status distribution</h3>
+        @if (data.quotationStatuses.length) {
+          <div class="distribution-list">
+            @for (status of data.quotationStatuses; track status.status) {
+              <div class="distribution-item"><div><span>{{ status.status | titlecase }}</span><strong>{{ status.count }}</strong></div><div class="progress-track quote-track"><span [style.width]="percentWidth(status.count, data.quotations.total)"></span></div></div>
+            }
+          </div>
+        } @else { <p class="empty-inline">No quotations yet.</p> }
+      </section>
+
+      <section id="revenue-overview" class="panel revenue-panel" aria-labelledby="revenue-title">
+        <div class="panel-heading">
+          <div><h2 id="revenue-title">Revenue &amp; payments</h2><p>Reported only when verified transaction records are available.</p></div>
+          <span class="unavailable-badge">Not available</span>
+        </div>
+        <div class="unavailable-message">
+          <strong>Repair transaction revenue is not tracked yet.</strong>
+          <p>{{ data.revenue.reason }}</p>
+          <small>Shop subscription payments are excluded from repair revenue.</small>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="shops-title">
+        <div class="panel-heading">
+          <div><h2 id="shops-title">Top repair shops</h2><p>Completed repairs attributed through accepted quotations.</p></div>
+        </div>
+        @if (data.topShops.length) {
+          <ol class="shop-list">
+            @for (shop of data.topShops | slice: 0:5; track shop.id; let rank = $index) {
+              <li><span class="rank">{{ rank + 1 }}</span><div class="shop-copy"><a [routerLink]="['/admin/users', shop.id]">{{ shop.name }}</a><span>{{ shop.location || 'Location not provided' }}</span></div><div class="shop-meta"><strong>{{ shop.completedRepairs }} <small>repairs</small></strong><span class="status-pill">{{ shop.accountStatus | titlecase }}</span></div></li>
+            }
+          </ol>
+        } @else { <p class="empty-state">No completed repairs are recorded.</p> }
+      </section>
+    </section>
+  }
+</section>

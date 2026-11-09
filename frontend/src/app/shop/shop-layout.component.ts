@@ -1,0 +1,157 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, HostListener, inject, OnInit, signal, ViewChild } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { AuthService } from '../core/auth/auth.service';
+import { NotificationCenterComponent } from '../core/notifications/notification-center.component';
+import { ShopRepairRequestsService } from './shop-repair-requests.service';
+
+@Component({
+  selector: 'app-shop-layout',
+  standalone: true,
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, NotificationCenterComponent],
+  templateUrl: './shop-layout.component.html',
+  styleUrl: './shop-layout.component.scss',
+})
+export class ShopLayout implements OnInit {
+  @ViewChild(NotificationCenterComponent) private notificationCenter?: NotificationCenterComponent;
+  readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly shopRequests = inject(ShopRepairRequestsService);
+  readonly signingOut = signal(false);
+  readonly accountMenuOpen = signal(false);
+  readonly shopName = signal('');
+  readonly shopNameError = signal('');
+  readonly searchQuery = signal('');
+  readonly searchResults = signal<ShopActivitySearchResult[] | null>(null);
+  readonly searchLoading = signal(false);
+  readonly searchError = signal('');
+  private searchRequestId = 0;
+
+  ngOnInit(): void {
+    this.authService.getShopDashboard().subscribe({
+      next: (dashboard) => this.shopName.set(dashboard.shopName),
+      error: () => this.shopNameError.set('Shop name could not be loaded.'),
+    });
+  }
+
+  toggleAccountMenu(): void {
+    this.notificationCenter?.close();
+    this.accountMenuOpen.update((open) => !open);
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeHeaderMenusOutside(event: MouseEvent): void {
+    const target = event.target;
+    if (target instanceof Element && target.closest('.notification-center, .account-menu')) {
+      return;
+    }
+    this.closeAccountMenu();
+    this.notificationCenter?.close();
+  }
+
+  closeAccountMenu(): void {
+    this.accountMenuOpen.set(false);
+  }
+
+  getUserInitial(): string {
+    const name = this.authService.currentUser()?.fullName?.trim();
+    return name ? name.slice(0, 1).toUpperCase() : 'P';
+  }
+
+  getShopInitial(): string {
+    const name = this.shopName().trim();
+    return name ? name.slice(0, 1).toUpperCase() : this.getUserInitial();
+  }
+
+  getUserFirstName(): string {
+    const fullName = this.authService.currentUser()?.fullName?.trim();
+    return fullName || 'Account';
+  }
+
+  updateSearchQuery(event: Event): void {
+    this.searchRequestId += 1;
+    this.searchLoading.set(false);
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+    this.searchError.set('');
+    this.searchResults.set(null);
+  }
+
+  searchShopActivity(): void {
+    const query = this.searchQuery().trim();
+    if (!query) {
+      this.searchResults.set(null);
+      this.searchError.set('Enter a search term to find repair requests or quotations.');
+      return;
+    }
+
+    const requestId = ++this.searchRequestId;
+    this.searchLoading.set(true);
+    this.searchError.set('');
+    this.searchResults.set(null);
+    forkJoin({
+      requests: this.shopRequests.list({ search: query, page: 1, limit: 5 }),
+      quotations: this.shopRequests.listQuotations({ search: query, page: 1, limit: 5 }),
+    }).subscribe({
+      next: ({ requests, quotations }) => {
+        if (requestId !== this.searchRequestId) return;
+        this.searchResults.set([
+          ...requests.requests.map((request) => ({
+            id: request._id,
+            kind: 'request' as const,
+            title: request.appliance,
+            details: `${request.customer.fullName} · Request #${request._id.slice(-8).toUpperCase()}`,
+            route: ['/shop/repair-requests', request._id],
+          })),
+          ...quotations.quotations.map((quotation) => ({
+            id: quotation._id,
+            kind: 'quotation' as const,
+            title: quotation.repairRequest.appliance,
+            details: `${quotation.customer.fullName} · ${quotation.amount} ${quotation.currency}`,
+            route: ['/shop/quotations'],
+            queryParams: { quotationId: quotation._id },
+          })),
+        ]);
+        this.searchLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        if (requestId !== this.searchRequestId) return;
+        this.searchError.set(
+          error.error?.message || 'Shop activity search could not be completed.',
+        );
+        this.searchLoading.set(false);
+      },
+    });
+  }
+
+  closeGlobalSearch(): void {
+    this.searchRequestId += 1;
+    this.searchLoading.set(false);
+    this.searchResults.set(null);
+    this.searchError.set('');
+  }
+
+  signOut(): void {
+    if (this.signingOut()) {
+      return;
+    }
+
+    this.signingOut.set(true);
+    this.authService.logout().subscribe({
+      next: () => void this.router.navigateByUrl('/login'),
+      error: () =>
+        void this.router.navigate(['/login'], {
+          queryParams: { reason: 'logout-unconfirmed' },
+        }),
+    });
+  }
+}
+
+interface ShopActivitySearchResult {
+  id: string;
+  kind: 'request' | 'quotation';
+  title: string;
+  details: string;
+  route: string[];
+  queryParams?: { quotationId: string };
+}

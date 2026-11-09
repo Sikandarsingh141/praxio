@@ -1,0 +1,226 @@
+<div class="portal">
+  <header class="topbar">
+    <button
+      class="menu-toggle"
+      type="button"
+      [attr.aria-expanded]="menuOpen()"
+      aria-controls="customer-navigation"
+      [attr.aria-label]="menuOpen() ? 'Close navigation menu' : 'Open navigation menu'"
+      (click)="toggleMenu()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        @if (menuOpen()) {
+          <path d="m6 6 12 12M18 6 6 18" />
+        } @else {
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        }
+      </svg>
+    </button>
+
+    <a class="brand" routerLink="/customer" aria-label="Praxio dashboard" (click)="closeMenu()">
+      <span class="brand-mark" aria-hidden="true">P</span>
+      <span>Praxio</span>
+    </a>
+
+    @if (!profileOnly()) {
+      <div class="topbar-note">Find. Repair. Relax.</div>
+
+      <form
+        class="search-placeholder"
+        (submit)="$event.preventDefault(); submitShopSearch()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.3" />
+          <path d="m16 16 4 4" />
+        </svg>
+        <input
+          type="search"
+          aria-label="Search repair shops"
+          placeholder="Search repair shops"
+          [value]="shopSearchQuery"
+          (input)="updateShopSearchQuery($event)"
+          name="shopSearchQuery"
+        />
+        <button type="submit" aria-label="Search shops">Search</button>
+      </form>
+
+      <button
+        class="mobile-search-toggle"
+        type="button"
+        aria-label="Open shop search"
+        [attr.aria-expanded]="mobileSearchOpen()"
+        (click)="mobileSearchOpen.set(!mobileSearchOpen())"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.3" />
+          <path d="m16 16 4 4" />
+        </svg>
+      </button>
+      @if (mobileSearchOpen() && !profileOnly()) {
+        <form
+          class="mobile-search-form"
+          (submit)="$event.preventDefault(); submitShopSearch()"
+        >
+          <input
+            type="search"
+            aria-label="Search repair shops"
+            placeholder="Search shops by name, service or city"
+            [value]="shopSearchQuery"
+            (input)="updateShopSearchQuery($event)"
+            name="mobileShopSearchQuery"
+          />
+          <button type="submit">Search</button>
+        </form>
+      }
+    }
+
+    <div class="topbar-actions">
+      @if (!profileOnly()) {
+        <a class="location-note" routerLink="/customer/shops">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+            <circle cx="12" cy="10" r="2.2" />
+          </svg>
+          Search nearby shops
+        </a>
+      }
+      <app-notification-center (opened)="closeAccountMenu()" />
+      <div class="account-menu">
+        <button
+          class="account-menu-trigger"
+          type="button"
+          [attr.aria-expanded]="accountMenuOpen()"
+          aria-haspopup="menu"
+          (click)="toggleAccountMenu()"
+        >
+          @if (authService.currentUser()?.profileImageUrl; as profileImageUrl) {
+            <img class="avatar profile-avatar" [src]="profileImageUrl" alt="" />
+          } @else {
+            <span class="avatar" aria-hidden="true">{{ getUserInitial() }}</span>
+          }
+          <span class="account-name">{{ getUserFirstName() }}</span>
+          <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+        @if (accountMenuOpen()) {
+          <div class="account-dropdown" role="menu">
+            <div class="dropdown-identity">
+              <strong>{{ authService.currentUser()?.fullName || 'Your account' }}</strong>
+              <span>{{ authService.currentUser()?.email }}</span>
+            </div>
+            <a
+              class="dropdown-item"
+              routerLink="/customer/profile"
+              role="menuitem"
+              (click)="closeAccountMenu()"
+            >
+              My profile
+            </a>
+            <button
+              class="dropdown-item sign-out-menu-item"
+              type="button"
+              role="menuitem"
+              [disabled]="signingOut()"
+              (click)="closeAccountMenu(); signOut()"
+            >
+              {{ signingOut() ? 'Signing out…' : 'Sign out' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  <div class="portal-body">
+    @if (menuOpen()) {
+      <button
+        class="mobile-backdrop"
+        type="button"
+        aria-label="Dismiss navigation overlay"
+        (click)="closeMenu()"
+      ></button>
+    }
+
+    <aside
+      id="customer-navigation"
+      class="sidebar"
+      [class.sidebar-open]="menuOpen()"
+      aria-label="Customer navigation"
+    >
+      <div class="sidebar-heading">CUSTOMER PORTAL</div>
+
+      <nav class="navigation-group" aria-label="Main navigation">
+        @for (item of visibleNavigation; track item.label) {
+          @if (item.available) {
+            <a
+              class="nav-item"
+              [routerLink]="item.route"
+              routerLinkActive="nav-active"
+              [routerLinkActiveOptions]="{ exact: true }"
+              (click)="closeMenu()"
+            >
+              <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
+              <span>{{ item.label }}</span>
+            </a>
+          } @else {
+            <span class="nav-item nav-disabled" [attr.aria-label]="item.label + ', coming soon'">
+              <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
+              <span class="nav-label">{{ item.label }}</span>
+              <span class="nav-soon">Soon</span>
+            </span>
+          }
+        }
+      </nav>
+
+      @if (!profileOnly()) {
+        <div class="sidebar-heading account-heading">YOUR ACCOUNT</div>
+        <div class="navigation-group" aria-label="Account navigation">
+          @for (item of accountNavigation; track item.label) {
+            @if (item.route) {
+              <a
+                class="nav-item"
+                [routerLink]="item.route"
+                routerLinkActive="nav-active"
+                (click)="closeMenu()"
+              >
+                <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
+                <span class="nav-label">{{ item.label }}</span>
+              </a>
+            } @else {
+              <span class="nav-item nav-disabled" [attr.aria-label]="item.label + ', coming soon'">
+                <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
+                <span class="nav-label">{{ item.label }}</span>
+                <span class="nav-soon">Soon</span>
+              </span>
+            }
+          }
+        </div>
+      }
+
+      <div class="sidebar-bottom">
+        @if (profileOnly()) {
+          <div class="support-card">
+            <strong>Account under review</strong>
+            <span>Admin review is in progress. Notifications will show you when it changes.</span>
+          </div>
+        } @else {
+          <div class="support-card">
+            <span class="support-spark" aria-hidden="true">✦</span>
+            <strong>Need a hand?</strong>
+            <span>Customer support will be available soon.</span>
+          </div>
+        }
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="breadcrumb" aria-label="Breadcrumb">
+        <span>Customer portal</span>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{{ breadcrumbPage }}</span>
+      </div>
+      <router-outlet />
+    </main>
+  </div>
+</div>

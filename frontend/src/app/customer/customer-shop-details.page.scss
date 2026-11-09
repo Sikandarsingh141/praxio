@@ -1,0 +1,213 @@
+.shop-details-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: #52745c;
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.shop-hero,
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.shop-hero {
+  justify-content: space-between;
+  padding: clamp(1.2rem, 3vw, 2rem);
+  border: 1px solid #e3ebe3;
+  border-radius: 1rem;
+  background: linear-gradient(110deg, #f3f7f1, #fff);
+}
+
+.shop-logo {
+  display: grid;
+  width: 4rem;
+  height: 4rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 1rem;
+  object-fit: cover;
+}
+
+.shop-initials {
+  background: #e2eee2;
+  color: #41634b;
+  font-size: 1.5rem;
+  font-weight: 750;
+}
+
+.eyebrow,
+.section-kicker {
+  color: #668271;
+  font-size: 0.64rem;
+  font-weight: 780;
+  letter-spacing: 0.13em;
+}
+
+h1 {
+  margin: 0.3rem 0;
+  color: #263d30;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  letter-spacing: -0.045em;
+}
+
+.identity p,
+.business-card > p,
+.location-card > p {
+  margin: 0;
+  color: #7a887f;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.primary-button {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  border-radius: 0.7rem;
+  background: #315d4b;
+  color: #fff;
+  font-size: 0.77rem;
+  font-weight: 680;
+  text-decoration: none;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.detail-card {
+  min-width: 0;
+  padding: clamp(1rem, 2.5vw, 1.4rem);
+  border: 1px solid #e3ebe3;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.business-card dl {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1.2rem 0 0;
+}
+
+.business-card dl div {
+  display: grid;
+  grid-template-columns: minmax(90px, 0.6fr) minmax(0, 1.4fr);
+  gap: 0.7rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #edf1ed;
+}
+
+dt {
+  color: #849087;
+  font-size: 0.72rem;
+}
+
+dd {
+  margin: 0;
+  color: #44584a;
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+
+dd a {
+  color: #477656;
+}
+
+.service-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.service-list span {
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  background: #f0f5f0;
+  color: #54705d;
+  font-size: 0.7rem;
+}
+
+.service-list p {
+  margin: 0;
+  color: #7a887f;
+  font-size: 0.75rem;
+}
+
+.review-empty {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #edf1ed;
+}
+
+.review-empty strong {
+  color: #45594b;
+  font-size: 0.79rem;
+}
+
+.review-empty span,
+.missing-location {
+  color: #849087;
+  font-size: 0.72rem;
+}
+
+.location-card {
+  grid-column: 1 / -1;
+}
+
+.location-card app-shop-results-map {
+  margin-top: 0.8rem;
+}
+
+.missing-location,
+.state-card {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border: 1px dashed #dfe7df;
+  border-radius: 0.8rem;
+  background: #fafbf9;
+}
+
+.state-card {
+  color: #718078;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.state-card.error {
+  color: #a34842;
+}
+
+@media (max-width: 640px) {
+  .shop-hero,
+  .identity {
+    align-items: flex-start;
+  }
+
+  .shop-hero {
+    flex-direction: column;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .location-card {
+    grid-column: auto;
+  }
+}

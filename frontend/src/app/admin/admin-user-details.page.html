@@ -1,0 +1,277 @@
+<section
+  class="user-details"
+  aria-labelledby="user-title"
+  [attr.aria-busy]="loading()"
+  [appOverlayLoader]="loading()"
+>
+  <a class="back-link" routerLink="/admin/users"><span aria-hidden="true">←</span> Back to user management</a>
+
+  @if (errorMessage()) {
+    <p class="state-message error" role="alert">{{ errorMessage() }}</p>
+  } @else if (!loading() && user(); as profile) {
+    <header class="profile-header">
+      @if (profile.profileImageUrl) {
+        <img class="profile-image" [src]="profile.profileImageUrl" alt="" />
+      } @else {
+        <span class="profile-placeholder" aria-hidden="true">
+          {{ (profile.fullName || profile.shop?.shopName || 'U').charAt(0) | uppercase }}
+        </span>
+      }
+      <div class="profile-identity">
+        <span class="page-kicker">USER PROFILE</span>
+        <h1 id="user-title">{{ profile.shop?.shopName || profile.fullName || 'Unnamed user' }}</h1>
+        <p>
+          {{ profile.accountType | titlecase }} account · Joined
+          {{ profile.createdAt | date: 'mediumDate' }}
+        </p>
+      </div>
+      <div class="profile-statuses" aria-label="Account statuses">
+        <span class="status-badge approval-status" [class.active]="profile.approvalStatus === 'approved'">
+          <span aria-hidden="true">{{ profile.approvalStatus === 'approved' ? '✓' : '!' }}</span>
+          Approval: {{ profile.approvalStatus | titlecase }}
+        </span>
+        <span class="status-badge account-status" [class.active]="profile.accountStatus === 'active'" [class.suspended]="profile.accountStatus === 'suspended'">
+          <span aria-hidden="true">{{ profile.accountStatus === 'suspended' ? '⊗' : '✓' }}</span>
+          Account: {{ profile.accountStatus ? (profile.accountStatus | titlecase) : '—' }}
+        </span>
+      </div>
+    </header>
+
+    <nav class="profile-tabs" aria-label="User profile sections">
+      <button type="button" [class.selected]="activeSection() === 'overview'" [attr.aria-current]="activeSection() === 'overview' ? 'location' : null" (click)="scrollToSection('overview')"><span aria-hidden="true">⌂</span>Overview</button>
+      <button type="button" [class.selected]="activeSection() === 'activity'" [attr.aria-current]="activeSection() === 'activity' ? 'location' : null" (click)="scrollToSection('activity')"><span aria-hidden="true">◷</span>Activity</button>
+      <button type="button" [class.selected]="activeSection() === 'repair-requests'" [attr.aria-current]="activeSection() === 'repair-requests' ? 'location' : null" (click)="scrollToSection('repair-requests')"><span aria-hidden="true">⚒</span>Repair requests</button>
+      <button type="button" [class.selected]="activeSection() === 'quotations'" [attr.aria-current]="activeSection() === 'quotations' ? 'location' : null" (click)="scrollToSection('quotations')"><span aria-hidden="true">▤</span>Quotations</button>
+      <button type="button" [class.selected]="activeSection() === 'payments'" [attr.aria-current]="activeSection() === 'payments' ? 'location' : null" (click)="scrollToSection('payments')"><span aria-hidden="true">▣</span>Payments</button>
+    </nav>
+
+    <div id="overview" class="detail-grid overview-grid">
+      <section class="detail-card" aria-labelledby="contact-title">
+        <h2 id="contact-title"><span class="card-icon" aria-hidden="true">♙</span>Contact information</h2>
+        <dl>
+          <div>
+            <dt>Full name</dt>
+            <dd>{{ profile.fullName || '—' }}</dd>
+          </div>
+          <div>
+            <dt>User ID</dt>
+            <dd>{{ profile.id }}</dd>
+          </div>
+          <div>
+            <dt>Email</dt>
+            <dd>{{ profile.email }}</dd>
+          </div>
+          <div>
+            <dt>Phone</dt>
+            <dd>{{ profile.countryCode }} {{ profile.mobileNumber || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Account type</dt>
+            <dd>{{ profile.accountType | titlecase }}</dd>
+          </div>
+          <div>
+            <dt>Account status</dt>
+            <dd>
+              {{
+                profile.accountStatus ? (profile.accountStatus.replace('_', ' ') | titlecase) : '—'
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Account created</dt>
+            <dd>{{ profile.createdAt | date: 'medium' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      @if (profile.shop; as shop) {
+        <section class="detail-card" aria-labelledby="shop-title">
+          <h2 id="shop-title"><span class="card-icon" aria-hidden="true">⌂</span>Shop information</h2>
+          <dl>
+            <div>
+              <dt>Shop name</dt>
+              <dd>{{ shop.shopName }}</dd>
+            </div>
+            <div>
+              <dt>Business type</dt>
+              <dd>{{ shop.businessType }}</dd>
+            </div>
+            <div>
+              <dt>Years of experience</dt>
+              <dd>{{ shop.yearsOfExperience }}</dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd>{{ shopAddress(profile) || '—' }}</dd>
+            </div>
+            <div>
+              <dt>Description</dt>
+              <dd>{{ shop.description }}</dd>
+            </div>
+            <div>
+              <dt>Services</dt>
+              <dd>{{ shop.services.length ? shop.services.join(', ') : '—' }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+
+      @if (profile.registration; as registration) {
+        <section class="detail-card" aria-labelledby="registration-title">
+          <h2 id="registration-title"><span class="card-icon" aria-hidden="true">▤</span>Registration details</h2>
+          <dl>
+            <div>
+              <dt>Registration number</dt>
+              <dd>{{ registration.registrationNumber }}</dd>
+            </div>
+            <div>
+              <dt>Registration status</dt>
+              <dd>
+                <span
+                  class="status-badge"
+                  [class.active]="registration.status === 'approved'"
+                  [class.suspended]="registration.status === 'declined'"
+                >
+                  {{ registration.status | titlecase }}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Submitted</dt>
+              <dd>{{ registration.submittedAt | date: 'medium' }}</dd>
+            </div>
+            <div>
+              <dt>Reviewed</dt>
+              <dd>
+                {{ registration.reviewedAt ? (registration.reviewedAt | date: 'medium') : '—' }}
+              </dd>
+            </div>
+            @if (registration.declineReason) {
+              <div>
+                <dt>Decline reason</dt>
+                <dd>{{ registration.declineReason }}</dd>
+              </div>
+            }
+            @if (registration.adminRemarks) {
+              <div>
+                <dt>Admin remarks</dt>
+                <dd>{{ registration.adminRemarks }}</dd>
+              </div>
+            }
+          </dl>
+        </section>
+      }
+
+      <app-location-map [location]="profile.location" [compact]="true" />
+    </div>
+
+    <section id="activity" class="activity-card" aria-labelledby="activity-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="activity-title"><span class="card-icon" aria-hidden="true">⌁</span>Administrative activity</h2>
+          <p>Recent actions taken for this user</p>
+        </div>
+      </div>
+      @if (activityErrorMessage()) {
+        <p class="state-message error" role="alert">{{ activityErrorMessage() }}</p>
+      } @else if (activityLoading()) {
+        <p role="status">Loading activity history…</p>
+      } @else if (activity().length === 0) {
+        <p>No administrative actions have been recorded for this account.</p>
+      } @else {
+        <ol class="activity-timeline">
+          @for (event of activity(); track event.id) {
+            <li>
+              <span class="timeline-dot" [class.timeline-danger]="event.newAccountStatus === 'suspended'" aria-hidden="true"></span>
+              <div>
+                <strong>{{ event.action.replaceAll('_', ' ') | titlecase }}</strong>
+                <span>
+                  Approval {{ event.previousApprovalStatus }} → {{ event.newApprovalStatus }} ·
+                  Account {{ event.previousAccountStatus }} → {{ event.newAccountStatus }}
+                </span>
+                @if (event.reason) {
+                  <span>Reason: {{ event.reason }}</span>
+                }
+              </div>
+              <time [attr.datetime]="event.createdAt">{{ event.createdAt | date: 'medium' }}</time>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+
+    <div class="detail-grid history-grid">
+      <section id="repair-requests" class="detail-card" aria-labelledby="repair-history-title">
+        <h2 id="repair-history-title">
+          {{
+            profile.accountType === 'shop' ? 'Repair requests received' : 'Repair request history'
+          }}
+        </h2>
+        @if (profile.repairActivity.length) {
+          <ul class="history-list">
+            @for (repair of profile.repairActivity; track repair.id) {
+              <li>
+                <strong>{{ repair.appliance }}</strong>
+                <span>{{ repair.description }}</span>
+                <span>Status: {{ repair.status | titlecase }}</span>
+                @if (repair.repairStatus) {
+                  <span>Repair status: {{ repair.repairStatus.replaceAll('_', ' ') | titlecase }}</span>
+                }
+                <time>{{ repair.createdAt | date: 'mediumDate' }}</time>
+                @if (repair.repairStatus) {
+                  <a class="repair-status-link" [routerLink]="['/admin/repair-jobs']" [queryParams]="{ requestId: repair.id }">
+                    Repair Statuses
+                  </a>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="history-empty">No repair requests are recorded.</p>
+        }
+      </section>
+
+      <section id="quotations" class="detail-card" aria-labelledby="quotation-history-title">
+        <h2 id="quotation-history-title">
+          {{ profile.accountType === 'shop' ? 'Quotations submitted' : 'Quotations received' }}
+        </h2>
+        @if (profile.quotationActivity.length) {
+          <ul class="history-list">
+            @for (quotation of profile.quotationActivity; track quotation.id) {
+              <li>
+                <strong>
+                  {{ quotation.amount | currency: quotation.currency }} ·
+                  {{ quotation.status | titlecase }}
+                </strong>
+                <span>Repair request {{ quotation.repairRequestId }}</span>
+                <time>Submitted {{ quotation.createdAt | date: 'mediumDate' }}</time>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="history-empty">No quotations are recorded.</p>
+        }
+      </section>
+    </div>
+
+    <section id="payments" class="detail-card payment-card" aria-labelledby="payment-title">
+      <h2 id="payment-title"><span class="card-icon" aria-hidden="true">▣</span>Payment details</h2>
+      @if (profile.registration; as registration) {
+        <dl>
+          <div><dt>Payment status</dt><dd><span class="status-badge" [class.active]="registration.paymentStatus === 'paid'">{{ registration.paymentStatus | titlecase }}</span></dd></div>
+          <div>
+            <dt>Amount paid</dt>
+            <dd>
+              @if (registration.paymentAmountCents !== null) {
+                {{ registration.paymentAmountCents / 100 | currency: registration.paymentCurrency || 'USD' }}
+              } @else { — }
+            </dd>
+          </div>
+          <div><dt>Paid at</dt><dd>{{ registration.paidAt ? (registration.paidAt | date: 'medium') : '—' }}</dd></div>
+        </dl>
+      } @else {
+        <p class="history-empty">No registration payment details are available for this account.</p>
+      }
+    </section>
+  }
+</section>
