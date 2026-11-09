@@ -44,7 +44,7 @@ export interface AdminRegistrationRequest {
   accountStatus: 'active' | 'inactive' | 'suspended' | null;
   registrationStatus: 'pending' | 'approved' | 'declined';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
-  subscriptionPlan: 'Praxio Shop monthly subscription' | null;
+  subscriptionPlan: 'Reparo Shop monthly subscription' | null;
   paymentAmountCents: number | null;
   paymentCurrency: string | null;
   paidAt: string | null;

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ShopRepairRequestPage, ShopRequestFilters } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { Subject, Subscription, timer, takeUntil } from 'rxjs';
@@ -38,6 +38,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   readonly pageData = signal<ShopRepairRequestPage | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
+  readonly completedRepairs = signal(false);
   readonly appliedFilters = signal<FilterValues>({});
   readonly filterConfig: FilterConfig = {
     title: 'Repair request filters',
@@ -62,7 +63,6 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
           { label: 'Ready for pickup', value: 'ready_for_pickup' },
           { label: 'Picked up', value: 'picked_up' },
           { label: 'Completed', value: 'completed' },
-          { label: 'Issue reported', value: 'disputed' },
         ],
       },
     ],
@@ -77,6 +77,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   constructor(
     private readonly requestsService: ShopRepairRequestsService,
     realtime: NotificationRealtimeService,
+    private readonly route: ActivatedRoute,
   ) {
     this.realtimeSubscription = realtime.notifications$.subscribe((notification) => {
       if (notification.type === 'new_repair_request') {
@@ -86,6 +87,11 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (this.route.snapshot.data['completedOnly'] === true) {
+      this.repairStatusFilter = 'completed';
+      this.completedRepairs.set(true);
+      this.appliedFilters.set({ repairStatus: 'completed' });
+    }
     timer(0, 5000)
       .pipe(takeUntil(this.destroyed))
       .subscribe(() => this.load(true));
@@ -144,11 +150,16 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   }
 
   applyFilters(filters: FilterValues): void {
-    if (JSON.stringify(this.appliedFilters()) === JSON.stringify(filters)) return;
-    this.appliedFilters.set(filters);
+    const effectiveFilters = this.completedRepairs()
+      ? { ...filters, repairStatus: 'completed' }
+      : filters;
+    if (JSON.stringify(this.appliedFilters()) === JSON.stringify(effectiveFilters)) return;
+    this.appliedFilters.set(effectiveFilters);
     this.applianceFilter =
-      typeof filters['appliance'] === 'string' ? filters['appliance'].trim() : '';
-    const repairStatus = filters['repairStatus'];
+      typeof effectiveFilters['appliance'] === 'string'
+        ? effectiveFilters['appliance'].trim()
+        : '';
+    const repairStatus = effectiveFilters['repairStatus'];
     this.repairStatusFilter =
       typeof repairStatus === 'string' &&
       [
@@ -164,11 +175,10 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
         'ready_for_pickup',
         'picked_up',
         'completed',
-        'disputed',
       ].includes(repairStatus)
         ? (repairStatus as ShopRequestFilters['repairStatus'])
         : undefined;
-    const requestDate = filters['requestDate'];
+    const requestDate = effectiveFilters['requestDate'];
     this.fromDate =
       requestDate && typeof requestDate === 'object' && 'from' in requestDate
         ? (requestDate.from ?? '')

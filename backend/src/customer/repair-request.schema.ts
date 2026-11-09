@@ -67,8 +67,9 @@ export const REPAIR_JOB_STATUSES = [
   'ready_for_pickup',
   'picked_up',
   'completed',
-  'disputed',
 ] as const;
+
+export const LEGACY_REPAIR_JOB_STATUSES = ['disputed'] as const;
 
 @Schema({ _id: false })
 export class RepairEstimatePart {
@@ -283,10 +284,12 @@ export const RepairCustomerVerificationSchema = SchemaFactory.createForClass(
 export class RepairJob {
   @Prop({
     type: String,
-    enum: REPAIR_JOB_STATUSES,
+    enum: [...REPAIR_JOB_STATUSES, ...LEGACY_REPAIR_JOB_STATUSES],
     default: 'inspection_pending',
   })
-  status!: (typeof REPAIR_JOB_STATUSES)[number];
+  status!:
+    | (typeof REPAIR_JOB_STATUSES)[number]
+    | (typeof LEGACY_REPAIR_JOB_STATUSES)[number];
 
   @Prop({ type: Types.ObjectId, ref: 'RepairQuotation', required: true })
   acceptedQuotationId!: Types.ObjectId;

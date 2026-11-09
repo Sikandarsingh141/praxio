@@ -1,8 +1,8 @@
 <div class="role-portal shop-portal">
   <header class="portal-header">
-    <a class="portal-brand" routerLink="/shop" aria-label="Praxio shop portal">
-      <span class="brand-mark">P</span>
-      <span>Praxio <small>SHOP PORTAL</small></span>
+    <a class="portal-brand" routerLink="/shop" aria-label="Reparo shop portal">
+      <span class="brand-mark" aria-hidden="true"><img src="/reparo-mark.svg" alt="" /></span>
+      <span>Repar<span class="brand-accent">o</span> <small>SHOP PORTAL</small></span>
     </a>
     <form
       class="global-search"
@@ -115,7 +115,12 @@
         </svg>
         Overview
       </a>
-      <a class="portal-nav" routerLink="/shop/repair-requests" routerLinkActive="active">
+      <a
+        class="portal-nav"
+        routerLink="/shop/repair-requests"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
         </svg>
@@ -127,11 +132,27 @@
         </svg>
         Quotations
       </a>
-      <a class="portal-nav" routerLink="/shop/disputes" routerLinkActive="active">
+      <a
+        class="portal-nav"
+        routerLink="/shop/disputes"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3 3.5 7v5c0 5 3.6 8 8.5 9 4.9-1 8.5-4 8.5-9V7zM12 8v5M12 16h.01" />
         </svg>
         Disputes
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/shop/repair-requests/completed"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m5 12 4 4L19 6M4 3h16v18H4z" />
+        </svg>
+        Completed Repairs
       </a>
       <a class="portal-nav" routerLink="/shop/reviews" routerLinkActive="active">
         <svg viewBox="0 0 24 24" aria-hidden="true">

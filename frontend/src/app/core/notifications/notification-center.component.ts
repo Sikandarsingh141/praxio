@@ -72,7 +72,7 @@ import { NotificationRealtimeService } from './notification-realtime.service';
               <div>
                 <strong>Enable browser notifications</strong>
                 <p>
-                  Receive alerts while using Praxio. Push notifications when the app is closed
+                  Receive alerts while using Reparo. Push notifications when the app is closed
                   require Firebase Cloud Messaging setup.
                 </p>
                 @if (pushMessage()) {

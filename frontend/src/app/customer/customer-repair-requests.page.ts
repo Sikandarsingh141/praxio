@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   customerRepairRequestStatusLabel,
@@ -16,7 +16,7 @@ import {
   FilterValues,
 } from '../shared/common-filter.component';
 
-type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed' | 'disputed';
+type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed';
 
 @Component({
   selector: 'app-customer-repair-requests',
@@ -28,12 +28,12 @@ type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed' | 'disputed
 export class CustomerRepairRequestsPage implements OnInit {
   readonly requests = signal<CustomerRepairRequest[]>([]);
   readonly selectedStatus = signal<RequestStatusTab>('all');
+  readonly completedOnly = signal(false);
   readonly statusTabs: Array<{ key: RequestStatusTab; label: string }> = [
     { key: 'all', label: 'All' },
     { key: 'open', label: 'Open' },
     { key: 'in_progress', label: 'In Progress' },
     { key: 'completed', label: 'Completed' },
-    { key: 'disputed', label: 'Disputed' },
   ];
   readonly sortOrder = signal<'newest' | 'oldest'>('newest');
   readonly visibleRequests = computed(() => {
@@ -44,12 +44,10 @@ export class CustomerRepairRequestsPage implements OnInit {
         case 'in_progress':
           return (
             !!request.repairJob &&
-            !['completed', 'repair_declined', 'disputed'].includes(request.repairJob.status)
+            !['completed', 'repair_declined'].includes(request.repairJob.status)
           );
         case 'completed':
           return this.requestStatusLabel(request) === 'Completed';
-        case 'disputed':
-          return this.requestStatusLabel(request) === 'Disputed';
         default:
           return true;
       }
@@ -112,7 +110,6 @@ export class CustomerRepairRequestsPage implements OnInit {
           { label: 'Ready for pickup', value: 'ready_for_pickup' },
           { label: 'Picked up', value: 'picked_up' },
           { label: 'Completed', value: 'completed' },
-          { label: 'Issue reported', value: 'disputed' },
         ],
       },
       { key: 'appliance', label: 'Device category', type: 'text' },
@@ -120,9 +117,16 @@ export class CustomerRepairRequestsPage implements OnInit {
     ],
   };
 
-  constructor(private readonly portal: CustomerPortalService) {}
+  constructor(
+    private readonly portal: CustomerPortalService,
+    private readonly route: ActivatedRoute,
+  ) {}
 
   ngOnInit(): void {
+    if (this.route.snapshot.data['completedOnly'] === true) {
+      this.completedOnly.set(true);
+      this.selectedStatus.set('completed');
+    }
     this.loadRequests();
   }
 
@@ -171,12 +175,10 @@ export class CustomerRepairRequestsPage implements OnInit {
         case 'in_progress':
           return (
             !!request.repairJob &&
-            !['completed', 'repair_declined', 'disputed'].includes(request.repairJob.status)
+            !['completed', 'repair_declined'].includes(request.repairJob.status)
           );
         case 'completed':
           return this.requestStatusLabel(request) === 'Completed';
-        case 'disputed':
-          return this.requestStatusLabel(request) === 'Disputed';
       }
     }).length;
   }
@@ -337,7 +339,6 @@ export class CustomerRepairRequestsPage implements OnInit {
         'ready_for_pickup',
         'picked_up',
         'completed',
-        'disputed',
       ].includes(value)
       ? (value as NonNullable<CustomerRepairRequestFilters['repairStatus']>)
       : undefined;

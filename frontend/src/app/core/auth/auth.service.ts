@@ -87,6 +87,17 @@ export class AuthService {
       .pipe(map((response) => response.data.profile));
   }
 
+  uploadMyShopImage(image: File): Observable<ShopProfile> {
+    const formData = new FormData();
+    formData.append('image', image);
+    return this.http
+      .post<ApiEnvelope<{ profile: ShopProfile }>>(
+        `${environment.apiBaseUrl}/shops/my-profile-image`,
+        formData,
+      )
+      .pipe(map((response) => response.data.profile));
+  }
+
   updateMyProfile(fullName: string): Observable<UserProfile> {
     return this.http
       .patch<ApiEnvelope<{ user: UserProfile }>>(`${environment.apiBaseUrl}/users/me/profile`, {

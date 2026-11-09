@@ -7,7 +7,9 @@ import {
   DisputeAttachment,
   DisputeListFilters,
   DisputeListResult,
+  DisputePriority,
   DisputeRole,
+  DisputeStatus,
   RepairDispute,
 } from './disputes.models';
 
@@ -85,6 +87,23 @@ export class DisputesService {
       .pipe(map((response) => response.data));
   }
 
+  respondAsShop(
+    id: string,
+    input: {
+      message: string;
+      explanation: string;
+      proposedResolution?: string;
+      attachments?: DisputeAttachment[];
+    },
+  ): Observable<RepairDispute> {
+    return this.http
+      .post<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/shop/disputes/${encodeURIComponent(id)}/response`,
+        input,
+      )
+      .pipe(map((response) => response.data));
+  }
+
   startReinspection(id: string): Observable<RepairDispute> {
     return this.patchShop(id, 'reinspection/start');
   }
@@ -93,13 +112,8 @@ export class DisputesService {
     id: string,
     input: {
       findings: string;
-      identifiedProblem: string;
       requiredRepairWork: string;
-      partsRequired?: string;
-      labourCharges?: number;
-      otherCharges?: number;
       estimatedCompletionTime?: string;
-      message?: string;
       attachments?: DisputeAttachment[];
     },
   ): Observable<RepairDispute> {
@@ -199,6 +213,78 @@ export class DisputesService {
       .post<ApiEnvelope<RepairDispute>>(
         `${this.baseUrl}/admin/disputes/${encodeURIComponent(id)}/internal-notes`,
         { message },
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  updateAdminStatus(
+    id: string,
+    input: { status: DisputeStatus; reason: string; priority?: DisputePriority },
+  ): Observable<RepairDispute> {
+    return this.http
+      .patch<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/admin/disputes/${encodeURIComponent(id)}/status`,
+        input,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  proposeResolution(
+    role: DisputeRole,
+    id: string,
+    input: {
+      type: string;
+      description: string;
+      amount?: number;
+      responsibleParty: string;
+      notes: string;
+      documents?: DisputeAttachment[];
+    },
+  ): Observable<RepairDispute> {
+    return this.http
+      .post<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}/resolution`,
+        input,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  decideResolution(
+    role: DisputeRole,
+    id: string,
+    input: { decision: 'accept' | 'reject'; reason?: string },
+  ): Observable<RepairDispute> {
+    return this.http
+      .patch<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}/resolution/decision`,
+        input,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  resolveDispute(
+    role: DisputeRole,
+    id: string,
+    input: {
+      completionNotes: string;
+      refundTransactionId?: string;
+      requiredActionCompleted?: boolean;
+      documents?: DisputeAttachment[];
+    },
+  ): Observable<RepairDispute> {
+    return this.http
+      .patch<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}/resolve`,
+        input,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  closeAsAdmin(id: string, reason: string): Observable<RepairDispute> {
+    return this.http
+      .patch<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/admin/disputes/${encodeURIComponent(id)}/close`,
+        { reason },
       )
       .pipe(map((response) => response.data));
   }

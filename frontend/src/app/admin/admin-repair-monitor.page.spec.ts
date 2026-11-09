@@ -59,7 +59,6 @@ describe('AdminRepairMonitorPage', () => {
     repairStatuses: [
       { status: 'in_progress', count: 4 },
       { status: 'completed', count: 3 },
-      { status: 'disputed', count: 1 },
     ],
     quotationStatuses: [],
     categories: [],
@@ -108,7 +107,7 @@ describe('AdminRepairMonitorPage', () => {
     expect(text).toContain('3');
     expect(text).toContain('Completed');
     expect(text).toContain('1');
-    expect(text).toContain('Disputed');
+    expect(text).not.toContain('Disputed');
     expect(text).toContain('No repair jobs match this status.');
   });
 

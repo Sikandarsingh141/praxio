@@ -20,6 +20,7 @@ import {
   DISPUTE_CATEGORIES,
   DISPUTE_PRIORITIES,
   DISPUTE_STATUSES,
+  DISPUTE_WORKFLOW_STATUSES,
 } from '../schemas/dispute.schema';
 
 export class DisputeAttachmentDto {
@@ -103,8 +104,8 @@ export class ShopDisputeResponseDto extends DisputeMessageDto {
 }
 
 export class AdminDisputeStatusDto {
-  @IsIn(DISPUTE_STATUSES)
-  status!: (typeof DISPUTE_STATUSES)[number];
+  @IsIn(DISPUTE_WORKFLOW_STATUSES)
+  status!: (typeof DISPUTE_WORKFLOW_STATUSES)[number];
 
   @IsString()
   @MinLength(1)
@@ -216,10 +217,10 @@ export class DisputeReinspectionDto {
   @MaxLength(3000)
   findings!: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(1)
   @MaxLength(3000)
-  identifiedProblem!: string;
+  identifiedProblem?: string;
 
   @IsString()
   @MinLength(1)

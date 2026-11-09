@@ -24,6 +24,7 @@ describe('UsersService', () => {
     findOne: jest.fn().mockReturnValue(emailQuery),
     findById: jest.fn().mockReturnValue(idQuery),
     findByIdAndUpdate: jest.fn().mockReturnValue(updateQuery),
+    findOneAndUpdate: jest.fn().mockReturnValue(updateQuery),
   };
 
   beforeEach(async () => {
@@ -134,5 +135,16 @@ describe('UsersService', () => {
     await expect(
       service.updateProfile('not-an-object-id', { fullName: 'Invalid' }),
     ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('updates shop image data only for shop accounts', async () => {
+    const shopImageData = 'data:image/png;base64,abc';
+    await service.updateShopImage('507f1f77bcf86cd799439011', shopImageData);
+
+    expect(model.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: '507f1f77bcf86cd799439011', accountType: 'shop' },
+      { $set: { 'shopDetails.shopImageData': shopImageData } },
+      { new: true, runValidators: true },
+    );
   });
 });

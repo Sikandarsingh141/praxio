@@ -91,6 +91,14 @@ export const routes: Routes = [
         data: { accountType: 'customer', customerAccess: 'portal' },
       },
       {
+        path: 'repair-requests/completed',
+        loadComponent: () =>
+          import('./customer/customer-repair-requests.page').then(
+            (module) => module.CustomerRepairRequestsPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', completedOnly: true },
+      },
+      {
         path: 'repair-requests/:id',
         loadComponent: () =>
           import('./customer/customer-repair-job.page').then(
@@ -167,6 +175,15 @@ export const routes: Routes = [
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
+        path: 'repair-requests/completed',
+        loadComponent: () =>
+          import('./shop/shop-repair-requests.page').then(
+            (module) => module.ShopRepairRequestsPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', completedOnly: true },
       },
       {
         path: 'repair-requests/:id',

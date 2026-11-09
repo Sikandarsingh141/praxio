@@ -2,7 +2,9 @@
   <header class="page-heading">
     <div>
       <span class="eyebrow">YOUR REPAIRS</span>
-      <h1 id="requests-title">My Repair Requests</h1>
+      <h1 id="requests-title">
+        {{ selectedStatus() === 'completed' ? 'Completed Repairs' : 'My Repair Requests' }}
+      </h1>
       <p>Track and manage all your repair requests in one place.</p>
     </div>
     <a class="primary-link" routerLink="/customer/shops">
@@ -12,20 +14,22 @@
   </header>
 
   <div class="request-toolbar">
-    <nav class="status-tabs" aria-label="Filter requests by status" role="tablist">
-      @for (tab of statusTabs; track tab.key) {
-        <button
-          type="button"
-          role="tab"
-          class="status-tab"
-          [class.selected]="selectedStatus() === tab.key"
-          [attr.aria-selected]="selectedStatus() === tab.key"
-          (click)="selectStatus(tab.key)"
-        >
-          {{ tab.label }} <span>{{ statusCount(tab.key) }}</span>
-        </button>
-      }
-    </nav>
+    @if (!completedOnly()) {
+      <nav class="status-tabs" aria-label="Filter requests by status" role="tablist">
+        @for (tab of statusTabs; track tab.key) {
+          <button
+            type="button"
+            role="tab"
+            class="status-tab"
+            [class.selected]="selectedStatus() === tab.key"
+            [attr.aria-selected]="selectedStatus() === tab.key"
+            (click)="selectStatus(tab.key)"
+          >
+            {{ tab.label }} <span>{{ statusCount(tab.key) }}</span>
+          </button>
+        }
+      </nav>
+    }
     <div class="request-controls">
       <app-common-filter
         [config]="filterConfig"
@@ -261,7 +265,6 @@
               class="status"
               [class.active]="requestStatusLabel(request) === 'Active'"
               [class.completed]="requestStatusLabel(request) === 'Completed'"
-              [class.disputed]="requestStatusLabel(request) === 'Disputed'"
               [class.cancelled]="requestStatusLabel(request) === 'Cancelled'"
             >
               {{ requestStatusLabel(request) }}

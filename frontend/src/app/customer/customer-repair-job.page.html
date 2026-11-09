@@ -120,8 +120,7 @@
         repair.repairJob.status === 'repair_completed' ||
         repair.repairJob.status === 'ready_for_pickup' ||
         repair.repairJob.status === 'picked_up' ||
-        repair.repairJob.status === 'completed' ||
-        repair.repairJob.status === 'disputed'
+        repair.repairJob.status === 'completed'
       ) {
         <div class="job-grid">
           <section class="panel">
@@ -139,11 +138,6 @@
                 </li>
               }
             </ol>
-            @if (repair.repairJob.status === 'disputed') {
-              <p class="feedback error">
-                Issue reported: {{ repair.repairJob.disputeDescription }}
-              </p>
-            }
           </section>
 
           <section class="panel">

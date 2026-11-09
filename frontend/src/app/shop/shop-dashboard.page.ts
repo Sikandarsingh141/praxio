@@ -52,7 +52,6 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
           'repair_marked_complete',
           'repair_ready_for_pickup',
           'repair_picked_up',
-          'repair_disputed',
           'repair_review_received',
           'repair_job_completed',
         ].includes(notification.type)

@@ -102,6 +102,7 @@ describe('AuthService', () => {
       accountLifecycleStatus: 'suspended',
       shopDetails: {
         shopName: 'Example Repairs',
+        shopImageData: 'data:image/png;base64,c2hvcA==',
         address: 'Main Road',
         city: 'Pune',
         state: 'Maharashtra',
@@ -119,6 +120,7 @@ describe('AuthService', () => {
     });
 
     await expect(service.getShopProfile('shop-id')).resolves.toMatchObject({
+      shopImageData: 'data:image/png;base64,c2hvcA==',
       adminApprovalStatus: 'approved',
       accountLifecycleStatus: 'suspended',
     });

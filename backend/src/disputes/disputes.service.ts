@@ -3,10 +3,14 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, UpdateQuery } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types, UpdateQuery, mongo } from 'mongoose';
+import { Readable } from 'node:stream';
+import { finished } from 'node:stream/promises';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   RepairQuotation,
@@ -39,7 +43,7 @@ import {
   DisputeMessage,
 } from './schemas/dispute.schema';
 
-type DisputeRole = 'customer' | 'shop' | 'admin';
+export type DisputeRole = 'customer' | 'shop' | 'admin';
 type DisputeStatus = (typeof DISPUTE_STATUSES)[number];
 type DisputeActor = { userId: string; role: DisputeRole };
 type DisputeEvent = {
@@ -69,50 +73,71 @@ const ACTIVE_STATUSES: DisputeStatus[] = [
 const MAX_DISPUTE_MESSAGES = 200;
 const MAX_DISPUTE_HISTORY = 500;
 const MAX_ATTACHMENT_DATA_LENGTH = 10_000_000;
+const DISPUTE_EVIDENCE_BUCKET = 'disputeEvidence';
 
 const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
-  OPEN: ['ACCEPTED', 'REJECTED'],
-  ACCEPTED: ['REINSPECTION_IN_PROGRESS', 'REJECTED'],
-  REJECTED: ['REOPENED'],
+  OPEN: [
+    'UNDER_REVIEW',
+    'AWAITING_SHOP_RESPONSE',
+    'AWAITING_CUSTOMER_RESPONSE',
+    'RESOLUTION_PROPOSED',
+    'ACCEPTED',
+    'REJECTED',
+    'CLOSED',
+  ],
+  ACCEPTED: ['REINSPECTION_IN_PROGRESS', 'REJECTED', 'CLOSED'],
+  REJECTED: ['REOPENED', 'CLOSED'],
   REINSPECTION_IN_PROGRESS: [
     'AWAITING_CUSTOMER_APPROVAL',
     'REPAIR_IN_PROGRESS',
+    'CLOSED',
   ],
   AWAITING_CUSTOMER_APPROVAL: [
     'REINSPECTION_IN_PROGRESS',
     'REPAIR_IN_PROGRESS',
+    'CLOSED',
   ],
-  REPAIR_IN_PROGRESS: ['CUSTOMER_VERIFICATION_PENDING'],
-  CUSTOMER_VERIFICATION_PENDING: ['CUSTOMER_CONFIRMED', 'REOPENED'],
+  REPAIR_IN_PROGRESS: ['CUSTOMER_VERIFICATION_PENDING', 'CLOSED'],
+  CUSTOMER_VERIFICATION_PENDING: ['CUSTOMER_CONFIRMED', 'REOPENED', 'CLOSED'],
   CUSTOMER_CONFIRMED: ['REOPENED', 'CLOSED'],
-  REOPENED: ['REINSPECTION_IN_PROGRESS', 'REJECTED'],
+  REOPENED: ['REINSPECTION_IN_PROGRESS', 'REJECTED', 'CLOSED'],
   CLOSED: [],
   // Keep old transitions available only to preserve existing records.
   UNDER_REVIEW: [
     'AWAITING_CUSTOMER_RESPONSE',
     'AWAITING_SHOP_RESPONSE',
     'RESOLUTION_PROPOSED',
+    'RESOLVED',
+    'CLOSED',
   ],
   AWAITING_CUSTOMER_RESPONSE: [
     'UNDER_REVIEW',
     'AWAITING_SHOP_RESPONSE',
     'RESOLUTION_PROPOSED',
+    'RESOLVED',
+    'CLOSED',
   ],
   AWAITING_SHOP_RESPONSE: [
     'UNDER_REVIEW',
     'AWAITING_CUSTOMER_RESPONSE',
     'RESOLUTION_PROPOSED',
+    'RESOLVED',
+    'CLOSED',
   ],
   RESOLUTION_PROPOSED: [
     'UNDER_REVIEW',
     'AWAITING_CUSTOMER_RESPONSE',
     'AWAITING_SHOP_RESPONSE',
+    'RESOLVED',
+    'CLOSED',
   ],
   RESOLVED: ['CLOSED', 'REOPENED'],
 };
 
 @Injectable()
 export class DisputesService {
+  private readonly logger = new Logger(DisputesService.name);
+
   constructor(
     @InjectModel(Dispute.name)
     private readonly disputes: Model<Dispute>,
@@ -123,7 +148,139 @@ export class DisputesService {
     @InjectModel(User.name)
     private readonly users: Model<User>,
     private readonly notifications: NotificationsService,
+    @InjectConnection()
+    private readonly connection: Connection,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    const disputesWithUnidentifiedCharges = await this.disputes
+      .find({
+        additionalCharges: {
+          $elemMatch: { _id: { $exists: false } },
+        },
+      })
+      .select('_id additionalCharges')
+      .lean()
+      .exec();
+
+    for (const dispute of disputesWithUnidentifiedCharges) {
+      const chargeIds: Record<string, Types.ObjectId> = {};
+      dispute.additionalCharges?.forEach((charge, index) => {
+        if (!charge._id) {
+          chargeIds[`additionalCharges.${index}._id`] = new Types.ObjectId();
+        }
+      });
+      if (Object.keys(chargeIds).length) {
+        await this.disputes
+          .updateOne(
+            {
+              _id: dispute._id,
+              additionalCharges: {
+                $elemMatch: { _id: { $exists: false } },
+              },
+            },
+            { $set: chargeIds },
+          )
+          .exec();
+      }
+    }
+
+    const legacyRequests = await this.repairRequests
+      .find({ 'repairJob.status': 'disputed' })
+      .lean()
+      .exec();
+
+    for (const request of legacyRequests) {
+      if (await this.disputes.exists({ repairRequestId: request._id })) {
+        continue;
+      }
+
+      const quotationId =
+        request.repairJob?.acceptedQuotationId ?? request.acceptedQuotationId;
+      const quotation = quotationId
+        ? await this.repairQuotations.findOne({
+            _id: quotationId,
+            repairRequestId: request._id,
+          })
+        : null;
+      const shopId =
+        quotation?.shopId ??
+        request.shopResponses?.find(
+          (response) => response.status === 'customer_accepted',
+        )?.shopId;
+
+      if (!shopId) {
+        this.logger.warn(
+          `Legacy dispute for repair request ${request._id.toString()} was left in place because its assigned shop could not be identified.`,
+        );
+        continue;
+      }
+
+      const createdAt =
+        request.repairJob?.history?.find((event) =>
+          /disput|issue/i.test(event.action),
+        )?.at ??
+        request.repairJob?.pickedUpAt ??
+        request.updatedAt ??
+        new Date();
+      const description =
+        request.repairJob?.disputeDescription?.trim() ||
+        'A dispute was recorded on this repair job before the dispute center was introduced.';
+      const disputeId = new Types.ObjectId();
+      const dispute = new this.disputes({
+        _id: disputeId,
+        reference: this.reference(disputeId, createdAt),
+        activeIssueKey: `legacy:${request._id.toString()}`,
+        repairRequestId: request._id,
+        customerId: request.customerId,
+        shopId,
+        category: 'other',
+        subject: 'Legacy repair dispute',
+        normalizedSubject: this.normalizeSubject('Legacy repair dispute'),
+        description,
+        expectedResolution:
+          'Please review the original repair issue and contact the customer.',
+        attachments: [],
+        customerComments: description,
+        status: 'OPEN',
+        priority: 'normal',
+        messages: [
+          {
+            authorId: request.customerId,
+            authorRole: 'customer',
+            message: description,
+            attachments: [],
+            internal: false,
+            createdAt,
+          },
+        ],
+        statusHistory: [
+          {
+            from: 'NONE',
+            to: 'OPEN',
+            actorId: request.customerId,
+            actorRole: 'customer',
+            at: createdAt,
+          },
+        ],
+        internalNotes: [],
+        createdAt,
+        updatedAt: request.updatedAt ?? createdAt,
+      });
+
+      try {
+        await dispute.save();
+      } catch (error) {
+        if (
+          this.isDuplicateKeyError(error) &&
+          (await this.disputes.exists({ repairRequestId: request._id }))
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
 
   async createCustomerDispute(
     actor: DisputeActor,
@@ -187,7 +344,7 @@ export class DisputesService {
         dto.expectedResolution?.trim() ||
         'Please inspect the device and address the reported issue.',
       amountInDispute: dto.amountInDispute,
-      attachments: this.validateAttachments(dto.attachments ?? []),
+      attachments: await this.validateAttachments(dto.attachments ?? [], actor),
       customerComments: dto.customerComments?.trim(),
       status: 'OPEN',
       priority: 'normal',
@@ -236,7 +393,7 @@ export class DisputesService {
       dispute,
       actor,
       {},
-      'ACCEPTED',
+      'UNDER_REVIEW',
       'The shop accepted the dispute for reinspection.',
     );
     await this.notifyRoles(
@@ -259,7 +416,7 @@ export class DisputesService {
     if (dispute.status !== 'OPEN') {
       throw new BadRequestException('Only an open dispute can be rejected.');
     }
-    const attachments = this.validateAttachments(dto.attachments ?? []);
+    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertAttachmentCapacity(dispute, attachments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -292,16 +449,22 @@ export class DisputesService {
   async startReinspection(actor: DisputeActor, id: string) {
     this.assertShop(actor);
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'ACCEPTED' && dispute.status !== 'REOPENED') {
+    if (
+      !['UNDER_REVIEW', 'ACCEPTED', 'REOPENED'].includes(dispute.status)
+    ) {
       throw new BadRequestException(
         'The shop can start reinspection only after accepting or reopening a dispute.',
       );
     }
+    const nextStatus =
+      dispute.status === 'ACCEPTED' || dispute.status === 'REOPENED'
+        ? 'REINSPECTION_IN_PROGRESS'
+        : 'AWAITING_SHOP_RESPONSE';
     const updated = await this.atomicUpdate(
       dispute,
       actor,
       {},
-      'REINSPECTION_IN_PROGRESS',
+      nextStatus,
       'The shop started reinspection.',
     );
     await this.notifyRoles(
@@ -321,7 +484,10 @@ export class DisputesService {
   ) {
     this.assertShop(actor);
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'REINSPECTION_IN_PROGRESS') {
+    if (
+      dispute.status !== 'REINSPECTION_IN_PROGRESS' &&
+      dispute.status !== 'AWAITING_SHOP_RESPONSE'
+    ) {
       throw new BadRequestException(
         'Reinspection findings can only be submitted while reinspection is in progress.',
       );
@@ -329,7 +495,7 @@ export class DisputesService {
     const lastStatusChange = dispute.statusHistory.at(-1);
     const lastReinspection = dispute.reinspections?.at(-1);
     if (
-      lastStatusChange?.to === 'REINSPECTION_IN_PROGRESS' &&
+      lastStatusChange?.to === dispute.status &&
       lastReinspection &&
       lastReinspection.submittedAt >= lastStatusChange.at
     ) {
@@ -337,25 +503,34 @@ export class DisputesService {
         'Reinspection findings have already been submitted for this inspection.',
       );
     }
-    const attachments = this.validateAttachments(dto.attachments ?? []);
+    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertAttachmentCapacity(dispute, attachments);
-    const updated = await this.atomicUpdate(dispute, actor, {
-      $push: {
-        reinspections: {
-          findings: dto.findings.trim(),
-          identifiedProblem: dto.identifiedProblem.trim(),
-          requiredRepairWork: dto.requiredRepairWork.trim(),
-          partsRequired: dto.partsRequired?.trim(),
-          labourCharges: dto.labourCharges,
-          otherCharges: dto.otherCharges,
-          estimatedCompletionTime: dto.estimatedCompletionTime?.trim(),
-          message: dto.message?.trim(),
-          attachments,
-          submittedBy: this.objectId(actor.userId),
-          submittedAt: new Date(),
+    const updated = await this.atomicUpdate(
+      dispute,
+      actor,
+      {
+        $push: {
+          reinspections: {
+            findings: dto.findings.trim(),
+            identifiedProblem:
+              dto.identifiedProblem?.trim() || dto.findings.trim(),
+            requiredRepairWork: dto.requiredRepairWork.trim(),
+            partsRequired: dto.partsRequired?.trim(),
+            labourCharges: dto.labourCharges,
+            otherCharges: dto.otherCharges,
+            estimatedCompletionTime: dto.estimatedCompletionTime?.trim(),
+            message: dto.message?.trim(),
+            attachments,
+            submittedBy: this.objectId(actor.userId),
+            submittedAt: new Date(),
+          },
         },
       },
-    });
+      dispute.status === 'AWAITING_SHOP_RESPONSE'
+        ? 'AWAITING_CUSTOMER_RESPONSE'
+        : undefined,
+      'The shop submitted reinspection findings.',
+    );
     await this.notifyRoles(
       ['customer'],
       updated,
@@ -373,7 +548,11 @@ export class DisputesService {
   ) {
     this.assertShop(actor);
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'REINSPECTION_IN_PROGRESS') {
+    if (
+      dispute.status !== 'REINSPECTION_IN_PROGRESS' &&
+      dispute.status !== 'AWAITING_CUSTOMER_RESPONSE' &&
+      dispute.status !== 'AWAITING_SHOP_RESPONSE'
+    ) {
       throw new BadRequestException(
         'Additional charges can only be requested after reinspection.',
       );
@@ -415,7 +594,11 @@ export class DisputesService {
           },
         },
       },
-      'AWAITING_CUSTOMER_APPROVAL',
+      dispute.status === 'AWAITING_CUSTOMER_RESPONSE'
+        ? undefined
+        : dispute.status === 'AWAITING_SHOP_RESPONSE'
+          ? 'AWAITING_CUSTOMER_RESPONSE'
+          : 'AWAITING_CUSTOMER_APPROVAL',
       'The shop requested customer approval for additional rework charges.',
     );
     await this.notifyRoles(
@@ -443,18 +626,28 @@ export class DisputesService {
       throw new NotFoundException('Additional-charge request not found.');
     }
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'AWAITING_CUSTOMER_APPROVAL') {
+    if (
+      dispute.status !== 'AWAITING_CUSTOMER_APPROVAL' &&
+      dispute.status !== 'AWAITING_CUSTOMER_RESPONSE'
+    ) {
       throw new BadRequestException(
         'There is no additional-charge request awaiting approval.',
       );
     }
     const now = new Date();
     const accepted = dto.decision === 'accept';
+    const nextStatus = accepted
+      ? undefined
+      : dispute.status === 'AWAITING_CUSTOMER_APPROVAL'
+        ? 'REINSPECTION_IN_PROGRESS'
+        : 'UNDER_REVIEW';
     if (!accepted) {
-      this.assertTransition(
-        'AWAITING_CUSTOMER_APPROVAL',
-        'REINSPECTION_IN_PROGRESS',
-      );
+      if (!nextStatus) {
+        throw new BadRequestException(
+          'The additional-charge decision cannot update the dispute status.',
+        );
+      }
+      this.assertTransition(dispute.status, nextStatus);
       if (dispute.statusHistory.length >= MAX_DISPUTE_HISTORY) {
         throw new BadRequestException(
           'This dispute has reached its status-history limit and requires support.',
@@ -466,7 +659,7 @@ export class DisputesService {
         {
           _id: dispute._id,
           customerId: this.objectId(actor.userId),
-          status: 'AWAITING_CUSTOMER_APPROVAL',
+          status: dispute.status,
           additionalCharges: {
             $elemMatch: {
               _id: new Types.ObjectId(chargeId),
@@ -484,15 +677,15 @@ export class DisputesService {
               (accepted
                 ? 'Customer approved the charges.'
                 : 'Customer declined the charges.'),
-            ...(accepted ? {} : { status: 'REINSPECTION_IN_PROGRESS' }),
+            ...(nextStatus ? { status: nextStatus } : {}),
           },
-          ...(accepted
+          ...(nextStatus === undefined
             ? {}
             : {
                 $push: {
                   statusHistory: {
-                    from: 'AWAITING_CUSTOMER_APPROVAL',
-                    to: 'REINSPECTION_IN_PROGRESS',
+                    from: dispute.status,
+                    to: nextStatus,
                     actorId: this.objectId(actor.userId),
                     actorRole: actor.role,
                     reason:
@@ -529,12 +722,16 @@ export class DisputesService {
     this.assertShop(actor);
     const dispute = await this.findAccessible(actor, id);
     const latestCharge = dispute.additionalCharges?.at(-1);
+    const newWorkflow =
+      dispute.status === 'AWAITING_CUSTOMER_RESPONSE' &&
+      (!latestCharge || latestCharge.status === 'accepted');
     if (
       dispute.status !== 'REINSPECTION_IN_PROGRESS' &&
       !(
         dispute.status === 'AWAITING_CUSTOMER_APPROVAL' &&
         latestCharge?.status === 'accepted'
-      )
+      ) &&
+      !newWorkflow
     ) {
       throw new BadRequestException(
         'Start rework after reinspection and any requested charges have been approved.',
@@ -544,7 +741,7 @@ export class DisputesService {
       dispute,
       actor,
       {},
-      'REPAIR_IN_PROGRESS',
+      newWorkflow ? 'AWAITING_SHOP_RESPONSE' : 'REPAIR_IN_PROGRESS',
       'The shop started the approved rework.',
     );
     await this.notifyRoles(
@@ -564,7 +761,10 @@ export class DisputesService {
   ) {
     this.assertShop(actor);
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'REPAIR_IN_PROGRESS') {
+    if (
+      dispute.status !== 'REPAIR_IN_PROGRESS' &&
+      dispute.status !== 'AWAITING_SHOP_RESPONSE'
+    ) {
       throw new BadRequestException(
         'Progress notes can only be added while rework is in progress.',
       );
@@ -574,7 +774,7 @@ export class DisputesService {
         'This dispute has reached its progress-history limit.',
       );
     }
-    const attachments = this.validateAttachments(dto.attachments ?? []);
+    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertAttachmentCapacity(dispute, attachments);
     const updated = await this.atomicUpdate(dispute, actor, {
       $push: {
@@ -606,10 +806,13 @@ export class DisputesService {
       throw new BadRequestException('Confirm that the device has been tested.');
     }
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'REPAIR_IN_PROGRESS') {
+    if (
+      dispute.status !== 'REPAIR_IN_PROGRESS' &&
+      dispute.status !== 'AWAITING_SHOP_RESPONSE'
+    ) {
       throw new BadRequestException('Only active rework can be completed.');
     }
-    const attachments = this.validateAttachments(dto.attachments ?? []);
+    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertAttachmentCapacity(dispute, attachments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -629,7 +832,9 @@ export class DisputesService {
           },
         },
       },
-      'CUSTOMER_VERIFICATION_PENDING',
+      dispute.status === 'AWAITING_SHOP_RESPONSE'
+        ? 'AWAITING_CUSTOMER_RESPONSE'
+        : 'CUSTOMER_VERIFICATION_PENDING',
       'The shop completed and tested the rework; customer verification is pending.',
     );
     await this.notifyRoles(
@@ -651,12 +856,15 @@ export class DisputesService {
       throw new ForbiddenException('Only the customer can verify the rework.');
     }
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'CUSTOMER_VERIFICATION_PENDING') {
+    if (
+      dispute.status !== 'CUSTOMER_VERIFICATION_PENDING' &&
+      dispute.status !== 'AWAITING_CUSTOMER_RESPONSE'
+    ) {
       throw new BadRequestException(
         'This dispute is not awaiting customer verification.',
       );
     }
-    const attachments = this.validateAttachments(dto.attachments ?? []);
+    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertAttachmentCapacity(dispute, attachments);
     const updated = await this.atomicUpdate(
       dispute,
@@ -671,7 +879,9 @@ export class DisputesService {
           },
         },
       },
-      'CUSTOMER_CONFIRMED',
+      dispute.status === 'AWAITING_CUSTOMER_RESPONSE'
+        ? 'RESOLVED'
+        : 'CUSTOMER_CONFIRMED',
       dto.message.trim(),
     );
     await this.notifyRoles(
@@ -697,6 +907,7 @@ export class DisputesService {
     const dispute = await this.findAccessible(actor, id);
     if (
       dispute.status !== 'CUSTOMER_VERIFICATION_PENDING' &&
+      dispute.status !== 'AWAITING_CUSTOMER_RESPONSE' &&
       dispute.status !== 'CUSTOMER_CONFIRMED' &&
       dispute.status !== 'REJECTED'
     ) {
@@ -704,7 +915,7 @@ export class DisputesService {
         'Report an unresolved issue after the shop has completed the rework.',
       );
     }
-    const attachments = this.validateAttachments(dto.attachments ?? []);
+    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertConversationCapacity(dispute, false, attachments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -784,13 +995,20 @@ export class DisputesService {
       this.disputes.countDocuments(filter),
     ]);
 
-    const summary =
-      actor.role === 'admin'
-        ? await this.disputes.aggregate([
-            { $match: filter },
-            { $group: { _id: '$status', count: { $sum: 1 } } },
-          ])
-        : undefined;
+    const summary = await this.disputes.aggregate([
+      {
+        $match: Object.fromEntries(
+          Object.entries(filter).filter(([key]) => key !== 'status'),
+        ),
+      },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]);
+    const summaryCounts = Object.fromEntries(
+      summary.map((row: { _id: string; count: number }) => [
+        row._id,
+        row.count,
+      ]),
+    );
 
     return {
       items: items.map((item) => this.visible(item, actor.role)),
@@ -800,16 +1018,13 @@ export class DisputesService {
         total,
         totalPages: Math.ceil(total / limit),
       },
-      ...(summary
-        ? {
-            summary: Object.fromEntries(
-              summary.map((row: { _id: string; count: number }) => [
-                row._id,
-                row.count,
-              ]),
-            ),
-          }
-        : {}),
+      summary: {
+        ...summaryCounts,
+        TOTAL: summary.reduce(
+          (sum: number, row: { count: number }) => sum + row.count,
+          0,
+        ),
+      },
     };
   }
 
@@ -873,6 +1088,27 @@ export class DisputesService {
     };
   }
 
+  async getAttachment(actor: DisputeActor, id: string, fileId: string) {
+    const dispute = await this.findAccessible(actor, id);
+    if (!Types.ObjectId.isValid(fileId)) {
+      throw new NotFoundException('Attachment not found.');
+    }
+    const attachment = this.findAttachmentReference(dispute, fileId);
+    if (!attachment?.fileId) {
+      throw new NotFoundException('Attachment not found.');
+    }
+    const bucket = this.gridFsBucket();
+    const exists = await this.database()
+      .collection(`${DISPUTE_EVIDENCE_BUCKET}.files`)
+      .findOne({ _id: new Types.ObjectId(fileId) });
+    if (!exists) throw new NotFoundException('Attachment not found.');
+    return {
+      stream: bucket.openDownloadStream(new Types.ObjectId(fileId)),
+      mimeType: attachment.mimeType,
+      name: attachment.name,
+    };
+  }
+
   async sendMessage(actor: DisputeActor, id: string, dto: DisputeMessageDto) {
     const dispute = await this.findAccessible(actor, id);
     this.assertActive(dispute);
@@ -881,7 +1117,7 @@ export class DisputesService {
       authorId,
       authorRole: actor.role,
       message: dto.message.trim(),
-      attachments: this.validateAttachments(dto.attachments ?? []),
+      attachments: await this.validateAttachments(dto.attachments ?? [], actor),
       internal: false,
       createdAt: new Date(),
     };
@@ -937,7 +1173,7 @@ export class DisputesService {
       explanation: dto.explanation.trim(),
       proposedResolution: dto.proposedResolution?.trim(),
       message: dto.message.trim(),
-      attachments: this.validateAttachments(dto.attachments ?? []),
+      attachments: await this.validateAttachments(dto.attachments ?? [], actor),
       respondedAt: now,
     };
     const message = {
@@ -987,7 +1223,7 @@ export class DisputesService {
       authorId: this.objectId(actor.userId),
       authorRole: 'admin',
       message: dto.message.trim(),
-      attachments: this.validateAttachments(dto.attachments ?? []),
+      attachments: await this.validateAttachments(dto.attachments ?? [], actor),
       internal: true,
       createdAt: new Date(),
     };
@@ -1012,11 +1248,7 @@ export class DisputesService {
       throw new ForbiddenException('Administrator access required.');
     }
     const dispute = await this.findAccessible(actor, id);
-    if (
-      dto.status === 'RESOLVED' ||
-      dto.status === 'CLOSED' ||
-      dto.status === 'REOPENED'
-    ) {
+    if (dto.status === 'RESOLVED' || dto.status === 'CLOSED') {
       throw new BadRequestException(
         'Use the dedicated resolve, close, or reopen action for this status.',
       );
@@ -1042,13 +1274,17 @@ export class DisputesService {
     id: string,
     dto: ProposeDisputeResolutionDto,
   ) {
-    if (actor.role === 'admin') {
-      throw new ForbiddenException(
-        'Only the customer or assigned shop can propose a resolution.',
+    const dispute = await this.findAccessible(actor, id);
+    if (dispute.resolution?.state === 'proposed') {
+      throw new ConflictException(
+        'An existing resolution proposal must be decided before another can be submitted.',
       );
     }
-    const dispute = await this.findAccessible(actor, id);
-    this.assertTransition(dispute.status, 'RESOLUTION_PROPOSED');
+    const proposedStatus =
+      actor.role === 'customer'
+        ? 'AWAITING_SHOP_RESPONSE'
+        : 'AWAITING_CUSTOMER_RESPONSE';
+    this.assertTransition(dispute.status, proposedStatus);
     if (
       ['partial_refund', 'full_refund'].includes(dto.type) &&
       dto.amount === undefined
@@ -1057,7 +1293,7 @@ export class DisputesService {
         'Enter the refund amount in the proposed resolution.',
       );
     }
-    const resolutionDocuments = this.validateAttachments(dto.documents ?? []);
+    const resolutionDocuments = await this.validateAttachments(dto.documents ?? [], actor);
     this.assertAttachmentCapacity(dispute, resolutionDocuments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -1070,7 +1306,11 @@ export class DisputesService {
           'resolution.amount': dto.amount,
           'resolution.responsibleParty': dto.responsibleParty,
           'resolution.notes': dto.notes.trim(),
-          'resolution.decision': 'mutual_acceptance',
+          'resolution.decision':
+            actor.role === 'admin' ? 'admin_decision' : 'mutual_acceptance',
+          ...(actor.role === 'admin'
+            ? { 'resolution.decisionExplanation': dto.notes.trim() }
+            : {}),
           'resolution.state': 'proposed',
           'resolution.documents': resolutionDocuments,
           'resolution.proposedAt': now,
@@ -1093,7 +1333,7 @@ export class DisputesService {
           'resolution.completionDocuments': 1,
         },
       },
-      'RESOLUTION_PROPOSED',
+      proposedStatus,
       `The ${actor.role} proposed a resolution.`,
     );
     await this.notifyRoles(
@@ -1118,7 +1358,10 @@ export class DisputesService {
     }
     const dispute = await this.findAccessible(actor, id);
     if (
-      dispute.status !== 'RESOLUTION_PROPOSED' ||
+      dispute.status !==
+        (actor.role === 'customer'
+          ? 'AWAITING_CUSTOMER_RESPONSE'
+          : 'AWAITING_SHOP_RESPONSE') ||
       dispute.resolution?.state !== 'proposed'
     ) {
       throw new BadRequestException(
@@ -1138,6 +1381,9 @@ export class DisputesService {
       actor.role === 'customer'
         ? 'resolution.customerRejectionReason'
         : 'resolution.shopRejectionReason';
+    if (dto.decision === 'accept' && dispute.resolution?.[actor.role === 'customer' ? 'customerAcceptedAt' : 'shopAcceptedAt']) {
+      throw new ConflictException('You have already accepted this resolution.');
+    }
     const update: UpdateQuery<Dispute> =
       dto.decision === 'accept'
         ? {
@@ -1151,6 +1397,7 @@ export class DisputesService {
             $set: {
               [rejectionField]:
                 dto.reason?.trim() || 'The proposal was rejected.',
+              'resolution.state': 'draft',
             },
             $unset: {
               'resolution.customerAcceptedAt': 1,
@@ -1163,7 +1410,14 @@ export class DisputesService {
       dispute,
       actor,
       update,
-      dto.decision === 'reject' ? 'UNDER_REVIEW' : undefined,
+      dto.decision === 'reject' ||
+        (actor.role === 'customer'
+          ? Boolean(dispute.resolution?.shopAcceptedAt)
+          : Boolean(dispute.resolution?.customerAcceptedAt))
+        ? 'UNDER_REVIEW'
+        : actor.role === 'customer'
+          ? 'AWAITING_SHOP_RESPONSE'
+          : 'AWAITING_CUSTOMER_RESPONSE',
       dto.decision === 'reject'
         ? `${actor.role} rejected the proposed resolution: ${dto.reason?.trim() || 'No reason given'}`
         : `${actor.role} accepted the proposed resolution.`,
@@ -1183,22 +1437,26 @@ export class DisputesService {
     id: string,
     dto: ResolveDisputeDto,
   ) {
-    if (actor.role === 'admin') {
-      throw new ForbiddenException(
-        'Only the customer or assigned shop can mark a resolution complete.',
-      );
-    }
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'RESOLUTION_PROPOSED') {
+    if (
+      ![
+        'UNDER_REVIEW',
+        'AWAITING_CUSTOMER_RESPONSE',
+        'AWAITING_SHOP_RESPONSE',
+      ].includes(dispute.status)
+    ) {
       throw new BadRequestException(
-        'A dispute must have a proposed resolution before it can be resolved.',
+        'A dispute must have an active proposed resolution before it can be resolved.',
       );
     }
     const resolution = dispute.resolution;
     if (!resolution?.type || resolution.state !== 'proposed') {
       throw new BadRequestException('A proposed resolution is required.');
     }
-    if (!resolution.customerAcceptedAt || !resolution.shopAcceptedAt) {
+    if (
+      actor.role !== 'admin' &&
+      (!resolution.customerAcceptedAt || !resolution.shopAcceptedAt)
+    ) {
       throw new BadRequestException(
         'Both parties must accept the proposed resolution before it can be resolved.',
       );
@@ -1221,7 +1479,7 @@ export class DisputesService {
         'Enter the refund amount in the proposed resolution.',
       );
     }
-    const completionDocuments = this.validateAttachments(dto.documents ?? []);
+    const completionDocuments = await this.validateAttachments(dto.documents ?? [], actor);
     this.assertAttachmentCapacity(dispute, completionDocuments);
     if (
       [
@@ -1266,9 +1524,17 @@ export class DisputesService {
   }
 
   async closeDispute(actor: DisputeActor, id: string, dto: CloseDisputeDto) {
-    this.assertShop(actor);
+    if (actor.role !== 'admin' && actor.role !== 'shop') {
+      throw new ForbiddenException(
+        'Only the assigned shop or an administrator can close a dispute.',
+      );
+    }
     const dispute = await this.findAccessible(actor, id);
-    if (dispute.status !== 'CUSTOMER_CONFIRMED') {
+    if (
+      actor.role === 'shop' &&
+      dispute.status !== 'CUSTOMER_CONFIRMED' &&
+      dispute.status !== 'RESOLVED'
+    ) {
       throw new BadRequestException(
         'The shop can close the dispute only after the customer confirms the rework.',
       );
@@ -1289,7 +1555,7 @@ export class DisputesService {
       ['customer'],
       updated,
       'Dispute closed',
-      `${updated.reference} has been closed by the repair shop.`,
+      `${updated.reference} has been closed by the ${actor.role}.`,
       'dispute_closed',
     );
     return this.visible(updated, actor.role);
@@ -1513,7 +1779,7 @@ export class DisputesService {
       : dispute.messages.length;
     if (count >= MAX_DISPUTE_MESSAGES) {
       throw new BadRequestException(
-        'This dispute has reached its message limit. Contact Praxio Support.',
+        'This dispute has reached its message limit. Contact Reparo Support.',
       );
     }
     this.assertAttachmentCapacity(dispute, attachments);
@@ -1540,7 +1806,10 @@ export class DisputesService {
       ),
     ];
     const totalLength = [...existing, ...additions].reduce(
-      (sum, attachment) => sum + attachment.data.length,
+      (sum, attachment) =>
+        sum +
+        (attachment.size ??
+          Buffer.byteLength(attachment.data ?? '', 'utf8')),
       0,
     );
     if (totalLength > MAX_ATTACHMENT_DATA_LENGTH) {
@@ -1709,15 +1978,24 @@ export class DisputesService {
     return result;
   }
 
-  private validateAttachments(
+  private async validateAttachments(
     attachments: DisputeAttachment[],
-  ): DisputeAttachment[] {
+    actor: DisputeActor,
+  ): Promise<DisputeAttachment[]> {
+    if (!attachments.length) return [];
     if (attachments.length > 2) {
       throw new BadRequestException(
         'A message can include at most two attachments.',
       );
     }
-    return attachments.map((attachment) => {
+    const bucket = this.gridFsBucket();
+    const stored: DisputeAttachment[] = [];
+    for (const attachment of attachments) {
+      if (typeof attachment.data !== 'string') {
+        throw new BadRequestException(
+          `Attachment "${attachment.name}" must include file data.`,
+        );
+      }
       const base64 = attachment.data.replace(/^data:[^;]+;base64,/, '');
       if (!/^[A-Za-z0-9+/]*={0,2}$/.test(base64) || base64.length % 4 !== 0) {
         throw new BadRequestException(
@@ -1735,12 +2013,57 @@ export class DisputesService {
         bytes,
         attachment.name,
       );
-      return {
+      const upload = bucket.openUploadStream(attachment.name.trim(), {
+        contentType: attachment.mimeType,
+        metadata: { uploadedBy: actor.userId, uploadedRole: actor.role },
+      });
+      Readable.from([bytes]).pipe(upload);
+      await finished(upload);
+      stored.push({
         name: attachment.name.trim(),
         mimeType: attachment.mimeType,
-        data: base64,
-      };
+        fileId: upload.id,
+        size: bytes.length,
+      });
+    }
+    return stored;
+  }
+
+  private database() {
+    const database = this.connection.db;
+    if (!database) {
+      throw new ServiceUnavailableException(
+        'Dispute evidence storage is unavailable.',
+      );
+    }
+    return database;
+  }
+
+  private gridFsBucket(): mongo.GridFSBucket {
+    return new mongo.GridFSBucket(this.database(), {
+      bucketName: DISPUTE_EVIDENCE_BUCKET,
     });
+  }
+
+  private findAttachmentReference(
+    dispute: Dispute,
+    fileId: string,
+  ): DisputeAttachment | undefined {
+    const attachments = [
+      ...dispute.attachments,
+      ...dispute.messages.flatMap((message) => message.attachments),
+      ...dispute.internalNotes.flatMap((note) => note.attachments),
+      ...(dispute.shopResponse?.attachments ?? []),
+      ...(dispute.resolution?.documents ?? []),
+      ...(dispute.resolution?.completionDocuments ?? []),
+      ...(dispute.reinspections ?? []).flatMap((entry) => entry.attachments),
+      ...(dispute.reworkProgress ?? []).flatMap((entry) => entry.attachments),
+      ...(dispute.reworkCompletions ?? []).flatMap((entry) => entry.attachments),
+      ...(dispute.verificationHistory ?? []).flatMap((entry) => entry.attachments),
+    ];
+    return attachments.find(
+      (attachment) => attachment.fileId?.toString() === fileId,
+    );
   }
 
   private validateAttachmentSignature(

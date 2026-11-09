@@ -100,7 +100,7 @@ describe('StripePaymentsService', () => {
             currency: 'usd',
             unit_amount: 2900,
             recurring: { interval: 'month' },
-            product_data: { name: 'Praxio Shop monthly subscription' },
+            product_data: { name: 'Reparo Shop monthly subscription' },
           },
           quantity: 1,
         },

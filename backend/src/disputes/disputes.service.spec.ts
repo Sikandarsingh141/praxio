@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { Model, Types, UpdateQuery } from 'mongoose';
+import { Connection, Model, Types, UpdateQuery } from 'mongoose';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   RepairQuotation,
@@ -69,6 +69,7 @@ describe('DisputesService', () => {
     });
 
     disputes = Object.assign(jest.fn().mockImplementation(record), {
+      exists: jest.fn().mockResolvedValue(false),
       findOne: jest.fn(),
       findOneAndUpdate: jest.fn(),
       findByIdAndUpdate: jest.fn(),
@@ -77,6 +78,7 @@ describe('DisputesService', () => {
       find: jest.fn(),
     }) as jest.Mock & Record<string, jest.Mock>;
     requests = {
+      find: jest.fn(),
       findOne: jest.fn().mockResolvedValue(repairRequest),
       findById: jest.fn(),
     };
@@ -96,6 +98,7 @@ describe('DisputesService', () => {
       quotations as unknown as Model<RepairQuotation>,
       users as unknown as Model<User>,
       notifications as unknown as NotificationsService,
+      { db: null } as unknown as Connection,
     );
   });
 
@@ -117,6 +120,37 @@ describe('DisputesService', () => {
       status: 'picked_up',
     });
     expect(notifications.notifyUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it('migrates legacy disputed repair jobs without removing their source data', async () => {
+    const legacyRequest = {
+      _id: requestId,
+      customerId,
+      acceptedQuotationId: quotationId,
+      updatedAt: new Date('2024-01-02T00:00:00.000Z'),
+      repairJob: {
+        status: 'disputed',
+        disputeDescription: 'The device still does not work.',
+        history: [],
+      },
+    };
+    requests.find.mockReturnValue({
+      lean: () => ({ exec: jest.fn().mockResolvedValue([legacyRequest]) }),
+    });
+
+    await service.onModuleInit();
+
+    expect(disputes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repairRequestId: requestId,
+        customerId,
+        shopId,
+        status: 'OPEN',
+        description: 'The device still does not work.',
+      }),
+    );
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(legacyRequest.repairJob.status).toBe('disputed');
   });
 
   it('does not disclose repair requests that do not belong to the customer', async () => {

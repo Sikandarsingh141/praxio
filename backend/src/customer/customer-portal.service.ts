@@ -1154,7 +1154,6 @@ export class CustomerPortalService {
       'ready_for_pickup',
       'picked_up',
       'completed',
-      'disputed',
     ];
     const quotationStatuses = [
       'pending',
@@ -3161,7 +3160,7 @@ export class CustomerPortalService {
     if (!updated) {
       await this.reviews.deleteOne({ _id: review._id }).exec();
       throw new ConflictException(
-        'This repair job has already been completed or disputed.',
+        'This repair job has already been completed.',
       );
     }
     await this.notifications.notifyUsers([quotation.shopId], {

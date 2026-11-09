@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsDateString,
   IsIn,
+  IsInt,
   IsMongoId,
   IsNotEmpty,
   IsNumber,
@@ -145,11 +146,13 @@ export class CreateQuotationDto {
   currency!: string;
 
   @IsString()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsNotEmpty()
   @MaxLength(1000)
   message!: string;
 
   @IsNumber()
+  @IsInt()
   @Min(1)
   @Max(365)
   @Type(() => Number)
@@ -239,7 +242,6 @@ export class RepairRequestListQueryDto {
     'ready_for_pickup',
     'picked_up',
     'completed',
-    'disputed',
   ])
   repairStatus?:
     | 'confirmed'
@@ -253,8 +255,7 @@ export class RepairRequestListQueryDto {
     | 'repair_completed'
     | 'ready_for_pickup'
     | 'picked_up'
-    | 'completed'
-    | 'disputed';
+    | 'completed';
 
   @IsOptional()
   @Type(() => Number)
@@ -289,7 +290,6 @@ export class CustomerRepairRequestListQueryDto {
     'ready_for_pickup',
     'picked_up',
     'completed',
-    'disputed',
   ])
   repairStatus?:
     | 'confirmed'
@@ -303,8 +303,7 @@ export class CustomerRepairRequestListQueryDto {
     | 'repair_completed'
     | 'ready_for_pickup'
     | 'picked_up'
-    | 'completed'
-    | 'disputed';
+    | 'completed';
 
   @IsOptional()
   @IsString()

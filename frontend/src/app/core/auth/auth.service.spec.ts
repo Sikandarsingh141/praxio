@@ -95,6 +95,33 @@ describe('AuthService', () => {
     expect(service.currentUser()?.profileImageUrl).toBe('data:image/png;base64,abc');
   });
 
+  it('uploads shop images and returns the refreshed shop profile', () => {
+    const image = new File([new Uint8Array([1, 2, 3])], 'shop.png', {
+      type: 'image/png',
+    });
+    let updatedProfile: unknown;
+    service.uploadMyShopImage(image).subscribe((profile) => (updatedProfile = profile));
+    const request = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/shops/my-profile-image`,
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body instanceof FormData).toBeTrue();
+    expect((request.request.body as FormData).get('image')).toBe(image);
+    request.flush({
+      data: {
+        profile: {
+          shopName: 'Example Repairs',
+          shopImageData: 'data:image/png;base64,abc',
+        },
+      },
+    });
+
+    expect(updatedProfile).toEqual({
+      shopName: 'Example Repairs',
+      shopImageData: 'data:image/png;base64,abc',
+    });
+  });
+
   it('clears local auth state when the logout request fails', () => {
     service.login(user.email, 'password').subscribe();
     httpTestingController

@@ -31,18 +31,12 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly success = signal('');
   readonly formError = signal('');
   readonly quotationOpen = signal(false);
-  readonly quotationConfirming = signal(false);
   readonly declineOpen = signal(false);
-  readonly inspectionCharge = signal(0);
-  readonly partsCost = signal(0);
-  readonly labourCharge = signal(0);
-  readonly additionalCharges = signal(0);
+  readonly quotationAmount = signal<number | null>(null);
   readonly completionDays = signal<number | null>(null);
-  readonly proposedSolution = signal('');
-  readonly warranty = signal('');
   readonly validityDays = signal<number | null>(7);
-  readonly notes = signal('');
   readonly message = signal('');
+  readonly quotationAttempted = signal(false);
   readonly declineReason = signal('');
   readonly customDeclineReason = signal('');
   readonly repairActionSubmitting = signal(false);
@@ -54,13 +48,6 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly pickupInstructions = signal('');
   readonly pickupMessage = signal('');
   readonly repairFormError = signal('');
-  readonly total = computed(
-    () =>
-      Number(this.inspectionCharge() || 0) +
-      Number(this.partsCost() || 0) +
-      Number(this.labourCharge() || 0) +
-      Number(this.additionalCharges() || 0),
-  );
   readonly canRespond = computed(() => {
     const request = this.request();
     if (!request || request.status !== 'open') {
@@ -106,33 +93,26 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     if (!request || !this.canRespond()) {
       return;
     }
-    if (!this.quotationConfirming()) {
-      this.reviewQuotation();
-      return;
-    }
+    this.quotationAttempted.set(true);
+    if (!this.isQuotationValid()) return;
+
     this.submitting.set(true);
     this.formError.set('');
-    const validUntil = new Date(Date.now() + (this.validityDays() ?? 7) * 86400000).toISOString();
+    const validUntil = new Date(
+      Date.now() + this.validityDays()! * 86400000,
+    ).toISOString();
     this.requestsService
       .submitQuotation(request._id, {
-        amount: this.total(),
+        amount: this.quotationAmount()!,
         currency: 'INR',
         message: this.message().trim(),
         estimatedDays: this.completionDays()!,
-        inspectionCharge: this.inspectionCharge() || undefined,
-        partsCost: this.partsCost() || undefined,
-        labourCharge: this.labourCharge() || undefined,
-        additionalCharges: this.additionalCharges() || undefined,
-        proposedSolution: this.proposedSolution().trim() || undefined,
-        warrantyInformation: this.warranty().trim() || undefined,
-        additionalNotes: this.notes().trim() || undefined,
         validUntil,
       })
       .subscribe({
         next: () => {
           this.success.set('Quotation submitted. The customer has been notified.');
           this.quotationOpen.set(false);
-          this.quotationConfirming.set(false);
           this.submitting.set(false);
           this.reloadRequest(request._id);
         },
@@ -143,25 +123,23 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       });
   }
 
-  reviewQuotation(): void {
-    if (!this.request() || !this.canRespond()) {
-      return;
-    }
-    if (
-      this.total() <= 0 ||
-      !this.message().trim() ||
-      !this.completionDays() ||
-      this.completionDays()! < 1 ||
-      !this.validityDays() ||
-      this.validityDays()! < 1
-    ) {
-      this.formError.set(
-        'Enter at least one charge, a quotation summary, completion time, and validity.',
-      );
-      return;
-    }
-    this.formError.set('');
-    this.quotationConfirming.set(true);
+  isQuotationValid(): boolean {
+    const amount = this.quotationAmount();
+    const completionDays = this.completionDays();
+    const validityDays = this.validityDays();
+    return (
+      amount !== null &&
+      Number.isFinite(amount) &&
+      amount > 0 &&
+      completionDays !== null &&
+      Number.isInteger(completionDays) &&
+      completionDays > 0 &&
+      validityDays !== null &&
+      Number.isInteger(validityDays) &&
+      validityDays > 0 &&
+      validityDays <= 365 &&
+      !!this.message().trim()
+    );
   }
 
   declineRequest(): void {

@@ -66,7 +66,6 @@ export class AdminRepairMonitorPage implements OnInit {
         'ready_for_pickup',
         'picked_up',
         'completed',
-        'disputed',
       ].includes(status)
     ) {
       this.status.set(status);

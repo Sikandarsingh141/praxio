@@ -18,23 +18,30 @@ export const DISPUTE_CATEGORIES = [
   'other',
 ] as const;
 
-export const DISPUTE_STATUSES = [
+export const DISPUTE_WORKFLOW_STATUSES = [
   'OPEN',
-  'ACCEPTED',
+  'UNDER_REVIEW',
+  'AWAITING_SHOP_RESPONSE',
+  'AWAITING_CUSTOMER_RESPONSE',
+  'RESOLVED',
+  'CLOSED',
   'REJECTED',
+] as const;
+
+export const LEGACY_DISPUTE_STATUSES = [
+  'ACCEPTED',
   'REINSPECTION_IN_PROGRESS',
   'AWAITING_CUSTOMER_APPROVAL',
   'REPAIR_IN_PROGRESS',
   'CUSTOMER_VERIFICATION_PENDING',
   'CUSTOMER_CONFIRMED',
   'REOPENED',
-  'CLOSED',
-  // Retain legacy statuses so previously stored cases remain readable.
-  'UNDER_REVIEW',
-  'AWAITING_CUSTOMER_RESPONSE',
-  'AWAITING_SHOP_RESPONSE',
   'RESOLUTION_PROPOSED',
-  'RESOLVED',
+] as const;
+
+export const DISPUTE_STATUSES = [
+  ...DISPUTE_WORKFLOW_STATUSES,
+  ...LEGACY_DISPUTE_STATUSES,
 ] as const;
 
 export const DISPUTE_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const;
@@ -54,8 +61,14 @@ export class DisputeAttachment {
   @Prop({ type: String, required: true, trim: true, maxlength: 180 })
   name!: string;
 
-  @Prop({ type: String, required: true })
-  data!: string;
+  @Prop({ type: Types.ObjectId })
+  fileId?: Types.ObjectId;
+
+  @Prop({ type: Number, min: 0 })
+  size?: number;
+
+  @Prop({ type: String })
+  data?: string;
 }
 
 export const DisputeAttachmentSchema =
@@ -242,8 +255,10 @@ export class DisputeChargeLine {
 export const DisputeChargeLineSchema =
   SchemaFactory.createForClass(DisputeChargeLine);
 
-@Schema({ _id: false })
+@Schema()
 export class DisputeAdditionalCharge {
+  _id!: Types.ObjectId;
+
   @Prop({ type: String, required: true, trim: true, maxlength: 2000 })
   reason!: string;
 

@@ -16,7 +16,7 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the Praxio portal outlet', () => {
+  it('should render the Reparo portal outlet', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;

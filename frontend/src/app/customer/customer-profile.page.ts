@@ -23,7 +23,7 @@ import { ProfileEditorComponent } from '../shared/profile-editor.component';
           <section class="review-notice" role="status">
             <h2>Account under Admin review</h2>
             <p>
-              Your account is being reviewed by the Praxio Admin team. You can view your profile and
+              Your account is being reviewed by the Reparo Admin team. You can view your profile and
               notifications while the review is in progress. Once the Admin approves your request,
               you will be able to access the full Customer Portal.
             </p>
@@ -33,7 +33,7 @@ import { ProfileEditorComponent } from '../shared/profile-editor.component';
             <h2>Registration declined</h2>
             <p>
               Your registration was declined. You can view your profile and notifications here.
-              Please contact Praxio support if you need assistance.
+              Please contact Reparo support if you need assistance.
             </p>
             @if (user.customerAuthorization?.declineReason) {
               <p>

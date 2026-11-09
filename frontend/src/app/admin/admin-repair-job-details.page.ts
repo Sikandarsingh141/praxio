@@ -108,7 +108,6 @@ export class AdminRepairJobDetailsPage implements OnInit {
     const status = job.repairJob.status;
     if (status === 'completed') return 4;
     if (
-      status === 'disputed' ||
       status === 'repair_completed' ||
       status === 'ready_for_pickup' ||
       status === 'picked_up'

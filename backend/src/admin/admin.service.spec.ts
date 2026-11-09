@@ -220,7 +220,7 @@ describe('AdminService', () => {
         .fn()
         .mockResolvedValue([
           {
-            jobs: [{ _id: new Types.ObjectId(), repairJob: { status: 'disputed' } }],
+            jobs: [{ _id: new Types.ObjectId(), repairJob: { status: 'completed' } }],
             metadata: [{ total: 1 }],
           },
         ]),
@@ -228,7 +228,7 @@ describe('AdminService', () => {
     repairRequestsModel.aggregate.mockReturnValue(jobsQuery);
 
     const result = await service.getRepairJobMonitor({
-      status: 'disputed',
+      status: 'completed',
       requestId: '507f1f77bcf86cd799439015',
       page: 2,
       limit: 10,
@@ -241,7 +241,7 @@ describe('AdminService', () => {
       $match: expect.objectContaining({
         _id: new Types.ObjectId('507f1f77bcf86cd799439015'),
         acceptedQuotationId: { $exists: true },
-        'repairJob.status': 'disputed',
+        'repairJob.status': 'completed',
       }),
     });
     expect(pipeline.at(-1)).toEqual({

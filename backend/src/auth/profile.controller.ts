@@ -24,14 +24,12 @@ import { AuthService, SafeUser } from './auth.service';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-
-const PROFILE_IMAGE_MAX_BYTES = 1024 * 1024;
-const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
-interface UploadedProfileImage {
-  buffer: Buffer;
-  mimetype: string;
-}
+import {
+  hasValidImageSignature,
+  UPLOADED_IMAGE_MAX_BYTES,
+  UPLOADED_IMAGE_TYPES,
+} from './image-upload';
+import type { UploadedImage } from './image-upload';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -93,12 +91,12 @@ export class ProfileController {
   })
   @UseInterceptors(
     FileInterceptor('image', {
-      limits: { fileSize: PROFILE_IMAGE_MAX_BYTES, files: 1 },
+      limits: { fileSize: UPLOADED_IMAGE_MAX_BYTES, files: 1 },
     }),
   )
   async uploadProfileImage(
     @Req() request: AuthenticatedRequest,
-    @UploadedFile() image?: UploadedProfileImage,
+    @UploadedFile() image?: UploadedImage,
   ): Promise<{ data: { user: SafeUser } }> {
     const userId = request.auth?.userId;
     if (!userId) {
@@ -106,8 +104,8 @@ export class ProfileController {
     }
     if (
       !image ||
-      !PROFILE_IMAGE_TYPES.has(image.mimetype) ||
-      !this.hasValidImageSignature(image)
+      !UPLOADED_IMAGE_TYPES.has(image.mimetype) ||
+      !hasValidImageSignature(image)
     ) {
       throw new BadRequestException('Upload a valid JPEG, PNG, or WebP image.');
     }
@@ -119,31 +117,4 @@ export class ProfileController {
     return { data: { user: await this.authService.toAuthenticatedUser(user) } };
   }
 
-  private hasValidImageSignature(image: UploadedProfileImage): boolean {
-    const { buffer, mimetype } = image;
-    if (mimetype === 'image/jpeg') {
-      return (
-        buffer.length >= 3 &&
-        buffer[0] === 0xff &&
-        buffer[1] === 0xd8 &&
-        buffer[2] === 0xff
-      );
-    }
-    if (mimetype === 'image/png') {
-      return (
-        buffer.length >= 8 &&
-        buffer
-          .subarray(0, 8)
-          .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
-      );
-    }
-    if (mimetype === 'image/webp') {
-      return (
-        buffer.length >= 12 &&
-        buffer.toString('ascii', 0, 4) === 'RIFF' &&
-        buffer.toString('ascii', 8, 12) === 'WEBP'
-      );
-    }
-    return false;
-  }
 }

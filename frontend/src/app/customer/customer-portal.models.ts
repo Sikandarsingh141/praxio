@@ -129,7 +129,6 @@ export function customerRepairRequestStatusLabel(request: CustomerRepairRequest)
   if (request.status === 'completed' || request.repairJob?.status === 'completed') {
     return 'Completed';
   }
-  if (request.repairJob?.status === 'disputed') return 'Disputed';
   if (request.repairJob?.status === 'repair_declined') return 'Repair declined';
   if (request.repairJob) return 'Active';
   return 'Open';
@@ -149,8 +148,7 @@ export interface CustomerRepairRequestFilters {
     | 'repair_completed'
     | 'ready_for_pickup'
     | 'picked_up'
-    | 'completed'
-    | 'disputed';
+    | 'completed';
   appliance?: string;
   from?: string;
   to?: string;

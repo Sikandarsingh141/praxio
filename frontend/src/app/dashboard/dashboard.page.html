@@ -199,7 +199,6 @@
                 class="recent-request-status"
                 [class.active]="requestStatusLabel(request) === 'Active'"
                 [class.completed]="requestStatusLabel(request) === 'Completed'"
-                [class.disputed]="requestStatusLabel(request) === 'Disputed'"
                 [class.cancelled]="requestStatusLabel(request) === 'Cancelled'"
               >
                 {{ requestStatusLabel(request) }}

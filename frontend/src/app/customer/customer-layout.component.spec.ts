@@ -68,7 +68,7 @@ describe('CustomerLayout', () => {
       .expectOne(`${environment.apiBaseUrl}/notifications/my`)
       .flush({ data: { notifications: [] } });
 
-    expect(fixture.nativeElement.textContent).toContain('Praxio');
+    expect(fixture.nativeElement.textContent).toContain('Reparo');
     expect(fixture.nativeElement.querySelector('.account-name')?.textContent).toContain(
       'Taylor Example',
     );

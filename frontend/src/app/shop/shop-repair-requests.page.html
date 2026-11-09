@@ -2,34 +2,38 @@
   <header class="page-heading">
     <div>
       <span class="eyebrow">CUSTOMER MANAGEMENT</span>
-      <h1 id="requests-title">Repair requests</h1>
+      <h1 id="requests-title">
+        {{ completedRepairs() ? 'Completed Repairs' : 'Repair requests' }}
+      </h1>
       <p>Review requests shared specifically with your shop and respond with a quotation.</p>
     </div>
   </header>
 
   @if (pageData(); as data) {
-    <section class="summary-grid" aria-label="Repair request summary">
-      <article>
-        <span class="summary-icon" aria-hidden="true">▣</span>
-        <div><span>Total requests</span><strong>{{ data.summary.total }}</strong></div>
-      </article>
-      <article>
-        <span class="summary-icon" aria-hidden="true">＋</span>
-        <div><span>New requests</span><strong>{{ data.summary.new }}</strong></div>
-      </article>
-      <article>
-        <span class="summary-icon" aria-hidden="true">◷</span>
-        <div><span>Pending responses</span><strong>{{ data.summary.pending }}</strong></div>
-      </article>
-      <article>
-        <span class="summary-icon" aria-hidden="true">✓</span>
-        <div><span>Accepted requests</span><strong>{{ data.summary.accepted }}</strong></div>
-      </article>
-      <article>
-        <span class="summary-icon" aria-hidden="true">⊗</span>
-        <div><span>Declined requests</span><strong>{{ data.summary.declined }}</strong></div>
-      </article>
-    </section>
+    @if (!completedRepairs()) {
+      <section class="summary-grid" aria-label="Repair request summary">
+        <article>
+          <span class="summary-icon" aria-hidden="true">▣</span>
+          <div><span>Total requests</span><strong>{{ data.summary.total }}</strong></div>
+        </article>
+        <article>
+          <span class="summary-icon" aria-hidden="true">＋</span>
+          <div><span>New requests</span><strong>{{ data.summary.new }}</strong></div>
+        </article>
+        <article>
+          <span class="summary-icon" aria-hidden="true">◷</span>
+          <div><span>Pending responses</span><strong>{{ data.summary.pending }}</strong></div>
+        </article>
+        <article>
+          <span class="summary-icon" aria-hidden="true">✓</span>
+          <div><span>Accepted requests</span><strong>{{ data.summary.accepted }}</strong></div>
+        </article>
+        <article>
+          <span class="summary-icon" aria-hidden="true">⊗</span>
+          <div><span>Declined requests</span><strong>{{ data.summary.declined }}</strong></div>
+        </article>
+      </section>
+    }
   }
 
   <section class="list-panel">
@@ -62,19 +66,21 @@
     </div>
 
     @if (pageData(); as data) {
-      <div class="tabs" role="tablist" aria-label="Filter repair requests">
-        @for (tab of tabs; track tab.value) {
-          <button
-            type="button"
-            role="tab"
-            [attr.aria-selected]="activeTab() === tab.value"
-            [class.active]="activeTab() === tab.value"
-            (click)="selectTab(tab.value)"
-          >
-            {{ tab.label }} <span>({{ tabCount(tab.value, data.summary) }})</span>
-          </button>
-        }
-      </div>
+      @if (!completedRepairs()) {
+        <div class="tabs" role="tablist" aria-label="Filter repair requests">
+          @for (tab of tabs; track tab.value) {
+            <button
+              type="button"
+              role="tab"
+              [attr.aria-selected]="activeTab() === tab.value"
+              [class.active]="activeTab() === tab.value"
+              (click)="selectTab(tab.value)"
+            >
+              {{ tab.label }} <span>({{ tabCount(tab.value, data.summary) }})</span>
+            </button>
+          }
+        </div>
+      }
     }
 
     @if (error()) {
@@ -131,7 +137,7 @@
             </div>
             <div class="request-actions">
               <span class="status-badge" [attr.data-status]="request.shopResponse.status">
-                {{ responseStatus(request) }}
+                {{ completedRepairs() ? 'Completed repair' : responseStatus(request) }}
               </span>
               <a class="open-link" [routerLink]="['/shop/repair-requests', request._id]"
                 >View request <span aria-hidden="true">→</span></a

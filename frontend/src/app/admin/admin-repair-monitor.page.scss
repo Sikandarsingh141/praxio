@@ -14,7 +14,6 @@ h1{margin:.25rem 0;color:#17211b;font-size:clamp(1.5rem,3vw,2rem);letter-spacing
 .summary-icon{display:grid;width:2rem;height:2rem;grid-row:1/3;place-items:center;border-radius:50%;background:#e8f5eb;color:#16803c;font-size:1rem;font-weight:700}
 .progress-icon{background:#e8f1ff;color:#2467d1}
 .completed-icon{background:#e5f5e8;color:#16803c}
-.disputed-icon{background:#fff0ef;color:#c6372e}
 .summary-card strong{color:#176b34;font-size:1.25rem;line-height:1.1}
 .summary-card>span:last-child{color:#536157;font-size:.66rem}
 .monitor-tabs{display:flex;gap:.25rem;margin-top:.35rem;border-bottom:1px solid #e3e9e4}
@@ -30,10 +29,8 @@ h1{margin:.25rem 0;color:#17211b;font-size:clamp(1.5rem,3vw,2rem);letter-spacing
 .monitor-list{display:grid;gap:.55rem}
 .monitor-card{min-width:0;padding:.7rem .8rem;border:1px solid #dce8df;border-radius:.7rem;background:#fff;box-shadow:0 2px 6px #14281c08}
 .monitor-card.completed-card{border-color:#d1e8d5}
-.monitor-card.disputed-card{border-color:#f1d8d6}
 .repair-main-row{display:grid;grid-template-columns:3.1rem minmax(8rem,1.05fr) minmax(0,2fr) auto auto 1.6rem;align-items:center;gap:.65rem}
 .appliance-icon{display:grid;width:3rem;height:3rem;place-items:center;border-radius:.65rem;background:#eaf5ed;color:#16803c;font-size:1.2rem}
-.disputed-card .appliance-icon{background:#fff0ef;color:#b52b24}
 .appliance-info{min-width:0}
 .request-id{color:#16803c;font-size:.55rem;font-weight:750;letter-spacing:.04em}
 .card-heading h2,.appliance-info h2{overflow:hidden;margin:.1rem 0;color:#17211b;font-size:.78rem;text-overflow:ellipsis;white-space:nowrap}
@@ -44,7 +41,6 @@ h1{margin:.25rem 0;color:#17211b;font-size:clamp(1.5rem,3vw,2rem);letter-spacing
 .repair-meta small{display:block;overflow:hidden;margin-top:.12rem;color:#718078;font-size:.55rem;text-overflow:ellipsis;white-space:nowrap}
 .meta-person>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .status-badge,.rating-badge{padding:.32rem .5rem;border-radius:99px;background:#edf3f5;color:#527183;font-size:.6rem;font-weight:700;text-transform:capitalize;white-space:nowrap}
-.status-badge[data-status='disputed']{background:#fff0ed;color:#a44f41}
 .status-badge[data-status='completed'],.status-badge[data-status='repair_completed']{background:#eaf5ee;color:#3e7652}
 .status-badge[data-status='in_progress']{background:#edf4ff;color:#2864b8}
 .details-link{display:inline-flex;align-items:center;gap:.25rem;padding:.38rem .55rem;border:1px solid #b9d7c0;border-radius:99px;color:#176b34;font-size:.6rem;font-weight:700;text-decoration:none;white-space:nowrap}

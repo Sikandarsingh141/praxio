@@ -103,6 +103,24 @@ export class UsersService {
     return user;
   }
 
+  async updateShopImage(id: string, shopImageData: string): Promise<UserDocument> {
+    if (!isObjectIdOrHexString(id)) {
+      throw new NotFoundException('Shop account was not found');
+    }
+
+    const user = await this.users
+      .findOneAndUpdate(
+        { _id: id, accountType: 'shop' },
+        { $set: { 'shopDetails.shopImageData': shopImageData } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      throw new NotFoundException('Shop account was not found');
+    }
+    return user;
+  }
+
   async findPendingShopAccounts(): Promise<UserDocument[]> {
     return this.users
       .find({ accountType: 'shop', accountStatus: 'pending_approval' })

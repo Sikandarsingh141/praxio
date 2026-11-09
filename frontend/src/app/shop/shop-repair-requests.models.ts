@@ -266,12 +266,5 @@ export interface ShopQuotationInput {
   currency: string;
   message: string;
   estimatedDays: number;
-  inspectionCharge?: number;
-  partsCost?: number;
-  labourCharge?: number;
-  additionalCharges?: number;
-  proposedSolution?: string;
-  warrantyInformation?: string;
-  additionalNotes?: string;
   validUntil: string;
 }

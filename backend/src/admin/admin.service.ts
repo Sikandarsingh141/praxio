@@ -71,7 +71,7 @@ export interface AdminRegistrationRequest {
   accountStatus: 'active' | 'inactive' | 'suspended' | null;
   registrationStatus: 'pending' | 'approved' | 'declined';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
-  subscriptionPlan: 'Praxio Shop monthly subscription' | null;
+  subscriptionPlan: 'Reparo Shop monthly subscription' | null;
   paymentAmountCents: number | null;
   paymentCurrency: string | null;
   paidAt: Date | null;
@@ -293,7 +293,6 @@ export class AdminService {
       'ready_for_pickup',
       'picked_up',
       'completed',
-      'disputed',
     ];
     const status = query.status || 'all';
     const page = query.page ?? 1;
@@ -1604,7 +1603,7 @@ export class AdminService {
                 subscriptionPlan: {
                   $cond: [
                     { $eq: ['$accountType', 'shop'] },
-                    'Praxio Shop monthly subscription',
+                    'Reparo Shop monthly subscription',
                     null,
                   ],
                 },
@@ -2418,7 +2417,7 @@ export class AdminService {
             subscriptionPlan: {
               $cond: [
                 { $eq: ['$accountType', 'shop'] },
-                'Praxio Shop monthly subscription',
+                'Reparo Shop monthly subscription',
                 null,
               ],
             },
@@ -2518,8 +2517,8 @@ export class AdminService {
           ? value['paymentStatus']
           : 'not_required',
       subscriptionPlan:
-        value['subscriptionPlan'] === 'Praxio Shop monthly subscription'
-          ? 'Praxio Shop monthly subscription'
+        value['subscriptionPlan'] === 'Reparo Shop monthly subscription'
+          ? 'Reparo Shop monthly subscription'
           : null,
       paymentAmountCents:
         typeof value['paymentAmountCents'] === 'number'

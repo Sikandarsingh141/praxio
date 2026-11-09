@@ -52,7 +52,7 @@ import { ShopPaymentStatus } from '../core/auth/auth.models';
             </dl>
           </section>
           <p class="step-description">
-            Your card information is entered on Stripe's secure page and is never stored by Praxio.
+            Your card information is entered on Stripe's secure page and is never stored by Reparo.
           </p>
           <div class="form-actions">
             <button

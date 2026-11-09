@@ -347,8 +347,7 @@ h1 {
 }
 
 .request-status[data-status='rejected'],
-.request-status[data-status='declined'],
-.request-status[data-status='disputed'] {
+.request-status[data-status='declined'] {
   background: #fff0ef;
   color: #9c4a43;
 }

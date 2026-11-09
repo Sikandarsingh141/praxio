@@ -1,15 +1,17 @@
 <main class="dispute-page" [attr.aria-busy]="loading()">
   @if (mode() === 'list') {
-    <header class="page-header">
+    <header class="page-header dispute-list-header">
       <div>
         <p class="eyebrow">{{ role() | titlecase }} portal</p>
-        <h1>Disputes / Rework Requests</h1>
+        <h1>Dispute management</h1>
         <p>
-          Track post-repair issues and coordinate inspection, rework, and customer verification.
+          Track post-repair issues, review evidence, and coordinate fair resolutions.
         </p>
       </div>
       @if (role() === 'customer') {
-        <a class="button primary" routerLink="/customer/repair-requests">Choose a repair</a>
+        <a class="button primary raise-dispute-button" routerLink="/customer/repair-requests">
+          <span aria-hidden="true">＋</span> Raise a Dispute
+        </a>
       }
     </header>
 
@@ -19,90 +21,103 @@
 
     @if (list()?.summary; as summary) {
       <div class="summary-grid" aria-label="Dispute counts">
-        <article>
-          <span>Open</span><strong>{{ summary['OPEN'] || 0 }}</strong>
+        <article class="summary-total">
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m12 3 8 4.5-8 4.5-8-4.5zM4 12l8 4.5 8-4.5M4 16.5 12 21l8-4.5" /></svg>
+          </span>
+          <span class="summary-copy"><span>Total Disputes</span><strong>{{ summary['TOTAL'] || 0 }}</strong></span>
         </article>
-        <article>
-          <span>Awaiting approval</span
-          ><strong>{{ summary['AWAITING_CUSTOMER_APPROVAL'] || 0 }}</strong>
+        <article class="summary-open">
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
+          </span>
+          <span class="summary-copy"><span>Open</span><strong>{{ summary['OPEN'] || 0 }}</strong></span>
         </article>
-        <article>
-          <span>Rework in progress</span><strong>{{ summary['REPAIR_IN_PROGRESS'] || 0 }}</strong>
+        <article class="summary-review">
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M5.5 9A7 7 0 0 1 18 6.5L20 9M4 15l2 2.5A7 7 0 0 0 18.5 15" /></svg>
+          </span>
+          <span class="summary-copy"><span>Under Review</span><strong>{{ summary['UNDER_REVIEW'] || 0 }}</strong></span>
         </article>
-        <article>
-          <span>Verification pending</span
-          ><strong>{{ summary['CUSTOMER_VERIFICATION_PENDING'] || 0 }}</strong>
+        <article class="summary-resolved">
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="m8 12 2.5 2.5L16.5 9" /></svg>
+          </span>
+          <span class="summary-copy"><span>Resolved</span><strong>{{ summary['RESOLVED'] || 0 }}</strong></span>
         </article>
       </div>
     }
 
-    <section class="filter-panel" aria-label="Filter disputes">
-      <label>
-        Search
+    <form class="dispute-list-controls" (ngSubmit)="applyListControls()">
+      <label class="dispute-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg>
+        <span class="visually-hidden">Search disputes</span>
         <input
           type="search"
-          [(ngModel)]="search"
           name="disputeSearch"
-          placeholder="Reference, subject or party"
-          (keyup.enter)="loadList()"
+          [(ngModel)]="search"
+          placeholder="Search by dispute ID, title, or customer..."
         />
       </label>
-      <label>
-        Status
-        <select [(ngModel)]="statusFilter" name="statusFilter">
+      <label class="control-select">
+        <span class="visually-hidden">Filter by dispute status</span>
+        <select
+          name="disputeStatus"
+          [ngModel]="statusFilter"
+          (ngModelChange)="setStatusFilter($event)"
+        >
           <option value="">All statuses</option>
           <option value="OPEN">Open</option>
-          <option value="ACCEPTED">Accepted</option>
+          <option value="UNDER_REVIEW">Under review</option>
+          <option value="AWAITING_SHOP_RESPONSE">Awaiting shop response</option>
+          <option value="AWAITING_CUSTOMER_RESPONSE">Awaiting customer response</option>
+          <option value="RESOLVED">Resolved</option>
+          <option value="CLOSED">Closed</option>
           <option value="REJECTED">Rejected</option>
+          <option value="ACCEPTED">Accepted</option>
           <option value="REINSPECTION_IN_PROGRESS">Reinspection in progress</option>
           <option value="AWAITING_CUSTOMER_APPROVAL">Awaiting customer approval</option>
           <option value="REPAIR_IN_PROGRESS">Repair in progress</option>
           <option value="CUSTOMER_VERIFICATION_PENDING">Customer verification pending</option>
           <option value="CUSTOMER_CONFIRMED">Customer confirmed</option>
           <option value="REOPENED">Reopened</option>
-          <option value="CLOSED">Closed</option>
+          <option value="RESOLUTION_PROPOSED">Resolution proposed</option>
         </select>
       </label>
-      <label>
-        Category
-        <select [(ngModel)]="categoryFilter" name="categoryFilter">
-          <option value="">All categories</option>
-          @for (option of categories; track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-          }
+      <label class="control-select date-select">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 10h16" /></svg>
+        <span class="visually-hidden">Filter disputes by date</span>
+        <select
+          name="datePreset"
+          [ngModel]="datePreset"
+          (ngModelChange)="setDatePreset($event)"
+        >
+          <option value="all">All time</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
         </select>
       </label>
-      @if (role() === 'admin') {
-        <label>
-          Priority
-          <select [(ngModel)]="priorityFilter" name="priorityFilter">
-            <option value="">All priorities</option>
-            <option value="low">Low</option>
-            <option value="normal">Normal</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-        </label>
-      }
-      <label>From <input type="date" [(ngModel)]="fromDate" name="fromDate" /></label>
-      <label>To <input type="date" [(ngModel)]="toDate" name="toDate" /></label>
-      <label>
-        Sort
-        <select [(ngModel)]="sortOrder" name="sortOrder">
-          <option value="newest">Recently updated</option>
-          <option value="oldest">Oldest first</option>
-          <option value="priority">Priority</option>
-        </select>
-      </label>
-      <button class="button secondary" type="button" (click)="applyFilters()">Apply filters</button>
-    </section>
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
+      />
+      <button class="visually-hidden" type="submit">Search</button>
+    </form>
 
     @if (loading()) {
       <p class="state-card" role="status">Loading disputes…</p>
     } @else if (list()?.items?.length) {
       <section class="dispute-list" aria-label="Dispute cases">
         @for (item of list()?.items; track item._id) {
-          <a class="dispute-row" [routerLink]="['/', role(), 'disputes', item._id]">
+          <article class="dispute-row">
+            <span class="dispute-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+                <path d="M10 6h4m-2 11h.01" />
+              </svg>
+            </span>
             <div class="row-main">
               <span class="reference">{{ item.reference }}</span>
               <h2>{{ item.subject }}</h2>
@@ -115,12 +130,15 @@
               }
             </div>
             <div class="row-meta">
-              <span class="status" [attr.data-status]="item.status">{{
+              <span class="status dispute-list-status" [attr.data-status]="item.status"><span class="status-dot" aria-hidden="true"></span>{{
                 item.status.replaceAll('_', ' ') | titlecase
               }}</span>
               <span>Updated {{ item.updatedAt | date: 'mediumDate' }}</span>
+              <a class="view-dispute-link" [routerLink]="['/', role(), 'disputes', item._id]">
+                View details <span aria-hidden="true">›</span>
+              </a>
             </div>
-          </a>
+          </article>
         }
       </section>
       <p class="result-count">{{ list()?.pagination?.total }} case(s)</p>
@@ -241,7 +259,9 @@
   }
 
   @if (mode() === 'detail') {
-    <a class="back-link" [routerLink]="['/', role(), 'disputes']">← All disputes</a>
+    <a class="back-link detail-back-link" [routerLink]="['/', role(), 'disputes']">
+      <span aria-hidden="true">←</span> All disputes
+    </a>
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
@@ -251,25 +271,52 @@
     @if (loading()) {
       <p class="state-card" role="status">Loading dispute details…</p>
     } @else if (dispute(); as item) {
-      <header class="detail-header">
+      <div class="detail-breadcrumb"><span>Disputes</span><span aria-hidden="true">/</span><strong>Dispute Details</strong></div>
+      <header class="detail-header dispute-detail-heading">
         <div>
-          <p class="eyebrow">{{ item.reference }}</p>
-          <h1>{{ item.subject }}</h1>
-          <p>
-            {{ item.category.replaceAll('_', ' ') | titlecase }} · Submitted
-            {{ item.createdAt | date: 'mediumDate' }}
-          </p>
+          <h1>Dispute Details</h1>
+          <p class="dispute-reference">{{ item.reference }}</p>
         </div>
-        <div class="detail-badges">
-          <span class="status" [attr.data-status]="item.status">{{
-            item.status.replaceAll('_', ' ') | titlecase
-          }}</span>
-        </div>
+        <span class="status detail-status" [attr.data-status]="item.status">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
+          {{ item.status.replaceAll('_', ' ') | titlecase }}
+        </span>
       </header>
 
-      <div class="detail-grid">
-        <section class="panel">
-          <h2>Original complaint</h2>
+      @if (item.repair; as repair) {
+        <section class="panel repair-overview">
+          <div class="repair-device">
+            @if (repair.photos[0]; as photo) {
+              <img [src]="photo.data" [alt]="repair.appliance + ' repair'" />
+            } @else {
+              <span class="device-placeholder" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M10 5h4m-2 13h.01" /></svg>
+              </span>
+            }
+            <div>
+              <span class="repair-kind">{{ repair.appliance }}</span>
+              <h2>{{ repair.brand || repair.appliance }}{{ repair.model ? ' ' + repair.model : '' }}</h2>
+              <p><span aria-hidden="true">⌁</span> {{ repairWork(repair) }}</p>
+            </div>
+          </div>
+          <div class="repair-fact">
+            <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>
+            <div><small>Repair Status</small><strong class="repair-status">{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</strong></div>
+          </div>
+          <div class="repair-fact">
+            <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5" /></svg></span>
+            <div><small>Accepted Quote</small><strong>{{ repair.quotation ? (repair.quotation.amount | currency: repair.quotation.currency) : 'Not available' }}</strong></div>
+          </div>
+          <div class="repair-fact">
+            <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 10h16" /></svg></span>
+            <div><small>Repaired On</small><strong>{{ repairCompletedAt(repair) ? (repairCompletedAt(repair)! | date: 'MMM d, y') : '—' }}</strong></div>
+          </div>
+        </section>
+      }
+
+      <div class="detail-grid dispute-detail-grid">
+        <section class="panel detail-card complaint-card">
+          <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z" /><path d="M9 9h6m-6 3h4" /></svg></span>Original Complaint</h2>
           <p>{{ item.description }}</p>
           @if (item.customerComments) {
             <p><strong>Additional notes:</strong> {{ item.customerComments }}</p>
@@ -285,57 +332,45 @@
         </section>
 
         @if (item.repair; as repair) {
-          <section class="panel">
-            <h2>Original repair</h2>
-            <p>
-              <strong>{{ repair.appliance }}</strong> · {{ repair.brand || 'Brand not provided' }}
-              {{ repair.model || '' }}
-            </p>
-            <p>{{ repair.description }}</p>
-            <p>Repair status: {{ repairStatus(repair) | titlecase }}</p>
-            @if (repair.quotation; as quotation) {
-              <p>Accepted quote: {{ quotation.amount | currency: quotation.currency }}</p>
-            }
-            @if (repair.photos.length) {
-              <div class="photo-strip">
-                @for (photo of repair.photos; track $index) {
-                  <img [src]="photo.data" [alt]="'Repair image ' + ($index + 1)" />
-                }
-              </div>
-            }
+          <section class="panel detail-card original-repair-card">
+            <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m14 6 4-4 4 4-4 4m-3-3L4 18v3h3L18 10M5 5l2-2 4 4-2 2z" /></svg></span>Original Repair</h2>
+            <ul class="repair-work-list">
+              <li><span aria-hidden="true">⌁</span><strong>Repair Work:</strong> {{ repairWork(repair) }}</li>
+              <li><span aria-hidden="true">✓</span><strong>Repair Status:</strong> {{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</li>
+              @if (repair.quotation; as quotation) {
+                <li><span aria-hidden="true">▤</span><strong>Accepted Quote:</strong> {{ quotation.amount | currency: quotation.currency }}</li>
+              }
+            </ul>
             @if (role() === 'customer') {
-              <a class="text-link" [routerLink]="['/customer/repair-requests', repair.id]"
-                >View repair details</a
-              >
+              <a class="text-link repair-details-link" [routerLink]="['/customer/repair-requests', repair.id]">View repair details <span aria-hidden="true">→</span></a>
             }
             @if (role() === 'shop') {
-              <a class="text-link" [routerLink]="['/shop/repair-requests', repair.id]"
-                >View repair details</a
-              >
+              <a class="text-link repair-details-link" [routerLink]="['/shop/repair-requests', repair.id]">View repair details <span aria-hidden="true">→</span></a>
             }
           </section>
         }
 
-        <section class="panel">
-          <h2>Participants</h2>
-          <p><strong>Customer:</strong> {{ item.parties?.customer?.name || 'Customer' }}</p>
-          <p><strong>Repair shop:</strong> {{ item.parties?.shop?.name || 'Assigned shop' }}</p>
+        <section class="panel detail-card participants-card">
+          <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19zm12-8.5a3 3 0 1 0 0-6m1 8.5h.8a3.7 3.7 0 0 1 3.7 3.7v.8h-4" /></svg></span>Participants</h2>
+          <div class="participant"><span class="participant-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></svg></span><p><strong>Customer</strong><span>{{ item.parties?.customer?.name || 'Customer' }}</span></p></div>
+          <div class="participant"><span class="participant-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10 12 4l9 6v10H3zM8 20v-6h8v6M7 10h.01M12 10h.01M17 10h.01" /></svg></span><p><strong>Repair Shop</strong><span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span></p></div>
         </section>
 
-        <section class="panel">
-          <h2>Status history</h2>
+        <section class="panel detail-card history-card">
+          <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>Status History</h2>
           <ol class="history-list">
             @for (entry of item.statusHistory; track $index) {
               <li>
-                <strong>{{
+                <span class="history-dot" aria-hidden="true"></span>
+                <div><strong>{{
                   entry.from === 'NONE'
                     ? 'Case opened'
-                    : entry.from.replaceAll('_', ' ') + ' → ' + entry.to.replaceAll('_', ' ')
+                    : entry.to.replaceAll('_', ' ') | titlecase
                 }}</strong>
-                <span>{{ entry.actorRole | titlecase }} · {{ entry.at | date: 'medium' }}</span>
+                <span>{{ entry.from === 'NONE' ? 'By ' + (entry.actorRole | titlecase) + ' · ' : '' }}{{ entry.at | date: 'medium' }}</span>
                 @if (entry.reason) {
                   <p>{{ entry.reason }}</p>
-                }
+                }</div>
               </li>
             }
           </ol>
@@ -416,13 +451,14 @@
               @if (charge.decisionReason) {
                 <p>{{ charge.decisionReason }}</p>
               }
-              @if (role() === 'customer' && charge.status === 'pending') {
+              @if (role() === 'customer' && charge.status === 'pending' && charge._id) {
                 <label
                   >Reason if declining (optional)<input
                     [(ngModel)]="message"
                     name="chargeDecisionReason"
                     maxlength="1000"
-                /></label>
+                  />
+                </label>
                 <div class="action-row">
                   <button
                     class="button primary"
@@ -513,8 +549,8 @@
         </section>
       }
 
-      <section class="panel conversation">
-        <h2>Conversation</h2>
+      <section class="panel conversation conversation-card">
+        <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v12H9l-5 3z" /></svg></span>Conversation</h2>
         @if (item.messages.length) {
           <ol class="message-list">
             @for (entry of item.messages; track $index) {
@@ -537,20 +573,27 @@
             }
           </ol>
         } @else {
-          <p>No messages yet.</p>
+          <div class="empty-conversation">
+            <span class="conversation-empty-icon" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M8 8h26a6 6 0 0 1 6 6v13a6 6 0 0 1-6 6H21l-9 7v-7h-4a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6Z" /><path d="M15 19h12m-12 6h8" /></svg></span>
+            <strong>No messages yet</strong>
+            <p>Start the conversation to discuss and resolve this dispute.</p>
+          </div>
         }
         @if (canSendMessage) {
-          <label
-            >{{ role() === 'admin' ? 'Admin message to both parties' : 'Add a message'
-            }}<textarea [(ngModel)]="message" name="message" rows="3" maxlength="4000"></textarea>
-          </label>
-          <label
-            >Attachments (optional, up to two files)<input
+          <div class="conversation-compose">
+            <label class="visually-hidden" for="dispute-message">{{ role() === 'admin' ? 'Admin message to both parties' : 'Add a message' }}</label>
+            <textarea id="dispute-message" [(ngModel)]="message" name="message" rows="3" maxlength="4000" placeholder="Type your message here..."></textarea>
+            <div class="conversation-compose-actions">
+              <label class="attach-button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 12.5 6.4-6.4a3 3 0 0 1 4.2 4.2l-8.5 8.5a5 5 0 0 1-7.1-7.1l8.5-8.5" /></svg>
+                <strong>Attach files</strong><span>(Up to 2 files)</span>
+                <input
               type="file"
               accept="image/jpeg,image/png,image/webp,application/pdf"
               multiple
               (change)="onConversationFilesSelected($event)"
-          /></label>
+                />
+              </label>
           @if (conversationAttachments.length) {
             <ul class="attachment-list">
               @for (file of conversationAttachments; track file.name; let index = $index) {
@@ -567,14 +610,12 @@
               }
             </ul>
           }
-          <button
-            class="button primary"
-            type="button"
-            [disabled]="saving() || !message.trim()"
-            (click)="sendMessage()"
-          >
-            Send message
-          </button>
+              <button class="button primary send-message-button" type="button" [disabled]="saving() || !message.trim()" (click)="sendMessage()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 3-7.5 18-3.8-7.7L2 9.5zM21 3 9.7 13.3" /></svg>
+                {{ saving() ? 'Sending…' : 'Send message' }}
+              </button>
+            </div>
+          </div>
         }
       </section>
 
@@ -611,6 +652,312 @@
             </ol>
           }
         </section>
+
+        <section class="panel admin-actions">
+          <h2>Manage dispute status</h2>
+          <div class="form-grid">
+            <label
+              >Status<select [(ngModel)]="adminStatus" name="adminStatus">
+                <option value="OPEN">Open</option>
+                <option value="UNDER_REVIEW">Under review</option>
+                <option value="AWAITING_SHOP_RESPONSE">Awaiting shop response</option>
+                <option value="AWAITING_CUSTOMER_RESPONSE">Awaiting customer response</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+            <label
+              >Priority<select [(ngModel)]="selectedPriority" name="selectedPriority">
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </label>
+            <label class="wide"
+              >Reason<textarea
+                [(ngModel)]="adminStatusReason"
+                name="adminStatusReason"
+                rows="2"
+                maxlength="1000"
+                required
+              ></textarea>
+            </label>
+            <button
+              class="button secondary"
+              type="button"
+              [disabled]="saving() || !adminStatusReason.trim()"
+              (click)="updateAdminStatus()"
+            >
+              Update status
+            </button>
+          </div>
+        </section>
+
+        @if (item.status !== 'CLOSED' && item.status !== 'RESOLVED' && item.resolution.state !== 'proposed') {
+          <section class="panel action-panel">
+            <h2>Propose a resolution</h2>
+            <div class="form-grid">
+              <label
+                >Resolution type<select [(ngModel)]="resolutionType" name="adminResolutionType">
+                  <option value="repair_again">Repair again</option>
+                  <option value="additional_repair">Additional repair</option>
+                  <option value="partial_refund">Partial refund</option>
+                  <option value="full_refund">Full refund</option>
+                  <option value="price_adjustment">Price adjustment</option>
+                  <option value="customer_compensation">Customer compensation</option>
+                  <option value="shop_compensation">Shop compensation</option>
+                  <option value="no_action">No action</option>
+                  <option value="other">Other agreement</option>
+                </select>
+              </label>
+              @if (resolutionType === 'partial_refund' || resolutionType === 'full_refund') {
+                <label
+                  >Refund amount<input
+                    type="number"
+                    [(ngModel)]="resolutionAmount"
+                    name="adminResolutionAmount"
+                    min="0"
+                    step="0.01"
+                    required
+                /></label>
+              }
+              <label class="wide"
+                >Proposed resolution<textarea
+                  [(ngModel)]="resolutionDescription"
+                  name="adminResolutionDescription"
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label
+                >Responsible party<select
+                  [(ngModel)]="resolutionResponsibleParty"
+                  name="adminResolutionParty"
+                >
+                  <option value="shop">Shop</option>
+                  <option value="customer">Customer</option>
+                  <option value="both">Both parties</option>
+                  <option value="not_applicable">Not applicable</option>
+                </select>
+              </label>
+              <label class="wide"
+                >Investigation notes<textarea
+                  [(ngModel)]="resolutionNotes"
+                  name="adminResolutionNotes"
+                  rows="2"
+                  maxlength="2000"
+                  required
+                ></textarea>
+              </label>
+              <label class="wide"
+                >Supporting documents<input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  multiple
+                  (change)="onConversationFilesSelected($event)"
+              /></label>
+              <button
+                class="button primary"
+                type="button"
+                [disabled]="saving() || !resolutionDescription.trim() || !resolutionNotes.trim()"
+                (click)="proposeResolution()"
+              >
+                Submit resolution proposal
+              </button>
+            </div>
+          </section>
+        }
+
+        @if (item.resolution.state === 'proposed') {
+          <section class="panel action-panel">
+            <h2>Complete resolution</h2>
+            <p>{{ item.resolution.description }}</p>
+            <label
+              >Completion notes<textarea
+                [(ngModel)]="resolutionCompletionNotes"
+                name="adminCompletionNotes"
+                rows="3"
+                maxlength="1000"
+                required
+              ></textarea>
+            </label>
+            @if (item.resolution.type === 'partial_refund' || item.resolution.type === 'full_refund') {
+              <label
+                >Refund transaction ID<input
+                  [(ngModel)]="refundTransactionId"
+                  name="refundTransactionId"
+                  maxlength="200"
+              /></label>
+            }
+            <label class="check-row"
+              ><input
+                type="checkbox"
+                [(ngModel)]="requiredActionCompleted"
+                name="requiredActionCompleted"
+              />
+              Confirm the approved action has been completed.</label
+            >
+            <label
+              >Completion evidence<input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                multiple
+                (change)="onCompletionFilesSelected($event)"
+            /></label>
+            <button
+              class="button primary"
+              type="button"
+              [disabled]="saving() || !resolutionCompletionNotes.trim()"
+              (click)="completeAdminResolution()"
+            >
+              Mark resolved
+            </button>
+          </section>
+        }
+        @if (item.status !== 'CLOSED') {
+          <section class="panel action-panel">
+            <h2>Close dispute</h2>
+            <label
+              >Closure note<input [(ngModel)]="closeReason" name="adminCloseReason" maxlength="1000"
+            /></label>
+            <button
+              class="button danger"
+              type="button"
+              [disabled]="saving() || !closeReason.trim()"
+              (click)="closeAsAdmin()"
+            >
+              Close dispute
+            </button>
+          </section>
+        }
+      }
+
+      @if (role() === 'shop' && item.status !== 'CLOSED' && item.status !== 'RESOLVED' && item.resolution.state !== 'proposed') {
+        <section class="panel action-panel">
+          <h2>Propose a resolution to the customer</h2>
+          <div class="form-grid">
+            <label
+              >Resolution type<select [(ngModel)]="resolutionType" name="shopResolutionType">
+                <option value="repair_again">Repair again</option>
+                <option value="additional_repair">Additional repair</option>
+                <option value="partial_refund">Partial refund</option>
+                <option value="full_refund">Full refund</option>
+                <option value="price_adjustment">Price adjustment</option>
+                <option value="customer_compensation">Customer compensation</option>
+                <option value="shop_compensation">Shop compensation</option>
+                <option value="no_action">No action</option>
+                <option value="other">Other agreement</option>
+              </select>
+            </label>
+            @if (resolutionType === 'partial_refund' || resolutionType === 'full_refund') {
+              <label
+                >Refund amount<input
+                  type="number"
+                  [(ngModel)]="resolutionAmount"
+                  name="shopResolutionAmount"
+                  min="0"
+                  step="0.01"
+                  required
+              /></label>
+            }
+            <label class="wide"
+              >Proposed resolution<textarea
+                [(ngModel)]="resolutionDescription"
+                name="shopResolutionDescription"
+                rows="3"
+                maxlength="3000"
+                required
+              ></textarea>
+            </label>
+            <label class="wide"
+              >Notes<textarea
+                [(ngModel)]="resolutionNotes"
+                name="shopResolutionNotes"
+                rows="2"
+                maxlength="2000"
+                required
+              ></textarea>
+            </label>
+            <button
+              class="button primary"
+              type="button"
+              [disabled]="saving() || !resolutionDescription.trim() || !resolutionNotes.trim()"
+              (click)="proposeResolution()"
+            >
+              Submit proposal
+            </button>
+          </div>
+        </section>
+      }
+
+      @if (role() === 'customer' && item.resolution.state === 'proposed' && item.status === 'AWAITING_CUSTOMER_RESPONSE') {
+        <section class="panel action-panel">
+          <h2>Review the proposed resolution</h2>
+          <p>{{ item.resolution.description }}</p>
+          @if (item.resolution.amount !== undefined) {
+            <p>Proposed amount: {{ item.resolution.amount | currency }}</p>
+          }
+          <label
+            >Reason if rejecting<textarea
+              [(ngModel)]="resolutionDecisionReason"
+              name="resolutionDecisionReason"
+              rows="2"
+              maxlength="1000"
+            ></textarea>
+          </label>
+          <div class="action-row">
+            <button
+              class="button primary"
+              type="button"
+              [disabled]="saving()"
+              (click)="decideResolution('accept')"
+            >
+              Accept resolution
+            </button>
+            <button
+              class="button danger"
+              type="button"
+              [disabled]="saving() || !resolutionDecisionReason.trim()"
+              (click)="decideResolution('reject')"
+            >
+              Reject resolution
+            </button>
+          </div>
+        </section>
+      }
+
+      @if (role() === 'shop' && item.resolution.state === 'proposed' && item.status === 'AWAITING_SHOP_RESPONSE') {
+        <section class="panel action-panel">
+          <h2>Review the customer's response</h2>
+          <p>{{ item.resolution.description }}</p>
+          <label
+            >Reason if rejecting<textarea
+              [(ngModel)]="resolutionDecisionReason"
+              name="shopResolutionDecisionReason"
+              rows="2"
+              maxlength="1000"
+            ></textarea>
+          </label>
+          <div class="action-row">
+            <button
+              class="button primary"
+              type="button"
+              [disabled]="saving()"
+              (click)="decideResolution('accept')"
+            >
+              Accept resolution
+            </button>
+            <button
+              class="button danger"
+              type="button"
+              [disabled]="saving() || !resolutionDecisionReason.trim()"
+              (click)="decideResolution('reject')"
+            >
+              Reject resolution
+            </button>
+          </div>
+        </section>
       }
 
       @if (role() === 'shop' && item.status === 'OPEN') {
@@ -626,6 +973,42 @@
               Accept dispute
             </button>
           </div>
+          <hr />
+          <h3>Send a formal response</h3>
+          <label
+            >Investigation and response<textarea
+              [(ngModel)]="shopResponseExplanation"
+              name="shopResponseExplanation"
+              rows="3"
+              maxlength="3000"
+              required
+            ></textarea>
+          </label>
+          <label
+            >Message to customer<textarea
+              [(ngModel)]="shopResponseMessage"
+              name="shopResponseMessage"
+              rows="2"
+              maxlength="4000"
+              required
+            ></textarea>
+          </label>
+          <label
+            >Proposed next step (optional)<textarea
+              [(ngModel)]="shopProposedResolution"
+              name="shopProposedResolution"
+              rows="2"
+              maxlength="2000"
+            ></textarea>
+          </label>
+          <button
+            class="button primary"
+            type="button"
+            [disabled]="saving() || !shopResponseExplanation.trim() || !shopResponseMessage.trim()"
+            (click)="submitShopResponse()"
+          >
+            Submit response
+          </button>
           <hr />
           <h3>Reject dispute</h3>
           <label
@@ -662,7 +1045,12 @@
         </section>
       }
 
-      @if (role() === 'shop' && (item.status === 'ACCEPTED' || item.status === 'REOPENED')) {
+      @if (
+        role() === 'shop' &&
+        (item.status === 'UNDER_REVIEW' ||
+          item.status === 'ACCEPTED' ||
+          item.status === 'REOPENED')
+      ) {
         <section class="panel action-panel">
           <h2>Reinspection</h2>
           <p>
@@ -680,7 +1068,11 @@
         </section>
       }
 
-      @if (role() === 'shop' && item.status === 'REINSPECTION_IN_PROGRESS') {
+      @if (
+        role() === 'shop' &&
+        (item.status === 'REINSPECTION_IN_PROGRESS' ||
+          item.status === 'AWAITING_SHOP_RESPONSE')
+      ) {
         <section class="panel">
           <h2>Submit reinspection findings</h2>
           <div class="form-grid">
@@ -688,64 +1080,28 @@
               >Findings<textarea
                 [(ngModel)]="reinspectionFindings"
                 name="reinspectionFindings"
+                placeholder="Describe the inspection findings"
                 rows="3"
                 maxlength="3000"
-              ></textarea>
-            </label>
-            <label
-              >Actual problem identified<textarea
-                [(ngModel)]="identifiedProblem"
-                name="identifiedProblem"
-                rows="3"
-                maxlength="3000"
+                required
               ></textarea>
             </label>
             <label
               >Required repair work<textarea
                 [(ngModel)]="requiredRepairWork"
                 name="requiredRepairWork"
+                placeholder="Describe the repair work needed"
                 rows="3"
                 maxlength="3000"
+                required
               ></textarea>
             </label>
-            <label
-              >Parts required (optional)<textarea
-                [(ngModel)]="partsRequired"
-                name="partsRequired"
-                rows="2"
-                maxlength="2000"
-              ></textarea>
-            </label>
-            <label
-              >Labour charges (optional)<input
-                type="number"
-                [(ngModel)]="labourCharges"
-                name="labourCharges"
-                min="0"
-                step="0.01"
-            /></label>
-            <label
-              >Other charges (optional)<input
-                type="number"
-                [(ngModel)]="otherCharges"
-                name="otherCharges"
-                min="0"
-                step="0.01"
-            /></label>
             <label
               >Estimated completion time (optional)<input
                 [(ngModel)]="estimatedCompletionTime"
                 name="estimatedCompletionTime"
                 maxlength="500"
             /></label>
-            <label
-              >Message to customer (optional)<textarea
-                [(ngModel)]="reinspectionMessage"
-                name="reinspectionMessage"
-                rows="2"
-                maxlength="2000"
-              ></textarea>
-            </label>
             <label class="wide"
               >Supporting images/documents<input
                 type="file"
@@ -838,7 +1194,8 @@
 
       @if (
         role() === 'shop' &&
-        item.status === 'AWAITING_CUSTOMER_APPROVAL' &&
+        (item.status === 'AWAITING_CUSTOMER_APPROVAL' ||
+          item.status === 'AWAITING_CUSTOMER_RESPONSE') &&
         latestCharge?.status === 'accepted'
       ) {
         <section class="panel action-panel">
@@ -854,14 +1211,22 @@
         </section>
       }
 
-      @if (role() === 'customer' && item.status === 'AWAITING_CUSTOMER_APPROVAL') {
+      @if (
+        role() === 'customer' &&
+        item.status === 'AWAITING_CUSTOMER_RESPONSE' &&
+        latestCharge?.status === 'pending'
+      ) {
         <section class="panel action-panel">
           <h2>Review additional charges</h2>
           <p>Accept or decline the itemized request before any chargeable work can begin.</p>
         </section>
       }
 
-      @if (role() === 'shop' && item.status === 'REPAIR_IN_PROGRESS') {
+      @if (
+        role() === 'shop' &&
+        (item.status === 'REPAIR_IN_PROGRESS' ||
+          item.status === 'AWAITING_SHOP_RESPONSE')
+      ) {
         <section class="panel">
           <h2>Rework in progress</h2>
           <label
@@ -943,7 +1308,11 @@
         </section>
       }
 
-      @if (role() === 'customer' && item.status === 'CUSTOMER_VERIFICATION_PENDING') {
+      @if (
+        role() === 'customer' &&
+        (item.status === 'CUSTOMER_VERIFICATION_PENDING' ||
+          item.status === 'AWAITING_CUSTOMER_RESPONSE')
+      ) {
         <section class="panel action-panel">
           <h2>Please inspect and test your device</h2>
           <p>
@@ -994,7 +1363,11 @@
         </section>
       }
 
-      @if (role() === 'customer' && item.status === 'REJECTED') {
+      @if (
+        role() === 'customer' &&
+        (item.status === 'REJECTED' ||
+          item.status === 'AWAITING_CUSTOMER_RESPONSE')
+      ) {
         <section class="panel action-panel">
           <h2>Still need help?</h2>
           <p>
@@ -1027,14 +1400,20 @@
         </section>
       }
 
-      @if (role() === 'customer' && item.status === 'CUSTOMER_CONFIRMED') {
+      @if (
+        role() === 'customer' &&
+        (item.status === 'CUSTOMER_CONFIRMED' || item.status === 'RESOLVED')
+      ) {
         <section class="panel">
           <h2>Awaiting shop closure</h2>
           <p>You confirmed the issue is resolved. The shop must perform the final closure.</p>
         </section>
       }
 
-      @if (role() === 'shop' && item.status === 'CUSTOMER_CONFIRMED') {
+      @if (
+        role() === 'shop' &&
+        (item.status === 'CUSTOMER_CONFIRMED' || item.status === 'RESOLVED')
+      ) {
         <section class="panel action-panel">
           <h2>Customer confirmed resolution</h2>
           @if (latestVerification?.comments) {

@@ -14,12 +14,21 @@ import {
   RepairDispute,
 } from './disputes.models';
 import { DisputesService } from './disputes.service';
+import { environment } from '../../environments/environment';
+import {
+  CommonFilterComponent,
+  FilterConfig,
+  FilterValues,
+} from './common-filter.component';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogConfig,
 } from './confirmation-dialog.component';
 
-type DisputeConfirmationAction = 'confirmResolution' | 'closeDispute';
+type DisputeConfirmationAction =
+  | 'confirmResolution'
+  | 'closeDispute'
+  | 'closeAdminDispute';
 
 const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
   { value: 'same_issue_exists', label: 'Same issue still exists' },
@@ -41,7 +50,13 @@ const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
 @Component({
   selector: 'app-dispute-center',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ConfirmationDialogComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    CommonFilterComponent,
+    ConfirmationDialogComponent,
+  ],
   templateUrl: './dispute-center.component.html',
   styleUrl: './dispute-center.component.scss',
 })
@@ -63,9 +78,12 @@ export class DisputeCenterComponent implements OnInit {
   } | null>(null);
   readonly categories = DISPUTE_CATEGORIES;
   readonly activeAttachmentUrls = new Map<string, string>();
+  readonly appliedFilters = signal<FilterValues>({});
+  filterConfig: FilterConfig = this.createFilterConfig('customer');
 
   search = '';
   statusFilter: DisputeStatus | '' = '';
+  datePreset: 'all' | '7' | '30' | '90' = 'all';
   priorityFilter: DisputePriority | '' = '';
   fromDate = '';
   toDate = '';
@@ -77,18 +95,16 @@ export class DisputeCenterComponent implements OnInit {
   conversationAttachments: DisputeAttachment[] = [];
   completionDocuments: DisputeAttachment[] = [];
   message = '';
-  selectedPriority = 'normal';
+  selectedPriority: DisputePriority = 'normal';
   internalNote = '';
   rejectionReason = '';
   rejectionExplanation = '';
+  shopResponseExplanation = '';
+  shopResponseMessage = '';
+  shopProposedResolution = '';
   reinspectionFindings = '';
-  identifiedProblem = '';
   requiredRepairWork = '';
-  partsRequired = '';
-  labourCharges: number | null = null;
-  otherCharges: number | null = null;
   estimatedCompletionTime = '';
-  reinspectionMessage = '';
   chargeReason = '';
   chargeItems: Array<{ description: string; amount: number | null }> = [
     { description: '', amount: null },
@@ -103,6 +119,17 @@ export class DisputeCenterComponent implements OnInit {
   verificationNotes = '';
   unresolvedNotes = '';
   closeReason = '';
+  adminStatus: DisputeStatus = 'UNDER_REVIEW';
+  adminStatusReason = '';
+  resolutionType = 'repair_again';
+  resolutionDescription = '';
+  resolutionNotes = '';
+  resolutionAmount: number | null = null;
+  resolutionResponsibleParty = 'shop';
+  resolutionDecisionReason = '';
+  resolutionCompletionNotes = '';
+  refundTransactionId = '';
+  requiredActionCompleted = false;
 
   private repairRequestId = '';
   private confirmationAction: DisputeConfirmationAction | null = null;
@@ -120,6 +147,7 @@ export class DisputeCenterComponent implements OnInit {
     this.role.set(
       requestedRole === 'admin' || requestedRole === 'shop' ? requestedRole : 'customer',
     );
+    this.filterConfig = this.createFilterConfig(this.role());
     this.route.paramMap.subscribe((params) => {
       this.error.set('');
       this.notice.set('');
@@ -147,9 +175,126 @@ export class DisputeCenterComponent implements OnInit {
 
   page = 1;
 
-  applyFilters(): void {
+  private createFilterConfig(role: DisputeRole): FilterConfig {
+    return {
+      title: 'Dispute filters',
+      fields: [
+        {
+          key: 'category',
+          label: 'Category',
+          type: 'select',
+          placeholder: 'All categories',
+          options: DISPUTE_CATEGORIES.map(({ value, label }) => ({ value, label })),
+        },
+        ...(role === 'admin'
+          ? [
+              {
+                key: 'priority',
+                label: 'Priority',
+                type: 'select' as const,
+                placeholder: 'All priorities',
+                options: [
+                  { value: 'low', label: 'Low' },
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'high', label: 'High' },
+                  { value: 'urgent', label: 'Urgent' },
+                ],
+              },
+            ]
+          : []),
+        {
+          key: 'sort',
+          label: 'Sort',
+          type: 'select',
+          options: [
+            { value: 'newest', label: 'Recently updated' },
+            { value: 'oldest', label: 'Oldest first' },
+            { value: 'priority', label: 'Priority' },
+          ],
+          defaultValue: 'newest',
+        },
+      ],
+    };
+  }
+
+  applyFilters(filters: FilterValues): void {
+    this.appliedFilters.set(filters);
+    this.categoryFilter = this.filterCategory(filters['category']);
+    this.priorityFilter = this.filterPriority(filters['priority']);
+    const sort = filters['sort'];
+    this.sortOrder =
+      sort === 'oldest' || sort === 'priority' ? sort : 'newest';
     this.page = 1;
     this.loadList();
+  }
+
+  applyListControls(): void {
+    this.page = 1;
+    this.loadList();
+  }
+
+  setStatusFilter(value: string): void {
+    this.statusFilter = this.filterStatus(value);
+    this.applyListControls();
+  }
+
+  setDatePreset(value: 'all' | '7' | '30' | '90'): void {
+    this.datePreset = value;
+    if (value === 'all') {
+      this.fromDate = '';
+      this.toDate = '';
+    } else {
+      const end = new Date();
+      const start = new Date(end);
+      start.setDate(start.getDate() - Number(value));
+      this.fromDate = this.localDateString(start);
+      this.toDate = this.localDateString(end);
+    }
+    this.applyListControls();
+  }
+
+  private localDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private filterStatus(value: FilterValues[string]): DisputeStatus | '' {
+    const statuses: DisputeStatus[] = [
+      'OPEN',
+      'UNDER_REVIEW',
+      'AWAITING_SHOP_RESPONSE',
+      'AWAITING_CUSTOMER_RESPONSE',
+      'RESOLVED',
+      'CLOSED',
+      'REJECTED',
+      'ACCEPTED',
+      'REINSPECTION_IN_PROGRESS',
+      'AWAITING_CUSTOMER_APPROVAL',
+      'REPAIR_IN_PROGRESS',
+      'CUSTOMER_VERIFICATION_PENDING',
+      'CUSTOMER_CONFIRMED',
+      'REOPENED',
+      'RESOLUTION_PROPOSED',
+    ];
+    return typeof value === 'string' && statuses.includes(value as DisputeStatus)
+      ? (value as DisputeStatus)
+      : '';
+  }
+
+  private filterCategory(value: FilterValues[string]): DisputeCategory | '' {
+    return typeof value === 'string' &&
+      DISPUTE_CATEGORIES.some((category) => category.value === value)
+      ? (value as DisputeCategory)
+      : '';
+  }
+
+  private filterPriority(value: FilterValues[string]): DisputePriority | '' {
+    const priorities: DisputePriority[] = ['low', 'normal', 'high', 'urgent'];
+    return typeof value === 'string' && priorities.includes(value as DisputePriority)
+      ? (value as DisputePriority)
+      : '';
   }
 
   changePage(delta: number): void {
@@ -261,6 +406,112 @@ export class DisputeCenterComponent implements OnInit {
     );
   }
 
+  updateAdminStatus(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.adminStatusReason.trim()) {
+      this.error.set('Add a reason for the status change.');
+      return;
+    }
+    this.run(
+      this.disputes.updateAdminStatus(dispute._id, {
+        status: this.adminStatus,
+        reason: this.adminStatusReason.trim(),
+        priority: this.selectedPriority,
+      }),
+      'Dispute status updated.',
+      (updated) => {
+        this.adminStatusReason = '';
+        this.dispute.set(updated);
+      },
+    );
+  }
+
+  proposeResolution(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.resolutionDescription.trim() || !this.resolutionNotes.trim()) {
+      this.error.set('Describe the proposed resolution and include supporting notes.');
+      return;
+    }
+    if (
+      ['partial_refund', 'full_refund'].includes(this.resolutionType) &&
+      (this.resolutionAmount === null || this.resolutionAmount < 0)
+    ) {
+      this.error.set('Enter the proposed refund amount.');
+      return;
+    }
+    this.run(
+      this.disputes.proposeResolution(this.role(), dispute._id, {
+        type: this.resolutionType,
+        description: this.resolutionDescription.trim(),
+        amount: this.resolutionAmount ?? undefined,
+        responsibleParty: this.resolutionResponsibleParty,
+        notes: this.resolutionNotes.trim(),
+        documents: this.conversationAttachments,
+      }),
+      'Resolution proposal submitted.',
+      (updated) => {
+        this.conversationAttachments = [];
+        this.resolutionDescription = '';
+        this.resolutionNotes = '';
+        this.dispute.set(updated);
+      },
+    );
+  }
+
+  decideResolution(decision: 'accept' | 'reject'): void {
+    const dispute = this.dispute();
+    if (!dispute) return;
+    if (decision === 'reject' && !this.resolutionDecisionReason.trim()) {
+      this.error.set('Explain why you are rejecting the proposed resolution.');
+      return;
+    }
+    this.run(
+      this.disputes.decideResolution(this.role(), dispute._id, {
+        decision,
+        reason: this.resolutionDecisionReason.trim() || undefined,
+      }),
+      decision === 'accept' ? 'Resolution accepted.' : 'Resolution rejected.',
+      (updated) => {
+        this.resolutionDecisionReason = '';
+        this.dispute.set(updated);
+      },
+    );
+  }
+
+  completeAdminResolution(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.resolutionCompletionNotes.trim()) {
+      this.error.set('Add resolution completion notes.');
+      return;
+    }
+    this.run(
+      this.disputes.resolveDispute('admin', dispute._id, {
+        completionNotes: this.resolutionCompletionNotes.trim(),
+        refundTransactionId: this.refundTransactionId.trim() || undefined,
+        requiredActionCompleted: this.requiredActionCompleted,
+        documents: this.completionDocuments,
+      }),
+      'Dispute marked resolved.',
+      (updated) => this.dispute.set(updated),
+    );
+  }
+
+  closeAsAdmin(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.closeReason.trim()) {
+      this.error.set('Enter a final closure note.');
+      return;
+    }
+    this.confirmationAction = 'closeAdminDispute';
+    this.confirmation.set({
+      title: 'Close dispute?',
+      message: 'This will close the case and prevent further messages. Continue?',
+      confirmLabel: 'Close dispute',
+      cancelLabel: 'Cancel',
+      destructive: true,
+    });
+  }
+
   acceptDispute(): void {
     const dispute = this.dispute();
     if (!dispute) return;
@@ -275,6 +526,7 @@ export class DisputeCenterComponent implements OnInit {
       this.error.set('Provide a rejection reason and explanation.');
       return;
     }
+
     this.run(
       this.disputes.reject(dispute._id, {
         reason: this.rejectionReason.trim(),
@@ -285,6 +537,34 @@ export class DisputeCenterComponent implements OnInit {
       (updated) => {
         this.rejectionReason = '';
         this.rejectionExplanation = '';
+        this.conversationAttachments = [];
+        this.dispute.set(updated);
+      },
+    );
+  }
+
+  submitShopResponse(): void {
+    const dispute = this.dispute();
+    if (
+      !dispute ||
+      !this.shopResponseExplanation.trim() ||
+      !this.shopResponseMessage.trim()
+    ) {
+      this.error.set('Provide an explanation and message for the customer.');
+      return;
+    }
+    this.run(
+      this.disputes.respondAsShop(dispute._id, {
+        explanation: this.shopResponseExplanation.trim(),
+        message: this.shopResponseMessage.trim(),
+        proposedResolution: this.shopProposedResolution.trim() || undefined,
+        attachments: this.conversationAttachments,
+      }),
+      'Response sent to the customer.',
+      (updated) => {
+        this.shopResponseExplanation = '';
+        this.shopResponseMessage = '';
+        this.shopProposedResolution = '';
         this.conversationAttachments = [];
         this.dispute.set(updated);
       },
@@ -304,22 +584,16 @@ export class DisputeCenterComponent implements OnInit {
     if (
       !dispute ||
       !this.reinspectionFindings.trim() ||
-      !this.identifiedProblem.trim() ||
       !this.requiredRepairWork.trim()
     ) {
-      this.error.set('Complete the findings, problem identified, and required repair work.');
+      this.error.set('Complete the inspection findings and required repair work.');
       return;
     }
     this.run(
       this.disputes.submitReinspection(dispute._id, {
         findings: this.reinspectionFindings.trim(),
-        identifiedProblem: this.identifiedProblem.trim(),
         requiredRepairWork: this.requiredRepairWork.trim(),
-        partsRequired: this.partsRequired.trim() || undefined,
-        labourCharges: this.labourCharges ?? undefined,
-        otherCharges: this.otherCharges ?? undefined,
         estimatedCompletionTime: this.estimatedCompletionTime.trim() || undefined,
-        message: this.reinspectionMessage.trim() || undefined,
         attachments: this.conversationAttachments,
       }),
       'Reinspection findings submitted.',
@@ -373,6 +647,12 @@ export class DisputeCenterComponent implements OnInit {
   decideCharges(chargeId: string, decision: 'accept' | 'decline'): void {
     const dispute = this.dispute();
     if (!dispute) return;
+    if (!chargeId || chargeId === 'undefined') {
+      this.error.set(
+        'This charge request is missing its reference. Refresh the dispute and try again.',
+      );
+      return;
+    }
     this.run(
       this.disputes.decideAdditionalCharges(
         dispute._id,
@@ -467,7 +747,19 @@ export class DisputeCenterComponent implements OnInit {
       this.submitResolutionConfirmation();
     } else if (action === 'closeDispute') {
       this.submitDisputeClosure();
+    } else if (action === 'closeAdminDispute') {
+      this.submitAdminDisputeClosure();
     }
+  }
+
+  private submitAdminDisputeClosure(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.closeReason.trim()) return;
+    this.run(
+      this.disputes.closeAsAdmin(dispute._id, this.closeReason.trim()),
+      'Dispute closed.',
+      (updated) => this.dispute.set(updated),
+    );
   }
 
   private submitResolutionConfirmation(): void {
@@ -609,11 +901,28 @@ export class DisputeCenterComponent implements OnInit {
   }
 
   attachmentUrl(attachment: DisputeAttachment): string {
-    return `data:${attachment.mimeType};base64,${attachment.data}`;
+    if (attachment.data) {
+      return `data:${attachment.mimeType};base64,${attachment.data}`;
+    }
+    const dispute = this.dispute();
+    if (!attachment.fileId || !dispute) return '';
+    return `${environment.apiBaseUrl}/${this.role()}/disputes/${encodeURIComponent(dispute._id)}/attachments/${encodeURIComponent(attachment.fileId)}`;
   }
 
   repairStatus(repair: NonNullable<RepairDispute['repair']>): string {
     return String(repair.repairJob?.['status'] || repair.status);
+  }
+
+  repairWork(repair: NonNullable<RepairDispute['repair']>): string {
+    const job = repair.repairJob;
+    const work = job?.['workPerformed'] || job?.['completionDescription'];
+    return String(work || repair.quotation?.proposedSolution || repair.quotation?.message || repair.description);
+  }
+
+  repairCompletedAt(repair: NonNullable<RepairDispute['repair']>): string | Date | null {
+    const job = repair.repairJob;
+    const repairedAt = job?.['completedAt'] || job?.['repairCompletedAt'] || job?.['pickedUpAt'];
+    return typeof repairedAt === 'string' || repairedAt instanceof Date ? repairedAt : null;
   }
 
   get isRepairEligible(): boolean {
@@ -630,7 +939,8 @@ export class DisputeCenterComponent implements OnInit {
   private selectedCategory: DisputeCategory | '' = '';
 
   get canSendMessage(): boolean {
-    return this.dispute()?.status !== 'CLOSED';
+    const status = this.dispute()?.status;
+    return status !== 'CLOSED' && status !== 'RESOLVED';
   }
 
   get latestCharge() {

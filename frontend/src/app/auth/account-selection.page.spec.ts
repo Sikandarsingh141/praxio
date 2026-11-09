@@ -15,7 +15,7 @@ describe('AccountSelectionPage', () => {
     fixture.detectChanges();
 
     const links = Array.from(fixture.nativeElement.querySelectorAll('a')) as HTMLAnchorElement[];
-    expect(fixture.nativeElement.textContent).toContain('Create Your Praxio Account');
+    expect(fixture.nativeElement.textContent).toContain('Create Your Reparo Account');
     expect(fixture.nativeElement.textContent).toContain('Continue as Customer');
     expect(fixture.nativeElement.textContent).toContain('Register as Shop');
     expect(fixture.nativeElement.textContent).toContain('Find nearby repair shops');

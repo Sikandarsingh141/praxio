@@ -11,6 +11,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ProfileController } from './profile.controller';
+import { ShopProfileController } from './shop-profile.controller';
 
 describe('AuthController', () => {
   let app: INestApplication<App>;
@@ -68,10 +69,17 @@ describe('AuthController', () => {
       reviewedAt: null,
       declineReason: null,
     }),
+    getShopProfile: jest.fn().mockResolvedValue({
+      shopName: 'Example Repairs',
+      shopImageData: `data:image/png;base64,${Buffer.from([
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+      ]).toString('base64')}`,
+    }),
   };
   const usersService = {
     findById: jest.fn().mockResolvedValue(safeUser),
     updateProfile: jest.fn().mockResolvedValue(safeUser),
+    updateShopImage: jest.fn().mockResolvedValue(safeUser),
   };
   const customerPortalService = {
     searchAddresses: jest.fn().mockResolvedValue([
@@ -98,7 +106,7 @@ describe('AuthController', () => {
           signOptions: { expiresIn: 86400 },
         }),
       ],
-      controllers: [AuthController, ProfileController],
+      controllers: [AuthController, ProfileController, ShopProfileController],
       providers: [
         { provide: AuthService, useValue: authService },
         { provide: ConfigService, useValue: configService },
@@ -404,6 +412,60 @@ describe('AuthController', () => {
       .expect(400);
 
     expect(usersService.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it('stores a valid uploaded shop image and returns the refreshed shop profile', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+      accountType: 'shop',
+    });
+    const pngSignature = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+
+    await request(app.getHttpServer())
+      .post('/api/shops/my-profile-image')
+      .set('Cookie', `access_token=${token}`)
+      .attach('image', pngSignature, {
+        filename: 'shop.png',
+        contentType: 'image/png',
+      })
+      .expect(201, {
+        data: {
+          profile: {
+            shopName: 'Example Repairs',
+            shopImageData: `data:image/png;base64,${pngSignature.toString('base64')}`,
+          },
+        },
+      });
+
+    expect(usersService.updateShopImage).toHaveBeenCalledWith(
+      safeUser.id,
+      `data:image/png;base64,${pngSignature.toString('base64')}`,
+    );
+    expect(authService.getShopProfile).toHaveBeenCalledWith(safeUser.id);
+  });
+
+  it('rejects shop images with unsupported content', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+      accountType: 'shop',
+    });
+
+    await request(app.getHttpServer())
+      .post('/api/shops/my-profile-image')
+      .set('Cookie', `access_token=${token}`)
+      .attach('image', Buffer.from('not an image'), {
+        filename: 'shop.png',
+        contentType: 'image/png',
+      })
+      .expect(400);
+
+    expect(usersService.updateShopImage).not.toHaveBeenCalled();
   });
 
   it.each([

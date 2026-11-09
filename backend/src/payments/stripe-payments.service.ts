@@ -16,7 +16,7 @@ const SHOP_SUBSCRIPTION_CURRENCY = 'usd';
 export interface ShopPaymentStatus {
   registrationStatus: 'pending' | 'approved' | 'declined' | 'not_found';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
-  subscriptionPlan: 'Praxio Shop monthly subscription';
+  subscriptionPlan: 'Reparo Shop monthly subscription';
   amountCents: number;
   currency: string;
   paidAt: Date | null;
@@ -104,7 +104,7 @@ export class StripePaymentsService {
             currency: SHOP_SUBSCRIPTION_CURRENCY,
             unit_amount: SHOP_SUBSCRIPTION_AMOUNT_CENTS,
             recurring: { interval: 'month' },
-            product_data: { name: 'Praxio Shop monthly subscription' },
+            product_data: { name: 'Reparo Shop monthly subscription' },
           },
           quantity: 1,
         },
@@ -184,7 +184,7 @@ export class StripePaymentsService {
     return {
       registrationStatus: request?.registrationStatus ?? 'not_found',
       paymentStatus: request?.paymentStatus ?? 'not_required',
-      subscriptionPlan: 'Praxio Shop monthly subscription',
+      subscriptionPlan: 'Reparo Shop monthly subscription',
       amountCents:
         request?.paymentAmountCents ?? SHOP_SUBSCRIPTION_AMOUNT_CENTS,
       currency: request?.paymentCurrency ?? SHOP_SUBSCRIPTION_CURRENCY,

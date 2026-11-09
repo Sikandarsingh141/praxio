@@ -34,11 +34,6 @@
         <strong>{{ overview() ? countStatus('completed', 'repair_completed') : '—' }}</strong>
         <span>Completed</span>
       </article>
-      <article class="summary-card">
-        <span class="summary-icon disputed-icon" aria-hidden="true">⚠</span>
-        <strong>{{ overview() ? countStatus('disputed') : '—' }}</strong>
-        <span>Disputed</span>
-      </article>
     </section>
   }
 
@@ -65,7 +60,6 @@
           <option value="ready_for_pickup">Ready for pickup</option>
           <option value="picked_up">Picked up</option>
           <option value="completed">Completed</option>
-          <option value="disputed">Disputed</option>
         </select>
       </label>
       <label class="toolbar-select date-select">
@@ -94,7 +88,7 @@
     @if (view() === 'jobs') {
       <div class="monitor-list">
         @for (job of jobs(); track job._id) {
-          <article class="monitor-card" [class.disputed-card]="job.repairJob.status === 'disputed'" [class.completed-card]="job.repairJob.status === 'completed' || job.repairJob.status === 'repair_completed'">
+          <article class="monitor-card" [class.completed-card]="job.repairJob.status === 'completed' || job.repairJob.status === 'repair_completed'">
             <div class="repair-main-row">
               <span class="appliance-icon" aria-hidden="true">⚙</span>
               <div class="appliance-info">
@@ -126,9 +120,6 @@
                   </li>
                 }
               </ol>
-            }
-            @if (job.repairJob.disputeDescription) {
-              <p class="issue-note"><strong>Customer issue:</strong> {{ job.repairJob.disputeDescription }}</p>
             }
             @if (job.repairJob.completionDescription) {
               <p class="completion-note"><strong>Completion summary:</strong> {{ job.repairJob.completionDescription }}</p>

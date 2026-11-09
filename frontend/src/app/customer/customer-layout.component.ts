@@ -51,6 +51,12 @@ export class CustomerLayout {
       route: '/customer/disputes',
       available: true,
     },
+    {
+      label: 'Completed Repairs',
+      icon: 'tool',
+      route: '/customer/repair-requests/completed',
+      available: true,
+    },
     { label: 'Messages', icon: 'message', available: false },
   ];
 
@@ -157,11 +163,10 @@ export class CustomerLayout {
     if (url.startsWith('/customer/quotations')) {
       return 'My quotations';
     }
-    if (url.startsWith('/customer/disputes')) {
-      return 'Disputes';
-    }
     if (url.startsWith('/customer/repair-requests')) {
-      return 'My repair requests';
+      return url.startsWith('/customer/repair-requests/completed')
+        ? 'Completed Repairs'
+        : 'My repair requests';
     }
     return url.startsWith('/customer/profile') ? 'My profile' : 'Dashboard';
   }

@@ -75,17 +75,6 @@
       <form class="workflow-form" (ngSubmit)="saveInspection('submit')">
         <h3>Inspection and diagnosis</h3>
         <label>
-          Identified problem *
-          <textarea
-            rows="3"
-            maxlength="2000"
-            required
-            [ngModel]="identifiedProblem()"
-            (ngModelChange)="identifiedProblem.set($event)"
-            name="identifiedProblem"
-          ></textarea>
-        </label>
-        <label>
           Inspection findings *
           <textarea
             rows="3"
@@ -376,8 +365,7 @@
       job.status === 'repair_completed' ||
       job.status === 'ready_for_pickup' ||
       job.status === 'picked_up' ||
-      job.status === 'completed' ||
-      job.status === 'disputed'
+      job.status === 'completed'
     ) {
       <section class="cost-summary">
         <h3>Repair cost summary</h3>

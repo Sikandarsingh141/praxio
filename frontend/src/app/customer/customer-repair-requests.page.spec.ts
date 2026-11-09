@@ -68,7 +68,7 @@ describe('CustomerRepairRequestsPage editing', () => {
       fixture.nativeElement.querySelectorAll('.request-card .status'),
       (element: Element) => element.textContent?.trim(),
     );
-    expect(statuses).toEqual(['Active', 'Completed', 'Disputed', 'Cancelled']);
+    expect(statuses).toEqual(['Active', 'Completed', 'Active', 'Cancelled']);
   });
 
   it('filters request cards by lifecycle status and sorts them by date', () => {

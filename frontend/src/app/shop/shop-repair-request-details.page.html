@@ -157,8 +157,7 @@
           job.status === 'repair_completed' ||
           job.status === 'ready_for_pickup' ||
           job.status === 'picked_up' ||
-          job.status === 'completed' ||
-          job.status === 'disputed'
+          job.status === 'completed'
         "
         aria-labelledby="repair-workflow-title"
       >
@@ -200,9 +199,6 @@
           <p class="pickup-summary">
             <strong>Pickup instructions:</strong> {{ job.pickupInstructions }}
           </p>
-        }
-        @if (job.disputeDescription) {
-          <p class="decline-note"><strong>Customer issue:</strong> {{ job.disputeDescription }}</p>
         }
         @if (repairFormError()) {
           <p class="form-error" role="alert">{{ repairFormError() }}</p>
@@ -338,8 +334,6 @@
               The customer has been notified. Waiting for pickup confirmation.
             } @else if (job.status === 'picked_up') {
               Customer pickup is confirmed. Waiting for their repair review.
-            } @else if (job.status === 'disputed') {
-              The customer reported an issue. Follow up with them to resolve it.
             } @else {
               This repair is complete.
             }
@@ -388,155 +382,85 @@
             ×
           </button>
         </header>
-        <div class="form-grid">
-          <label
-            ><span>Inspection / visiting charge</span
-            ><input
+        <form class="form-grid" novalidate (ngSubmit)="submitQuotation()">
+          <label>
+            <span>Total estimated amount (₹) <b>*</b></span>
+            <input
               type="number"
-              min="0"
+              name="quotationAmount"
+              min="0.01"
               step="0.01"
-              [ngModel]="inspectionCharge()"
-              (ngModelChange)="inspectionCharge.set($event)"
-          /></label>
-          <label
-            ><span>Parts cost</span
-            ><input
+              required
+              [ngModel]="quotationAmount()"
+              (ngModelChange)="quotationAmount.set($event); formError.set('')"
+              [attr.aria-invalid]="quotationAttempted() && (quotationAmount() === null || quotationAmount()! <= 0)"
+            />
+            @if (quotationAttempted() && (quotationAmount() === null || quotationAmount()! <= 0)) {
+              <small class="field-error">Enter an amount greater than ₹0.</small>
+            }
+          </label>
+          <label>
+            <span>Estimated completion time (days) <b>*</b></span>
+            <input
               type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="partsCost()"
-              (ngModelChange)="partsCost.set($event)"
-          /></label>
-          <label
-            ><span>Labour charge</span
-            ><input
-              type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="labourCharge()"
-              (ngModelChange)="labourCharge.set($event)"
-          /></label>
-          <label
-            ><span>Additional charges</span
-            ><input
-              type="number"
-              min="0"
-              step="0.01"
-              [ngModel]="additionalCharges()"
-              (ngModelChange)="additionalCharges.set($event)"
-          /></label>
-          <div class="total-row">
-            <span>Total estimated amount</span><strong>{{ total() | currency: 'INR' }}</strong>
-          </div>
-          <label
-            ><span>Estimated completion (days)</span
-            ><input
-              type="number"
+              name="completionDays"
               min="1"
               max="365"
+              step="1"
               required
               [ngModel]="completionDays()"
-              (ngModelChange)="completionDays.set($event)"
-          /></label>
-          <label
-            ><span>Quotation valid for (days)</span
-            ><input
+              (ngModelChange)="completionDays.set($event); formError.set('')"
+              [attr.aria-invalid]="quotationAttempted() && (completionDays() === null || completionDays()! < 1 || completionDays()! % 1 !== 0)"
+            />
+            @if (quotationAttempted() && (completionDays() === null || completionDays()! < 1 || completionDays()! % 1 !== 0)) {
+              <small class="field-error">Enter a positive whole number of days.</small>
+            }
+          </label>
+          <label>
+            <span>Quotation validity (days) <b>*</b></span>
+            <input
               type="number"
+              name="validityDays"
               min="1"
               max="365"
+              step="1"
               required
               [ngModel]="validityDays()"
-              (ngModelChange)="validityDays.set($event)"
-          /></label>
-          <label class="full-width"
-            ><span>Quotation summary <b>*</b></span
-            ><textarea
-              rows="3"
+              (ngModelChange)="validityDays.set($event); formError.set('')"
+              [attr.aria-invalid]="quotationAttempted() && (validityDays() === null || validityDays()! < 1 || validityDays()! > 365 || validityDays()! % 1 !== 0)"
+            />
+            @if (quotationAttempted() && (validityDays() === null || validityDays()! < 1 || validityDays()! > 365 || validityDays()! % 1 !== 0)) {
+              <small class="field-error">Enter a positive whole number up to 365 days.</small>
+            }
+          </label>
+          <label class="full-width">
+            <span>Quotation summary / repair details <b>*</b></span>
+            <textarea
+              name="message"
+              rows="4"
               maxlength="1000"
+              required
               [ngModel]="message()"
-              (ngModelChange)="message.set($event)"
-              placeholder="Describe the estimate and terms"
+              (ngModelChange)="message.set($event); formError.set('')"
+              placeholder="Explain the estimated repair work"
+              [attr.aria-invalid]="quotationAttempted() && !message().trim()"
             ></textarea>
+            @if (quotationAttempted() && !message().trim()) {
+              <small class="field-error">Describe the estimated repair work.</small>
+            }
           </label>
-          <label class="full-width"
-            ><span>Proposed solution</span
-            ><textarea
-              rows="2"
-              maxlength="2000"
-              [ngModel]="proposedSolution()"
-              (ngModelChange)="proposedSolution.set($event)"
-            ></textarea>
-          </label>
-          <label
-            ><span>Warranty information</span
-            ><input maxlength="500" [ngModel]="warranty()" (ngModelChange)="warranty.set($event)"
-          /></label>
-          <label
-            ><span>Additional notes</span
-            ><input maxlength="1000" [ngModel]="notes()" (ngModelChange)="notes.set($event)"
-          /></label>
-        </div>
-        @if (quotationConfirming()) {
-          <section class="quotation-review" aria-label="Quotation summary">
-            <h3>Review quotation before submission</h3>
-            <p>{{ message() }}</p>
-            <dl>
-              <div>
-                <dt>Inspection</dt>
-                <dd>{{ inspectionCharge() | currency: 'INR' }}</dd>
-              </div>
-              <div>
-                <dt>Parts</dt>
-                <dd>{{ partsCost() | currency: 'INR' }}</dd>
-              </div>
-              <div>
-                <dt>Labour</dt>
-                <dd>{{ labourCharge() | currency: 'INR' }}</dd>
-              </div>
-              <div>
-                <dt>Additional</dt>
-                <dd>{{ additionalCharges() | currency: 'INR' }}</dd>
-              </div>
-              <div>
-                <dt>Completion time</dt>
-                <dd>{{ completionDays() }} days</dd>
-              </div>
-              <div>
-                <dt>Validity</dt>
-                <dd>{{ validityDays() }} days</dd>
-              </div>
-              <div class="review-total">
-                <dt>Total estimate</dt>
-                <dd>{{ total() | currency: 'INR' }}</dd>
-              </div>
-            </dl>
-          </section>
-        }
-        @if (formError()) {
-          <p class="form-error" role="alert">{{ formError() }}</p>
-        }
-        <footer>
-          @if (quotationConfirming()) {
-            <button type="button" class="secondary-button" (click)="quotationConfirming.set(false)">
-              Back to edit
-            </button>
-            <button
-              type="button"
-              class="primary-button"
-              [disabled]="submitting()"
-              (click)="submitQuotation()"
-            >
-              {{ submitting() ? 'Submitting…' : 'Confirm & submit' }}
-            </button>
-          } @else {
+          @if (formError()) {
+            <p class="form-error full-width" role="alert">{{ formError() }}</p>
+          }
+          <footer class="full-width">
             <button type="button" class="secondary-button" (click)="quotationOpen.set(false)">
               Cancel
             </button>
-            <button type="button" class="primary-button" (click)="reviewQuotation()">
-              Review quotation
+            <button type="submit" class="primary-button" [disabled]="submitting()">
+              {{ submitting() ? 'Submitting…' : 'Submit quotation' }}
             </button>
-          }
-        </footer>
+          </footer>
+        </form>
       </section>
     </div>
   }

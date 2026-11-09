@@ -37,6 +37,7 @@ export interface ShopAuthorization {
 
 export interface ShopProfile {
   shopName: string;
+  shopImageData?: string;
   ownerName: string;
   email: string;
   countryCode: string;
@@ -44,7 +45,7 @@ export interface ShopProfile {
   location?: { latitude: number; longitude: number };
   businessAddress: string;
   services: string[];
-  subscriptionPlan: 'Praxio Shop monthly subscription';
+  subscriptionPlan: 'Reparo Shop monthly subscription';
   subscriptionAmountCents: number;
   subscriptionCurrency: 'usd';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
@@ -58,7 +59,7 @@ export interface ShopProfile {
 export interface ShopPaymentStatus {
   registrationStatus: 'pending' | 'approved' | 'declined' | 'not_found';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
-  subscriptionPlan: 'Praxio Shop monthly subscription';
+  subscriptionPlan: 'Reparo Shop monthly subscription';
   amountCents: number;
   currency: string;
   paidAt: string | null;

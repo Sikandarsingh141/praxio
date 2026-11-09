@@ -29,6 +29,9 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
           <p>Review and compare shop estimates before choosing a repair partner.</p>
         </div>
       </header>
+      @if (responseSuccess()) {
+        <p class="success-message" role="status" aria-live="polite">{{ responseSuccess() }}</p>
+      }
 
       <div class="summary" aria-label="Quotation summary">
         @for (item of summaryItems; track item.status) {
@@ -314,12 +317,18 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
       }
 
       @if (response(); as pending) {
-        <div class="backdrop">
-          <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="response-title">
+        <div class="backdrop" role="presentation">
+          <section
+            class="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="response-title"
+            [attr.aria-busy]="responding()"
+          >
             <h2 id="response-title">
-              {{ pending.status === 'accepted' ? 'Accept quotation?' : 'Reject quotation?' }}
+              {{ pending.status === 'accepted' ? 'Accept this quotation?' : 'Reject quotation?' }}
             </h2>
-            <p>
+            <p class="response-quote-summary">
               {{ pending.quote.shop.shopName }} ·
               {{ pending.quote.amount | currency: pending.quote.currency }}
             </p>
@@ -333,23 +342,35 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
                 ></textarea>
               </label>
             } @else {
-              <p>
-                Only one quotation can be accepted for this repair request. Other pending quotes
-                will become unavailable.
+              <p class="accept-explanation">
+                Accepting this quotation selects {{ pending.quote.shop.shopName }} for this repair
+                request. Other pending quotations for the same request will become unavailable.
               </p>
             }
             @if (responseError()) {
               <p class="error" role="alert">{{ responseError() }}</p>
             }
             <div class="actions">
-              <button type="button" (click)="response.set(null)">Cancel</button>
+              <button
+                type="button"
+                class="cancel"
+                [disabled]="responding()"
+                (click)="response.set(null)"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 class="accept"
                 [disabled]="responding()"
                 (click)="submitResponse()"
               >
-                {{ responding() ? 'Saving…' : 'Confirm' }}
+                @if (responding()) {
+                  <span class="loading-indicator" aria-hidden="true"></span>
+                  {{ pending.status === 'accepted' ? 'Accepting…' : 'Saving…' }}
+                } @else {
+                  {{ pending.status === 'accepted' ? 'Yes, Accept Quotation' : 'Confirm rejection' }}
+                }
               </button>
             </div>
           </section>
@@ -486,6 +507,7 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
   readonly response = signal<{ quote: CustomerQuotation; status: 'accepted' | 'declined' } | null>(
     null,
   );
+  readonly responseSuccess = signal('');
   readonly rejectionReason = signal('');
   readonly responding = signal(false);
   readonly responseError = signal('');
@@ -626,6 +648,7 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
   }
 
   prepareResponse(quote: CustomerQuotation, status: 'accepted' | 'declined'): void {
+    this.responseSuccess.set('');
     this.responseError.set('');
     this.rejectionReason.set('');
     this.response.set({ quote, status });
@@ -640,6 +663,11 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
       .updateQuotationStatus(pending.quote._id, pending.status, this.rejectionReason())
       .subscribe({
         next: () => {
+          this.responseSuccess.set(
+            pending.status === 'accepted'
+              ? 'Quotation accepted. This shop has been selected for your repair request.'
+              : 'Quotation response saved.',
+          );
           this.response.set(null);
           this.responding.set(false);
           this.clearCompare();

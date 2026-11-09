@@ -52,7 +52,7 @@ describe('NotificationsService', () => {
       [adminId],
       registrationRequestId,
       'shop',
-      'Praxio Repairs',
+      'Reparo Repairs',
       session,
     );
 
@@ -62,7 +62,7 @@ describe('NotificationsService', () => {
           recipientId: new Types.ObjectId(adminId),
           title: 'New Shop Registration',
           message:
-            'Praxio Repairs has submitted a registration request. Please review the application.',
+            'Reparo Repairs has submitted a registration request. Please review the application.',
           type: 'new_registration',
           relatedEntityId: registrationRequestId,
           relatedEntityType: 'registration_request',

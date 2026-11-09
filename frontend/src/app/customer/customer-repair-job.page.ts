@@ -229,9 +229,6 @@ export class CustomerRepairJobPage implements OnInit {
             },
           ]
         : []),
-      ...(job.repairJob?.status === 'disputed'
-        ? [{ action: 'disputed', label: 'Issue reported · awaiting resolution', at: undefined }]
-        : []),
     ];
     return entries;
   }

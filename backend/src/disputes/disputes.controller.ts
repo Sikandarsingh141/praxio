@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   Req,
+  StreamableFile,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import {
   CloseDisputeDto,
   CompleteDisputeReworkDto,
   CreateDisputeDto,
+  DisputeDecisionDto,
   DisputeAdditionalChargeDto,
   DisputeChargeDecisionDto,
   DisputeListQueryDto,
@@ -25,10 +27,28 @@ import {
   DisputeProgressDto,
   DisputeReinspectionDto,
   InternalDisputeNoteDto,
+  AdminDisputeStatusDto,
+  ProposeDisputeResolutionDto,
   ReportUnresolvedDto,
+  ResolveDisputeDto,
   ShopRejectDisputeDto,
+  ShopDisputeResponseDto,
 } from './dto/dispute.dto';
 import { DisputesService } from './disputes.service';
+import type { DisputeRole } from './disputes.service';
+
+async function attachmentFile(
+  disputes: DisputesService,
+  actor: { userId: string; role: DisputeRole },
+  id: string,
+  fileId: string,
+): Promise<StreamableFile> {
+  const attachment = await disputes.getAttachment(actor, id, fileId);
+  return new StreamableFile(attachment.stream, {
+    type: attachment.mimeType,
+    disposition: `inline; filename*=UTF-8''${encodeURIComponent(attachment.name)}`,
+  });
+}
 
 @Controller('customer/disputes')
 @UseGuards(JwtAuthGuard)
@@ -69,6 +89,65 @@ export class CustomerDisputesController {
       data: await this.disputes.getDispute(
         { userId: this.userId(request), role: 'customer' },
         id,
+      ),
+    };
+  }
+
+  @Get(':id/attachments/:fileId')
+  async attachment(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    return attachmentFile(
+      this.disputes,
+      { userId: this.userId(request), role: 'customer' },
+      id,
+      fileId,
+    );
+  }
+
+  @Post(':id/resolution')
+  async proposeResolution(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ProposeDisputeResolutionDto,
+  ) {
+    return {
+      data: await this.disputes.proposeResolution(
+        { userId: this.userId(request), role: 'customer' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/resolution/decision')
+  async decideResolution(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: DisputeDecisionDto,
+  ) {
+    return {
+      data: await this.disputes.decideResolution(
+        { userId: this.userId(request), role: 'customer' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/resolve')
+  async resolve(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ResolveDisputeDto,
+  ) {
+    return {
+      data: await this.disputes.resolveDispute(
+        { userId: this.userId(request), role: 'customer' },
+        id,
+        dto,
       ),
     };
   }
@@ -166,6 +245,80 @@ export class ShopDisputesController {
       data: await this.disputes.getDispute(
         { userId: this.userId(request), role: 'shop' },
         id,
+      ),
+    };
+  }
+
+  @Post(':id/response')
+  async respond(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ShopDisputeResponseDto,
+  ) {
+    return {
+      data: await this.disputes.respondAsShop(
+        { userId: this.userId(request), role: 'shop' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Get(':id/attachments/:fileId')
+  async attachment(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    return attachmentFile(
+      this.disputes,
+      { userId: this.userId(request), role: 'shop' },
+      id,
+      fileId,
+    );
+  }
+
+  @Post(':id/resolution')
+  async proposeResolution(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ProposeDisputeResolutionDto,
+  ) {
+    return {
+      data: await this.disputes.proposeResolution(
+        { userId: this.userId(request), role: 'shop' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/resolution/decision')
+  async decideResolution(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: DisputeDecisionDto,
+  ) {
+    return {
+      data: await this.disputes.decideResolution(
+        { userId: this.userId(request), role: 'shop' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/resolve')
+  async resolve(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ResolveDisputeDto,
+  ) {
+    return {
+      data: await this.disputes.resolveDispute(
+        { userId: this.userId(request), role: 'shop' },
+        id,
+        dto,
       ),
     };
   }
@@ -342,6 +495,80 @@ export class AdminDisputesController {
       data: await this.disputes.getDispute(
         { userId: this.userId(request), role: 'admin' },
         id,
+      ),
+    };
+  }
+
+  @Get(':id/attachments/:fileId')
+  async attachment(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
+    return attachmentFile(
+      this.disputes,
+      { userId: this.userId(request), role: 'admin' },
+      id,
+      fileId,
+    );
+  }
+
+  @Patch(':id/status')
+  async updateStatus(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: AdminDisputeStatusDto,
+  ) {
+    return {
+      data: await this.disputes.updateAdminStatus(
+        { userId: this.userId(request), role: 'admin' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Post(':id/resolution')
+  async proposeResolution(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ProposeDisputeResolutionDto,
+  ) {
+    return {
+      data: await this.disputes.proposeResolution(
+        { userId: this.userId(request), role: 'admin' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/resolve')
+  async resolve(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ResolveDisputeDto,
+  ) {
+    return {
+      data: await this.disputes.resolveDispute(
+        { userId: this.userId(request), role: 'admin' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/close')
+  async close(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: CloseDisputeDto,
+  ) {
+    return {
+      data: await this.disputes.closeDispute(
+        { userId: this.userId(request), role: 'admin' },
+        id,
+        dto,
       ),
     };
   }

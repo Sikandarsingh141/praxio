@@ -71,6 +71,7 @@ export interface LoginResult {
 
 export interface ShopProfile {
   shopName: string;
+  shopImageData?: string;
   ownerName: string;
   email: string;
   countryCode: string;
@@ -78,7 +79,7 @@ export interface ShopProfile {
   location?: LocationCoordinates;
   businessAddress: string;
   services: string[];
-  subscriptionPlan: 'Praxio Shop monthly subscription';
+  subscriptionPlan: 'Reparo Shop monthly subscription';
   subscriptionAmountCents: number;
   subscriptionCurrency: 'usd';
   paymentStatus: ShopAuthorization['paymentStatus'];
@@ -434,6 +435,9 @@ export class AuthService {
 
     return {
       shopName: shopDetails.shopName,
+      ...(shopDetails.shopImageData
+        ? { shopImageData: shopDetails.shopImageData }
+        : {}),
       ownerName: user.fullName ?? '',
       email: user.email,
       countryCode: user.countryCode ?? '',
@@ -449,7 +453,7 @@ export class AuthService {
         .filter(Boolean)
         .join(', '),
       services: shopDetails.services,
-      subscriptionPlan: 'Praxio Shop monthly subscription',
+      subscriptionPlan: 'Reparo Shop monthly subscription',
       subscriptionAmountCents: 2900,
       subscriptionCurrency: 'usd',
       paymentStatus: authorization.paymentStatus,

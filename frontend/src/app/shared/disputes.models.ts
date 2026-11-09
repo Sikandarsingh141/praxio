@@ -45,7 +45,9 @@ export type DisputeFileType = 'image/jpeg' | 'image/png' | 'image/webp' | 'appli
 export interface DisputeAttachment {
   mimeType: DisputeFileType;
   name: string;
-  data: string;
+  data?: string;
+  fileId?: string;
+  size?: number;
 }
 
 export interface DisputeMessage {

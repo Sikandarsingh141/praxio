@@ -7,11 +7,19 @@ import { AuthService } from '../core/auth/auth.service';
 import { ShopProfile } from '../core/auth/auth.models';
 import { LocationMapComponent } from '../shared/location-map.component';
 import { ProfileEditorComponent } from '../shared/profile-editor.component';
+import { ShopImageEditorComponent } from '../shared/shop-image-editor.component';
 
 @Component({
   selector: 'app-shop-registration-status-page',
   standalone: true,
-  imports: [DatePipe, TitleCasePipe, RouterLink, LocationMapComponent, ProfileEditorComponent],
+  imports: [
+    DatePipe,
+    TitleCasePipe,
+    RouterLink,
+    LocationMapComponent,
+    ProfileEditorComponent,
+    ShopImageEditorComponent,
+  ],
   template: `
     <section class="shop-profile-page" aria-labelledby="shop-profile-title">
       <header class="profile-heading">
@@ -67,17 +75,17 @@ import { ProfileEditorComponent } from '../shared/profile-editor.component';
                 <h2>Account suspended</h2>
                 <p>
                   Your account has been suspended by an administrator. You cannot use the Shop
-                  Portal while it is suspended. Contact Praxio support if you need assistance.
+                  Portal while it is suspended. Contact Reparo support if you need assistance.
                 </p>
               } @else if (details.accountLifecycleStatus === 'inactive') {
                 <h2>Account inactive</h2>
                 <p>
-                  Your account is currently inactive. Contact Praxio support if you need help
+                  Your account is currently inactive. Contact Reparo support if you need help
                   restoring access.
                 </p>
               } @else if (details.adminApprovalStatus === 'approved') {
                 <h2>Registration approved</h2>
-                <p>Your shop is approved and ready to use the Praxio Shop Portal.</p>
+                <p>Your shop is approved and ready to use the Reparo Shop Portal.</p>
               } @else if (details.adminApprovalStatus === 'declined') {
                 <h2>Registration declined</h2>
                 <p>Your registration was declined. Contact support if you need assistance.</p>
@@ -87,7 +95,7 @@ import { ProfileEditorComponent } from '../shared/profile-editor.component';
               } @else if (details.paymentStatus === 'paid') {
                 <h2>Awaiting admin review</h2>
                 <p>
-                  Payment is complete. Your business profile is being reviewed by the Praxio team.
+                  Payment is complete. Your business profile is being reviewed by the Reparo team.
                 </p>
               } @else {
                 <h2>Payment required</h2>
@@ -138,6 +146,11 @@ import { ProfileEditorComponent } from '../shared/profile-editor.component';
             </dl>
           </section>
 
+          <app-shop-image-editor
+            [imageData]="details.shopImageData"
+            [shopName]="details.shopName"
+            (imageUpdated)="updateShopImage($event)"
+          />
           <app-profile-editor />
           <section class="profile-card" aria-labelledby="subscription-title">
             <div class="section-heading">
@@ -214,5 +227,9 @@ export class ShopRegistrationStatusPage implements OnInit {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amountCents / 100);
+  }
+
+  updateShopImage(imageData: string): void {
+    this.profile.update((profile) => (profile ? { ...profile, shopImageData: imageData } : profile));
   }
 }

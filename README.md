@@ -1,6 +1,6 @@
-# Praxio
+# Reparo
 
-Praxio is an electronics repair marketplace with Customer, Shop, and Admin
+Reparo is an electronics repair marketplace with Customer, Shop, and Admin
 portals. Current workflows include registration and approval, shop discovery,
 repair requests and progress, quotations, dispute management, administration,
 notifications, and Shop subscription payments. The stack is Angular, NestJS, MongoDB Atlas,
@@ -88,7 +88,7 @@ to the restricted profile or full portal.
 Shop registration redirects to Stripe Checkout for a USD 29/month subscription.
 Checkout uses a server-created subscription session; the secret key is only
 loaded by the backend. Card details are collected on Stripe's hosted page and
-are never stored by Praxio. A Shop remains restricted until Stripe confirms
+are never stored by Reparo. A Shop remains restricted until Stripe confirms
 payment and an Admin approves the registration. Logged-in Shop owners can
 resume payment from `/shop/payment`; Admin approval is blocked unless payment
 has been verified. Registration submissions and Admin decisions are stored as
@@ -151,6 +151,11 @@ configured push infrastructure. Dispute status and history are separate from
 the original repair job and payment; rework does not modify either. Evidence
 accepts JPEG, PNG, WebP, or PDF files up to 500 KB each, with at most two files
 per submission.
+
+On startup, legacy repair jobs still marked `disputed` are copied into the
+dispute center as open cases, including their original issue description and
+timestamp. The original repair-job records are retained. Cases whose assigned
+shop cannot be identified are left untouched and logged for follow-up.
 
 ## API
 
