@@ -72,14 +72,25 @@ export interface LoginResult {
 export interface ShopProfile {
   shopName: string;
   shopImageData?: string;
+  businessType: string;
+  description: string;
+  yearsOfExperience: number;
   ownerName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
+  address: string;
+  street?: string;
+  area?: string;
+  city: string;
+  state: string;
+  country?: string;
+  postalCode: string;
+  landmark: string;
   location?: LocationCoordinates;
   businessAddress: string;
   services: string[];
-  subscriptionPlan: 'Reparo Shop monthly subscription';
+  subscriptionPlan: 'Fixroa Shop monthly subscription';
   subscriptionAmountCents: number;
   subscriptionCurrency: 'usd';
   paymentStatus: ShopAuthorization['paymentStatus'];
@@ -438,22 +449,36 @@ export class AuthService {
       ...(shopDetails.shopImageData
         ? { shopImageData: shopDetails.shopImageData }
         : {}),
+      businessType: shopDetails.businessType,
+      description: shopDetails.description,
+      yearsOfExperience: shopDetails.yearsOfExperience,
       ownerName: user.fullName ?? '',
       email: user.email,
       countryCode: user.countryCode ?? '',
       mobileNumber: user.mobileNumber ?? '',
+      address: shopDetails.address,
+      ...(shopDetails.street ? { street: shopDetails.street } : {}),
+      ...(shopDetails.area ? { area: shopDetails.area } : {}),
+      city: shopDetails.city,
+      state: shopDetails.state,
+      ...(shopDetails.country ? { country: shopDetails.country } : {}),
+      postalCode: shopDetails.postalCode,
+      landmark: shopDetails.landmark ?? '',
       ...(shopDetails.location ? { location: shopDetails.location } : {}),
       businessAddress: [
         shopDetails.address,
+        shopDetails.street,
+        shopDetails.area,
         shopDetails.landmark,
         shopDetails.city,
         shopDetails.state,
+        shopDetails.country,
         shopDetails.postalCode,
       ]
         .filter(Boolean)
         .join(', '),
       services: shopDetails.services,
-      subscriptionPlan: 'Reparo Shop monthly subscription',
+      subscriptionPlan: 'Fixroa Shop monthly subscription',
       subscriptionAmountCents: 2900,
       subscriptionCurrency: 'usd',
       paymentStatus: authorization.paymentStatus,

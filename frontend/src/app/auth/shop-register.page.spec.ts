@@ -178,7 +178,7 @@ describe('ShopRegisterPage', () => {
     fixture.componentInstance.currentStep.set(2);
     fixture.detectChanges();
     const page = fixture.componentInstance;
-    const input = fixture.nativeElement.querySelector('#shop-address') as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('#shop-address-search') as HTMLInputElement;
 
     input.value = 'Agra, Uttar Pradesh';
     page.onAddressInput(input);
@@ -199,16 +199,20 @@ describe('ShopRegisterPage', () => {
     const fixture = TestBed.createComponent(ShopRegisterPage);
     fixture.componentInstance.currentStep.set(2);
     fixture.detectChanges();
-    const input = fixture.nativeElement.querySelector('#shop-address') as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('#shop-address-search') as HTMLInputElement;
 
-    input.value = '12 Market Road';
+    input.value = 'Market Road, Agra';
     input.dispatchEvent(new Event('input'));
+    const address = fixture.nativeElement.querySelector('#shop-address') as HTMLTextAreaElement;
+    address.value = '12 Market Road';
+    address.dispatchEvent(new Event('input'));
     fixture.componentInstance.form.patchValue({
       city: 'Agra',
       state: 'Uttar Pradesh',
       postalCode: '282001',
     });
 
+    expect(fixture.componentInstance.addressQuery()).toBe('Market Road, Agra');
     expect(fixture.componentInstance.form.controls.address.value).toBe('12 Market Road');
     expect(fixture.componentInstance.form.controls.address.valid).toBe(true);
     expect(fixture.componentInstance.form.controls.city.value).toBe('Agra');
@@ -234,12 +238,13 @@ describe('ShopRegisterPage', () => {
     fixture.componentInstance.currentStep.set(2);
     fixture.detectChanges();
     const page = fixture.componentInstance;
-    expect(fixture.nativeElement.textContent).toContain('Location');
+    expect(fixture.nativeElement.textContent).toContain('Search address');
+    expect(fixture.nativeElement.textContent).toContain('Address');
     expect(fixture.nativeElement.textContent).not.toContain('Complete address');
     expect(fixture.nativeElement.textContent).not.toContain('Street');
     expect(fixture.nativeElement.textContent).not.toContain('Area / Locality');
     expect(fixture.nativeElement.querySelector('#shop-city')).not.toBeNull();
-    const input = fixture.nativeElement.querySelector('#shop-address') as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('#shop-address-search') as HTMLInputElement;
 
     input.value = 'Sector 70, Mohali';
     page.onAddressInput(input);
@@ -300,7 +305,7 @@ describe('ShopRegisterPage', () => {
     fixture.componentInstance.currentStep.set(2);
     fixture.detectChanges();
     const page = fixture.componentInstance;
-    const input = fixture.nativeElement.querySelector('#shop-address') as HTMLInputElement;
+    const input = fixture.nativeElement.querySelector('#shop-address-search') as HTMLInputElement;
     input.value = 'Mohali';
     page.onAddressInput(input);
     await new Promise((resolve) => setTimeout(resolve, 375));

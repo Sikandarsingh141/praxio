@@ -117,15 +117,52 @@ export class ChatController {
     @Req() request: AuthenticatedRequest,
     @Param('id') id: string,
     @Query('before') before?: string,
+    @Query('beforeId') beforeId?: string,
+    @Query('after') after?: string,
+    @Query('afterId') afterId?: string,
+  ) {
+    const page = await this.chat.getMessages(
+      await this.actor(request),
+      id,
+      before,
+      beforeId,
+      after,
+      afterId,
+    );
+    return {
+      data: page,
+    };
+  }
+
+  @Get('conversations/:id/messages/around/:messageId')
+  async messagesAround(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('messageId') messageId: string,
   ) {
     return {
-      data: {
-        messages: await this.chat.getMessages(
-          await this.actor(request),
-          id,
-          before,
-        ),
-      },
+      data: await this.chat.getMessagesAround(
+        await this.actor(request),
+        id,
+        messageId,
+      ),
+    };
+  }
+
+  @Get('conversations/:id/search')
+  async searchMessages(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Query('q') query: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+  ) {
+    return {
+      data: await this.chat.searchMessages(
+        await this.actor(request),
+        id,
+        query ?? '',
+        page,
+      ),
     };
   }
 

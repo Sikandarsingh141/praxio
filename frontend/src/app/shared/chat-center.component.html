@@ -72,19 +72,28 @@
               [class.selected]="selected()?.id === conversation.id"
               (click)="openConversation(conversation)"
             >
-              <span class="avatar">
-                @if (
-                  conversation.participant.profileImageUrl &&
-                  !profileImageFailed(conversation.participant.id)
-                ) {
-                  <img
-                    [src]="conversation.participant.profileImageUrl"
-                    alt=""
-                    (error)="markProfileImageFailed(conversation.participant.id)"
-                  />
-                } @else {
-                  {{ initials(conversation.participant.name) }}
-                }
+              <span class="conversation-avatar">
+                <span class="avatar">
+                  @if (
+                    conversation.participant.profileImageUrl &&
+                    !profileImageFailed(conversation.participant.id)
+                  ) {
+                    <img
+                      [src]="conversation.participant.profileImageUrl"
+                      alt=""
+                      (error)="markProfileImageFailed(conversation.participant.id)"
+                    />
+                  } @else {
+                    {{ initials(conversation.participant.name) }}
+                  }
+                </span>
+                <span
+                  class="conversation-presence-dot"
+                  [class.online]="isUserOnline(conversation.participant.id)"
+                  [attr.aria-label]="
+                    isUserOnline(conversation.participant.id) ? 'Online' : 'Offline'
+                  "
+                ></span>
               </span>
               <span class="conversation-copy">
                 <span class="conversation-item-top">
@@ -146,6 +155,10 @@
           </span>
           <div class="chat-heading-copy">
             <h2>{{ conversation.participant.name }}</h2>
+            <span class="participant-presence" [class.online]="participantOnline()">
+              <span class="presence-dot"></span>
+              {{ participantOnline() ? 'Online' : 'Offline' }}
+            </span>
             <div class="repair-context">
               <span
                 >Repair Request: PRX-{{
@@ -162,6 +175,18 @@
               Reconnecting…
             </span>
           }
+          <button
+            class="icon-button"
+            type="button"
+            aria-label="Search messages"
+            [attr.aria-expanded]="showMessageSearch()"
+            (click)="toggleMessageSearch()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10.8" cy="10.8" r="6.8" />
+              <path d="m16 16 4.5 4.5" />
+            </svg>
+          </button>
           <div class="chat-menu">
             <button
               class="icon-button"
@@ -187,21 +212,83 @@
           </div>
         </header>
 
+        @if (showMessageSearch()) {
+          <section class="message-search-panel" aria-label="Search messages">
+            <form (ngSubmit)="searchMessages()">
+              <input
+                type="search"
+                name="messageSearch"
+                maxlength="100"
+                placeholder="Search messages in this conversation"
+                [ngModel]="messageSearchQuery()"
+                (ngModelChange)="messageSearchQuery.set($event)"
+              />
+              <button
+                type="submit"
+                [disabled]="!messageSearchQuery().trim() || searchingMessages()"
+              >
+                {{ searchingMessages() ? 'Searching…' : 'Search' }}
+              </button>
+              <button type="button" class="search-clear" (click)="clearMessageSearch()">
+                Clear
+              </button>
+            </form>
+            @if (messageSearchResults().length) {
+              <div class="message-search-results">
+                @for (result of messageSearchResults(); track result.id) {
+                  <button
+                    class="message-search-result"
+                    type="button"
+                    (click)="jumpToSearchMessage(result)"
+                  >
+                    <span>
+                      <strong>{{ result.sender.name }}</strong>
+                      <time>{{ messageTime(result.createdAt) }}</time>
+                    </span>
+                    <span>{{ result.content }}</span>
+                  </button>
+                }
+              </div>
+            } @else if (searchingMessages()) {
+              <p class="message-search-state" role="status">Searching this conversation…</p>
+            } @else if (hasSearchedMessages()) {
+              <p class="message-search-state">No matching messages found.</p>
+            }
+            @if (searchHasMore()) {
+              <button
+                class="load-more-search-results"
+                type="button"
+                [disabled]="searchingMessages()"
+                (click)="searchMessages(true)"
+              >
+                Load more results
+              </button>
+            }
+          </section>
+        }
+
         <div #chatThread class="chat-thread" aria-live="polite" (scroll)="onChatThreadScroll()">
+          @if (loadingMessages() || loadingOlder() || loadingNewer()) {
+            <div class="message-page-loading" role="status">
+              <span class="message-loading-spinner" aria-hidden="true"></span>
+              {{
+                loadingOlder()
+                  ? 'Loading earlier messages…'
+                  : loadingNewer()
+                    ? 'Loading newer messages…'
+                    : 'Loading messages…'
+              }}
+            </div>
+          }
           @if (!loadingMessages() && messages().length === 0) {
             <div class="thread-state thread-empty">
               <strong>Start the conversation</strong>
               <span>Send a message to discuss this repair request.</span>
             </div>
           }
-          @if (messages().length > 0 && hasMoreMessages()) {
-            <button
-              class="load-older"
-              type="button"
-              [disabled]="loadingOlder()"
-              (click)="loadOlder()"
-            >
-              {{ loadingOlder() ? 'Loading...' : 'Load earlier messages' }}
+          @if (messages().length > 0 && hasMoreMessages() && !loadingOlder()) {
+            <button class="load-older" type="button" (click)="loadOlder()">
+              Load earlier messages
             </button>
           }
           @for (message of messages(); track message.id; let i = $index) {

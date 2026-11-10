@@ -83,7 +83,7 @@ export class NotificationsService {
             ? 'Shop Registration Approved!'
             : 'Shop Registration Declined',
           message: approved
-            ? 'Congratulations! Your Shop registration has been approved. You now have full access to the Reparo Shop Portal.'
+            ? 'Congratulations! Your Shop registration has been approved. You now have full access to the Fixroa Shop Portal.'
             : `Your Shop registration was declined. Reason: ${declineReason ?? 'Please contact support for more information.'}`,
           type: approved ? 'registration_approved' : 'registration_declined',
           relatedEntityId: registrationRequestId,
@@ -123,7 +123,7 @@ export class NotificationsService {
             ? 'Customer Registration Approved!'
             : 'Customer Registration Declined',
           message: approved
-            ? 'Your Customer registration has been approved. You can now access your Reparo account.'
+            ? 'Your Customer registration has been approved. You can now access your Fixroa account.'
             : `Your Customer registration was declined. Reason: ${declineReason ?? 'Please contact support for more information.'}`,
           type: approved ? 'registration_approved' : 'registration_declined',
           relatedEntityId: registrationRequestId,
@@ -308,8 +308,8 @@ export class NotificationsService {
       title,
       approved
         ? accountType === 'shop'
-          ? 'Congratulations! Your Shop registration has been approved. You now have full access to the Reparo Shop Portal.'
-          : 'Your Customer registration has been approved. You can now access your Reparo account.'
+          ? 'Congratulations! Your Shop registration has been approved. You now have full access to the Fixroa Shop Portal.'
+          : 'Your Customer registration has been approved. You can now access your Fixroa account.'
         : `Your ${accountLabel} registration was declined.${declineReason ? ` Reason: ${declineReason}` : ''} Sign in to view details and support instructions.`,
       approved ? 'registration_approved' : 'registration_declined',
       registrationRequestId,

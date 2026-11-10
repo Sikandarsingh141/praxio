@@ -7,7 +7,7 @@ const app = firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging(app);
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'Reparo notification';
+  const title = payload.notification?.title || 'Fixroa notification';
   const options = {
     body: payload.notification?.body || 'You have a new update.',
     data: { link: payload.data?.link || '/' },

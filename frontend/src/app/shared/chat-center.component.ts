@@ -21,6 +21,7 @@ import {
   ChatMessage,
   ChatService,
   EligibleChat,
+  ChatMessageSearchPage,
 } from './chat.service';
 import {
   ConfirmationDialogComponent,
@@ -43,6 +44,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   private readonly urlByFile = new Map<string, string>();
   private readonly pendingFileUrls = new Map<File, string>();
   private readonly seenMessageEvents = new Set<string>();
+  private readonly onlineUserIds = new Set<string>();
   private unreadCountUpdatedHandler?: (event: {
     conversationId: string;
     unreadCount: number;
@@ -59,7 +61,9 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly sending = signal(false);
   readonly loadingOlder = signal(false);
+  readonly loadingNewer = signal(false);
   readonly hasMoreMessages = signal(false);
+  readonly hasMoreNewerMessages = signal(false);
   readonly newMessagesCount = signal(0);
   readonly hasMoreConversations = signal(false);
   readonly totalConversations = signal(0);
@@ -75,6 +79,14 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   readonly uploadProgress = signal<number | null>(null);
   readonly loadingMessages = signal(false);
   readonly socketConnected = signal(false);
+  readonly participantOnline = signal(false);
+  readonly showMessageSearch = signal(false);
+  readonly messageSearchQuery = signal('');
+  readonly messageSearchResults = signal<ChatMessage[]>([]);
+  readonly searchingMessages = signal(false);
+  readonly hasSearchedMessages = signal(false);
+  readonly searchHasMore = signal(false);
+  readonly searchPage = signal(1);
   readonly failedProfileImages = signal<Set<string>>(new Set());
   readonly conversationMenuOpen = signal(false);
   readonly pendingClientMessageId = signal('');
@@ -103,10 +115,89 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     this.loadLists();
   }
 
+  toggleMessageSearch(): void {
+    this.showMessageSearch.update((showing) => !showing);
+    if (!this.showMessageSearch()) this.clearMessageSearch();
+  }
+
+  searchMessages(loadMore = false): void {
+    const conversation = this.selected();
+    const query = this.messageSearchQuery().trim();
+    if (!conversation || !query || this.searchingMessages()) return;
+    const page = loadMore ? this.searchPage() + 1 : 1;
+    if (loadMore && !this.searchHasMore()) return;
+    if (!loadMore) {
+      this.messageSearchResults.set([]);
+      this.searchHasMore.set(false);
+      this.hasSearchedMessages.set(true);
+    }
+    this.searchingMessages.set(true);
+    this.chat.searchMessages(conversation.id, query, page).subscribe({
+      next: (result: ChatMessageSearchPage) => {
+        if (this.selected()?.id !== conversation.id) return;
+        this.messageSearchResults.update((items) =>
+          loadMore ? [...items, ...result.messages] : result.messages,
+        );
+        this.searchHasMore.set(result.hasMore);
+        this.searchPage.set(result.page);
+      },
+      error: () => {
+        this.searchingMessages.set(false);
+        this.error.set('Messages could not be searched. Please try again.');
+      },
+      complete: () => this.searchingMessages.set(false),
+    });
+  }
+
+  clearMessageSearch(): void {
+    this.messageSearchQuery.set('');
+    this.messageSearchResults.set([]);
+    this.searchingMessages.set(false);
+    this.hasSearchedMessages.set(false);
+    this.searchHasMore.set(false);
+    this.searchPage.set(1);
+  }
+
+  jumpToSearchMessage(message: ChatMessage): void {
+    const conversation = this.selected();
+    if (!conversation) return;
+    this.loadingMessages.set(true);
+    this.chat.getMessagesAround(conversation.id, message.id).subscribe({
+      next: (page) => {
+        if (this.selected()?.id !== conversation.id) return;
+        this.messages.set(page.messages);
+        this.hasMoreMessages.set(page.hasMoreOlder);
+        this.hasMoreNewerMessages.set(page.hasMoreNewer);
+        this.showMessageSearch.set(false);
+        this.loadingMessages.set(false);
+        this.loadImagePreviews(page.messages);
+        requestAnimationFrame(() => {
+          const target = document.getElementById(`message-${message.id}`);
+          target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target?.classList.add('search-highlight');
+          if (target) setTimeout(() => target.classList.remove('search-highlight'), 1800);
+        });
+      },
+      error: () => {
+        this.loadingMessages.set(false);
+        this.error.set('The selected message could not be opened.');
+      },
+    });
+  }
+
   private createClientMessageId(): string {
     const id = globalThis.crypto.randomUUID();
     this.pendingClientMessageId.set(id);
     return id;
+  }
+
+  private setParticipantPresence(userId: string, isOnline: boolean, conversationId: string): void {
+    if (isOnline) this.onlineUserIds.add(userId);
+    else this.onlineUserIds.delete(userId);
+    const conversation = this.selected();
+    if (conversation?.id === conversationId && conversation.participant.id === userId) {
+      this.participantOnline.set(isOnline);
+    }
   }
 
   ngOnDestroy(): void {
@@ -123,6 +214,9 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
       'messages_read',
       'user_typing',
       'user_stopped_typing',
+      'participant_presence',
+      'user_online',
+      'user_offline',
     ]) {
       this.socket?.off(event);
     }
@@ -197,22 +291,31 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     this.selected.set(conversation);
     this.messages.set([]);
     this.hasMoreMessages.set(false);
+    this.hasMoreNewerMessages.set(false);
+    this.participantOnline.set(this.onlineUserIds.has(conversation.participant.id));
     this.newMessagesCount.set(0);
     this.typing.set(false);
     this.loadingOlder.set(false);
     this.loadingMessages.set(true);
+    this.showMessageSearch.set(false);
+    this.messageSearchQuery.set('');
+    this.messageSearchResults.set([]);
+    this.hasSearchedMessages.set(false);
+    this.searchHasMore.set(false);
+    this.searchPage.set(1);
     this.error.set('');
     this.socket?.emit('join_conversation', { conversationId: conversation.id });
     this.chat.getMessages(conversation.id).subscribe({
-      next: (messages) => {
+      next: (page) => {
         if (this.selected()?.id !== conversation.id) return;
+        const messages = page.messages;
         const historyIds = new Set(messages.map((message) => message.id));
         const liveMessages = this.messages().filter((message) => !historyIds.has(message.id));
         const completeHistory = [...messages, ...liveMessages].sort(
           (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
         );
         this.messages.set(completeHistory);
-        this.hasMoreMessages.set(messages.length === 50);
+        this.hasMoreMessages.set(page.hasMore);
         this.loadingMessages.set(false);
         this.loadImagePreviews(completeHistory);
         this.chat.markRead(conversation.id).subscribe({
@@ -516,10 +619,11 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     const oldest = this.messages()[0];
     if (!conversation || !oldest || this.loadingOlder() || !this.hasMoreMessages()) return;
     this.loadingOlder.set(true);
-    this.chat.getMessages(conversation.id, oldest.createdAt).subscribe({
-      next: (older) => {
+    this.chat.getMessages(conversation.id, oldest.createdAt, oldest.id).subscribe({
+      next: (page) => {
         this.loadingOlder.set(false);
-        this.hasMoreMessages.set(older.length === 50);
+        const older = page.messages;
+        this.hasMoreMessages.set(page.hasMore);
         this.preserveScrollPosition(() => {
           this.messages.update((items) => {
             const existingIds = new Set(items.map((message) => message.id));
@@ -534,6 +638,33 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
         this.error.set('Older messages could not be loaded.');
       },
     });
+  }
+
+  loadNewer(): void {
+    const conversation = this.selected();
+    const newest = this.messages()[this.messages().length - 1];
+    if (!conversation || !newest || this.loadingNewer() || !this.hasMoreNewerMessages()) {
+      return;
+    }
+    this.loadingNewer.set(true);
+    this.chat
+      .getMessages(conversation.id, undefined, undefined, newest.createdAt, newest.id)
+      .subscribe({
+        next: (page) => {
+          this.loadingNewer.set(false);
+          this.hasMoreNewerMessages.set(page.hasMore);
+          const existingIds = new Set(this.messages().map((message) => message.id));
+          const uniqueNewer = page.messages.filter((message) => !existingIds.has(message.id));
+          if (!uniqueNewer.length) return;
+          this.messages.update((items) => [...items, ...uniqueNewer]);
+          this.loadImagePreviews(uniqueNewer);
+          this.scrollToBottom();
+        },
+        error: () => {
+          this.loadingNewer.set(false);
+          this.error.set('Newer messages could not be loaded.');
+        },
+      });
   }
 
   toggleArchive(): void {
@@ -611,6 +742,10 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
       .toUpperCase();
   }
 
+  isUserOnline(userId: string): boolean {
+    return this.onlineUserIds.has(userId);
+  }
+
   attachmentIsImage(attachment: ChatAttachment): boolean {
     return attachment.mimeType.startsWith('image/');
   }
@@ -621,6 +756,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     const atBottom = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 50;
     if (atBottom) {
       this.newMessagesCount.set(0);
+      this.loadNewer();
       return;
     }
     if (thread.scrollTop < 50) this.loadOlder();
@@ -646,6 +782,20 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
       }
     });
     socket.on('disconnect', () => this.socketConnected.set(false));
+    socket.on(
+      'participant_presence',
+      (event: { conversationId: string; userId: string; isOnline: boolean }) => {
+        this.setParticipantPresence(event.userId, event.isOnline, event.conversationId);
+      },
+    );
+    socket.on('user_online', (event: { userId: string }) => {
+      this.onlineUserIds.add(event.userId);
+      if (this.selected()?.participant.id === event.userId) this.participantOnline.set(true);
+    });
+    socket.on('user_offline', (event: { userId: string }) => {
+      this.onlineUserIds.delete(event.userId);
+      if (this.selected()?.participant.id === event.userId) this.participantOnline.set(false);
+    });
     socket.on('new_message', (message: ChatMessage) => {
       const duplicate =
         this.seenMessageEvents.has(message.id) ||
@@ -739,10 +889,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     });
     socket.on('user_typing', () => this.typing.set(true));
     socket.on('user_stopped_typing', () => this.typing.set(false));
-    this.unreadCountUpdatedHandler = (event: {
-      conversationId: string;
-      unreadCount: number;
-    }) => {
+    this.unreadCountUpdatedHandler = (event: { conversationId: string; unreadCount: number }) => {
       this.conversations.update((items) =>
         items.map((item) =>
           item.id === event.conversationId ? { ...item, unreadCount: event.unreadCount } : item,
@@ -889,8 +1036,9 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
 
   private refreshMessages(conversationId: string): void {
     this.chat.getMessages(conversationId).subscribe({
-      next: (latestMessages) => {
+      next: (page) => {
         if (this.selected()?.id !== conversationId) return;
+        const latestMessages = page.messages;
         const thread = this.chatThread?.nativeElement;
         const wasNearBottom = thread
           ? thread.scrollHeight - thread.scrollTop - thread.clientHeight < 50
@@ -901,7 +1049,8 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
           (left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
         );
         this.messages.set(refreshed);
-        this.hasMoreMessages.set(latestMessages.length === 50);
+        this.hasMoreMessages.set(page.hasMore || this.hasMoreMessages());
+        this.hasMoreNewerMessages.set(false);
         this.loadImagePreviews(latestMessages);
         if (wasNearBottom) this.scrollToBottom();
         this.chat.markRead(conversationId).subscribe({

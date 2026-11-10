@@ -103,11 +103,19 @@ describe('AuthService', () => {
       shopDetails: {
         shopName: 'Example Repairs',
         shopImageData: 'data:image/png;base64,c2hvcA==',
+        businessType: 'Electronics Repair Shop',
+        description: 'Repair services',
+        yearsOfExperience: 5,
         address: 'Main Road',
+        street: 'Unit 2',
+        area: 'Central',
         city: 'Pune',
         state: 'Maharashtra',
+        country: 'India',
         postalCode: '411001',
+        landmark: 'Near the park',
         services: ['AC Repair'],
+        location: { latitude: 18.52, longitude: 73.85 },
       },
     };
     usersService.findById.mockResolvedValue(shop);
@@ -121,6 +129,21 @@ describe('AuthService', () => {
 
     await expect(service.getShopProfile('shop-id')).resolves.toMatchObject({
       shopImageData: 'data:image/png;base64,c2hvcA==',
+      businessType: 'Electronics Repair Shop',
+      description: 'Repair services',
+      yearsOfExperience: 5,
+      ownerName: 'Example Person',
+      address: 'Main Road',
+      street: 'Unit 2',
+      area: 'Central',
+      city: 'Pune',
+      state: 'Maharashtra',
+      country: 'India',
+      postalCode: '411001',
+      landmark: 'Near the park',
+      businessAddress:
+        'Main Road, Unit 2, Central, Near the park, Pune, Maharashtra, India, 411001',
+      location: { latitude: 18.52, longitude: 73.85 },
       adminApprovalStatus: 'approved',
       accountLifecycleStatus: 'suspended',
     });

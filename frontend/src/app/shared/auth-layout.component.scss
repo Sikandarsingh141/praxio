@@ -41,8 +41,8 @@
 
 .brand-mark {
   display: grid;
-  width: 2rem;
-  height: 2rem;
+  width: 10rem;
+  height: 3.35rem;
   place-items: center;
   flex: 0 0 auto;
 }
@@ -52,10 +52,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-}
-
-.brand-accent {
-  color: #39a817;
 }
 
 .header-note,
@@ -142,8 +138,8 @@ h1 {
 }
 
 .login-shell .brand-mark {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 10.5rem;
+  height: 3.5rem;
 }
 
 .login-shell::after {
@@ -197,8 +193,8 @@ h1 {
 }
 
 .customer-registration-shell .brand-mark {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 9.5rem;
+  height: 3.2rem;
 }
 
 .customer-registration-shell::after {

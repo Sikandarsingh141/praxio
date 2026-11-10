@@ -1779,7 +1779,7 @@ export class DisputesService {
       : dispute.messages.length;
     if (count >= MAX_DISPUTE_MESSAGES) {
       throw new BadRequestException(
-        'This dispute has reached its message limit. Contact Reparo Support.',
+        'This dispute has reached its message limit. Contact Fixroa Support.',
       );
     }
     this.assertAttachmentCapacity(dispute, attachments);

@@ -61,7 +61,7 @@ export class RegisterShopDto extends RegisterCredentialsDto {
   @Matches(/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/)
   shopImageData?: string;
 
-  @ApiProperty({ example: 'Reparo Repairs', maxLength: 120 })
+  @ApiProperty({ example: 'Fixroa Repairs', maxLength: 120 })
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)

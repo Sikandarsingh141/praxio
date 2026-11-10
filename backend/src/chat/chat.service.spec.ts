@@ -20,8 +20,12 @@ describe('ChatService', () => {
   };
   let conversations: {
     findById: jest.Mock;
+    find: jest.Mock;
     countDocuments: jest.Mock;
     aggregate: jest.Mock;
+  };
+  let messages: {
+    find: jest.Mock;
   };
   let service: ChatService;
 
@@ -30,13 +34,15 @@ describe('ChatService', () => {
     repairRequests = { findById: jest.fn() };
     conversations = {
       findById: jest.fn(),
+      find: jest.fn(),
       countDocuments: jest.fn(),
       aggregate: jest.fn(),
     };
+    messages = { find: jest.fn() };
     service = new ChatService(
       {} as Connection,
       conversations as unknown as Model<ChatConversation>,
-      {} as Model<ChatMessage>,
+      messages as unknown as Model<ChatMessage>,
       repairRequests as unknown as Model<RepairRequest>,
       users as unknown as Model<User>,
       {
@@ -144,5 +150,90 @@ describe('ChatService', () => {
       { $match: { participants: customerId } },
       { $group: { _id: null, total: { $sum: '$customerUnreadCount' } } },
     ]);
+  });
+
+  it('loads at most 20 messages with a stable timestamp and id cursor', async () => {
+    conversations.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        participants: [customerId, shopId],
+      }),
+    });
+    const query = {
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      populate: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    };
+    messages.find.mockReturnValue(query);
+
+    const cursor = new Date('2025-01-01T00:00:00.000Z');
+    const cursorId = new Types.ObjectId();
+    await expect(
+      service.getMessages(
+        { userId: customerId.toString(), role: 'customer' },
+        conversationId.toString(),
+        cursor.toISOString(),
+        cursorId.toString(),
+      ),
+    ).resolves.toEqual({ messages: [], hasMore: false });
+
+    expect(messages.find).toHaveBeenCalledWith({
+      conversationId,
+      $or: [
+        { createdAt: { $lt: cursor } },
+        { createdAt: cursor, _id: { $lt: cursorId } },
+      ],
+    });
+    expect(query.limit).toHaveBeenCalledWith(21);
+  });
+
+  it('searches only messages in conversations the actor belongs to and escapes search syntax', async () => {
+    conversations.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        participants: [customerId, shopId],
+      }),
+    });
+    const query = {
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      populate: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    };
+    messages.find.mockReturnValue(query);
+
+    await expect(
+      service.searchMessages(
+        { userId: customerId.toString(), role: 'customer' },
+        conversationId.toString(),
+        'repair.*',
+        1,
+      ),
+    ).resolves.toEqual({ messages: [], page: 1, hasMore: false });
+
+    expect(messages.find).toHaveBeenCalledWith({
+      conversationId,
+      isDeleted: false,
+      content: { $regex: 'repair\\.\\*', $options: 'i' },
+    });
+    expect(query.limit).toHaveBeenCalledWith(21);
+  });
+
+  it('returns only private conversation peers for presence updates', async () => {
+    const otherShopId = new Types.ObjectId();
+    conversations.find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        { customerId, shopId },
+        { customerId, shopId: otherShopId },
+      ]),
+    });
+
+    const peers = await service.getPresencePeerIds(customerId.toString());
+
+    expect(peers).toEqual([shopId.toString(), otherShopId.toString()]);
   });
 });

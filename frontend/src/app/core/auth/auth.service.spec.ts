@@ -122,6 +122,36 @@ describe('AuthService', () => {
     });
   });
 
+  it('updates only the shop name and address', () => {
+    const update = {
+      shopName: 'Updated Repairs',
+      address: 'Main Road',
+      city: 'Pune',
+      state: 'Maharashtra',
+      postalCode: '411001',
+      landmark: '',
+      location: null,
+    };
+    let updatedProfile: unknown;
+    service
+      .updateMyShopBusinessDetails(update)
+      .subscribe((profile) => (updatedProfile = profile));
+    const request = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/shops/my-profile/business-details`,
+    );
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual(update);
+    const profile = {
+      shopName: 'Updated Repairs',
+      ownerName: 'Shop Owner',
+      email: user.email,
+    };
+    request.flush({ data: { profile } });
+
+    expect(updatedProfile).toEqual(profile);
+    expect(service.shopName()).toBe('Updated Repairs');
+  });
+
   it('clears local auth state when the logout request fails', () => {
     service.login(user.email, 'password').subscribe();
     httpTestingController

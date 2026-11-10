@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
@@ -31,7 +32,9 @@ type ChatSocket = Omit<Socket, 'data'> & { data: ChatSocketData };
   path: '/api/socket.io',
   cors: { origin: true, credentials: true },
 })
-export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class ChatGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private readonly logger = new Logger(ChatGateway.name);
 
   @WebSocketServer()
@@ -66,7 +69,21 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
           client.to(room).emit('user_stopped_typing', { userId });
         }
       }
+      void this.emitPresence(userId, false).catch((error: unknown) => {
+        this.logger.warn(
+          `Could not broadcast chat presence: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
     }
+  }
+
+  handleConnection(client: ChatSocket) {
+    const userId = this.actor(client).userId;
+    void this.emitPresence(userId, true).catch((error: unknown) => {
+      this.logger.warn(
+        `Could not broadcast chat presence: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
   }
 
   @SubscribeMessage('join_conversation')
@@ -76,8 +93,20 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
   ) {
     const actor = this.actor(client);
     const conversationId = this.string(body?.conversationId);
-    await this.chat.getConversation(actor, conversationId);
+    const conversation = await this.chat.getConversation(actor, conversationId);
     await client.join(this.conversationRoom(conversationId));
+    const participantId =
+      conversation.customerId.toString() === actor.userId
+        ? conversation.shopId.toString()
+        : conversation.customerId.toString();
+    const peerSockets = await this.server
+      .in(this.userRoom(participantId))
+      .fetchSockets();
+    client.emit('participant_presence', {
+      conversationId,
+      userId: participantId,
+      isOnline: peerSockets.length > 0,
+    });
     client.emit('conversation_joined', { conversationId });
   }
 
@@ -403,6 +432,17 @@ export class ChatGateway implements OnGatewayInit, OnGatewayDisconnect {
       .to(this.userRoom(customerId))
       .emit('conversation_updated', update);
     this.server.to(this.userRoom(shopId)).emit('conversation_updated', update);
+  }
+
+  private async emitPresence(userId: string, isOnline: boolean) {
+    const sockets = await this.server.in(this.userRoom(userId)).fetchSockets();
+    if (isOnline ? sockets.length === 0 : sockets.length > 0) return;
+    const peerIds = await this.chat.getPresencePeerIds(userId);
+    for (const peerId of peerIds) {
+      this.server
+        .to(this.userRoom(peerId))
+        .emit(isOnline ? 'user_online' : 'user_offline', { userId, isOnline });
+    }
   }
 
   private actor(client: ChatSocket): ChatActor {

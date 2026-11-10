@@ -30,7 +30,7 @@ export class ShopLayout implements OnInit, OnDestroy {
   private readonly shopRequests = inject(ShopRepairRequestsService);
   readonly signingOut = signal(false);
   readonly accountMenuOpen = signal(false);
-  readonly shopName = signal('');
+  readonly shopName = this.authService.shopName;
   readonly shopNameError = signal('');
   readonly searchQuery = signal('');
   readonly searchResults = signal<ShopActivitySearchResult[] | null>(null);
@@ -42,7 +42,6 @@ export class ShopLayout implements OnInit, OnDestroy {
     this.chat.connect();
     this.chat.refreshUnreadMessageCount();
     this.authService.getShopDashboard().subscribe({
-      next: (dashboard) => this.shopName.set(dashboard.shopName),
       error: () => this.shopNameError.set('Shop name could not be loaded.'),
     });
   }
@@ -73,11 +72,6 @@ export class ShopLayout implements OnInit, OnDestroy {
   getUserInitial(): string {
     const name = this.authService.currentUser()?.fullName?.trim();
     return name ? name.slice(0, 1).toUpperCase() : 'P';
-  }
-
-  getShopInitial(): string {
-    const name = this.shopName().trim();
-    return name ? name.slice(0, 1).toUpperCase() : this.getUserInitial();
   }
 
   getUserFirstName(): string {

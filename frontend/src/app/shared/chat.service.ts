@@ -41,6 +41,23 @@ export interface ChatMessage {
   updatedAt: string;
 }
 
+export interface ChatMessagePage {
+  messages: ChatMessage[];
+  hasMore: boolean;
+}
+
+export interface ChatMessageSearchPage {
+  messages: ChatMessage[];
+  page: number;
+  hasMore: boolean;
+}
+
+export interface ChatMessagesAroundPage {
+  messages: ChatMessage[];
+  hasMoreOlder: boolean;
+  hasMoreNewer: boolean;
+}
+
 export interface ChatDeletedMessage {
   id: string;
   conversationId: string;
@@ -145,15 +162,47 @@ export class ChatService {
       .pipe(map((response) => response.data.conversation));
   }
 
-  getMessages(conversationId: string, before?: string): Observable<ChatMessage[]> {
+  getMessages(
+    conversationId: string,
+    before?: string,
+    beforeId?: string,
+    after?: string,
+    afterId?: string,
+  ): Observable<ChatMessagePage> {
     let params = new HttpParams();
     if (before) params = params.set('before', before);
+    if (beforeId) params = params.set('beforeId', beforeId);
+    if (after) params = params.set('after', after);
+    if (afterId) params = params.set('afterId', afterId);
     return this.http
-      .get<{ data: { messages: ChatMessage[] } }>(
+      .get<{ data: ChatMessagePage }>(
         `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
         { params, context: this.silentContext() },
       )
-      .pipe(map((response) => response.data.messages));
+      .pipe(map((response) => response.data));
+  }
+
+  searchMessages(
+    conversationId: string,
+    query: string,
+    page = 1,
+  ): Observable<ChatMessageSearchPage> {
+    const params = new HttpParams().set('q', query).set('page', page);
+    return this.http
+      .get<{ data: ChatMessageSearchPage }>(
+        `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}/search`,
+        { params, context: this.silentContext() },
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  getMessagesAround(conversationId: string, messageId: string): Observable<ChatMessagesAroundPage> {
+    return this.http
+      .get<{ data: ChatMessagesAroundPage }>(
+        `${this.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages/around/${encodeURIComponent(messageId)}`,
+        { context: this.silentContext() },
+      )
+      .pipe(map((response) => response.data));
   }
 
   sendMessage(

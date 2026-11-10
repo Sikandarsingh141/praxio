@@ -147,4 +147,36 @@ describe('UsersService', () => {
       { new: true, runValidators: true },
     );
   });
+
+  it('updates only shop name and address fields for shop accounts', async () => {
+    const updates = {
+      shopName: '  Updated Repairs  ',
+      address: '  Main Road  ',
+      city: 'Pune',
+      state: 'Maharashtra',
+      postalCode: '411001',
+      landmark: '',
+      location: { latitude: 18.52, longitude: 73.85 },
+    };
+    await service.updateShopBusinessDetails(
+      '507f1f77bcf86cd799439011',
+      updates,
+    );
+
+    expect(model.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: '507f1f77bcf86cd799439011', accountType: 'shop' },
+      {
+        $set: {
+          'shopDetails.shopName': 'Updated Repairs',
+          'shopDetails.address': 'Main Road',
+          'shopDetails.city': 'Pune',
+          'shopDetails.state': 'Maharashtra',
+          'shopDetails.postalCode': '411001',
+          'shopDetails.landmark': '',
+          'shopDetails.location': { latitude: 18.52, longitude: 73.85 },
+        },
+      },
+      { new: true, runValidators: true },
+    );
+  });
 });

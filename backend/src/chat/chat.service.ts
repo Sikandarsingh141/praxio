@@ -296,7 +296,9 @@ export class ChatService {
       .aggregate<{ _id: Types.ObjectId; count: number }>([
         {
           $match: {
-            conversationId: { $in: conversations.map((conversation) => conversation._id) },
+            conversationId: {
+              $in: conversations.map((conversation) => conversation._id),
+            },
           },
         },
         { $group: { _id: '$conversationId', count: { $sum: 1 } } },
@@ -322,7 +324,8 @@ export class ChatService {
           repairRequest: this.repairSummary(conversation.repairRequestId),
           lastMessage: conversation.lastMessage ?? '',
           lastMessageAt: conversation.lastMessageAt ?? conversation.updatedAt,
-          messageCount: messageCountByConversation.get(conversation._id.toString()) ?? 0,
+          messageCount:
+            messageCountByConversation.get(conversation._id.toString()) ?? 0,
           unreadCount: conversation[unreadField],
           archived: conversation.archivedBy.some(
             (id) => id.toString() === archivedBy,
@@ -416,27 +419,170 @@ export class ChatService {
     return this.requireConversation(actor, conversationId);
   }
 
-  async getMessages(actor: ChatActor, conversationId: string, before?: string) {
+  async getMessages(
+    actor: ChatActor,
+    conversationId: string,
+    before?: string,
+    beforeId?: string,
+    after?: string,
+    afterId?: string,
+  ) {
     await this.requireConversation(actor, conversationId);
     const filter: Record<string, unknown> = {
       conversationId: this.id(conversationId),
     };
-    if (before) {
-      const cursor = new Date(before);
+    if (before || after) {
+      const cursorValue = before ?? after;
+      const cursor = new Date(cursorValue!);
       if (Number.isNaN(cursor.getTime())) {
         throw new BadRequestException('Invalid message page cursor.');
       }
-      filter.createdAt = { $lt: cursor };
+      const cursorId = beforeId ?? afterId;
+      const operator = before ? '$lt' : '$gt';
+      filter.$or = [
+        { createdAt: { [operator]: cursor } },
+        ...(cursorId
+          ? [{ createdAt: cursor, _id: { [operator]: this.id(cursorId) } }]
+          : []),
+      ];
     }
-    const messages = await this.messages
+    const loadingNewer = !!after;
+    const records = await this.messages
       .find(filter)
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(50)
+      .sort({ createdAt: loadingNewer ? 1 : -1, _id: loadingNewer ? 1 : -1 })
+      .limit(21)
       .populate('senderId', 'fullName profileImageData')
       .populate('repliedToMessageId', 'content senderId isDeleted')
       .lean<ChatMessageView[]>()
       .exec();
-    return messages.reverse().map((message) => this.messageDto(message));
+    const hasMore = records.length > 20;
+    const messages = records.slice(0, 20);
+    if (!loadingNewer) messages.reverse();
+    return {
+      messages: messages.map((message) => this.messageDto(message)),
+      hasMore,
+    };
+  }
+
+  async searchMessages(
+    actor: ChatActor,
+    conversationId: string,
+    query: string,
+    page: number,
+  ) {
+    await this.requireConversation(actor, conversationId);
+    const keyword = query.trim();
+    if (!keyword || keyword.length > 100) {
+      throw new BadRequestException(
+        'Search text must be between 1 and 100 characters.',
+      );
+    }
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Invalid search page.');
+    }
+    const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const records = await this.messages
+      .find({
+        conversationId: this.id(conversationId),
+        isDeleted: false,
+        content: { $regex: escapedKeyword, $options: 'i' },
+      })
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * 20)
+      .limit(21)
+      .populate('senderId', 'fullName profileImageData')
+      .populate('repliedToMessageId', 'content senderId isDeleted')
+      .lean<ChatMessageView[]>()
+      .exec();
+    const hasMore = records.length > 20;
+    return {
+      messages: records.slice(0, 20).map((message) => this.messageDto(message)),
+      page,
+      hasMore,
+    };
+  }
+
+  async getMessagesAround(
+    actor: ChatActor,
+    conversationId: string,
+    messageId: string,
+  ) {
+    await this.requireConversation(actor, conversationId);
+    const conversationObjectId = this.id(conversationId);
+    const target = await this.messages
+      .findOne({
+        _id: this.id(messageId),
+        conversationId: conversationObjectId,
+        isDeleted: false,
+      })
+      .populate('senderId', 'fullName profileImageData')
+      .populate('repliedToMessageId', 'content senderId isDeleted')
+      .lean<ChatMessageView>()
+      .exec();
+    if (!target) throw new NotFoundException('Message not found.');
+
+    const cursor = { createdAt: target.createdAt, _id: target._id };
+    const [olderRecords, newerRecords] = await Promise.all([
+      this.messages
+        .find({
+          conversationId: conversationObjectId,
+          isDeleted: false,
+          $or: [
+            { createdAt: { $lt: cursor.createdAt } },
+            { createdAt: cursor.createdAt, _id: { $lt: cursor._id } },
+          ],
+        })
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(11)
+        .populate('senderId', 'fullName profileImageData')
+        .populate('repliedToMessageId', 'content senderId isDeleted')
+        .lean<ChatMessageView[]>()
+        .exec(),
+      this.messages
+        .find({
+          conversationId: conversationObjectId,
+          isDeleted: false,
+          $or: [
+            { createdAt: { $gt: cursor.createdAt } },
+            { createdAt: cursor.createdAt, _id: { $gt: cursor._id } },
+          ],
+        })
+        .sort({ createdAt: 1, _id: 1 })
+        .limit(10)
+        .populate('senderId', 'fullName profileImageData')
+        .populate('repliedToMessageId', 'content senderId isDeleted')
+        .lean<ChatMessageView[]>()
+        .exec(),
+    ]);
+    const hasMoreOlder = olderRecords.length > 10;
+    const messages = [
+      ...olderRecords.slice(0, 10).reverse(),
+      target,
+      ...newerRecords.slice(0, 9),
+    ];
+    return {
+      messages: messages.map((message) => this.messageDto(message)),
+      hasMoreOlder,
+      hasMoreNewer: newerRecords.length > 9,
+    };
+  }
+
+  async getPresencePeerIds(userId: string): Promise<string[]> {
+    const userObjectId = this.id(userId);
+    const conversations = await this.conversations
+      .find({ participants: userObjectId })
+      .select('customerId shopId')
+      .lean()
+      .exec();
+    return [
+      ...new Set(
+        conversations.map((conversation) =>
+          conversation.customerId.equals(userObjectId)
+            ? conversation.shopId.toString()
+            : conversation.customerId.toString(),
+        ),
+      ),
+    ];
   }
 
   async sendMessage(

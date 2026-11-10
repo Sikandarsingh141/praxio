@@ -7,11 +7,13 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { UsersService } from '../users/users.service';
 import { CustomerPortalService } from '../customer/customer-portal.service';
+import { RegistrationService } from '../registrations/registration.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ProfileController } from './profile.controller';
 import { ShopProfileController } from './shop-profile.controller';
+import { ShopPortalGuard } from './shop-portal.guard';
 
 describe('AuthController', () => {
   let app: INestApplication<App>;
@@ -80,6 +82,7 @@ describe('AuthController', () => {
     findById: jest.fn().mockResolvedValue(safeUser),
     updateProfile: jest.fn().mockResolvedValue(safeUser),
     updateShopImage: jest.fn().mockResolvedValue(safeUser),
+    updateShopBusinessDetails: jest.fn().mockResolvedValue(safeUser),
   };
   const customerPortalService = {
     searchAddresses: jest.fn().mockResolvedValue([
@@ -112,6 +115,14 @@ describe('AuthController', () => {
         { provide: ConfigService, useValue: configService },
         { provide: UsersService, useValue: usersService },
         { provide: CustomerPortalService, useValue: customerPortalService },
+        {
+          provide: RegistrationService,
+          useValue: { findShopRequestForUser: jest.fn() },
+        },
+        {
+          provide: ShopPortalGuard,
+          useValue: { canActivate: jest.fn().mockReturnValue(true) },
+        },
         JwtAuthGuard,
       ],
     }).compile();
@@ -134,17 +145,22 @@ describe('AuthController', () => {
   });
 
   it('suggests public geocoded locations for registration', async () => {
-    const response = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .get('/api/auth/addresses')
       .query({ q: 'Sector 70 Mohali' })
-      .expect(200);
-
-    expect(response.body.data.suggestions).toEqual([
-      expect.objectContaining({
-        label: 'Sector 70, Mohali, Punjab, India',
-        city: 'Mohali',
-      }),
-    ]);
+      .expect(200, {
+        data: {
+          suggestions: [
+            {
+              label: 'Sector 70, Mohali, Punjab, India',
+              latitude: 30.7,
+              longitude: 76.7,
+              city: 'Mohali',
+              state: 'Punjab',
+            },
+          ],
+        },
+      });
     expect(customerPortalService.searchAddresses).toHaveBeenCalledWith(
       'Sector 70 Mohali',
     );
@@ -446,6 +462,49 @@ describe('AuthController', () => {
       `data:image/png;base64,${pngSignature.toString('base64')}`,
     );
     expect(authService.getShopProfile).toHaveBeenCalledWith(safeUser.id);
+  });
+
+  it('updates only the authenticated shop name and address and rejects other profile fields', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+      accountType: 'shop',
+    });
+    const businessDetailsUpdate = {
+      shopName: 'Updated Repairs',
+      address: 'Main Road',
+      city: 'Pune',
+      state: 'Maharashtra',
+      postalCode: '411001',
+      landmark: '',
+      location: { latitude: 18.52, longitude: 73.85 },
+    };
+
+    await request(app.getHttpServer())
+      .patch('/api/shops/my-profile/business-details')
+      .set('Cookie', `access_token=${token}`)
+      .send(businessDetailsUpdate)
+      .expect(200, {
+        data: {
+          profile: {
+            shopName: 'Example Repairs',
+            shopImageData: 'data:image/png;base64,iVBORw0KGgo=',
+          },
+        },
+      });
+
+    expect(usersService.updateShopBusinessDetails).toHaveBeenCalledWith(
+      safeUser.id,
+      businessDetailsUpdate,
+    );
+    expect(authService.getShopProfile).toHaveBeenCalledWith(safeUser.id);
+
+    await request(app.getHttpServer())
+      .patch('/api/shops/my-profile/business-details')
+      .set('Cookie', `access_token=${token}`)
+      .send({ ...businessDetailsUpdate, fullName: 'Other profile data' })
+      .expect(400);
   });
 
   it('rejects shop images with unsupported content', async () => {

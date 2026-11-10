@@ -66,6 +66,7 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
   readonly successMessage = signal('');
   readonly pushWarning = signal('');
   readonly addressLookupMessage = signal('');
+  readonly addressQuery = signal('');
   readonly addressSuggestions = signal<RegistrationAddressSuggestion[]>([]);
   readonly addressSuggestionsLoading = signal(false);
   readonly addressSuggestionsVisible = signal(false);
@@ -214,16 +215,17 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
   readonly locationMessage = signal('');
 
   onAddressInput(input: HTMLInputElement): void {
-    if (this.selectedAddress && input.value === this.selectedAddress) {
+    const query = input.value.trim();
+    this.addressQuery.set(input.value);
+    if (this.selectedAddress && query === this.selectedAddress) {
       return;
     }
     if (this.selectedAddress) {
-      this.clearResolvedAddress();
+      this.clearResolvedAddress(true);
     }
     this.selectedAddress = '';
     this.activeAddressSuggestion.set(-1);
 
-    const query = input.value.trim();
     this.addressSuggestionsVisible.set(query.length >= 3);
     this.addressLookupMessage.set('');
     if (query.length < 3) {
@@ -265,6 +267,7 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
     this.addressSuggestionsVisible.set(false);
     this.addressSuggestionsLoading.set(false);
     this.activeAddressSuggestion.set(-1);
+    this.addressQuery.set(suggestion.label);
     this.selectedAddress = suggestion.label;
     this.form.patchValue({
       address: suggestion.label,

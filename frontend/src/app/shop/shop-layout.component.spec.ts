@@ -56,15 +56,18 @@ describe('ShopLayout', () => {
     httpTestingController
       .expectOne(`${environment.apiBaseUrl}/shops/dashboard`)
       .flush({ data: { shopName: 'Example Repairs' } });
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}/chat/unread-count`)
+      .flush({ data: { unreadCount: 0 } });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.account-name')?.textContent).toContain(
-      'Example Repairs',
+      'Shop Owner',
     );
     expect((fixture.nativeElement.querySelector('.profile-avatar') as HTMLImageElement).src).toBe(
       'data:image/png;base64,abc',
     );
-    expect(fixture.nativeElement.textContent).toContain('Overview');
+    expect(fixture.nativeElement.textContent).toContain('Dashboard');
     expect(fixture.nativeElement.textContent).toContain('Repair requests');
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
@@ -73,6 +76,49 @@ describe('ShopLayout', () => {
     expect(
       (fixture.nativeElement.querySelector('#shop-global-search') as HTMLInputElement).placeholder,
     ).toBe('Search repair requests, quotations, or customers...');
+
+    const updatedPhoto = 'data:image/jpeg;base64,bmV3';
+    const image = new File([new Uint8Array([1, 2, 3])], 'profile.jpg', {
+      type: 'image/jpeg',
+    });
+    authService.uploadMyProfileImage(image).subscribe();
+    const uploadRequest = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/users/me/profile-image`,
+    );
+    uploadRequest.flush({
+      data: {
+        user: {
+          ...authService.currentUser(),
+          profileImageUrl: updatedPhoto,
+        },
+      },
+    });
+    fixture.detectChanges();
+    expect((fixture.nativeElement.querySelector('.profile-avatar') as HTMLImageElement).src).toBe(
+      updatedPhoto,
+    );
+
+    authService.updateMyProfile('Updated Shop Owner').subscribe();
+    httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me/profile`).flush({
+      data: {
+        user: {
+          ...authService.currentUser(),
+          fullName: 'Updated Shop Owner',
+        },
+      },
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.account-name')?.textContent).toContain(
+      'Updated Shop Owner',
+    );
+    (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.dropdown-identity strong')?.textContent).toContain(
+      'Updated Shop Owner',
+    );
+    expect(fixture.nativeElement.querySelector('.dropdown-identity')?.textContent).toContain(
+      'Example Repairs',
+    );
 
     const searchInput = fixture.nativeElement.querySelector(
       '#shop-global-search',
@@ -147,6 +193,9 @@ describe('ShopLayout', () => {
     httpTestingController
       .expectOne(`${environment.apiBaseUrl}/shops/dashboard`)
       .flush({ data: { shopName: 'Example Repairs' } });
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}/chat/unread-count`)
+      .flush({ data: { unreadCount: 0 } });
     fixture.detectChanges();
 
     (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();

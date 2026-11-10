@@ -8,6 +8,7 @@ import { ShopProfile } from '../core/auth/auth.models';
 import { LocationMapComponent } from '../shared/location-map.component';
 import { ProfileEditorComponent } from '../shared/profile-editor.component';
 import { ShopImageEditorComponent } from '../shared/shop-image-editor.component';
+import { ShopProfileEditorComponent } from '../shared/shop-profile-editor.component';
 
 @Component({
   selector: 'app-shop-registration-status-page',
@@ -19,6 +20,7 @@ import { ShopImageEditorComponent } from '../shared/shop-image-editor.component'
     LocationMapComponent,
     ProfileEditorComponent,
     ShopImageEditorComponent,
+    ShopProfileEditorComponent,
   ],
   template: `
     <section class="shop-profile-page" aria-labelledby="shop-profile-title">
@@ -75,17 +77,17 @@ import { ShopImageEditorComponent } from '../shared/shop-image-editor.component'
                 <h2>Account suspended</h2>
                 <p>
                   Your account has been suspended by an administrator. You cannot use the Shop
-                  Portal while it is suspended. Contact Reparo support if you need assistance.
+                  Portal while it is suspended. Contact Fixroa support if you need assistance.
                 </p>
               } @else if (details.accountLifecycleStatus === 'inactive') {
                 <h2>Account inactive</h2>
                 <p>
-                  Your account is currently inactive. Contact Reparo support if you need help
+                  Your account is currently inactive. Contact Fixroa support if you need help
                   restoring access.
                 </p>
               } @else if (details.adminApprovalStatus === 'approved') {
                 <h2>Registration approved</h2>
-                <p>Your shop is approved and ready to use the Reparo Shop Portal.</p>
+                <p>Your shop is approved and ready to use the Fixroa Shop Portal.</p>
               } @else if (details.adminApprovalStatus === 'declined') {
                 <h2>Registration declined</h2>
                 <p>Your registration was declined. Contact support if you need assistance.</p>
@@ -95,7 +97,7 @@ import { ShopImageEditorComponent } from '../shared/shop-image-editor.component'
               } @else if (details.paymentStatus === 'paid') {
                 <h2>Awaiting admin review</h2>
                 <p>
-                  Payment is complete. Your business profile is being reviewed by the Reparo team.
+                  Payment is complete. Your business profile is being reviewed by the Fixroa team.
                 </p>
               } @else {
                 <h2>Payment required</h2>
@@ -113,38 +115,7 @@ import { ShopImageEditorComponent } from '../shared/shop-image-editor.component'
             }
           </section>
 
-          <section class="profile-card" aria-labelledby="business-details-title">
-            <div class="section-heading">
-              <div>
-                <span class="section-eyebrow">YOUR BUSINESS</span>
-                <h2 id="business-details-title">{{ details.shopName }}</h2>
-              </div>
-            </div>
-            <dl>
-              <div>
-                <dt>Business owner</dt>
-                <dd>{{ details.ownerName }}</dd>
-              </div>
-              <div>
-                <dt>Email</dt>
-                <dd>{{ details.email }}</dd>
-              </div>
-              <div>
-                <dt>Phone</dt>
-                <dd>{{ details.countryCode }} {{ details.mobileNumber || 'Not provided' }}</dd>
-              </div>
-              <div>
-                <dt>Business address</dt>
-                <dd>{{ details.businessAddress }}</dd>
-              </div>
-              <div>
-                <dt>Services</dt>
-                <dd>
-                  {{ details.services.length ? details.services.join(', ') : 'Not provided' }}
-                </dd>
-              </div>
-            </dl>
-          </section>
+          <app-shop-profile-editor [profile]="details" (profileUpdated)="updateProfile($event)" />
 
           <app-shop-image-editor
             [imageData]="details.shopImageData"
@@ -204,7 +175,7 @@ import { ShopImageEditorComponent } from '../shared/shop-image-editor.component'
   styleUrl: './shop-registration-status.page.scss',
 })
 export class ShopRegistrationStatusPage implements OnInit {
-  private readonly authService = inject(AuthService);
+  readonly authService = inject(AuthService);
   readonly profile = signal<ShopProfile | null>(null);
   readonly loading = signal(true);
   readonly errorMessage = signal('');
@@ -230,6 +201,12 @@ export class ShopRegistrationStatusPage implements OnInit {
   }
 
   updateShopImage(imageData: string): void {
-    this.profile.update((profile) => (profile ? { ...profile, shopImageData: imageData } : profile));
+    this.profile.update((profile) =>
+      profile ? { ...profile, shopImageData: imageData } : profile,
+    );
+  }
+
+  updateProfile(profile: ShopProfile): void {
+    this.profile.set(profile);
   }
 }

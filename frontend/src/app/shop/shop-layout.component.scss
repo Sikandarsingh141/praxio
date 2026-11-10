@@ -169,8 +169,8 @@
 
 .brand-mark {
   display: grid;
-  width: 2.3rem;
-  height: 2.3rem;
+  width: 10rem;
+  height: 3.3rem;
   place-items: center;
   flex: 0 0 auto;
 }
@@ -182,9 +182,7 @@
   object-fit: contain;
 }
 
-.brand-accent {
-  color: #39a817;
-}
+
 
 .header-account {
   display: flex;
@@ -492,8 +490,8 @@
   }
 
   .brand-mark {
-    width: 2rem;
-    height: 2rem;
+    width: 7.5rem;
+    height: 2.5rem;
   }
 
   .header-account {

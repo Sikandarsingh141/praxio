@@ -67,8 +67,13 @@ describe('CustomerLayout', () => {
     httpTestingController
       .expectOne(`${environment.apiBaseUrl}/notifications/my`)
       .flush({ data: { notifications: [] } });
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}/chat/unread-count`)
+      .flush({ data: { unreadCount: 0 } });
 
-    expect(fixture.nativeElement.textContent).toContain('Reparo');
+    const logo = fixture.nativeElement.querySelector('.brand-mark img') as HTMLImageElement;
+    expect(logo.alt).toBe('Fixroa');
+    expect(logo.getAttribute('src')).toBe('/fixroa-logo.png');
     expect(fixture.nativeElement.querySelector('.account-name')?.textContent).toContain(
       'Taylor Example',
     );
@@ -118,6 +123,9 @@ describe('CustomerLayout', () => {
     httpTestingController
       .expectOne(`${environment.apiBaseUrl}/notifications/my`)
       .flush({ data: { notifications: [] } });
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}/chat/unread-count`)
+      .flush({ data: { unreadCount: 0 } });
     const input = fixture.nativeElement.querySelector(
       '.search-placeholder input',
     ) as HTMLInputElement;

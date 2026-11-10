@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
+  Patch,
   Post,
   Req,
   UnauthorizedException,
@@ -13,6 +15,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody } from '@nestjs/swagger';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthService, ShopProfile } from './auth.service';
+import { UpdateShopBusinessDetailsDto } from './dto/update-shop-business-details.dto';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ShopPortalGuard } from './shop-portal.guard';
@@ -47,6 +50,21 @@ export class ShopProfileController {
     return {
       data: { profile: await this.authService.getShopProfile(userId) },
     };
+  }
+
+  @Patch('my-profile/business-details')
+  @ApiOperation({ summary: 'Update the authenticated shop name and address' })
+  async updateMyBusinessDetails(
+    @Req() request: AuthenticatedRequest,
+    @Body() input: UpdateShopBusinessDetailsDto,
+  ): Promise<{ data: { profile: ShopProfile } }> {
+    const userId = request.auth?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    await this.usersService.updateShopBusinessDetails(userId, input);
+    return { data: { profile: await this.authService.getShopProfile(userId) } };
   }
 
   @Post('my-profile-image')

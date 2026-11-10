@@ -1,5 +1,5 @@
 <div class="shop-register-layout">
-  <aside class="shop-benefits" aria-label="Benefits of joining Reparo">
+  <aside class="shop-benefits" aria-label="Benefits of joining Fixroa">
     <div class="shop-illustration" aria-hidden="true">
       <svg viewBox="0 0 280 250">
         <circle cx="140" cy="122" r="106" fill="#e7f7e9" />
@@ -87,7 +87,7 @@
     <header class="page-intro">
       <span class="page-eyebrow">SHOP PARTNER ACCOUNT</span>
       <h1 id="shop-register-title">Register your <span>repair business</span></h1>
-      <p>Share a few details to introduce your business to the Reparo community.</p>
+      <p>Share a few details to introduce your business to the Fixroa community.</p>
     </header>
 
     <div class="registration-card">
@@ -469,10 +469,10 @@
             <fieldset>
               <legend>Shop location</legend>
               <div class="field field-full">
-                <label for="shop-address">Location</label>
+                <label for="shop-address-search">Search address</label>
                 <span class="input-hint">
-                  Type a shop address or area and choose a suggested location to fill the address
-                  details and map coordinates.
+                  Search for your shop and choose a suggestion to fill the address details and map
+                  coordinates.
                 </span>
                 <div class="address-input-wrapper">
                   <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -480,11 +480,11 @@
                     <circle cx="12" cy="10" r="2.5" />
                   </svg>
                   <input
-                    id="shop-address"
+                    id="shop-address-search"
                     type="text"
-                    formControlName="address"
+                    [value]="addressQuery()"
                     autocomplete="off"
-                    placeholder="Search shop location"
+                    placeholder="Search address"
                     #location
                     (input)="onAddressInput(location)"
                     (keydown)="onAddressKeydown($event)"
@@ -498,7 +498,6 @@
                         ? 'shop-address-option-' + activeAddressSuggestion()
                         : null
                     "
-                    required
                   />
                   @if (addressSuggestionsVisible()) {
                     <div
@@ -541,8 +540,19 @@
                 @if (addressLookupMessage()) {
                   <span class="input-hint" role="status">{{ addressLookupMessage() }}</span>
                 }
+              </div>
+              <div class="field field-full">
+                <label for="shop-address">Address</label>
+                <textarea
+                  id="shop-address"
+                  formControlName="address"
+                  rows="2"
+                  maxlength="200"
+                  autocomplete="street-address"
+                  required
+                ></textarea>
                 @if (form.controls.address.touched && form.controls.address.invalid) {
-                  <span class="field-error">Enter or select your shop location.</span>
+                  <span class="field-error">Enter your shop address.</span>
                 }
               </div>
               <div class="field">

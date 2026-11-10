@@ -38,14 +38,25 @@ export interface ShopAuthorization {
 export interface ShopProfile {
   shopName: string;
   shopImageData?: string;
+  businessType: string;
+  description: string;
+  yearsOfExperience: number;
   ownerName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
+  address: string;
+  street?: string;
+  area?: string;
+  city: string;
+  state: string;
+  country?: string;
+  postalCode: string;
+  landmark: string;
   location?: { latitude: number; longitude: number };
   businessAddress: string;
   services: string[];
-  subscriptionPlan: 'Reparo Shop monthly subscription';
+  subscriptionPlan: 'Fixroa Shop monthly subscription';
   subscriptionAmountCents: number;
   subscriptionCurrency: 'usd';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
@@ -56,10 +67,20 @@ export interface ShopProfile {
   declineReason: string | null;
 }
 
+export interface ShopBusinessDetailsUpdate {
+  shopName: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  landmark: string;
+  location: { latitude: number; longitude: number } | null;
+}
+
 export interface ShopPaymentStatus {
   registrationStatus: 'pending' | 'approved' | 'declined' | 'not_found';
   paymentStatus: 'not_required' | 'unpaid' | 'paid';
-  subscriptionPlan: 'Reparo Shop monthly subscription';
+  subscriptionPlan: 'Fixroa Shop monthly subscription';
   amountCents: number;
   currency: string;
   paidAt: string | null;

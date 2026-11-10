@@ -14,14 +14,17 @@ import {
   RegistrationNotification,
   RegistrationAddressSuggestion,
   UserProfile,
+  ShopBusinessDetailsUpdate,
 } from './auth.models';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly userState = signal<UserProfile | null>(null);
   private readonly loginDestinationState = signal<string | null>(null);
+  private readonly shopNameState = signal('');
   readonly currentUser = this.userState.asReadonly();
   readonly loginDestination = this.loginDestinationState.asReadonly();
+  readonly shopName = this.shopNameState.asReadonly();
   readonly isAuthenticated = computed(() => this.userState() !== null);
 
   constructor(private readonly http: HttpClient) {}
@@ -55,7 +58,10 @@ export class AuthService {
     return this.http
       .get<ApiEnvelope<{ suggestions: RegistrationAddressSuggestion[] }>>(
         `${environment.apiBaseUrl}/auth/addresses`,
-        { params },
+        {
+          params,
+          context: new HttpContext().set(SKIP_GLOBAL_LOADER, true),
+        },
       )
       .pipe(map((response) => response.data.suggestions));
   }
@@ -84,7 +90,22 @@ export class AuthService {
   getMyShopProfile(): Observable<ShopProfile> {
     return this.http
       .get<ApiEnvelope<{ profile: ShopProfile }>>(`${environment.apiBaseUrl}/shops/my-profile`)
-      .pipe(map((response) => response.data.profile));
+      .pipe(
+        map((response) => response.data.profile),
+        tap((profile) => this.shopNameState.set(profile.shopName)),
+      );
+  }
+
+  updateMyShopBusinessDetails(updates: ShopBusinessDetailsUpdate): Observable<ShopProfile> {
+    return this.http
+      .patch<ApiEnvelope<{ profile: ShopProfile }>>(
+        `${environment.apiBaseUrl}/shops/my-profile/business-details`,
+        updates,
+      )
+      .pipe(
+        map((response) => response.data.profile),
+        tap((profile) => this.shopNameState.set(profile.shopName)),
+      );
   }
 
   uploadMyShopImage(image: File): Observable<ShopProfile> {
@@ -126,7 +147,10 @@ export class AuthService {
   getShopDashboard(): Observable<{ shopName: string }> {
     return this.http
       .get<ApiEnvelope<{ shopName: string }>>(`${environment.apiBaseUrl}/shops/dashboard`)
-      .pipe(map((response) => response.data));
+      .pipe(
+        map((response) => response.data),
+        tap((dashboard) => this.shopNameState.set(dashboard.shopName)),
+      );
   }
 
   getMyNotifications(silent = false): Observable<RegistrationNotification[]> {

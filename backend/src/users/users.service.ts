@@ -103,7 +103,10 @@ export class UsersService {
     return user;
   }
 
-  async updateShopImage(id: string, shopImageData: string): Promise<UserDocument> {
+  async updateShopImage(
+    id: string,
+    shopImageData: string,
+  ): Promise<UserDocument> {
     if (!isObjectIdOrHexString(id)) {
       throw new NotFoundException('Shop account was not found');
     }
@@ -114,6 +117,51 @@ export class UsersService {
         { $set: { 'shopDetails.shopImageData': shopImageData } },
         { new: true, runValidators: true },
       )
+      .exec();
+    if (!user) {
+      throw new NotFoundException('Shop account was not found');
+    }
+    return user;
+  }
+
+  async updateShopBusinessDetails(
+    id: string,
+    updates: {
+      shopName: string;
+      address: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      landmark?: string;
+      location?: { latitude: number; longitude: number } | null;
+    },
+  ): Promise<UserDocument> {
+    if (!isObjectIdOrHexString(id)) {
+      throw new NotFoundException('Shop account was not found');
+    }
+
+    const { location, ...address } = updates;
+    const set: Record<string, unknown> = Object.fromEntries(
+      Object.entries(address).map(([key, value]) => [
+        `shopDetails.${key}`,
+        typeof value === 'string' ? value.trim() : value,
+      ]),
+    );
+    const update: {
+      $set: Record<string, unknown>;
+      $unset?: Record<string, ''>;
+    } = { $set: set };
+    if (location === null) {
+      update.$unset = { 'shopDetails.location': '' };
+    } else if (location) {
+      update.$set['shopDetails.location'] = location;
+    }
+
+    const user = await this.users
+      .findOneAndUpdate({ _id: id, accountType: 'shop' }, update, {
+        new: true,
+        runValidators: true,
+      })
       .exec();
     if (!user) {
       throw new NotFoundException('Shop account was not found');

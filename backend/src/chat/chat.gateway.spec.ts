@@ -20,6 +20,7 @@ describe('ChatGateway', () => {
   let gateway: ChatGateway;
   let chat: {
     getConversation: jest.Mock;
+    getPresencePeerIds: jest.Mock;
     markDelivered: jest.Mock;
   };
   let emissions: Array<{ room: string; event: string; payload: unknown }>;
@@ -33,6 +34,7 @@ describe('ChatGateway', () => {
         customerUnreadCount: 0,
         shopUnreadCount: 1,
       }),
+      getPresencePeerIds: jest.fn().mockResolvedValue([shopId]),
       markDelivered: jest.fn().mockResolvedValue(undefined),
     };
     gateway = new ChatGateway(
@@ -92,5 +94,19 @@ describe('ChatGateway', () => {
       emissions.filter((item) => item.event === 'new_message'),
     ).toHaveLength(2);
     expect(chat.markDelivered).not.toHaveBeenCalled();
+  });
+
+  it('broadcasts online presence only to private conversation peers', async () => {
+    gateway.handleConnection({
+      data: { userId: customerId, role: 'customer' },
+    } as never);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    expect(chat.getPresencePeerIds).toHaveBeenCalledWith(customerId);
+    expect(emissions).toContainEqual({
+      room: `chat:user:${shopId}`,
+      event: 'user_online',
+      payload: { userId: customerId, isOnline: true },
+    });
   });
 });

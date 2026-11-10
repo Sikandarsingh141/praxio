@@ -1,8 +1,8 @@
 <div class="role-portal shop-portal">
   <header class="portal-header">
-    <a class="portal-brand" routerLink="/shop" aria-label="Reparo shop portal">
-      <span class="brand-mark" aria-hidden="true"><img src="/reparo-mark.svg" alt="" /></span>
-      <span>Repar<span class="brand-accent">o</span> <small>SHOP PORTAL</small></span>
+    <a class="portal-brand" routerLink="/shop" aria-label="Fixroa shop portal">
+      <span class="brand-mark"><img src="/fixroa-logo.png" alt="Fixroa" /></span>
+      <small>SHOP PORTAL</small>
     </a>
     <form
       class="global-search"
@@ -60,10 +60,10 @@
             <img class="profile-avatar" [src]="profileImageUrl" alt="" />
           } @else {
             <span class="profile-avatar avatar-placeholder" aria-hidden="true">
-              {{ getShopInitial() }}
+              {{ getUserInitial() }}
             </span>
           }
-          <span class="account-name">{{ shopName() || getUserFirstName() }}</span>
+          <span class="account-name">{{ getUserFirstName() }}</span>
           <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="m5 7.5 5 5 5-5" />
           </svg>
@@ -72,8 +72,11 @@
           <div class="account-dropdown" role="menu">
             <div class="dropdown-identity">
               <strong>
-                {{ shopName() || authService.currentUser()?.fullName || 'Your account' }}
+                {{ getUserFirstName() }}
               </strong>
+              @if (shopName()) {
+                <span>{{ shopName() }}</span>
+              }
               <span>{{ authService.currentUser()?.email }}</span>
               @if (shopNameError()) {
                 <small class="shop-name-error" role="status">{{ shopNameError() }}</small>
@@ -113,7 +116,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
         </svg>
-        Overview
+        Dashboard
       </a>
       <a
         class="portal-nav"
