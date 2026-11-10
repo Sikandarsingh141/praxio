@@ -1,9 +1,18 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, inject, OnInit, signal, ViewChild } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { NotificationCenterComponent } from '../core/notifications/notification-center.component';
+import { ChatService } from '../shared/chat.service';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 
 @Component({
@@ -13,9 +22,10 @@ import { ShopRepairRequestsService } from './shop-repair-requests.service';
   templateUrl: './shop-layout.component.html',
   styleUrl: './shop-layout.component.scss',
 })
-export class ShopLayout implements OnInit {
+export class ShopLayout implements OnInit, OnDestroy {
   @ViewChild(NotificationCenterComponent) private notificationCenter?: NotificationCenterComponent;
   readonly authService = inject(AuthService);
+  readonly chat = inject(ChatService);
   private readonly router = inject(Router);
   private readonly shopRequests = inject(ShopRepairRequestsService);
   readonly signingOut = signal(false);
@@ -29,10 +39,16 @@ export class ShopLayout implements OnInit {
   private searchRequestId = 0;
 
   ngOnInit(): void {
+    this.chat.connect();
+    this.chat.refreshUnreadMessageCount();
     this.authService.getShopDashboard().subscribe({
       next: (dashboard) => this.shopName.set(dashboard.shopName),
       error: () => this.shopNameError.set('Shop name could not be loaded.'),
     });
+  }
+
+  ngOnDestroy(): void {
+    this.chat.disconnect();
   }
 
   toggleAccountMenu(): void {

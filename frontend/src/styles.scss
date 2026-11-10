@@ -2,6 +2,7 @@
 @use './app/admin/admin-overview.page' as adminOverview;
 @use './app/auth/customer-registration.global' as customerRegistration;
 @use './app/auth/shop-registration.global' as shopRegistration;
+@use './app/shared/chat-center.component' as chatCenter;
 
 @include repairMonitor.repairMonitorStyles;
 @include adminOverview.adminOverviewStyles;

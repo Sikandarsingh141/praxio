@@ -138,6 +138,12 @@ export const routes: Routes = [
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
       },
+      {
+        path: 'messages',
+        loadComponent: () =>
+          import('./shared/chat-center.component').then((module) => module.ChatCenterComponent),
+        data: { accountType: 'customer', customerAccess: 'portal' },
+      },
     ],
   },
   {
@@ -216,6 +222,13 @@ export const routes: Routes = [
         path: 'quotations',
         loadComponent: () =>
           import('./shop/shop-quotations.page').then((module) => module.ShopQuotationsPage),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
+        path: 'messages',
+        loadComponent: () =>
+          import('./shared/chat-center.component').then((module) => module.ChatCenterComponent),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },

@@ -1,0 +1,601 @@
+<section class="messages-page" [class.mobile-chat-open]="!!selected()">
+  @if (error()) {
+    <p class="chat-error" role="alert">{{ error() }}</p>
+  }
+  <div class="chat-workspace" [class.mobile-chat-open]="!!selected()">
+    <aside class="conversation-panel" aria-label="Conversations">
+      <div class="conversation-title">
+        <div>
+          <h2>Messages</h2>
+          <p>Repair conversations</p>
+        </div>
+        <button
+          class="icon-button mobile-new-chat"
+          type="button"
+          aria-label="Start a conversation"
+          (click)="showNewConversation.set(true)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="conversation-tabs" role="tablist" aria-label="Conversation filter">
+        <button type="button" [class.active]="filter() === 'all'" (click)="changeFilter('all')">
+          All <span>{{ totalConversations() }}</span>
+        </button>
+        <button
+          type="button"
+          [class.active]="filter() === 'active'"
+          (click)="changeFilter('active')"
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          [class.active]="filter() === 'archived'"
+          (click)="changeFilter('archived')"
+        >
+          Archived
+        </button>
+      </div>
+
+      <label class="conversation-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.8" />
+          <path d="m16 16 4.5 4.5" />
+        </svg>
+        <input
+          type="search"
+          placeholder="Search conversations..."
+          [value]="query()"
+          (input)="search($event)"
+        />
+      </label>
+
+      <div class="conversation-list">
+        @if (filteredConversations().length === 0 && !loading()) {
+          <div class="list-state empty-list">
+            <span class="empty-chat-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5.5h16v12H9l-5 3v-15Z" /></svg>
+            </span>
+            <strong>No conversations yet</strong>
+            <span>Start a conversation from one of your shared repair requests.</span>
+            <button type="button" (click)="showNewConversation.set(true)">Start a chat</button>
+          </div>
+        } @else {
+          @for (conversation of filteredConversations(); track conversation.id) {
+            <button
+              type="button"
+              class="conversation-item"
+              [class.selected]="selected()?.id === conversation.id"
+              (click)="openConversation(conversation)"
+            >
+              <span class="avatar">
+                @if (
+                  conversation.participant.profileImageUrl &&
+                  !profileImageFailed(conversation.participant.id)
+                ) {
+                  <img
+                    [src]="conversation.participant.profileImageUrl"
+                    alt=""
+                    (error)="markProfileImageFailed(conversation.participant.id)"
+                  />
+                } @else {
+                  {{ initials(conversation.participant.name) }}
+                }
+              </span>
+              <span class="conversation-copy">
+                <span class="conversation-item-top">
+                  <strong>{{ conversation.participant.name }}</strong>
+                  <time>{{ messageTime(conversation.lastMessageAt) }}</time>
+                </span>
+                <span class="conversation-preview">{{
+                  conversation.lastMessage || 'No messages yet'
+                }}</span>
+                <span class="repair-preview">
+                  PRX-{{ conversation.repairRequest.id.slice(-5).toUpperCase() }} ·
+                  {{ conversation.repairRequest.appliance }}
+                </span>
+                <span class="conversation-message-count">
+                  {{ conversation.messageCount ?? 0 }}
+                  {{ (conversation.messageCount ?? 0) === 1 ? 'message' : 'messages' }}
+                </span>
+              </span>
+              @if (conversation.unreadCount > 0) {
+                <span class="unread-badge">{{ conversation.unreadCount }}</span>
+              }
+            </button>
+          }
+          @if (hasMoreConversations()) {
+            <button class="load-more-conversations" type="button" (click)="loadMoreConversations()">
+              Load more conversations
+            </button>
+          }
+        }
+      </div>
+    </aside>
+
+    <main class="conversation-window">
+      @if (selected(); as conversation) {
+        <header class="chat-header">
+          <button
+            class="icon-button mobile-back"
+            type="button"
+            aria-label="Back to conversations"
+            (click)="goBackToConversations()"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m15 18-6-6 6-6M9 12h11" />
+            </svg>
+          </button>
+          <span class="avatar header-avatar">
+            @if (
+              conversation.participant.profileImageUrl &&
+              !profileImageFailed(conversation.participant.id)
+            ) {
+              <img
+                [src]="conversation.participant.profileImageUrl"
+                alt=""
+                (error)="markProfileImageFailed(conversation.participant.id)"
+              />
+            } @else {
+              {{ initials(conversation.participant.name) }}
+            }
+          </span>
+          <div class="chat-heading-copy">
+            <h2>{{ conversation.participant.name }}</h2>
+            <div class="repair-context">
+              <span
+                >Repair Request: PRX-{{
+                  conversation.repairRequest.id.slice(-5).toUpperCase()
+                }}</span
+              >
+              <span class="repair-status">{{
+                statusLabel(conversation.repairRequest.status)
+              }}</span>
+            </div>
+          </div>
+          @if (!socketConnected()) {
+            <span class="connection-state" role="status" aria-label="Connection lost; reconnecting">
+              Reconnecting…
+            </span>
+          }
+          <div class="chat-menu">
+            <button
+              class="icon-button"
+              type="button"
+              aria-label="Conversation actions"
+              aria-haspopup="menu"
+              [attr.aria-expanded]="conversationMenuOpen()"
+              (click)="toggleConversationMenu()"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="5" r="1" />
+                <circle cx="12" cy="12" r="1" />
+                <circle cx="12" cy="19" r="1" />
+              </svg>
+            </button>
+            @if (conversationMenuOpen()) {
+              <div class="conversation-actions-menu" role="menu">
+                <button type="button" role="menuitem" (click)="toggleArchive()">
+                  {{ conversation.archived ? 'Unarchive conversation' : 'Archive conversation' }}
+                </button>
+              </div>
+            }
+          </div>
+        </header>
+
+        <div #chatThread class="chat-thread" aria-live="polite" (scroll)="onChatThreadScroll()">
+          @if (!loadingMessages() && messages().length === 0) {
+            <div class="thread-state thread-empty">
+              <strong>Start the conversation</strong>
+              <span>Send a message to discuss this repair request.</span>
+            </div>
+          }
+          @if (messages().length > 0 && hasMoreMessages()) {
+            <button
+              class="load-older"
+              type="button"
+              [disabled]="loadingOlder()"
+              (click)="loadOlder()"
+            >
+              {{ loadingOlder() ? 'Loading...' : 'Load earlier messages' }}
+            </button>
+          }
+          @for (message of messages(); track message.id; let i = $index) {
+            @if (
+              dateLabel(message.createdAt, i > 0 ? messages()[i - 1].createdAt : undefined);
+              as label
+            ) {
+              <div class="date-separator">
+                <span>{{ label }}</span>
+              </div>
+            }
+            <article
+              class="message-row"
+              [class.outgoing]="message.senderId === currentUserId()"
+              [id]="'message-' + message.id"
+            >
+              @if (message.senderId !== currentUserId()) {
+                <span class="avatar message-avatar">
+                  @if (message.sender.profileImageUrl && !profileImageFailed(message.sender.id)) {
+                    <img
+                      [src]="message.sender.profileImageUrl"
+                      alt=""
+                      (error)="markProfileImageFailed(message.sender.id)"
+                    />
+                  } @else {
+                    {{ initials(message.sender.name) }}
+                  }
+                </span>
+              }
+              <div class="message-body">
+                @if (message.repliedTo) {
+                  <button
+                    class="reply-preview"
+                    type="button"
+                    (click)="highlightReply(message.repliedTo!.id)"
+                  >
+                    {{ message.repliedTo!.content }}
+                  </button>
+                }
+                <div class="message-bubble" [class.deleted]="message.isDeleted">
+                  @if (message.isDeleted) {
+                    <span class="deleted-message">This message was deleted.</span>
+                  } @else {
+                    @if (message.content) {
+                      <p>{{ message.content }}</p>
+                    }
+                    @if (message.attachments.length) {
+                      <div class="attachment-list">
+                        @for (attachment of message.attachments; track attachment.id) {
+                          @if (attachmentIsImage(attachment)) {
+                            @if (attachment.previewUrl) {
+                              <button
+                                type="button"
+                                class="image-attachment"
+                                (click)="download(attachment)"
+                                [attr.aria-label]="'Download ' + attachment.fileName"
+                              >
+                                <img [src]="attachment.previewUrl" [alt]="attachment.fileName" />
+                              </button>
+                            } @else {
+                              <button
+                                class="document-attachment"
+                                type="button"
+                                (click)="download(attachment)"
+                              >
+                                <span class="file-icon">IMG</span>
+                                <span
+                                  ><strong>{{ attachment.fileName }}</strong
+                                  ><small
+                                    >Image ·
+                                    {{ attachment.fileSize / 1024 | number: '1.0-0' }} KB</small
+                                  ></span
+                                >
+                              </button>
+                            }
+                          } @else {
+                            <button
+                              class="document-attachment"
+                              type="button"
+                              (click)="download(attachment)"
+                            >
+                              <span class="file-icon">{{
+                                attachment.fileName.split('.').pop()?.toUpperCase()
+                              }}</span>
+                              <span>
+                                <strong>{{ attachment.fileName }}</strong>
+                                <small
+                                  >{{ attachment.mimeType }} ·
+                                  {{ attachment.fileSize / 1024 | number: '1.0-0' }} KB</small
+                                >
+                              </span>
+                              <span class="download-mark" aria-hidden="true">↓</span>
+                            </button>
+                          }
+                        }
+                      </div>
+                    }
+                  }
+                  <div class="message-meta">
+                    @if (message.isEdited && !message.isDeleted) {
+                      <span>Edited</span>
+                    }
+                    @if (copiedId() === message.id) {
+                      <span>Copied</span>
+                    }
+                    <time>{{ messageTime(message.createdAt) }}</time>
+                    @if (message.senderId === currentUserId() && !message.isDeleted) {
+                      <span
+                        class="read-mark"
+                        [class.read]="message.readBy.length > 1"
+                        [title]="
+                          message.readBy.length > 1
+                            ? 'Read'
+                            : message.deliveredTo.length > 1
+                              ? 'Delivered'
+                              : 'Sent'
+                        "
+                        [attr.aria-label]="
+                          message.readBy.length > 1
+                            ? 'Read'
+                            : message.deliveredTo.length > 1
+                              ? 'Delivered'
+                              : 'Sent'
+                        "
+                      >
+                        {{
+                          message.readBy.length > 1 || message.deliveredTo.length > 1 ? '✓✓' : '✓'
+                        }}
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="message-actions">
+                <button
+                  type="button"
+                  class="message-actions-trigger"
+                  aria-label="Message actions"
+                  (click)="toggleActions(message.id)"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1" />
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="19" cy="12" r="1" />
+                  </svg>
+                </button>
+                @if (actionMenu() === message.id) {
+                  <div class="action-popover">
+                    @if (!message.isDeleted) {
+                      <button type="button" (click)="setReply(message)">Reply</button>
+                      @if (message.content) {
+                        <button type="button" (click)="copy(message)">Copy</button>
+                      }
+                      @if (message.senderId === currentUserId()) {
+                        <button type="button" (click)="setEdit(message)">Edit</button>
+                        <button type="button" class="danger-action" (click)="delete(message)">
+                          Delete for everyone
+                        </button>
+                      }
+                    }
+                  </div>
+                }
+              </div>
+            </article>
+          }
+          @if (typing()) {
+            <div class="typing-indicator">
+              <span class="typing-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+              </span>
+              <span class="typing-label">{{ conversation.participant.name }} is typing...</span>
+            </div>
+          }
+        </div>
+
+        @if (newMessagesCount() > 0) {
+          <button
+            class="new-messages-button"
+            type="button"
+            (click)="scrollToNewMessages()"
+            [attr.aria-label]="
+              'Scroll to ' +
+              newMessagesCount() +
+              ' new message' +
+              (newMessagesCount() === 1 ? '' : 's')
+            "
+          >
+            {{ newMessagesCount() }} new {{ newMessagesCount() === 1 ? 'message' : 'messages' }}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14m-6-6 6 6 6-6" />
+            </svg>
+          </button>
+        }
+
+        <footer class="composer-area">
+          @if (replyTarget(); as reply) {
+            <div class="compose-context">
+              <span><strong>Replying to</strong> {{ reply.content }}</span>
+              <button type="button" aria-label="Cancel reply" (click)="cancelComposeAction()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m6 6 12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </div>
+          }
+          @if (editTarget()) {
+            <div class="compose-context">
+              <span><strong>Edit message</strong></span>
+              <button type="button" aria-label="Cancel edit" (click)="cancelComposeAction()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m6 6 12 12M18 6 6 18" />
+                </svg>
+              </button>
+            </div>
+          }
+          @if (pendingFiles().length || uploadedFiles().length) {
+            <div class="pending-attachments">
+              @for (file of pendingFiles(); track file.name; let i = $index) {
+                <span class="pending-file">
+                  @if (pendingFilePreview(file); as preview) {
+                    <img [src]="preview" alt="" />
+                  } @else {
+                    <span class="file-icon" aria-hidden="true">
+                      {{ file.name.split('.').pop()?.toUpperCase() }}
+                    </span>
+                  }
+                  <span class="pending-file-name" [title]="file.name">{{ file.name }}</span>
+                  <button
+                    type="button"
+                    (click)="removePendingFile(i)"
+                    [attr.aria-label]="'Remove ' + file.name"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m6 6 12 12M18 6 6 18" />
+                    </svg>
+                  </button>
+                </span>
+              }
+              @for (file of uploadedFiles(); track file.id) {
+                <span class="pending-file">
+                  <span class="file-icon" aria-hidden="true">
+                    {{ file.fileName.split('.').pop()?.toUpperCase() }}
+                  </span>
+                  <span class="pending-file-name" [title]="file.fileName">{{ file.fileName }}</span>
+                  <small>Ready</small>
+                </span>
+              }
+            </div>
+          }
+          @if (uploadProgress() !== null) {
+            <div class="upload-progress" role="progressbar" [attr.aria-valuenow]="uploadProgress()">
+              <span [style.width.%]="uploadProgress()"></span>
+            </div>
+          }
+          <div class="composer">
+            <label class="attach-button" aria-label="Attach images or documents">
+              <input
+                type="file"
+                hidden
+                multiple
+                accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                (change)="chooseFiles($event)"
+              />
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="m21 11.5-9.2 9.2a5 5 0 0 1-7.1-7.1l9.2-9.2a3.3 3.3 0 0 1 4.7 4.7l-9.2 9.2a1.7 1.7 0 0 1-2.4-2.4l8.5-8.5"
+                />
+              </svg>
+            </label>
+            <textarea
+              rows="1"
+              [ngModel]="draft()"
+              (ngModelChange)="draft.set($event); onDraftInput()"
+              (keydown)="onComposerKeydown($event)"
+              placeholder="Type a message..."
+              aria-label="Type a message"
+            ></textarea>
+            <div class="emoji-wrap">
+              <button
+                class="emoji-button"
+                type="button"
+                aria-label="Choose emoji"
+                (click)="toggleEmojiPicker()"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M8.5 14.5s1.2 2 3.5 2 3.5-2 3.5-2M9 9h.01M15 9h.01" />
+                </svg>
+              </button>
+              @if (emojiOpen()) {
+                <div class="emoji-picker">
+                  @for (emoji of ['🙂', '😊', '👍', '🙏', '✅', '❤️', '🎉', '👋']; track emoji) {
+                    <button type="button" (click)="addEmoji(emoji)">{{ emoji }}</button>
+                  }
+                </div>
+              }
+            </div>
+            <button
+              class="send-button"
+              type="button"
+              [disabled]="!canSend()"
+              (click)="send()"
+              aria-label="Send message"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m22 2-7 20-4-9-9-4zM22 2 11 13" />
+              </svg>
+            </button>
+          </div>
+          <p class="composer-hint">Press Enter to send · Shift + Enter for a new line</p>
+        </footer>
+      } @else {
+        <div class="chat-empty-state">
+          <span class="empty-chat-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 5.5h16v12H9l-5 3v-15Z" /></svg>
+          </span>
+          <h2>Select a conversation</h2>
+          <p>Choose an existing repair conversation or start a new one.</p>
+          <button class="new-chat" type="button" (click)="showNewConversation.set(true)">
+            New conversation
+          </button>
+        </div>
+      }
+    </main>
+  </div>
+
+  @if (showNewConversation()) {
+    <div class="dialog-backdrop" (click)="showNewConversation.set(false)">
+      <section
+        class="new-conversation-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-conversation-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header>
+          <div>
+            <p class="eyebrow">Repair conversations</p>
+            <h2 id="new-conversation-title">Start a conversation</h2>
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            aria-label="Close"
+            (click)="showNewConversation.set(false)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </header>
+        @if (eligible().length) {
+          <div class="eligible-list">
+            @for (option of eligible(); track option.repairRequestId + option.shopId) {
+              <button type="button" class="eligible-option" (click)="startConversation(option)">
+                <span class="avatar">
+                  @if (
+                    option.participant.profileImageUrl && !profileImageFailed(option.participant.id)
+                  ) {
+                    <img
+                      [src]="option.participant.profileImageUrl"
+                      alt=""
+                      (error)="markProfileImageFailed(option.participant.id)"
+                    />
+                  } @else {
+                    {{ initials(option.participant.name) }}
+                  }
+                </span>
+                <span>
+                  <strong>{{ option.participant.name }}</strong>
+                  <small
+                    >{{ option.appliance }} · PRX-{{
+                      option.repairRequestId.slice(-5).toUpperCase()
+                    }}</small
+                  >
+                </span>
+                <span class="start-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
+                </span>
+              </button>
+            }
+          </div>
+        } @else {
+          <p class="no-eligible">No repair requests are currently shared with a shop.</p>
+        }
+      </section>
+    </div>
+  }
+
+  @if (pendingDelete()) {
+    <app-confirmation-dialog
+      [config]="deleteDialogConfig"
+      (confirmed)="confirmDelete()"
+      (cancelled)="cancelDelete()"
+    />
+  }
+</section>

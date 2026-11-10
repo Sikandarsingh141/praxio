@@ -408,6 +408,22 @@
   color: #89968f;
 }
 
+.portal-nav .nav-unread-count {
+  display: inline-flex;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #078232;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
 .portal-nav small {
   margin-left: auto;
   color: #9aa59e;

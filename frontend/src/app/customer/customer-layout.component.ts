@@ -1,8 +1,18 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, HostListener, inject, signal, ViewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  HostListener,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+  ViewChild,
+} from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth/auth.service';
 import { NotificationCenterComponent } from '../core/notifications/notification-center.component';
+import { ChatService } from '../shared/chat.service';
 
 @Component({
   selector: 'app-customer-layout',
@@ -11,10 +21,21 @@ import { NotificationCenterComponent } from '../core/notifications/notification-
   templateUrl: './customer-layout.component.html',
   styleUrl: './customer-layout.component.scss',
 })
-export class CustomerLayout {
+export class CustomerLayout implements OnInit, OnDestroy {
   @ViewChild(NotificationCenterComponent) private notificationCenter?: NotificationCenterComponent;
   readonly authService = inject(AuthService);
+  readonly chat = inject(ChatService);
   private readonly router = inject(Router);
+
+  ngOnInit(): void {
+    if (this.profileOnly()) return;
+    this.chat.connect();
+    this.chat.refreshUnreadMessageCount();
+  }
+
+  ngOnDestroy(): void {
+    this.chat.disconnect();
+  }
 
   readonly menuOpen = signal(false);
   readonly accountMenuOpen = signal(false);
@@ -52,12 +73,17 @@ export class CustomerLayout {
       available: true,
     },
     {
+      label: 'Messages',
+      icon: 'message',
+      route: '/customer/messages',
+      available: true,
+    },
+    {
       label: 'Completed Repairs',
       icon: 'tool',
       route: '/customer/repair-requests/completed',
       available: true,
     },
-    { label: 'Messages', icon: 'message', available: false },
   ];
 
   readonly accountNavigation: Array<{

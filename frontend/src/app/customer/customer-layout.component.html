@@ -156,12 +156,25 @@
             <a
               class="nav-item"
               [routerLink]="item.route"
+              [attr.title]="
+                item.route === '/customer/messages' && chat.unreadMessageCountError()
+                  ? chat.unreadMessageCountError()
+                  : null
+              "
               routerLinkActive="nav-active"
               [routerLinkActiveOptions]="{ exact: true }"
               (click)="closeMenu()"
             >
               <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
               <span>{{ item.label }}</span>
+              @if (item.route === '/customer/messages' && chat.unreadMessageCount() > 0) {
+                <span
+                  class="nav-unread-count"
+                  [attr.aria-label]="chat.unreadMessageCount() + ' unread messages'"
+                >
+                  {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
+                </span>
+              }
             </a>
           } @else {
             <span class="nav-item nav-disabled" [attr.aria-label]="item.label + ', coming soon'">
@@ -205,20 +218,15 @@
             <span>Admin review is in progress. Notifications will show you when it changes.</span>
           </div>
         } @else {
-          <div class="support-card">
-            <span class="support-spark" aria-hidden="true">✦</span>
-            <strong>Need a hand?</strong>
-            <span>Customer support will be available soon.</span>
-          </div>
         }
       </div>
     </aside>
 
     <main class="main-content">
       <div class="breadcrumb" aria-label="Breadcrumb">
-        <span>Customer portal</span>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{{ breadcrumbPage }}</span>
+        <!-- <span>Customer portal</span> -->
+        <span aria-hidden="true"></span>
+        <!-- <span aria-current="page">{{ breadcrumbPage }}</span> -->
       </div>
       <router-outlet />
     </main>
