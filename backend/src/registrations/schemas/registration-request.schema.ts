@@ -24,14 +24,13 @@ export class RegistrationRequest {
     type: Types.ObjectId,
     ref: 'User',
     required: true,
-    unique: true,
   })
   userId!: Types.ObjectId;
 
   @Prop({ type: String, enum: REGISTRATION_ACCOUNT_TYPES, required: true })
   accountType!: (typeof REGISTRATION_ACCOUNT_TYPES)[number];
 
-  @Prop({ type: String, required: true, unique: true, trim: true })
+  @Prop({ type: String, required: true, trim: true })
   registrationNumber!: string;
 
   @Prop({
@@ -69,6 +68,9 @@ export class RegistrationRequest {
   stripeCheckoutSessionId?: string;
 
   @Prop({ type: String, trim: true })
+  stripeCheckoutInvoiceId?: string;
+
+  @Prop({ type: String, trim: true })
   stripeCustomerId?: string;
 
   @Prop({ type: String, trim: true })
@@ -88,6 +90,12 @@ export class RegistrationRequest {
 
   @Prop({ type: Date })
   paidAt?: Date;
+
+  @Prop({ type: Number, min: 0, default: 0 })
+  paymentRefundedAmountCents!: number;
+
+  @Prop({ type: [String], default: [] })
+  processedStripeEventIds!: string[];
 
   createdAt!: Date;
   updatedAt!: Date;

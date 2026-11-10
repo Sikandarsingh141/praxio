@@ -10,6 +10,10 @@ import { FirebaseMessagingService } from './firebase-messaging.service';
 import { NotificationsGateway } from './notifications.gateway';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import {
+  RepairRequest,
+  RepairRequestSchema,
+} from '../customer/repair-request.schema';
 
 @Module({
   imports: [
@@ -22,6 +26,7 @@ import { ConfigService } from '@nestjs/config';
     }),
     MongooseModule.forFeature([
       { name: Notification.name, schema: NotificationSchema },
+      { name: RepairRequest.name, schema: RepairRequestSchema },
     ]),
     UsersModule,
   ],

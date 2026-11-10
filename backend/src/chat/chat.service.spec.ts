@@ -14,9 +14,11 @@ describe('ChatService', () => {
 
   let users: {
     findById: jest.Mock;
+    find: jest.Mock;
   };
   let repairRequests: {
     findById: jest.Mock;
+    find: jest.Mock;
   };
   let conversations: {
     findById: jest.Mock;
@@ -26,19 +28,20 @@ describe('ChatService', () => {
   };
   let messages: {
     find: jest.Mock;
+    aggregate: jest.Mock;
   };
   let service: ChatService;
 
   beforeEach(() => {
-    users = { findById: jest.fn() };
-    repairRequests = { findById: jest.fn() };
+    users = { findById: jest.fn(), find: jest.fn() };
+    repairRequests = { findById: jest.fn(), find: jest.fn() };
     conversations = {
       findById: jest.fn(),
       find: jest.fn(),
       countDocuments: jest.fn(),
       aggregate: jest.fn(),
     };
-    messages = { find: jest.fn() };
+    messages = { find: jest.fn(), aggregate: jest.fn() };
     service = new ChatService(
       {} as Connection,
       conversations as unknown as Model<ChatConversation>,
@@ -132,6 +135,50 @@ describe('ChatService', () => {
         25,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('searches conversations by the short repair request ID', async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      populate: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    };
+    users.find.mockReturnValue(query);
+    repairRequests.find.mockReturnValue(query);
+    conversations.find.mockReturnValue(query);
+    conversations.countDocuments.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(0),
+    });
+    messages.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+
+    await service.listConversations(
+      { userId: customerId.toString(), role: 'customer' },
+      'all',
+      'PRX-CEEBA068',
+      1,
+      25,
+    );
+
+    expect(repairRequests.find).toHaveBeenCalledWith({
+      $or: [
+        { appliance: /PRX-CEEBA068/i },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: '$_id' },
+              regex: 'CEEBA068$',
+              options: 'i',
+            },
+          },
+        },
+      ],
+    });
   });
 
   it('returns the total unread message count for the actor role', async () => {

@@ -7,6 +7,8 @@ import { Notification } from './schemas/notification.schema';
 import { NOTIFICATION_TYPES } from './schemas/notification.schema';
 import { NOTIFICATION_ENTITY_TYPES } from './schemas/notification.schema';
 import { NotificationsGateway } from './notifications.gateway';
+import { RepairRequest } from '../customer/repair-request.schema';
+import { includeRepairRequestReference } from '../customer/repair-request-reference';
 
 export interface RegistrationNotification {
   id: string;
@@ -36,6 +38,8 @@ export class NotificationsService {
   constructor(
     @InjectModel(Notification.name)
     private readonly notifications: Model<Notification>,
+    @InjectModel(RepairRequest.name)
+    private readonly repairRequests: Model<RepairRequest>,
     private readonly usersService: UsersService,
     private readonly firebaseMessaging: FirebaseMessagingService,
     private readonly gateway: NotificationsGateway,
@@ -148,10 +152,32 @@ export class NotificationsService {
       .limit(100)
       .lean()
       .exec();
+    const repairRequestIds = notifications
+      .filter(
+        (notification) => notification.relatedEntityType === 'repair_request',
+      )
+      .map((notification) => notification.relatedEntityId);
+    const repairRequests = repairRequestIds.length
+      ? await this.repairRequests
+          .find({ _id: { $in: repairRequestIds } })
+          .select('_id')
+          .lean()
+          .exec()
+      : [];
+    const repairRequestIdSet = new Set(
+      repairRequests.map((request) => request._id.toString()),
+    );
     return notifications.map((notification) => ({
       id: notification._id.toString(),
       title: notification.title,
-      message: notification.message,
+      message:
+        notification.relatedEntityType === 'repair_request' &&
+        repairRequestIdSet.has(notification.relatedEntityId.toString())
+          ? includeRepairRequestReference(
+              notification.message,
+              notification.relatedEntityId,
+            )
+          : notification.message,
       type: notification.type,
       isRead: notification.isRead,
       createdAt: notification.createdAt,
@@ -174,10 +200,21 @@ export class NotificationsService {
       return;
     }
 
+    const notificationMessage =
+      notification.relatedEntityType === 'repair_request'
+        ? includeRepairRequestReference(
+            notification.message,
+            notification.relatedEntityId,
+          )
+        : notification.message;
+    const enrichedNotification = {
+      ...notification,
+      message: notificationMessage,
+    };
     const savedNotifications = await this.notifications.insertMany(
       uniqueRecipients.map((recipientId) => ({
         recipientId,
-        ...notification,
+        ...enrichedNotification,
         isRead: false,
       })),
     );
@@ -200,8 +237,8 @@ export class NotificationsService {
         await this.usersService.getNotificationTokens(uniqueRecipients);
       const invalidTokens = await this.firebaseMessaging.send(
         registeredTokens.map(({ token }) => token),
-        notification.title,
-        notification.message,
+        enrichedNotification.title,
+        enrichedNotification.message,
         {
           type: notification.type,
           entityId: notification.relatedEntityId.toString(),

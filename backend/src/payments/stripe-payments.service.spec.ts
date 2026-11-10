@@ -12,6 +12,7 @@ const mockStripeClient = {
       expire: jest.fn(),
     },
   },
+  invoices: { retrieve: jest.fn() },
   webhooks: { constructEvent: jest.fn() },
 };
 
@@ -25,9 +26,11 @@ describe('StripePaymentsService', () => {
   const userId = '507f1f77bcf86cd799439011';
   const registrationRequest = {
     _id: { toString: () => registrationRequestId },
+    userId: new Types.ObjectId(userId),
     registrationStatus: 'pending' as string,
     paymentStatus: 'unpaid' as string | undefined,
     stripeCheckoutSessionId: undefined,
+    stripeSubscriptionId: undefined as string | undefined,
   };
   const lookupQuery = {
     exec: jest.fn().mockResolvedValue(registrationRequest),
@@ -35,8 +38,24 @@ describe('StripePaymentsService', () => {
   const updateQuery = {
     exec: jest.fn().mockResolvedValue(registrationRequest),
   };
+  const invoiceLookupQuery = {
+    exec: jest.fn().mockResolvedValue(null),
+  };
   const registrationRequests = {
     findOne: jest.fn().mockReturnValue(lookupQuery),
+    findOneAndUpdate: jest
+      .fn<
+        typeof updateQuery,
+        [
+          Record<string, unknown>,
+          Record<string, unknown>,
+          Record<string, unknown>,
+        ]
+      >()
+      .mockReturnValue(updateQuery),
+  };
+  const subscriptionInvoices = {
+    findOne: jest.fn().mockReturnValue(invoiceLookupQuery),
     findOneAndUpdate: jest
       .fn<
         typeof updateQuery,
@@ -64,8 +83,11 @@ describe('StripePaymentsService', () => {
     registrationRequest.registrationStatus = 'pending';
     registrationRequest.paymentStatus = 'unpaid';
     registrationRequest.stripeCheckoutSessionId = undefined;
+    registrationRequest.stripeSubscriptionId = undefined;
     lookupQuery.exec.mockResolvedValue(registrationRequest);
     updateQuery.exec.mockResolvedValue(registrationRequest);
+    subscriptionInvoices.findOne.mockReturnValue(invoiceLookupQuery);
+    subscriptionInvoices.findOneAndUpdate.mockReturnValue(updateQuery);
     mockStripeClient.checkout.sessions.create.mockResolvedValue({
       id: 'cs_test_checkout',
       status: 'open',
@@ -78,6 +100,9 @@ describe('StripePaymentsService', () => {
     service = new StripePaymentsService(
       configService as unknown as ConfigService,
       registrationRequests as unknown as import('mongoose').Model<RegistrationRequest>,
+      subscriptionInvoices as unknown as import('mongoose').Model<
+        import('./schemas/shop-subscription-invoice.schema').ShopSubscriptionInvoice
+      >,
     );
   });
 
@@ -248,8 +273,102 @@ describe('StripePaymentsService', () => {
         paymentCurrency: 'usd',
       },
     });
-    const updateSet = (updatePayload as { $set: Record<string, unknown> }).$set;
-    expect(updateSet['paidAt']).toBeInstanceOf(Date);
+    expect(
+      (updatePayload as { $min: Record<string, unknown> }).$min['paidAt'],
+    ).toBeInstanceOf(Date);
+  });
+
+  it('persists finalized and paid subscription invoices idempotently', async () => {
+    registrationRequest.stripeSubscriptionId = 'sub_test';
+    lookupQuery.exec.mockResolvedValue(registrationRequest);
+    updateQuery.exec.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      stripeInvoiceId: 'in_test_invoice',
+    });
+    const invoice = {
+      id: 'in_test_invoice',
+      customer: 'cus_test',
+      currency: 'usd',
+      created: 1794268800,
+      due_date: 1794355200,
+      amount_due: 2900,
+      amount_paid: 2900,
+      total: 2900,
+      status: 'paid',
+      status_transitions: { paid_at: 1794268800 },
+      parent: {
+        subscription_details: {
+          subscription: 'sub_test',
+          metadata: { registrationRequestId },
+        },
+      },
+    };
+    mockStripeClient.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_invoice_paid',
+      type: 'invoice.paid',
+      created: 1794268800,
+      data: { object: invoice },
+    });
+
+    await service.handleWebhook(Buffer.from('{}'), 'stripe-signature');
+
+    expect(registrationRequests.findOne).toHaveBeenCalledWith({
+      _id: new Types.ObjectId(registrationRequestId),
+      accountType: 'shop',
+    });
+    const invoiceUpdate = subscriptionInvoices.findOneAndUpdate.mock.calls[1];
+    expect(invoiceUpdate?.[0]).toMatchObject({
+      stripeInvoiceId: 'in_test_invoice',
+      processedStripeEventIds: { $ne: 'evt_invoice_paid' },
+    });
+    expect(invoiceUpdate?.[1]).toMatchObject({
+      $set: {
+        totalAmountCents: 2900,
+        amountPaidCents: 2900,
+        status: 'paid',
+        currency: 'usd',
+      },
+      $addToSet: { processedStripeEventIds: 'evt_invoice_paid' },
+      $push: {
+        events: {
+          eventId: 'evt_invoice_paid',
+          type: 'invoice.paid',
+          amountCents: 2900,
+        },
+      },
+    });
+    expect(invoiceUpdate?.[2]).toMatchObject({ upsert: true });
+  });
+
+  it('persists cumulative Stripe refunds for subscription invoices', async () => {
+    mockStripeClient.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_refund',
+      type: 'charge.refunded',
+      created: 1794268800,
+      data: {
+        object: {
+          id: 'ch_test',
+          invoice: 'in_test_invoice',
+          payment_intent: 'pi_test',
+          amount_refunded: 1200,
+          currency: 'usd',
+        },
+      },
+    });
+
+    await service.handleWebhook(Buffer.from('{}'), 'stripe-signature');
+
+    expect(subscriptionInvoices.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        stripeInvoiceId: 'in_test_invoice',
+        processedStripeEventIds: { $ne: 'evt_refund' },
+        'refunds.stripeChargeId': 'ch_test',
+      },
+      expect.objectContaining({
+        $max: { 'refunds.$.amountCents': 1200 },
+        $addToSet: { processedStripeEventIds: 'evt_refund' },
+      }),
+      { new: true },
+    );
   });
 
   it('returns only this shop registration payment details', async () => {

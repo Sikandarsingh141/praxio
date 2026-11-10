@@ -109,7 +109,7 @@ describe('ShopDashboardPage', () => {
     });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Shop dashboard');
+    expect(fixture.nativeElement.textContent).toContain('Dashboard');
     expect(fixture.nativeElement.textContent).toContain('Example Repairs');
     expect(fixture.nativeElement.textContent).toContain('Quotation activity');
     expect(fixture.nativeElement.textContent).toContain('Repair revenue');

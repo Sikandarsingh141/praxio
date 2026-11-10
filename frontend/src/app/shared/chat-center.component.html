@@ -48,7 +48,7 @@
         </svg>
         <input
           type="search"
-          placeholder="Search conversations..."
+          placeholder="Search name, appliance, or Request ID..."
           [value]="query()"
           (input)="search($event)"
         />
@@ -103,13 +103,8 @@
                 <span class="conversation-preview">{{
                   conversation.lastMessage || 'No messages yet'
                 }}</span>
-                <span class="repair-preview">
-                  PRX-{{ conversation.repairRequest.id.slice(-5).toUpperCase() }} ·
-                  {{ conversation.repairRequest.appliance }}
-                </span>
-                <span class="conversation-message-count">
-                  {{ conversation.messageCount ?? 0 }}
-                  {{ (conversation.messageCount ?? 0) === 1 ? 'message' : 'messages' }}
+                <span class="request-id-badge">
+                  Request ID: <strong>{{ requestReference(conversation.repairRequest.id) }}</strong>
                 </span>
               </span>
               @if (conversation.unreadCount > 0) {
@@ -160,14 +155,13 @@
               {{ participantOnline() ? 'Online' : 'Offline' }}
             </span>
             <div class="repair-context">
-              <span
-                >Repair Request: PRX-{{
-                  conversation.repairRequest.id.slice(-5).toUpperCase()
-                }}</span
-              >
+              <span>Repair Request · {{ conversation.repairRequest.appliance }}</span>
               <span class="repair-status">{{
                 statusLabel(conversation.repairRequest.status)
               }}</span>
+              <span class="request-id-badge">
+                Request ID: <strong>{{ requestReference(conversation.repairRequest.id) }}</strong>
+              </span>
             </div>
           </div>
           @if (!socketConnected()) {
@@ -659,11 +653,11 @@
                 </span>
                 <span>
                   <strong>{{ option.participant.name }}</strong>
-                  <small
-                    >{{ option.appliance }} · PRX-{{
-                      option.repairRequestId.slice(-5).toUpperCase()
-                    }}</small
-                  >
+                  <small>{{ option.appliance }}</small>
+                  <span class="request-id-badge">
+                    Request ID:
+                    <strong>{{ requestReference(option.repairRequestId) }}</strong>
+                  </span>
                 </span>
                 <span class="start-arrow" aria-hidden="true">
                   <svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>

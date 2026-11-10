@@ -53,9 +53,15 @@ describe('AdminOverviewPage', () => {
       expired: 1,
       acceptanceRate: 71.4,
     },
-    revenue: {
-      available: false as const,
-      reason: 'Repair payment and platform commission records are not currently stored.',
+    subscriptionFinancials: {
+      currencyTotals: [
+        {
+          currency: 'USD',
+          accountReceivableCents: 598950000,
+          overdueAmountCents: 125000,
+          subscriptionRevenueCents: 870000,
+        },
+      ],
     },
     trends: [
       { period: '2026-11-01', customers: 1, shops: 0, repairs: 2, quotations: 1 },
@@ -73,7 +79,19 @@ describe('AdminOverviewPage', () => {
       { status: 'expired', count: 1 },
     ],
     categories: [{ name: 'Mobile Phones', count: 4, percentage: 100 }],
-    recentActivities: [],
+    recentActivities: [
+      {
+        id: 'shop-subscription-purchased:shop-id',
+        type: 'shop_subscription_purchased',
+        description: 'Shop Subscription Purchased',
+        relatedName: 'Amit Shop',
+        createdAt: '2026-11-09T17:40:00.000Z',
+        link: '/admin/users/shop-id',
+        amountCents: 2900,
+        currency: 'USD',
+        status: 'paid',
+      },
+    ],
     recentRegistrations: [],
     recentRepairs: [],
     topShops: [],
@@ -89,7 +107,7 @@ describe('AdminOverviewPage', () => {
 
   afterEach(() => http.verify());
 
-  it('loads real overview data and displays unavailable revenue honestly', () => {
+  it('loads financial metrics and displays account receivable and subscription revenue', () => {
     const fixture = TestBed.createComponent(AdminOverviewPage);
     fixture.detectChanges();
 
@@ -105,7 +123,17 @@ describe('AdminOverviewPage', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('14');
     expect(text).toContain('20');
-    expect(text).toContain('Repair transaction revenue is not tracked yet.');
+    expect(text).toContain('Account Receivable');
+    expect(text).toContain('$5,989,500.00');
+    expect(text).toContain('Outstanding shop subscription payments');
+    expect(text).toContain('Subscription Revenue');
+    expect(text).toContain('$8,700.00');
+    expect(text).toContain('Collected shop subscription payments');
+    expect(text).toContain('Overdue Amount');
+    expect(text).toContain('Recent subscription activity');
+    expect(text).toContain('Amit Shop');
+    expect(text).toContain('Shop Subscription Purchased');
+    expect(text).toContain('$29.00');
     expect(text).toContain('Mobile Phones');
     expect(fixture.nativeElement.querySelector('.trend-line')).toBeTruthy();
   });

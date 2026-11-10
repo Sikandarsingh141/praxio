@@ -2,7 +2,9 @@ import { RegistrationRequestSchema } from './registration-request.schema';
 
 describe('RegistrationRequestSchema', () => {
   it('enforces one request per user and unique registration numbers', () => {
-    expect(RegistrationRequestSchema.indexes()).toEqual(
+    const indexes = RegistrationRequestSchema.indexes();
+
+    expect(indexes).toEqual(
       expect.arrayContaining([
         [
           { userId: 1 },
@@ -20,6 +22,10 @@ describe('RegistrationRequestSchema', () => {
         ],
       ]),
     );
+    expect(indexes.filter(([fields]) => fields.userId === 1)).toHaveLength(1);
+    expect(
+      indexes.filter(([fields]) => fields.registrationNumber === 1),
+    ).toHaveLength(1);
   });
 
   it('stores the registration status with timestamps', () => {

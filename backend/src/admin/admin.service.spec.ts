@@ -3,6 +3,7 @@ import { RegistrationRequest } from '../registrations/schemas/registration-reque
 import { User } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ShopSubscriptionInvoice } from '../payments/schemas/shop-subscription-invoice.schema';
 import { AdminService } from './admin.service';
 
 describe('AdminService', () => {
@@ -41,6 +42,7 @@ describe('AdminService', () => {
   const statusUpdateQuery = { exec: jest.fn() };
   const registrationRequests = {
     findOne: jest.fn().mockReturnValue(requestQuery),
+    find: jest.fn(),
     findOneAndUpdate: jest.fn().mockReturnValue(updateQuery),
     aggregate: jest.fn().mockReturnValue({
       exec: jest.fn().mockResolvedValue([
@@ -63,10 +65,19 @@ describe('AdminService', () => {
       ]),
     }),
   };
+  const financialQuery = {
+    select: jest.fn().mockReturnThis(),
+    lean: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue([]),
+  };
+  const subscriptionInvoices = {
+    find: jest.fn().mockReturnValue(financialQuery),
+  };
   const usersModel = {
     aggregate: jest.fn(),
     countDocuments: jest.fn(),
     findById: jest.fn().mockReturnValue(userLookupQuery),
+    find: jest.fn().mockReturnValue(financialQuery),
     findOneAndUpdate: jest.fn().mockReturnValue(statusUpdateQuery),
   };
   const auditLogs = {
@@ -111,6 +122,7 @@ describe('AdminService', () => {
     usersService as unknown as UsersService,
     usersModel as unknown as import('mongoose').Model<User>,
     registrationRequests as unknown as import('mongoose').Model<RegistrationRequest>,
+    subscriptionInvoices as unknown as import('mongoose').Model<ShopSubscriptionInvoice>,
     auditLogs as unknown as import('mongoose').Model<
       import('./schemas/admin-audit-log.schema').AdminAuditLog
     >,
@@ -152,6 +164,7 @@ describe('AdminService', () => {
       async (callback: () => Promise<unknown>) => callback(),
     );
     requestQuery.exec.mockResolvedValue(pendingRequest);
+    financialQuery.exec.mockResolvedValue([]);
     userLookupQuery.exec.mockResolvedValue({
       _id: pendingRequest.userId,
       accountType: 'customer',
@@ -186,6 +199,9 @@ describe('AdminService', () => {
         },
       ]),
     });
+    registrationRequests.find.mockReturnValue(financialQuery);
+    subscriptionInvoices.find.mockReturnValue(financialQuery);
+    usersModel.find.mockReturnValue(financialQuery);
     usersModel.aggregate.mockReturnValue({
       exec: jest.fn().mockResolvedValue([
         {
@@ -216,14 +232,14 @@ describe('AdminService', () => {
 
   it('lists only confirmed repair jobs and applies the requested workflow filter', async () => {
     const jobsQuery = {
-      exec: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            jobs: [{ _id: new Types.ObjectId(), repairJob: { status: 'completed' } }],
-            metadata: [{ total: 1 }],
-          },
-        ]),
+      exec: jest.fn().mockResolvedValue([
+        {
+          jobs: [
+            { _id: new Types.ObjectId(), repairJob: { status: 'completed' } },
+          ],
+          metadata: [{ total: 1 }],
+        },
+      ]),
     };
     repairRequestsModel.aggregate.mockReturnValue(jobsQuery);
 
@@ -298,7 +314,9 @@ describe('AdminService', () => {
 
   it('filters repair jobs by date and escaped search across repair, customer, and shop fields', async () => {
     repairRequestsModel.aggregate.mockReturnValue({
-      exec: jest.fn().mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
+      exec: jest
+        .fn()
+        .mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
     });
 
     await service.getRepairJobMonitor({
@@ -415,9 +433,170 @@ describe('AdminService', () => {
     });
     expect(overview.repairs.completionRate).toBe(0);
     expect(overview.quotations.acceptanceRate).toBe(0);
-    expect(overview.revenue.available).toBe(false);
+    expect(overview.subscriptionFinancials.currencyTotals).toEqual([]);
     expect(overview.trends).toHaveLength(7);
     expect(overview.recentActivities).toEqual([]);
+  });
+
+  it('calculates subscription receivables, overdue balances, and net collected revenue', async () => {
+    const emptyResult = () => ({ exec: jest.fn().mockResolvedValue([]) });
+    const emptyCount = () => ({ exec: jest.fn().mockResolvedValue(0) });
+    const queryResult = (value: unknown[]) => ({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(value),
+    });
+    usersModel.aggregate.mockReturnValue(emptyResult());
+    usersModel.countDocuments.mockReturnValue(emptyCount());
+    repairRequestsModel.aggregate.mockReturnValue(emptyResult());
+    repairRequestsModel.countDocuments.mockReturnValue(emptyCount());
+    repairQuotationsModel.aggregate.mockReturnValue(emptyResult());
+    repairQuotationsModel.countDocuments.mockReturnValue(emptyCount());
+    auditLogs.aggregate.mockReturnValue(emptyResult());
+
+    const userId = new Types.ObjectId('507f1f77bcf86cd799439011');
+    const registrationRequestId = new Types.ObjectId(
+      '507f1f77bcf86cd799439012',
+    );
+    const checkoutInvoiceId = 'in_paid_initial';
+    subscriptionInvoices.find.mockReturnValue(
+      queryResult([
+        {
+          stripeInvoiceId: 'in_open_overdue',
+          registrationRequestId,
+          userId,
+          totalAmountCents: 2900,
+          amountPaidCents: 1000,
+          refundedAmountCents: 0,
+          currency: 'usd',
+          status: 'open',
+          generatedAt: new Date('2026-03-02T00:00:00.000Z'),
+          dueAt: new Date('2026-03-05T00:00:00.000Z'),
+          events: [
+            {
+              eventId: 'evt_failed',
+              type: 'invoice.payment_failed',
+              amountCents: 1900,
+              currency: 'usd',
+              status: 'open',
+              occurredAt: new Date('2026-03-05T00:00:00.000Z'),
+            },
+          ],
+        },
+        {
+          stripeInvoiceId: checkoutInvoiceId,
+          registrationRequestId,
+          userId,
+          totalAmountCents: 2900,
+          amountPaidCents: 2900,
+          refundedAmountCents: 500,
+          currency: 'usd',
+          status: 'paid',
+          generatedAt: new Date('2026-03-02T00:00:00.000Z'),
+          paidAt: new Date('2026-03-02T00:00:00.000Z'),
+          events: [
+            {
+              eventId: 'evt_paid',
+              type: 'invoice.paid',
+              amountCents: 2900,
+              currency: 'usd',
+              status: 'paid',
+              occurredAt: new Date('2026-03-02T00:00:00.000Z'),
+            },
+          ],
+        },
+        {
+          stripeInvoiceId: 'in_void',
+          registrationRequestId,
+          userId,
+          totalAmountCents: 5000,
+          amountPaidCents: 0,
+          refundedAmountCents: 0,
+          currency: 'usd',
+          status: 'void',
+          generatedAt: new Date('2026-03-02T00:00:00.000Z'),
+          dueAt: new Date('2026-03-03T00:00:00.000Z'),
+          events: [],
+        },
+        {
+          stripeInvoiceId: 'in_draft',
+          registrationRequestId,
+          userId,
+          totalAmountCents: 5000,
+          amountPaidCents: 0,
+          refundedAmountCents: 0,
+          currency: 'usd',
+          status: 'draft',
+          generatedAt: new Date('2026-03-02T00:00:00.000Z'),
+          events: [],
+        },
+      ]),
+    );
+    registrationRequests.find.mockReturnValue(
+      queryResult([
+        {
+          _id: registrationRequestId,
+          userId,
+          paymentAmountCents: 2900,
+          paymentRefundedAmountCents: 400,
+          paymentCurrency: 'usd',
+          paidAt: new Date('2026-03-02T00:00:00.000Z'),
+          stripeCheckoutInvoiceId: checkoutInvoiceId,
+        },
+        {
+          _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+          userId,
+          paymentAmountCents: 2900,
+          paymentRefundedAmountCents: 400,
+          paymentCurrency: 'usd',
+          paidAt: new Date('2026-03-03T00:00:00.000Z'),
+        },
+      ]),
+    );
+    usersModel.find.mockReturnValue(
+      queryResult([{ _id: userId, shopDetails: { shopName: 'Amit Shop' } }]),
+    );
+
+    const overview = await service.getDashboardOverview(
+      '2026-03-01',
+      '2026-03-07',
+    );
+
+    expect(overview.subscriptionFinancials.currencyTotals).toEqual([
+      {
+        currency: 'USD',
+        accountReceivableCents: 1900,
+        overdueAmountCents: 1900,
+        subscriptionRevenueCents: 4900,
+      },
+    ]);
+    expect(overview.recentActivities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          description: 'Subscription Payment Failed',
+          relatedName: 'Amit Shop',
+          amountCents: 1900,
+          status: 'open',
+        }),
+        expect.objectContaining({
+          description: 'Subscription Payment Overdue',
+          relatedName: 'Amit Shop',
+          amountCents: 1900,
+          status: 'overdue',
+        }),
+        expect.objectContaining({
+          description: 'Subscription Payment Received',
+          amountCents: 2900,
+          status: 'paid',
+        }),
+        expect.objectContaining({
+          description: 'Shop Subscription Purchased',
+          relatedName: 'Amit Shop',
+          amountCents: 2900,
+          status: 'paid',
+        }),
+      ]),
+    );
   });
 
   it('returns a safe user profile with shop, registration, and map details', async () => {

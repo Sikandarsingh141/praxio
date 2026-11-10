@@ -24,6 +24,10 @@ import {
   AdminAuditLog,
   AdminAuditLogSchema,
 } from './schemas/admin-audit-log.schema';
+import {
+  ShopSubscriptionInvoice,
+  ShopSubscriptionInvoiceSchema,
+} from '../payments/schemas/shop-subscription-invoice.schema';
 
 @Module({
   imports: [
@@ -37,6 +41,10 @@ import {
       { name: RepairRequest.name, schema: RepairRequestSchema },
       { name: RepairQuotation.name, schema: RepairQuotationSchema },
       { name: RepairReview.name, schema: RepairReviewSchema },
+      {
+        name: ShopSubscriptionInvoice.name,
+        schema: ShopSubscriptionInvoiceSchema,
+      },
     ]),
   ],
   controllers: [AdminController],

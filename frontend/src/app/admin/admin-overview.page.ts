@@ -125,7 +125,10 @@ export class AdminOverviewPage implements OnInit {
 
   get trendMax(): number {
     const points = this.overview()?.trends ?? [];
-    return Math.max(1, ...points.flatMap((point) => [point.customers, point.shops, point.repairs, point.quotations]));
+    return Math.max(
+      1,
+      ...points.flatMap((point) => [point.customers, point.shops, point.repairs, point.quotations]),
+    );
   }
 
   trendPoints(key: 'customers' | 'shops' | 'repairs' | 'quotations'): string {
@@ -189,6 +192,44 @@ export class AdminOverviewPage implements OnInit {
     if (change === null) return 'New activity · no previous period';
     const direction = change > 0 ? '↑' : change < 0 ? '↓' : '—';
     return `${direction} ${Math.abs(change)}% vs previous period`;
+  }
+
+  formatFinancialAmount(
+    key: 'accountReceivableCents' | 'overdueAmountCents' | 'subscriptionRevenueCents',
+  ): string {
+    const totals = this.overview()?.subscriptionFinancials.currencyTotals ?? [];
+    if (!totals.length) {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD',
+      }).format(0);
+    }
+
+    return totals
+      .map((total) =>
+        new Intl.NumberFormat(undefined, {
+          style: 'currency',
+          currency: total.currency,
+        }).format(total[key] / 100),
+      )
+      .join(' · ');
+  }
+
+  formatFinancialAmountForActivity(amountCents: number, currency: string): string {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+    }).format(amountCents / 100);
+  }
+
+  subscriptionActivities(activities: AdminDashboardOverview['recentActivities']) {
+    return activities
+      .filter(
+        (activity) =>
+          activity.type.startsWith('subscription_') ||
+          activity.type === 'shop_subscription_purchased',
+      )
+      .slice(0, 5);
   }
 
   private today(): string {

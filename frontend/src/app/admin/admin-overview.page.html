@@ -31,7 +31,8 @@
       }
       @if (overview(); as data) {
         <span class="today">
-          {{ data.range.from | date: 'MMM d, y':'UTC' }} – {{ data.range.to | date: 'MMM d, y':'UTC' }} UTC
+          {{ data.range.from | date: 'MMM d, y' : 'UTC' }} –
+          {{ data.range.to | date: 'MMM d, y' : 'UTC' }} UTC
         </span>
       }
       <button type="button" class="refresh-button" (click)="refresh()" [disabled]="loading()">
@@ -51,22 +52,31 @@
       <a class="kpi-card" routerLink="/admin/users" [queryParams]="{ accountType: 'customer' }">
         <span class="kpi-top"><i aria-hidden="true">♙</i><span>Total customers</span></span>
         <strong>{{ data.users.customers.total | number }}</strong>
-        <small><b>↑ {{ data.users.customers.new }}</b> new</small>
+        <small
+          ><b>↑ {{ data.users.customers.new }}</b> new</small
+        >
       </a>
       <a class="kpi-card" routerLink="/admin/users" [queryParams]="{ accountType: 'shop' }">
         <span class="kpi-top"><i aria-hidden="true">⌂</i><span>Repair shops</span></span>
         <strong>{{ data.users.shops.total | number }}</strong>
-        <small><b>↑ {{ data.users.shops.approved }}</b> approved · {{ data.users.shops.pending }} pending</small>
+        <small
+          ><b>↑ {{ data.users.shops.approved }}</b> approved ·
+          {{ data.users.shops.pending }} pending</small
+        >
       </a>
       <a class="kpi-card" routerLink="/admin" fragment="repair-analytics">
         <span class="kpi-top"><i aria-hidden="true">⚒</i><span>Repair requests</span></span>
         <strong>{{ data.repairs.total | number }}</strong>
-        <small><b>↑ {{ data.repairs.new }}</b> new</small>
+        <small
+          ><b>↑ {{ data.repairs.new }}</b> new</small
+        >
       </a>
       <a class="kpi-card" routerLink="/admin" fragment="quotation-analytics">
         <span class="kpi-top"><i aria-hidden="true">▤</i><span>Quotations</span></span>
         <strong>{{ data.quotations.total | number }}</strong>
-        <small><b>↑ {{ data.quotations.acceptanceRate }}%</b> acceptance rate</small>
+        <small
+          ><b>↑ {{ data.quotations.acceptanceRate }}%</b> acceptance rate</small
+        >
       </a>
       <a class="kpi-card" routerLink="/admin/repair-jobs">
         <span class="kpi-top"><i aria-hidden="true">✓</i><span>Completed repairs</span></span>
@@ -74,9 +84,23 @@
         <small>{{ data.repairs.completionRate }}% of total requests</small>
       </a>
       <a class="kpi-card revenue-card" routerLink="/admin" fragment="revenue-overview">
-        <span class="kpi-top"><i aria-hidden="true">▥</i><span>Platform revenue</span></span>
-        <strong>Not available</strong>
-        <small>No transaction records</small>
+        <span class="kpi-top">
+          <i aria-hidden="true">▥</i>
+          <span>Account Receivable</span>
+          <span
+            class="kpi-tooltip"
+            title="Amount due from shops for their subscription plans"
+            aria-label="Amount due from shops for their subscription plans"
+            >ⓘ</span
+          >
+        </span>
+        <strong>{{ formatFinancialAmount('accountReceivableCents') }}</strong>
+        <small>Outstanding shop subscription payments</small>
+      </a>
+      <a class="kpi-card revenue-card" routerLink="/admin" fragment="revenue-overview">
+        <span class="kpi-top"><i aria-hidden="true">↗</i><span>Subscription Revenue</span></span>
+        <strong>{{ formatFinancialAmount('subscriptionRevenueCents') }}</strong>
+        <small>Collected shop subscription payments</small>
       </a>
     </section>
 
@@ -87,21 +111,33 @@
             <h2 id="trend-title">Marketplace activity</h2>
             <p>Registrations, repair requests, and quotations over time.</p>
           </div>
-          @if (loading()) { <span class="subtle-status">Updating…</span> }
+          @if (loading()) {
+            <span class="subtle-status">Updating…</span>
+          }
         </div>
         @if (data.trends.length) {
           <div class="trend-plot">
-            <div class="y-axis" aria-hidden="true"><span>{{ trendMax }}</span><span>{{ trendMax / 2 | number: '1.0-0' }}</span><span>0</span></div>
+            <div class="y-axis" aria-hidden="true">
+              <span>{{ trendMax }}</span
+              ><span>{{ trendMax / 2 | number: '1.0-0' }}</span
+              ><span>0</span>
+            </div>
             <div class="trend-chart" role="img" aria-label="Marketplace activity trend line chart">
               <svg viewBox="0 0 600 190" preserveAspectRatio="none" aria-hidden="true">
                 <line x1="0" y1="174" x2="600" y2="174" class="chart-gridline" />
                 <line x1="0" y1="126" x2="600" y2="126" class="chart-gridline" />
                 <line x1="0" y1="78" x2="600" y2="78" class="chart-gridline" />
                 <line x1="0" y1="30" x2="600" y2="30" class="chart-gridline" />
-                <polyline [attr.points]="trendPoints('customers')" class="trend-line customers-line" />
+                <polyline
+                  [attr.points]="trendPoints('customers')"
+                  class="trend-line customers-line"
+                />
                 <polyline [attr.points]="trendPoints('shops')" class="trend-line shops-line" />
                 <polyline [attr.points]="trendPoints('repairs')" class="trend-line repairs-line" />
-                <polyline [attr.points]="trendPoints('quotations')" class="trend-line quotations-line" />
+                <polyline
+                  [attr.points]="trendPoints('quotations')"
+                  class="trend-line quotations-line"
+                />
               </svg>
             </div>
           </div>
@@ -132,16 +168,32 @@
         </div>
         <div class="repair-overview">
           <div class="metric-list">
-            <div><span>Total requests</span><strong>{{ data.repairs.total | number }}</strong></div>
-            <div><span>Awaiting shop response</span><strong>{{ data.repairs.pendingShopResponses | number }}</strong></div>
-            <div><span>Accepted by a shop</span><strong>{{ data.repairs.accepted | number }}</strong></div>
-            <div><span>Declined</span><strong>{{ data.repairs.declined | number }}</strong></div>
-            <div><span>Expired</span><strong>{{ data.repairs.expired | number }}</strong></div>
-            <div><span>Completed</span><strong>{{ data.repairs.completed | number }}</strong></div>
+            <div>
+              <span>Total requests</span><strong>{{ data.repairs.total | number }}</strong>
+            </div>
+            <div>
+              <span>Awaiting shop response</span
+              ><strong>{{ data.repairs.pendingShopResponses | number }}</strong>
+            </div>
+            <div>
+              <span>Accepted by a shop</span><strong>{{ data.repairs.accepted | number }}</strong>
+            </div>
+            <div>
+              <span>Declined</span><strong>{{ data.repairs.declined | number }}</strong>
+            </div>
+            <div>
+              <span>Expired</span><strong>{{ data.repairs.expired | number }}</strong>
+            </div>
+            <div>
+              <span>Completed</span><strong>{{ data.repairs.completed | number }}</strong>
+            </div>
           </div>
           <div class="repair-chart" aria-label="Repair status summary">
             <div class="donut" [style.background]="repairRing(data)">
-              <div><strong>{{ data.repairs.total | number }}</strong><span>Total</span></div>
+              <div>
+                <strong>{{ data.repairs.total | number }}</strong
+                ><span>Total</span>
+              </div>
             </div>
             <div class="donut-legend">
               <span><i class="open-dot"></i>Open ({{ repairStatusCount(data, 'open') }})</span>
@@ -164,14 +216,29 @@
         </div>
         @if (data.recentActivities.length) {
           <ol class="activity-list">
-            @for (activity of data.recentActivities | slice: 0:5; track activity.type + activity.id) {
+            @for (
+              activity of data.recentActivities | slice: 0 : 5;
+              track activity.type + activity.id
+            ) {
               <li>
                 <span class="activity-dot"></span>
                 <div class="activity-copy">
                   <a [href]="activity.link">{{ activity.description | titlecase }}</a>
-                  @if (activity.relatedName) { <span>{{ activity.relatedName }}</span> }
+                  @if (activity.relatedName) {
+                    <span>{{ activity.relatedName }}</span>
+                  }
+                  @if (activity.amountCents !== undefined && activity.currency) {
+                    <span>
+                      {{
+                        formatFinancialAmountForActivity(activity.amountCents, activity.currency)
+                      }}
+                    </span>
+                  }
+                  @if (activity.status) {
+                    <span>{{ activity.status | titlecase }}</span>
+                  }
                 </div>
-                <time>{{ activity.createdAt | date: 'short':'UTC' }}</time>
+                <time>{{ activity.createdAt | date: 'short' : 'UTC' }}</time>
               </li>
             }
           </ol>
@@ -180,7 +247,11 @@
         }
       </section>
 
-      <section id="recent-repairs-panel" class="panel recent-repairs-panel" aria-labelledby="recent-repairs-title">
+      <section
+        id="recent-repairs-panel"
+        class="panel recent-repairs-panel"
+        aria-labelledby="recent-repairs-title"
+      >
         <div class="panel-heading">
           <div>
             <h2 id="recent-repairs-title">Recent repair requests</h2>
@@ -191,14 +262,29 @@
         @if (data.recentRepairs.length) {
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Request ID</th><th>Customer</th><th>Category</th><th>Status</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Request ID</th>
+                  <th>Customer</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
               <tbody>
-                @for (repair of data.recentRepairs | slice: 0:5; track repair.id) {
+                @for (repair of data.recentRepairs | slice: 0 : 5; track repair.id) {
                   <tr>
-                    <td><code>{{ repair.id | slice: 0:8 }}</code></td>
-                    <td><a class="text-link" [routerLink]="['/admin/users', repair.customerId]">{{ repair.customerName }}</a></td>
+                    <td>
+                      <code>{{ repair.id | slice: 0 : 8 }}</code>
+                    </td>
+                    <td>
+                      <a class="text-link" [routerLink]="['/admin/users', repair.customerId]">{{
+                        repair.customerName
+                      }}</a>
+                    </td>
                     <td>{{ repair.appliance }}</td>
-                    <td><span class="status-pill">{{ repair.status | titlecase }}</span></td>
+                    <td>
+                      <span class="status-pill">{{ repair.status | titlecase }}</span>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -218,10 +304,15 @@
         </div>
         @if (data.categories.length) {
           <ol class="category-list">
-            @for (category of data.categories | slice: 0:6; track category.name) {
+            @for (category of data.categories | slice: 0 : 6; track category.name) {
               <li>
-                <div class="category-label"><span>{{ category.name }}</span><strong>{{ category.count | number }}</strong></div>
-                <div class="progress-track category-track"><span [style.width]="category.percentage + '%'"></span></div>
+                <div class="category-label">
+                  <span>{{ category.name }}</span
+                  ><strong>{{ category.count | number }}</strong>
+                </div>
+                <div class="progress-track category-track">
+                  <span [style.width]="category.percentage + '%'"></span>
+                </div>
                 <small>{{ category.percentage }}% of requests</small>
               </li>
             }
@@ -235,73 +326,169 @@
     <section class="secondary-grid" aria-label="Additional marketplace insights">
       <section class="panel" aria-labelledby="growth-title">
         <div class="panel-heading">
-          <div><h2 id="growth-title">Customer &amp; shop growth</h2><p>Account lifecycle and recent registrations.</p></div>
+          <div>
+            <h2 id="growth-title">Customer &amp; shop growth</h2>
+            <p>Account lifecycle and recent registrations.</p>
+          </div>
         </div>
         <div class="growth-grid">
           <div class="growth-column">
             <h3>Customers</h3>
-            <div class="growth-counts"><span>{{ data.users.customers.active }} active</span><span>{{ data.users.customers.inactive }} inactive</span><span>{{ data.users.customers.suspended }} suspended</span></div>
+            <div class="growth-counts">
+              <span>{{ data.users.customers.active }} active</span
+              ><span>{{ data.users.customers.inactive }} inactive</span
+              ><span>{{ data.users.customers.suspended }} suspended</span>
+            </div>
           </div>
           <div class="growth-column">
             <h3>Repair shops</h3>
-            <div class="growth-counts"><span>{{ data.users.shops.active }} active</span><span>{{ data.users.shops.inactive }} inactive</span><span>{{ data.users.shops.suspended }} suspended</span></div>
+            <div class="growth-counts">
+              <span>{{ data.users.shops.active }} active</span
+              ><span>{{ data.users.shops.inactive }} inactive</span
+              ><span>{{ data.users.shops.suspended }} suspended</span>
+            </div>
           </div>
         </div>
         <h3 class="subsection-title">Recently registered</h3>
         @if (data.recentRegistrations.length) {
           <ul class="recent-users">
-            @for (user of data.recentRegistrations | slice: 0:5; track user.id) {
-              <li><a [routerLink]="['/admin/users', user.id]">{{ user.name }}</a><span>{{ user.accountType === 'shop' ? 'Repair shop' : 'Customer' }}</span><time>{{ user.createdAt | date: 'mediumDate':'UTC' }}</time></li>
+            @for (user of data.recentRegistrations | slice: 0 : 5; track user.id) {
+              <li>
+                <a [routerLink]="['/admin/users', user.id]">{{ user.name }}</a
+                ><span>{{ user.accountType === 'shop' ? 'Repair shop' : 'Customer' }}</span
+                ><time>{{ user.createdAt | date: 'mediumDate' : 'UTC' }}</time>
+              </li>
             }
           </ul>
-        } @else { <p class="empty-inline">No registrations yet.</p> }
+        } @else {
+          <p class="empty-inline">No registrations yet.</p>
+        }
       </section>
 
       <section id="quotation-analytics" class="panel" aria-labelledby="quotation-title">
         <div class="panel-heading">
-          <div><h2 id="quotation-title">Quotations</h2><p>Submitted, accepted, rejected, and expired.</p></div>
+          <div>
+            <h2 id="quotation-title">Quotations</h2>
+            <p>Submitted, accepted, rejected, and expired.</p>
+          </div>
           <span class="panel-total">{{ data.quotations.acceptanceRate }}% accepted</span>
         </div>
         <div class="quotation-kpis">
-          <div><span>Total</span><strong>{{ data.quotations.total | number }}</strong></div>
-          <div><span>Pending</span><strong>{{ data.quotations.pending | number }}</strong></div>
-          <div><span>Accepted</span><strong>{{ data.quotations.accepted | number }}</strong></div>
-          <div><span>Rejected</span><strong>{{ data.quotations.rejected | number }}</strong></div>
-          <div><span>Expired</span><strong>{{ data.quotations.expired | number }}</strong></div>
+          <div>
+            <span>Total</span><strong>{{ data.quotations.total | number }}</strong>
+          </div>
+          <div>
+            <span>Pending</span><strong>{{ data.quotations.pending | number }}</strong>
+          </div>
+          <div>
+            <span>Accepted</span><strong>{{ data.quotations.accepted | number }}</strong>
+          </div>
+          <div>
+            <span>Rejected</span><strong>{{ data.quotations.rejected | number }}</strong>
+          </div>
+          <div>
+            <span>Expired</span><strong>{{ data.quotations.expired | number }}</strong>
+          </div>
         </div>
         <h3 class="subsection-title">Status distribution</h3>
         @if (data.quotationStatuses.length) {
           <div class="distribution-list">
             @for (status of data.quotationStatuses; track status.status) {
-              <div class="distribution-item"><div><span>{{ status.status | titlecase }}</span><strong>{{ status.count }}</strong></div><div class="progress-track quote-track"><span [style.width]="percentWidth(status.count, data.quotations.total)"></span></div></div>
+              <div class="distribution-item">
+                <div>
+                  <span>{{ status.status | titlecase }}</span
+                  ><strong>{{ status.count }}</strong>
+                </div>
+                <div class="progress-track quote-track">
+                  <span [style.width]="percentWidth(status.count, data.quotations.total)"></span>
+                </div>
+              </div>
             }
           </div>
-        } @else { <p class="empty-inline">No quotations yet.</p> }
+        } @else {
+          <p class="empty-inline">No quotations yet.</p>
+        }
       </section>
 
       <section id="revenue-overview" class="panel revenue-panel" aria-labelledby="revenue-title">
         <div class="panel-heading">
-          <div><h2 id="revenue-title">Revenue &amp; payments</h2><p>Reported only when verified transaction records are available.</p></div>
-          <span class="unavailable-badge">Not available</span>
+          <div>
+            <h2 id="revenue-title">Shop subscription finances</h2>
+            <p>Verified Stripe invoices and payments in the selected date range.</p>
+          </div>
         </div>
-        <div class="unavailable-message">
-          <strong>Repair transaction revenue is not tracked yet.</strong>
-          <p>{{ data.revenue.reason }}</p>
-          <small>Shop subscription payments are excluded from repair revenue.</small>
-        </div>
+        @if (data.subscriptionFinancials.currencyTotals.length) {
+          <div class="quotation-kpis financial-kpis">
+            <div>
+              <span>Account Receivable</span>
+              <strong>{{ formatFinancialAmount('accountReceivableCents') }}</strong>
+            </div>
+            <div>
+              <span>Subscription Revenue</span>
+              <strong>{{ formatFinancialAmount('subscriptionRevenueCents') }}</strong>
+            </div>
+            <div>
+              <span>Overdue Amount</span>
+              <strong>{{ formatFinancialAmount('overdueAmountCents') }}</strong>
+            </div>
+          </div>
+        } @else {
+          <p class="empty-state">
+            No shop subscription invoices or successful payments in this date range.
+          </p>
+        }
+        @if (subscriptionActivities(data.recentActivities); as subscriptionActivity) {
+          @if (subscriptionActivity.length) {
+            <h3 class="subsection-title">Recent subscription activity</h3>
+            <ul class="recent-users subscription-activity-list">
+              @for (activity of subscriptionActivity; track activity.id) {
+                <li>
+                  <a [href]="activity.link">{{ activity.description }}</a>
+                  <span>{{ activity.relatedName || 'Repair shop' }}</span>
+                  @if (activity.amountCents !== undefined && activity.currency) {
+                    <strong>
+                      {{
+                        formatFinancialAmountForActivity(activity.amountCents, activity.currency)
+                      }}
+                    </strong>
+                  }
+                  @if (activity.status) {
+                    <span>{{ activity.status | titlecase }}</span>
+                  }
+                  <time>{{ activity.createdAt | date: 'medium' : 'UTC' }}</time>
+                </li>
+              }
+            </ul>
+          }
+        }
       </section>
 
       <section class="panel" aria-labelledby="shops-title">
         <div class="panel-heading">
-          <div><h2 id="shops-title">Top repair shops</h2><p>Completed repairs attributed through accepted quotations.</p></div>
+          <div>
+            <h2 id="shops-title">Top repair shops</h2>
+            <p>Completed repairs attributed through accepted quotations.</p>
+          </div>
         </div>
         @if (data.topShops.length) {
           <ol class="shop-list">
-            @for (shop of data.topShops | slice: 0:5; track shop.id; let rank = $index) {
-              <li><span class="rank">{{ rank + 1 }}</span><div class="shop-copy"><a [routerLink]="['/admin/users', shop.id]">{{ shop.name }}</a><span>{{ shop.location || 'Location not provided' }}</span></div><div class="shop-meta"><strong>{{ shop.completedRepairs }} <small>repairs</small></strong><span class="status-pill">{{ shop.accountStatus | titlecase }}</span></div></li>
+            @for (shop of data.topShops | slice: 0 : 5; track shop.id; let rank = $index) {
+              <li>
+                <span class="rank">{{ rank + 1 }}</span>
+                <div class="shop-copy">
+                  <a [routerLink]="['/admin/users', shop.id]">{{ shop.name }}</a
+                  ><span>{{ shop.location || 'Location not provided' }}</span>
+                </div>
+                <div class="shop-meta">
+                  <strong>{{ shop.completedRepairs }} <small>repairs</small></strong
+                  ><span class="status-pill">{{ shop.accountStatus | titlecase }}</span>
+                </div>
+              </li>
             }
           </ol>
-        } @else { <p class="empty-state">No completed repairs are recorded.</p> }
+        } @else {
+          <p class="empty-state">No completed repairs are recorded.</p>
+        }
       </section>
     </section>
   }

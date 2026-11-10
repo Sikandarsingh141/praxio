@@ -9,6 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import Stripe from 'stripe';
 import { Model, Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
+import { ShopSubscriptionInvoice } from './schemas/shop-subscription-invoice.schema';
 
 const SHOP_SUBSCRIPTION_AMOUNT_CENTS = 2900;
 const SHOP_SUBSCRIPTION_CURRENCY = 'usd';
@@ -32,6 +33,8 @@ export class StripePaymentsService {
     private readonly configService: ConfigService,
     @InjectModel(RegistrationRequest.name)
     private readonly registrationRequests: Model<RegistrationRequest>,
+    @InjectModel(ShopSubscriptionInvoice.name)
+    private readonly subscriptionInvoices: Model<ShopSubscriptionInvoice>,
   ) {}
 
   ensureConfigured(): void {
@@ -238,11 +241,40 @@ export class StripePaymentsService {
       event.data.object.mode === 'subscription' &&
       event.data.object.payment_status === 'paid'
     ) {
-      await this.markPaid(event.data.object);
+      await this.markPaid(event.data.object, event.id);
+      return;
+    }
+
+    if (
+      event.type === 'invoice.created' ||
+      event.type === 'invoice.finalized' ||
+      event.type === 'invoice.paid' ||
+      event.type === 'invoice.payment_failed' ||
+      event.type === 'invoice.voided' ||
+      event.type === 'invoice.marked_uncollectible'
+    ) {
+      await this.recordInvoiceEvent(
+        event.data.object,
+        event.id,
+        event.type,
+        new Date(event.created * 1000),
+      );
+      return;
+    }
+
+    if (event.type === 'charge.refunded') {
+      await this.recordRefundEvent(
+        event.data.object,
+        event.id,
+        new Date(event.created * 1000),
+      );
     }
   }
 
-  private async markPaid(session: Stripe.Checkout.Session): Promise<boolean> {
+  private async markPaid(
+    session: Stripe.Checkout.Session,
+    stripeEventId?: string,
+  ): Promise<boolean> {
     const requestId = session.metadata?.registrationRequestId;
     const userId = session.metadata?.userId;
     if (
@@ -266,34 +298,365 @@ export class StripePaymentsService {
       typeof session.payment_intent === 'string'
         ? session.payment_intent
         : session.payment_intent?.id;
+    const checkoutInvoiceId = this.getStripeId(session.invoice);
+    const filter: Record<string, unknown> = {
+      _id: this.toObjectId(requestId),
+      userId: this.toObjectId(userId),
+      accountType: 'shop',
+      registrationStatus: { $ne: 'declined' },
+      stripeCheckoutSessionId: session.id,
+    };
+    if (stripeEventId) {
+      filter.processedStripeEventIds = { $ne: stripeEventId };
+    }
+
+    const update: Record<string, unknown> = {
+      $set: {
+        paymentStatus: 'paid',
+        paymentAmountCents:
+          session.amount_total ?? SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+        paymentCurrency: session.currency ?? SHOP_SUBSCRIPTION_CURRENCY,
+        ...(customerId ? { stripeCustomerId: customerId } : {}),
+        ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
+        ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
+        stripePaymentId: paymentIntentId ?? session.id,
+        ...(checkoutInvoiceId
+          ? { stripeCheckoutInvoiceId: checkoutInvoiceId }
+          : {}),
+      },
+      $min: { paidAt: new Date() },
+    };
+    if (stripeEventId) {
+      update.$addToSet = { processedStripeEventIds: stripeEventId };
+    }
+
     const updated = await this.registrationRequests
+      .findOneAndUpdate(filter, update, { new: true, runValidators: true })
+      .exec();
+    if (updated || !stripeEventId) {
+      return Boolean(updated);
+    }
+
+    const existing = await this.registrationRequests
+      .findOne({
+        _id: this.toObjectId(requestId),
+        userId: this.toObjectId(userId),
+        accountType: 'shop',
+        stripeCheckoutSessionId: session.id,
+      })
+      .exec();
+    return Boolean(existing?.paymentStatus === 'paid');
+  }
+
+  private async recordInvoiceEvent(
+    invoice: Stripe.Invoice,
+    stripeEventId: string,
+    eventType: string,
+    occurredAt: Date,
+  ): Promise<void> {
+    const subscriptionId = this.getInvoiceSubscriptionId(invoice);
+    const metadata =
+      invoice.parent?.subscription_details?.metadata ?? invoice.metadata;
+    const registrationRequestId = metadata?.registrationRequestId;
+    const customerId = this.getStripeId(invoice.customer);
+    const requestFilter: Record<string, unknown> = { accountType: 'shop' };
+    if (
+      registrationRequestId &&
+      Types.ObjectId.isValid(registrationRequestId)
+    ) {
+      requestFilter._id = this.toObjectId(registrationRequestId);
+    } else if (subscriptionId) {
+      requestFilter.stripeSubscriptionId = subscriptionId;
+    } else if (customerId) {
+      requestFilter.stripeCustomerId = customerId;
+    } else {
+      return;
+    }
+
+    const request = await this.registrationRequests
+      .findOne(requestFilter)
+      .exec();
+    if (!request) {
+      return;
+    }
+
+    const paymentIntentId = this.getInvoicePaymentIntentId(invoice);
+    const totalAmountCents = Math.max(0, invoice.total ?? invoice.amount_due);
+    const amountPaidCents = Math.min(
+      totalAmountCents,
+      Math.max(0, invoice.amount_paid),
+    );
+    const status = invoice.status ?? 'open';
+    const eventAmount =
+      eventType === 'invoice.paid'
+        ? amountPaidCents
+        : Math.max(0, totalAmountCents - amountPaidCents);
+    const event = {
+      eventId: stripeEventId,
+      type: eventType,
+      amountCents: eventAmount,
+      currency: invoice.currency,
+      status,
+      occurredAt,
+    };
+    const setValues = {
+      registrationRequestId: request._id,
+      userId: request.userId,
+      stripeSubscriptionId: subscriptionId,
+      stripePaymentIntentId: paymentIntentId,
+      stripeCustomerId: customerId,
+      totalAmountCents,
+      amountPaidCents,
+      currency: invoice.currency,
+      status,
+      billingReason: invoice.billing_reason ?? undefined,
+      dueAt: invoice.due_date ? new Date(invoice.due_date * 1000) : undefined,
+      generatedAt: new Date(invoice.created * 1000),
+      paidAt: invoice.status_transitions.paid_at
+        ? new Date(invoice.status_transitions.paid_at * 1000)
+        : undefined,
+      lastEventCreatedAt: occurredAt,
+    };
+
+    const updated = await this.subscriptionInvoices
       .findOneAndUpdate(
         {
-          _id: this.toObjectId(requestId),
-          userId: this.toObjectId(userId),
-          accountType: 'shop',
-          registrationStatus: { $ne: 'declined' },
-          stripeCheckoutSessionId: session.id,
+          stripeInvoiceId: invoice.id,
+          processedStripeEventIds: { $ne: stripeEventId },
+          $or: [
+            { lastEventCreatedAt: { $exists: false } },
+            { lastEventCreatedAt: { $lte: occurredAt } },
+          ],
         },
         {
-          $set: {
-            paymentStatus: 'paid',
-            paidAt: new Date(),
-            paymentAmountCents:
-              session.amount_total ?? SHOP_SUBSCRIPTION_AMOUNT_CENTS,
-            paymentCurrency: session.currency ?? SHOP_SUBSCRIPTION_CURRENCY,
-            ...(customerId ? { stripeCustomerId: customerId } : {}),
-            ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
-            ...(paymentIntentId
-              ? { stripePaymentIntentId: paymentIntentId }
-              : {}),
-            stripePaymentId: paymentIntentId ?? session.id,
-          },
+          $set: setValues,
+          $addToSet: { processedStripeEventIds: stripeEventId },
+          $push: { events: event },
         },
         { new: true, runValidators: true },
       )
       .exec();
-    return Boolean(updated);
+
+    if (updated) {
+      return;
+    }
+
+    const existing = await this.subscriptionInvoices
+      .findOne({ stripeInvoiceId: invoice.id })
+      .exec();
+    if (
+      existing?.processedStripeEventIds?.includes(stripeEventId) ||
+      (existing?.lastEventCreatedAt &&
+        existing.lastEventCreatedAt.getTime() > occurredAt.getTime())
+    ) {
+      return;
+    }
+
+    try {
+      await this.subscriptionInvoices
+        .findOneAndUpdate(
+          {
+            stripeInvoiceId: invoice.id,
+            processedStripeEventIds: { $ne: stripeEventId },
+            $or: [
+              { lastEventCreatedAt: { $exists: false } },
+              { lastEventCreatedAt: { $lte: occurredAt } },
+            ],
+          },
+          {
+            $setOnInsert: {
+              stripeInvoiceId: invoice.id,
+              refundedAmountCents:
+                request.stripeCheckoutInvoiceId === invoice.id
+                  ? (request.paymentRefundedAmountCents ?? 0)
+                  : 0,
+            },
+            $set: setValues,
+            $addToSet: { processedStripeEventIds: stripeEventId },
+            $push: { events: event },
+          },
+          { new: true, upsert: true, runValidators: true },
+        )
+        .exec();
+    } catch (error) {
+      if (!this.isDuplicateKeyError(error)) {
+        throw error;
+      }
+
+      await this.subscriptionInvoices
+        .findOneAndUpdate(
+          {
+            stripeInvoiceId: invoice.id,
+            processedStripeEventIds: { $ne: stripeEventId },
+            $or: [
+              { lastEventCreatedAt: { $exists: false } },
+              { lastEventCreatedAt: { $lte: occurredAt } },
+            ],
+          },
+          {
+            $set: setValues,
+            $addToSet: { processedStripeEventIds: stripeEventId },
+            $push: { events: event },
+          },
+          { new: true, runValidators: true },
+        )
+        .exec();
+    }
+  }
+
+  private async recordRefundEvent(
+    charge: Stripe.Charge,
+    stripeEventId: string,
+    occurredAt: Date,
+  ): Promise<void> {
+    const paymentIntentId = this.getStripeId(charge.payment_intent);
+    const invoiceId = this.getStripeId(
+      (
+        charge as Stripe.Charge & {
+          invoice?: string | { id: string } | null;
+        }
+      ).invoice,
+    );
+    const invoiceFilters: Array<Record<string, unknown>> = [];
+    if (invoiceId) {
+      invoiceFilters.push({ stripeInvoiceId: invoiceId });
+    }
+    if (paymentIntentId) {
+      invoiceFilters.push({ stripePaymentIntentId: paymentIntentId });
+    }
+    const refundEvent = {
+      eventId: stripeEventId,
+      type: 'charge.refunded',
+      amountCents: charge.amount_refunded,
+      currency: charge.currency,
+      status: 'refunded',
+      occurredAt,
+    };
+    for (const invoiceFilter of invoiceFilters) {
+      let invoiceUpdate = await this.subscriptionInvoices
+        .findOneAndUpdate(
+          {
+            ...invoiceFilter,
+            processedStripeEventIds: { $ne: stripeEventId },
+            'refunds.stripeChargeId': charge.id,
+          },
+          {
+            $max: { 'refunds.$.amountCents': charge.amount_refunded },
+            $addToSet: { processedStripeEventIds: stripeEventId },
+            $push: { events: refundEvent },
+          },
+          { new: true },
+        )
+        .exec();
+      if (!invoiceUpdate) {
+        invoiceUpdate = await this.subscriptionInvoices
+          .findOneAndUpdate(
+            {
+              ...invoiceFilter,
+              processedStripeEventIds: { $ne: stripeEventId },
+              'refunds.stripeChargeId': { $ne: charge.id },
+            },
+            {
+              $push: {
+                refunds: {
+                  stripeChargeId: charge.id,
+                  amountCents: charge.amount_refunded,
+                },
+                events: refundEvent,
+              },
+              $addToSet: { processedStripeEventIds: stripeEventId },
+            },
+            { new: true },
+          )
+          .exec();
+      }
+      if (!invoiceUpdate) {
+        invoiceUpdate = await this.subscriptionInvoices
+          .findOneAndUpdate(
+            {
+              ...invoiceFilter,
+              processedStripeEventIds: { $ne: stripeEventId },
+              'refunds.stripeChargeId': charge.id,
+            },
+            {
+              $max: { 'refunds.$.amountCents': charge.amount_refunded },
+              $addToSet: { processedStripeEventIds: stripeEventId },
+              $push: { events: refundEvent },
+            },
+            { new: true },
+          )
+          .exec();
+      }
+      if (invoiceUpdate) {
+        return;
+      }
+    }
+
+    if (!paymentIntentId) {
+      return;
+    }
+
+    await this.registrationRequests
+      .findOneAndUpdate(
+        {
+          accountType: 'shop',
+          stripePaymentIntentId: paymentIntentId,
+          processedStripeEventIds: { $ne: stripeEventId },
+        },
+        {
+          $max: { paymentRefundedAmountCents: charge.amount_refunded },
+          $addToSet: { processedStripeEventIds: stripeEventId },
+        },
+        { new: true },
+      )
+      .exec();
+  }
+
+  private getInvoiceSubscriptionId(
+    invoice: Stripe.Invoice,
+  ): string | undefined {
+    const subscription =
+      invoice.parent?.subscription_details?.subscription ??
+      (
+        invoice as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        }
+      ).subscription;
+    return typeof subscription === 'string' ? subscription : subscription?.id;
+  }
+
+  private getInvoicePaymentIntentId(
+    invoice: Stripe.Invoice,
+  ): string | undefined {
+    const paymentIntent = (
+      invoice as Stripe.Invoice & {
+        payment_intent?: string | Stripe.PaymentIntent | null;
+      }
+    ).payment_intent;
+    if (paymentIntent) {
+      return this.getStripeId(paymentIntent);
+    }
+    return this.getStripeId(
+      invoice.payments?.data.find(
+        (payment) =>
+          payment.status === 'paid' && payment.payment.payment_intent,
+      )?.payment.payment_intent,
+    );
+  }
+
+  private getStripeId(
+    value: string | { id: string } | null | undefined,
+  ): string | undefined {
+    return typeof value === 'string' ? value : value?.id;
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 11000
+    );
   }
 
   private getStripe(): Stripe {

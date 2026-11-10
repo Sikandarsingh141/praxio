@@ -54,7 +54,7 @@ describe('AdminRepairMonitorPage', () => {
       expired: 0,
       acceptanceRate: 0,
     },
-    revenue: { available: false, reason: 'Unavailable' },
+    subscriptionFinancials: { currencyTotals: [] },
     trends: [],
     repairStatuses: [
       { status: 'in_progress', count: 4 },
@@ -150,7 +150,9 @@ describe('AdminRepairMonitorPage', () => {
     fixture.detectChanges();
     flushInitialRequests();
 
-    const dateSelect = fixture.nativeElement.querySelector('.date-select select') as HTMLSelectElement;
+    const dateSelect = fixture.nativeElement.querySelector(
+      '.date-select select',
+    ) as HTMLSelectElement;
     dateSelect.value = 'month';
     dateSelect.dispatchEvent(new Event('change'));
     fixture.detectChanges();
@@ -166,7 +168,9 @@ describe('AdminRepairMonitorPage', () => {
       .expectOne((request) => request.url === `${environment.apiBaseUrl}/admin/repair-jobs`)
       .flush({ data: { jobs: [], page: 1, limit: 10, total: 0 } });
 
-    const statusSelect = fixture.nativeElement.querySelector('.filter-row select') as HTMLSelectElement;
+    const statusSelect = fixture.nativeElement.querySelector(
+      '.filter-row select',
+    ) as HTMLSelectElement;
     statusSelect.value = 'in_progress';
     statusSelect.dispatchEvent(new Event('change'));
     fixture.detectChanges();

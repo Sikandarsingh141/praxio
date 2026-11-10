@@ -244,10 +244,32 @@ export class ChatService {
     if (filter === 'archived') filterQuery.archivedBy = userId;
     if (filter === 'active') filterQuery.archivedBy = { $ne: userId };
     if (search.trim()) {
+      const searchTerm = search.trim();
       const expression = new RegExp(
-        search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
         'i',
       );
+      const requestReference = searchTerm
+        .replace(/^request\s*id:\s*/i, '')
+        .replace(/^PRX-/i, '');
+      const requestFilters: Record<string, unknown>[] = [
+        { appliance: expression },
+      ];
+      if (/^[a-f\d]{24}$/i.test(requestReference)) {
+        requestFilters.push({
+          _id: new Types.ObjectId(requestReference),
+        });
+      } else if (/^[a-f\d]{8}$/i.test(requestReference)) {
+        requestFilters.push({
+          $expr: {
+            $regexMatch: {
+              input: { $toString: '$_id' },
+              regex: `${requestReference}$`,
+              options: 'i',
+            },
+          },
+        });
+      }
       const [people, requests] = await Promise.all([
         this.users
           .find({
@@ -262,7 +284,7 @@ export class ChatService {
           .lean()
           .exec(),
         this.repairRequests
-          .find({ appliance: expression })
+          .find({ $or: requestFilters })
           .select('_id')
           .limit(100)
           .lean()

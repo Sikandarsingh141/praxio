@@ -1,5 +1,12 @@
 <main class="repair-job-page" aria-labelledby="job-title" [attr.aria-busy]="loading()">
-  <a class="back-link" routerLink="/customer/repair-requests">← My repair requests</a>
+  <nav class="detail-breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/customer/repair-requests">
+      <span aria-hidden="true">←</span>
+      My repair requests
+    </a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page">Repair request details</span>
+  </nav>
   @if (error()) {
     <p class="feedback error" role="alert">{{ error() }}</p>
   }
@@ -11,19 +18,24 @@
   } @else if (job(); as repair) {
     <header class="job-header">
       <div>
-        <span class="eyebrow">REPAIR REQUEST #{{ repair._id.slice(-8).toUpperCase() }}</span>
+        <span class="eyebrow">REPAIR REQUEST DETAILS</span>
         <h1 id="job-title">
           {{ repair.repairJob ? repair.appliance + ' repair' : 'Repair request details' }}
         </h1>
-        <p>
-          {{ repair.appliance }}
-          · {{ repair.brand || 'Brand not provided' }}{{ repair.model ? ' · ' + repair.model : '' }}
-        </p>
       </div>
-      <span class="status-badge">{{
-        repair.repairJob?.status?.replaceAll('_', ' ') || repair.status | titlecase
-      }}</span>
+      <span class="status-badge">
+        <span class="status-dot" aria-hidden="true"></span>
+        {{ repair.repairJob?.status?.replaceAll('_', ' ') || repair.status | titlecase }}
+      </span>
     </header>
+    <div class="request-id">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="7" width="16" height="13" rx="2" />
+        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M4 12h16M10 12v2h4v-2" />
+      </svg>
+      <span>Request ID:</span>
+      <strong>{{ repair._id.slice(-8).toUpperCase() }}</strong>
+    </div>
     @if (
       repair.repairJob &&
       (repair.repairJob.status === 'picked_up' || repair.repairJob.status === 'completed')
@@ -41,13 +53,44 @@
     }
 
     @if (!repair.repairJob) {
-      <div class="job-grid">
-        <section class="panel">
-          <h2>Request details</h2>
-          <p>{{ repair.description }}</p>
-          <dl class="details">
-            <div>
-              <dt>Preferred date</dt>
+      <div class="job-grid request-detail-grid">
+        <section class="panel request-panel">
+          <h2 class="panel-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 4h8l2 2h2v15H4V6h2l2-2Z" />
+              <path d="M9 4v4h6V4M8 12h8M8 16h8" />
+            </svg>
+            Request Details
+          </h2>
+          <dl class="details request-detail-rows">
+            <div class="request-detail-row">
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m14 7 3-3 3 3-3 3M4 20l8-8M8 5l11 11M5 8l3-3 3 3-3 3" />
+                </svg>
+                Issue / Problem
+              </dt>
+              <dd>
+                <strong>
+                  {{ repair.appliance }}
+                  @if (repair.brand) {
+                    · {{ repair.brand }}
+                  }
+                  @if (repair.model) {
+                    · {{ repair.model }}
+                  }
+                </strong>
+                <span>{{ repair.description }}</span>
+              </dd>
+            </div>
+            <div class="request-detail-row">
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="4" y="6" width="16" height="15" rx="2" />
+                  <path d="M8 3v6M16 3v6M4 11h16" />
+                </svg>
+                Preferred Date
+              </dt>
               <dd>
                 {{
                   repair.preferredServiceDate
@@ -56,12 +99,23 @@
                 }}
               </dd>
             </div>
-            <div>
-              <dt>Service type</dt>
+            <div class="request-detail-row">
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5" />
+                </svg>
+                Service Type
+              </dt>
               <dd>{{ repair.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd>
             </div>
-            <div>
-              <dt>Submitted</dt>
+            <div class="request-detail-row">
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                Submitted On
+              </dt>
               <dd>{{ repair.createdAt | date: 'medium' }}</dd>
             </div>
           </dl>
@@ -78,16 +132,30 @@
           }
         </section>
 
-        <section class="panel">
-          <h2>Selected repair shops</h2>
+        <section class="panel request-panel selected-shops-panel">
+          <h2 class="panel-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M3 10 5 4h14l2 6M4 10v10h16V10M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"
+              />
+              <path d="M9 20v-5h6v5" />
+            </svg>
+            Selected Repair Shops
+          </h2>
           @if (repair.shops?.length) {
             <ul class="assigned-shops">
               @for (assignedShop of repair.shops; track assignedShop.id) {
                 <li>
-                  <strong>{{ assignedShop.name }}</strong>
-                  <span>{{
-                    assignedShop.responseStatus?.replaceAll('_', ' ') || 'Awaiting response'
-                  }}</span>
+                  <span class="shop-avatar" aria-hidden="true">
+                    {{ shopInitials(assignedShop.name) }}
+                  </span>
+                  <span class="shop-identity">
+                    <strong>{{ assignedShop.name }}</strong>
+                    <span>{{
+                      assignedShop.responseStatus?.replaceAll('_', ' ') || 'Awaiting response'
+                        | titlecase
+                    }}</span>
+                  </span>
                   @if (assignedShop.declineReason) {
                     <small>{{ assignedShop.declineReason }}</small>
                   }
@@ -95,9 +163,14 @@
               }
             </ul>
           } @else {
-            <p>Selected shop information is not available.</p>
+            <p class="empty-shops">No repair shops have been selected for this request.</p>
           }
-          <a class="secondary-button" routerLink="/customer/quotations">View quotations</a>
+          <a class="secondary-button quotations-button" routerLink="/customer/quotations">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
+            </svg>
+            View Quotations
+          </a>
         </section>
       </div>
     } @else {

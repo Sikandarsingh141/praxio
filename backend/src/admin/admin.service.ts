@@ -23,6 +23,7 @@ import {
   RepairReview,
   RepairRequest,
 } from '../customer/repair-request.schema';
+import { ShopSubscriptionInvoice } from '../payments/schemas/shop-subscription-invoice.schema';
 
 export interface ShopApplication {
   id: string;
@@ -200,7 +201,14 @@ export interface AdminDashboardOverview {
     expired: number;
     acceptanceRate: number;
   };
-  revenue: { available: false; reason: string };
+  subscriptionFinancials: {
+    currencyTotals: Array<{
+      currency: string;
+      accountReceivableCents: number;
+      overdueAmountCents: number;
+      subscriptionRevenueCents: number;
+    }>;
+  };
   trends: Array<{
     period: string;
     customers: number;
@@ -218,6 +226,9 @@ export interface AdminDashboardOverview {
     relatedName: string | null;
     createdAt: Date;
     link: string;
+    amountCents?: number;
+    currency?: string;
+    status?: string;
   }>;
   recentRegistrations: Array<{
     id: string;
@@ -249,6 +260,18 @@ interface AggregatedRegistrationRequest extends Record<string, unknown> {
   metadata?: Array<{ total: number }>;
 }
 
+interface AdminSubscriptionActivity {
+  id: string;
+  type: string;
+  description: string;
+  relatedName: string | null;
+  createdAt: Date;
+  link: string;
+  amountCents?: number;
+  currency?: string;
+  status?: string;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -257,6 +280,8 @@ export class AdminService {
     private readonly users: Model<User>,
     @InjectModel(RegistrationRequest.name)
     private readonly registrationRequests: Model<RegistrationRequest>,
+    @InjectModel(ShopSubscriptionInvoice.name)
+    private readonly subscriptionInvoices: Model<ShopSubscriptionInvoice>,
     @InjectModel(AdminAuditLog.name)
     private readonly auditLogs: Model<AdminAuditLog>,
     @InjectModel(RepairRequest.name)
@@ -308,8 +333,12 @@ export class AdminService {
       acceptedQuotationId: { $exists: true },
     };
     if (query.from || query.to) {
-      const start = query.from ? this.parseDashboardDate(query.from, 'start') : undefined;
-      const end = query.to ? this.parseDashboardDate(query.to, 'end') : undefined;
+      const start = query.from
+        ? this.parseDashboardDate(query.from, 'start')
+        : undefined;
+      const end = query.to
+        ? this.parseDashboardDate(query.to, 'end')
+        : undefined;
       if (start && end && start.getTime() > end.getTime()) {
         throw new BadRequestException('Start date must be before end date');
       }
@@ -332,193 +361,200 @@ export class AdminService {
       ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
       : null;
     const [result] = await this.repairRequests
-        .aggregate<{
-          jobs: Record<string, unknown>[];
-          metadata: Array<{ total: number }>;
-        }>([
-          { $match: match },
-          {
-            $lookup: {
-              from: 'users',
-              localField: 'customerId',
-              foreignField: '_id',
-              pipeline: [
-                { $project: { fullName: 1, email: 1, countryCode: 1, mobileNumber: 1 } },
-              ],
-              as: 'customer',
-            },
+      .aggregate<{
+        jobs: Record<string, unknown>[];
+        metadata: Array<{ total: number }>;
+      }>([
+        { $match: match },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'customerId',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  fullName: 1,
+                  email: 1,
+                  countryCode: 1,
+                  mobileNumber: 1,
+                },
+              },
+            ],
+            as: 'customer',
           },
-          { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
-          {
-            $lookup: {
-              from: 'repair_quotations',
-              localField: 'acceptedQuotationId',
-              foreignField: '_id',
-              pipeline: [
-                {
-                  $project: {
-                    shopId: 1,
-                    amount: 1,
-                    currency: 1,
+        },
+        { $unwind: { path: '$customer', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'repair_quotations',
+            localField: 'acceptedQuotationId',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  shopId: 1,
+                  amount: 1,
+                  currency: 1,
+                  status: 1,
+                  message: 1,
+                  inspectionCharge: 1,
+                  partsCost: 1,
+                  labourCharge: 1,
+                  additionalCharges: 1,
+                  proposedSolution: 1,
+                  warrantyInformation: 1,
+                  additionalNotes: 1,
+                  estimatedDays: 1,
+                  validUntil: 1,
+                  createdAt: 1,
+                },
+              },
+            ],
+            as: 'quotation',
+          },
+        },
+        { $unwind: { path: '$quotation', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'quotation.shopId',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  fullName: 1,
+                  email: 1,
+                  countryCode: 1,
+                  mobileNumber: 1,
+                  shopDetails: 1,
+                },
+              },
+            ],
+            as: 'shop',
+          },
+        },
+        { $unwind: { path: '$shop', preserveNullAndEmptyArrays: true } },
+        ...(searchPattern
+          ? [
+              {
+                $addFields: {
+                  repairRequestIdText: { $toString: '$_id' },
+                },
+              },
+              {
+                $match: {
+                  $or: [
+                    { repairRequestIdText: searchPattern },
+                    { appliance: searchPattern },
+                    { description: searchPattern },
+                    { 'customer.fullName': searchPattern },
+                    { 'customer.email': searchPattern },
+                    { 'shop.shopDetails.shopName': searchPattern },
+                  ],
+                },
+              },
+            ]
+          : []),
+        {
+          $facet: {
+            jobs: [
+              { $sort: { updatedAt: -1 } },
+              { $skip: (page - 1) * limit },
+              { $limit: limit },
+              {
+                $project: {
+                  _id: 1,
+                  appliance: 1,
+                  description: 1,
+                  brand: 1,
+                  model: 1,
+                  serviceType: 1,
+                  preferredServiceDate: 1,
+                  photos: 1,
+                  createdAt: 1,
+                  updatedAt: 1,
+                  repairJob: {
                     status: 1,
-                    message: 1,
-                    inspectionCharge: 1,
-                    partsCost: 1,
-                    labourCharge: 1,
-                    additionalCharges: 1,
-                    proposedSolution: 1,
-                    warrantyInformation: 1,
-                    additionalNotes: 1,
-                    estimatedDays: 1,
-                    validUntil: 1,
-                    createdAt: 1,
-                  },
-                },
-              ],
-              as: 'quotation',
-            },
-          },
-          { $unwind: { path: '$quotation', preserveNullAndEmptyArrays: true } },
-          {
-            $lookup: {
-              from: 'users',
-              localField: 'quotation.shopId',
-              foreignField: '_id',
-              pipeline: [
-                {
-                  $project: {
-                    fullName: 1,
-                    email: 1,
-                    countryCode: 1,
-                    mobileNumber: 1,
-                    shopDetails: 1,
-                  },
-                },
-              ],
-              as: 'shop',
-            },
-          },
-          { $unwind: { path: '$shop', preserveNullAndEmptyArrays: true } },
-          ...(searchPattern
-            ? [
-                {
-                  $addFields: {
-                    repairRequestIdText: { $toString: '$_id' },
-                  },
-                },
-                {
-                  $match: {
-                    $or: [
-                      { repairRequestIdText: searchPattern },
-                      { appliance: searchPattern },
-                      { description: searchPattern },
-                      { 'customer.fullName': searchPattern },
-                      { 'customer.email': searchPattern },
-                      { 'shop.shopDetails.shopName': searchPattern },
-                    ],
-                  },
-                },
-              ]
-            : []),
-          {
-            $facet: {
-              jobs: [
-                { $sort: { updatedAt: -1 } },
-                { $skip: (page - 1) * limit },
-                { $limit: limit },
-                {
-                  $project: {
-                    _id: 1,
-                    appliance: 1,
-                    description: 1,
-                    brand: 1,
-                    model: 1,
-                    serviceType: 1,
-                    preferredServiceDate: 1,
-                    photos: 1,
-                    createdAt: 1,
-                    updatedAt: 1,
-                    repairJob: {
+                    confirmedAt: 1,
+                    inspection: {
                       status: 1,
-                      confirmedAt: 1,
-                      inspection: {
-                        status: 1,
-                        identifiedProblem: 1,
-                        findings: 1,
-                        requiredRepairWork: 1,
-                        parts: 1,
-                        images: 1,
-                        partsTotal: 1,
-                        labourCharge: 1,
-                        inspectionCharges: 1,
-                        otherCharges: 1,
-                        estimatedTotal: 1,
-                        estimatedTimeValue: 1,
-                        estimatedTimeUnit: 1,
-                        warranty: 1,
-                        message: 1,
-                        decisionReason: 1,
-                        submittedAt: 1,
-                        decidedAt: 1,
-                      },
-                      approvedRepairAmount: 1,
-                      startedAt: 1,
-                      repairCompletedAt: 1,
-                      completionDescription: 1,
-                      workPerformed: 1,
-                      partsReplaced: 1,
-                      finalNotes: 1,
-                      pickupInstructions: 1,
-                      pickupMessage: 1,
-                      readyForPickupAt: 1,
-                      pickedUpAt: 1,
-                      disputeDescription: 1,
-                      disputeResolution: 1,
-                      completedAt: 1,
-                      history: 1,
+                      identifiedProblem: 1,
+                      findings: 1,
+                      requiredRepairWork: 1,
+                      parts: 1,
+                      images: 1,
+                      partsTotal: 1,
+                      labourCharge: 1,
+                      inspectionCharges: 1,
+                      otherCharges: 1,
+                      estimatedTotal: 1,
+                      estimatedTimeValue: 1,
+                      estimatedTimeUnit: 1,
+                      warranty: 1,
+                      message: 1,
+                      decisionReason: 1,
+                      submittedAt: 1,
+                      decidedAt: 1,
                     },
-                    customer: {
-                      fullName: '$customer.fullName',
-                      email: '$customer.email',
-                      countryCode: '$customer.countryCode',
-                      mobileNumber: '$customer.mobileNumber',
-                    },
-                    shopName: '$shop.shopDetails.shopName',
-                    shop: {
-                      fullName: '$shop.fullName',
-                      email: '$shop.email',
-                      countryCode: '$shop.countryCode',
-                      mobileNumber: '$shop.mobileNumber',
-                      address: '$shop.shopDetails.address',
-                      city: '$shop.shopDetails.city',
-                      state: '$shop.shopDetails.state',
-                      postalCode: '$shop.shopDetails.postalCode',
-                    },
-                    quotation: {
-                      id: { $toString: '$quotation._id' },
-                      amount: '$quotation.amount',
-                      currency: '$quotation.currency',
-                      status: '$quotation.status',
-                      message: '$quotation.message',
-                      inspectionCharge: '$quotation.inspectionCharge',
-                      partsCost: '$quotation.partsCost',
-                      labourCharge: '$quotation.labourCharge',
-                      additionalCharges: '$quotation.additionalCharges',
-                      proposedSolution: '$quotation.proposedSolution',
-                      warrantyInformation: '$quotation.warrantyInformation',
-                      additionalNotes: '$quotation.additionalNotes',
-                      estimatedDays: '$quotation.estimatedDays',
-                      validUntil: '$quotation.validUntil',
-                      createdAt: '$quotation.createdAt',
-                    },
+                    approvedRepairAmount: 1,
+                    startedAt: 1,
+                    repairCompletedAt: 1,
+                    completionDescription: 1,
+                    workPerformed: 1,
+                    partsReplaced: 1,
+                    finalNotes: 1,
+                    pickupInstructions: 1,
+                    pickupMessage: 1,
+                    readyForPickupAt: 1,
+                    pickedUpAt: 1,
+                    disputeDescription: 1,
+                    disputeResolution: 1,
+                    completedAt: 1,
+                    history: 1,
+                  },
+                  customer: {
+                    fullName: '$customer.fullName',
+                    email: '$customer.email',
+                    countryCode: '$customer.countryCode',
+                    mobileNumber: '$customer.mobileNumber',
+                  },
+                  shopName: '$shop.shopDetails.shopName',
+                  shop: {
+                    fullName: '$shop.fullName',
+                    email: '$shop.email',
+                    countryCode: '$shop.countryCode',
+                    mobileNumber: '$shop.mobileNumber',
+                    address: '$shop.shopDetails.address',
+                    city: '$shop.shopDetails.city',
+                    state: '$shop.shopDetails.state',
+                    postalCode: '$shop.shopDetails.postalCode',
+                  },
+                  quotation: {
+                    id: { $toString: '$quotation._id' },
+                    amount: '$quotation.amount',
+                    currency: '$quotation.currency',
+                    status: '$quotation.status',
+                    message: '$quotation.message',
+                    inspectionCharge: '$quotation.inspectionCharge',
+                    partsCost: '$quotation.partsCost',
+                    labourCharge: '$quotation.labourCharge',
+                    additionalCharges: '$quotation.additionalCharges',
+                    proposedSolution: '$quotation.proposedSolution',
+                    warrantyInformation: '$quotation.warrantyInformation',
+                    additionalNotes: '$quotation.additionalNotes',
+                    estimatedDays: '$quotation.estimatedDays',
+                    validUntil: '$quotation.validUntil',
+                    createdAt: '$quotation.createdAt',
                   },
                 },
-              ],
-              metadata: [{ $count: 'total' }],
-            },
+              },
+            ],
+            metadata: [{ $count: 'total' }],
           },
-        ])
-        .exec();
+        },
+      ])
+      .exec();
     return {
       jobs: result?.jobs ?? [],
       page,
@@ -1101,6 +1137,11 @@ export class AdminService {
         ? Math.round((item.count / totalCategoryRequests) * 1000) / 10
         : 0,
     }));
+    const subscriptionFinancials = await this.getSubscriptionFinancials(
+      from,
+      endExclusive,
+      now,
+    );
     const recentActivities = [
       ...recentRegistrationRecords.map((record) => ({
         id: String(record._id),
@@ -1163,6 +1204,7 @@ export class AdminService {
           },
         ];
       }),
+      ...subscriptionFinancials.activities,
     ]
       .sort(
         (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
@@ -1225,10 +1267,8 @@ export class AdminService {
               ) / 10
             : 0,
       },
-      revenue: {
-        available: false,
-        reason:
-          'Repair payment and platform commission records are not currently stored.',
+      subscriptionFinancials: {
+        currencyTotals: subscriptionFinancials.currencyTotals,
       },
       trends: trendPeriods.map((period) => ({
         period,
@@ -1270,6 +1310,243 @@ export class AdminService {
         accountStatus: shop.accountStatus,
         completedRepairs: shop.count,
       })),
+    };
+  }
+
+  private async getSubscriptionFinancials(
+    from: Date,
+    endExclusive: Date,
+    now: Date,
+  ): Promise<{
+    currencyTotals: Array<{
+      currency: string;
+      accountReceivableCents: number;
+      overdueAmountCents: number;
+      subscriptionRevenueCents: number;
+    }>;
+    activities: AdminSubscriptionActivity[];
+  }> {
+    const currentPeriod = { $gte: from, $lt: endExclusive };
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const [invoices, legacyPayments] = await Promise.all([
+      this.subscriptionInvoices
+        .find({
+          $or: [
+            { generatedAt: currentPeriod },
+            { paidAt: currentPeriod },
+            { dueAt: currentPeriod },
+            { 'events.occurredAt': currentPeriod },
+          ],
+        })
+        .select(
+          'stripeInvoiceId registrationRequestId userId stripePaymentIntentId totalAmountCents amountPaidCents refundedAmountCents currency status billingReason dueAt generatedAt paidAt events refunds',
+        )
+        .lean()
+        .exec(),
+      this.registrationRequests
+        .find({
+          accountType: 'shop',
+          paymentStatus: 'paid',
+          paidAt: currentPeriod,
+        })
+        .select(
+          '_id userId paymentAmountCents paymentRefundedAmountCents paymentCurrency paidAt stripeCheckoutInvoiceId',
+        )
+        .lean()
+        .exec(),
+    ]);
+
+    const users = await this.users
+      .find({
+        _id: {
+          $in: [
+            ...new Map(
+              [...invoices, ...legacyPayments].map((record) => [
+                String(record.userId),
+                record.userId,
+              ]),
+            ).values(),
+          ],
+        },
+      })
+      .select('_id shopDetails.shopName')
+      .lean()
+      .exec();
+    const shopNames = new Map(
+      users.map((user) => [
+        String(user._id),
+        user.shopDetails?.shopName ?? 'Repair shop',
+      ]),
+    );
+    const totals = new Map<
+      string,
+      {
+        currency: string;
+        accountReceivableCents: number;
+        overdueAmountCents: number;
+        subscriptionRevenueCents: number;
+      }
+    >();
+    const getTotals = (currencyInput: string) => {
+      const currency = currencyInput.toUpperCase();
+      let total = totals.get(currency);
+      if (!total) {
+        total = {
+          currency,
+          accountReceivableCents: 0,
+          overdueAmountCents: 0,
+          subscriptionRevenueCents: 0,
+        };
+        totals.set(currency, total);
+      }
+      return total;
+    };
+    const inRange = (value: Date | undefined): boolean =>
+      Boolean(value && value >= from && value < endExclusive);
+    const activities: AdminSubscriptionActivity[] = [];
+    const activityDetails: Record<
+      string,
+      { type: string; description: string }
+    > = {
+      'invoice.finalized': {
+        type: 'subscription_invoice_generated',
+        description: 'Subscription Invoice Generated',
+      },
+      'invoice.paid': {
+        type: 'subscription_payment_received',
+        description: 'Subscription Payment Received',
+      },
+      'invoice.payment_failed': {
+        type: 'subscription_payment_failed',
+        description: 'Subscription Payment Failed',
+      },
+      'charge.refunded': {
+        type: 'subscription_payment_refunded',
+        description: 'Subscription Payment Refunded',
+      },
+    };
+    const persistedInvoiceIds = new Set(
+      invoices.map((invoice) => invoice.stripeInvoiceId),
+    );
+    const initialSubscriptionRegistrationIds = new Set(
+      invoices
+        .filter((invoice) => invoice.billingReason === 'subscription_create')
+        .map((invoice) => String(invoice.registrationRequestId)),
+    );
+
+    for (const invoice of invoices) {
+      const currency = invoice.currency.toUpperCase();
+      const total = getTotals(currency);
+      const isCancelled = ['void', 'cancelled', 'canceled', 'draft'].includes(
+        invoice.status.toLowerCase(),
+      );
+      const outstanding = isCancelled
+        ? 0
+        : Math.max(0, invoice.totalAmountCents - invoice.amountPaidCents);
+
+      if (inRange(invoice.generatedAt) && outstanding > 0) {
+        total.accountReceivableCents += outstanding;
+        if (invoice.dueAt && invoice.dueAt < todayStart) {
+          total.overdueAmountCents += outstanding;
+        }
+      }
+      if (
+        invoice.status === 'paid' &&
+        inRange(invoice.paidAt) &&
+        invoice.amountPaidCents > 0
+      ) {
+        const totalRefunded = Math.max(
+          invoice.refundedAmountCents ?? 0,
+          (invoice.refunds ?? []).reduce(
+            (sum, refund) => sum + refund.amountCents,
+            0,
+          ),
+        );
+        total.subscriptionRevenueCents += Math.max(
+          0,
+          invoice.amountPaidCents - totalRefunded,
+        );
+      }
+
+      const shopName = shopNames.get(String(invoice.userId)) ?? 'Repair shop';
+      for (const event of invoice.events ?? []) {
+        if (!inRange(event.occurredAt)) {
+          continue;
+        }
+        const details = activityDetails[event.type];
+        if (details) {
+          activities.push({
+            id: event.eventId,
+            ...details,
+            relatedName: shopName,
+            createdAt: event.occurredAt,
+            link: `/admin/users/${String(invoice.userId)}`,
+            amountCents: event.amountCents,
+            currency,
+            status: event.status,
+          });
+        }
+      }
+
+      if (
+        !isCancelled &&
+        outstanding > 0 &&
+        invoice.dueAt &&
+        invoice.dueAt < todayStart &&
+        inRange(invoice.dueAt)
+      ) {
+        activities.push({
+          id: `${invoice.stripeInvoiceId}:overdue`,
+          type: 'subscription_payment_overdue',
+          description: 'Subscription Payment Overdue',
+          relatedName: shopName,
+          createdAt: invoice.dueAt,
+          link: `/admin/users/${String(invoice.userId)}`,
+          amountCents: outstanding,
+          currency,
+          status: 'overdue',
+        });
+      }
+    }
+
+    for (const payment of legacyPayments) {
+      const currency = (payment.paymentCurrency ?? 'usd').toUpperCase();
+      const total = getTotals(currency);
+      if (!payment.paidAt) {
+        continue;
+      }
+      const hasPersistedInvoice = Boolean(
+        (payment.stripeCheckoutInvoiceId &&
+          persistedInvoiceIds.has(payment.stripeCheckoutInvoiceId)) ||
+        initialSubscriptionRegistrationIds.has(String(payment._id)),
+      );
+      if (!hasPersistedInvoice && payment.paymentAmountCents !== undefined) {
+        total.subscriptionRevenueCents += Math.max(
+          0,
+          payment.paymentAmountCents -
+            (payment.paymentRefundedAmountCents ?? 0),
+        );
+      }
+      activities.push({
+        id: `shop-subscription-purchased:${String(payment._id)}`,
+        type: 'shop_subscription_purchased',
+        description: 'Shop Subscription Purchased',
+        relatedName: shopNames.get(String(payment.userId)) ?? 'Repair shop',
+        createdAt: payment.paidAt,
+        link: `/admin/users/${String(payment.userId)}`,
+        amountCents: payment.paymentAmountCents,
+        currency,
+        status: 'paid',
+      });
+    }
+
+    return {
+      currencyTotals: [...totals.values()].sort((left, right) =>
+        left.currency.localeCompare(right.currency),
+      ),
+      activities,
     };
   }
 

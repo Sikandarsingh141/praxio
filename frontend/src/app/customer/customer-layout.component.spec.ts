@@ -2,7 +2,8 @@ import { Component } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { NavigationEnd, provideRouter, Router } from '@angular/router';
+import { filter, firstValueFrom, take } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth/auth.service';
 import { CustomerLayout } from './customer-layout.component';
@@ -132,12 +133,17 @@ describe('CustomerLayout', () => {
     input.value = 'Delhi';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();
-    await fixture.whenStable();
+    const navigation = firstValueFrom(
+      router.events.pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        take(1),
+      ),
+    );
 
     (fixture.nativeElement.querySelector('.search-placeholder') as HTMLFormElement).dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true }),
     );
-    await fixture.whenStable();
+    await navigation;
 
     expect(router.url).toBe('/customer/shops?query=Delhi');
   });

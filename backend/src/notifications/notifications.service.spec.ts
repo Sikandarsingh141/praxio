@@ -6,6 +6,7 @@ import { FirebaseMessagingService } from './firebase-messaging.service';
 import { Notification } from './schemas/notification.schema';
 import { UsersService } from '../users/users.service';
 import { NotificationsGateway } from './notifications.gateway';
+import { RepairRequest } from '../customer/repair-request.schema';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -15,6 +16,9 @@ describe('NotificationsService', () => {
     updateOne: jest.fn(),
     updateMany: jest.fn(),
     create: jest.fn().mockResolvedValue([]),
+  };
+  const repairRequests = {
+    find: jest.fn(),
   };
   const usersService = {
     getNotificationTokens: jest.fn().mockResolvedValue([]),
@@ -38,6 +42,10 @@ describe('NotificationsService', () => {
         {
           provide: getModelToken(Notification.name),
           useValue: notifications,
+        },
+        {
+          provide: getModelToken(RepairRequest.name),
+          useValue: repairRequests,
         },
         { provide: UsersService, useValue: usersService },
         { provide: FirebaseMessagingService, useValue: firebaseMessaging },
@@ -171,5 +179,70 @@ describe('NotificationsService', () => {
         link: '/customer/profile',
       },
     );
+  });
+
+  it('adds the short repair request ID to all portal and push notifications', async () => {
+    const requestId = new Types.ObjectId('507f1f77bcf86cd7CEEBA068');
+    const recipientId = new Types.ObjectId();
+
+    await service.notifyUsers([recipientId], {
+      title: 'New Repair Request Received',
+      message: `A customer submitted a repair request. Request ID: ${requestId.toString()}.`,
+      type: 'new_repair_request',
+      relatedEntityId: requestId,
+      relatedEntityType: 'repair_request',
+      link: `/shop/repair-requests/${requestId.toString()}`,
+    });
+
+    expect(notifications.insertMany).toHaveBeenCalledWith([
+      expect.objectContaining({
+        relatedEntityId: requestId,
+        message: 'A customer submitted a repair request. Request ID: CEEBA068.',
+      }),
+    ]);
+    expect(firebaseMessaging.send).toHaveBeenCalledWith(
+      [],
+      'New Repair Request Received',
+      'A customer submitted a repair request. Request ID: CEEBA068.',
+      expect.objectContaining({
+        entityId: requestId.toString(),
+      }),
+    );
+  });
+
+  it('displays the short ID on older repair notifications as well', async () => {
+    const requestId = new Types.ObjectId('507f1f77bcf86cd7CEEBA068');
+    const recipientId = new Types.ObjectId();
+    const oldNotification = {
+      _id: new Types.ObjectId(),
+      title: 'Repair update',
+      message: `Repair request updated. Request ID: ${requestId.toString()}.`,
+      type: 'new_repair_request',
+      isRead: true,
+      createdAt: new Date('2026-11-10T00:00:00.000Z'),
+      relatedEntityId: requestId,
+      relatedEntityType: 'repair_request',
+      link: `/customer/repair-requests/${requestId.toString()}`,
+    };
+    const notificationQuery = {
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([oldNotification]),
+    };
+    const repairRequestQuery = {
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([{ _id: requestId }]),
+    };
+    notifications.find.mockReturnValue(notificationQuery);
+    repairRequests.find.mockReturnValue(repairRequestQuery);
+
+    await expect(service.getForUser(recipientId.toString())).resolves.toEqual([
+      expect.objectContaining({
+        message: 'Repair request updated. Request ID: CEEBA068.',
+        relatedEntityId: requestId.toString(),
+      }),
+    ]);
   });
 });

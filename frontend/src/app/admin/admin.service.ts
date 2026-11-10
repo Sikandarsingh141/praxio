@@ -118,7 +118,14 @@ export interface AdminDashboardOverview {
     expired: number;
     acceptanceRate: number;
   };
-  revenue: { available: false; reason: string };
+  subscriptionFinancials: {
+    currencyTotals: Array<{
+      currency: string;
+      accountReceivableCents: number;
+      overdueAmountCents: number;
+      subscriptionRevenueCents: number;
+    }>;
+  };
   trends: Array<{
     period: string;
     customers: number;
@@ -136,6 +143,9 @@ export interface AdminDashboardOverview {
     relatedName: string | null;
     createdAt: string;
     link: string;
+    amountCents?: number;
+    currency?: string;
+    status?: string;
   }>;
   recentRegistrations: Array<{
     id: string;
@@ -377,10 +387,7 @@ export class AdminService {
     from?: string,
     to?: string,
   ): Observable<AdminMonitorPage<AdminRepairJob>> {
-    let params = new HttpParams()
-      .set('status', status)
-      .set('page', page)
-      .set('limit', limit);
+    let params = new HttpParams().set('status', status).set('page', page).set('limit', limit);
     if (requestId) {
       params = params.set('requestId', requestId);
     }

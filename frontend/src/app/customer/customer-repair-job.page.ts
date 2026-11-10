@@ -172,6 +172,15 @@ export class CustomerRepairJobPage implements OnInit {
     return this[key]();
   }
 
+  shopInitials(name: string): string {
+    return name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
   setRating(key: RepairRatingKey, value: number): void {
     this[key].set(value);
   }

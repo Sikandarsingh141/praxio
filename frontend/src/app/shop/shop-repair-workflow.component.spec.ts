@@ -56,8 +56,14 @@ describe('ShopRepairWorkflowComponent', () => {
     const identifiedProblem = fixture.nativeElement.querySelector(
       '[name="identifiedProblem"]',
     ) as HTMLTextAreaElement;
+    const findings = fixture.nativeElement.querySelector(
+      '[name="findings"]',
+    ) as HTMLTextAreaElement;
     expect(fixture.componentInstance.identifiedProblem()).toBe('Broken motor');
     expect(identifiedProblem.value).toBe('Broken motor');
-    expect(fixture.nativeElement.textContent).toContain('Submit Inspection');
+    expect(identifiedProblem.required).toBeTrue();
+    expect(fixture.componentInstance.findings()).toBe('Motor winding is damaged');
+    expect(findings.value).toBe('Motor winding is damaged');
+    expect(fixture.nativeElement.textContent).toContain('Submit Inspection & Request Approval');
   });
 });

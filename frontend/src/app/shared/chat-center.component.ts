@@ -732,6 +732,10 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     return status.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
+  requestReference(requestId: string): string {
+    return requestId.slice(-8).toUpperCase();
+  }
+
   initials(name: string): string {
     return name
       .trim()

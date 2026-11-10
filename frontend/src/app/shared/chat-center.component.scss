@@ -330,6 +330,27 @@ app-chat-center {
     font-size: 0.67rem;
   }
 
+  .request-id-badge {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid #cce8d2;
+    border-radius: 99px;
+    background: #edf8ef;
+    color: #28723b;
+    font-size: 0.63rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .request-id-badge strong {
+    color: #17632d;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+  }
+
   .conversation-message-count {
     color: #758078;
     font-size: 0.64rem;

@@ -77,6 +77,11 @@ describe('DisputesService', () => {
       countDocuments: jest.fn(),
       find: jest.fn(),
     }) as jest.Mock & Record<string, jest.Mock>;
+    disputes.find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    });
     requests = {
       find: jest.fn(),
       findOne: jest.fn().mockResolvedValue(repairRequest),
@@ -258,7 +263,7 @@ describe('DisputesService', () => {
       status: 'OPEN',
       statusHistory: [],
     };
-    const updatedDispute = { ...currentDispute, status: 'ACCEPTED' };
+    const updatedDispute = { ...currentDispute, status: 'UNDER_REVIEW' };
     let recordedUpdate: UpdateQuery<Dispute> | undefined;
     disputes.findOne.mockReturnValue({
       exec: jest.fn().mockResolvedValue(currentDispute),
@@ -275,11 +280,11 @@ describe('DisputesService', () => {
       currentDispute._id.toString(),
     );
 
-    expect(result).toMatchObject({ status: 'ACCEPTED' });
-    expect(recordedUpdate?.$set).toEqual({ status: 'ACCEPTED' });
+    expect(result).toMatchObject({ status: 'UNDER_REVIEW' });
+    expect(recordedUpdate?.$set).toEqual({ status: 'UNDER_REVIEW' });
     expect(recordedUpdate?.$push?.statusHistory).toMatchObject({
       from: 'OPEN',
-      to: 'ACCEPTED',
+      to: 'UNDER_REVIEW',
       actorRole: 'shop',
     });
     expect(notifications.notifyUsers).toHaveBeenCalledWith(
