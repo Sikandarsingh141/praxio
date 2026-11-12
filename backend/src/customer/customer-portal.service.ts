@@ -4,13 +4,16 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { isObjectIdOrHexString, Model, Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { User } from '../users/schemas/user.schema';
+import { formatUserName, userNameParts } from '../users/user-name';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
   CreateQuotationDto,
@@ -28,12 +31,45 @@ import {
   UpdateRepairRequestDto,
 } from './customer-portal.dto';
 import {
+  LEGACY_REPAIR_JOB_STATUSES,
+  REPAIR_JOB_STATUSES,
   RepairQuotation,
   RepairQuotationDocument,
   RepairReview,
   RepairReviewDocument,
   RepairRequest,
 } from './repair-request.schema';
+
+function mongoCustomerDisplayName(
+  firstName: unknown,
+  lastName: unknown,
+  legacyName: unknown,
+  fallback: string,
+): Record<string, unknown> {
+  const joined = {
+    $trim: {
+      input: {
+        $concat: [
+          { $ifNull: [firstName, ''] },
+          ' ',
+          { $ifNull: [lastName, ''] },
+        ],
+      },
+    },
+  };
+  return {
+    $let: {
+      vars: { joined },
+      in: {
+        $cond: [
+          { $ne: ['$$joined', ''] },
+          '$$joined',
+          { $ifNull: [legacyName, fallback] },
+        ],
+      },
+    },
+  };
+}
 
 export interface ShopSearchResult {
   id: string;
@@ -59,8 +95,110 @@ export interface ShopSearchResult {
   email: string;
 }
 
+function formatShopAddress(details?: User['shopDetails']): string {
+  const seen = new Set<string>();
+  return [
+    details?.address,
+    details?.street,
+    details?.area,
+    details?.city,
+    details?.state,
+    details?.postalCode,
+    details?.country,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .flatMap((part) => part.split(','))
+    .map((part) => part.trim())
+    .filter((part) => {
+      const key = part.toLocaleLowerCase();
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .join(', ');
+}
+
+export interface RouteCoordinate {
+  latitude: number;
+  longitude: number;
+}
+
+interface GoogleRoute {
+  distanceMeters?: number;
+  duration?: string;
+  description?: string;
+  polyline?: { encodedPolyline?: string };
+}
+
+interface GoogleDirectionsRoute {
+  summary?: string;
+  legs?: {
+    distance?: { value?: number };
+    duration?: { value?: number };
+  }[];
+  overview_polyline?: { points?: string };
+}
+
+interface ShopRepairRouteResult {
+  distanceMeters: number;
+  durationSeconds: number;
+  description: string;
+  path: RouteCoordinate[];
+}
+
+function decodeGooglePolyline(encoded: string): RouteCoordinate[] {
+  const coordinates: RouteCoordinate[] = [];
+  let index = 0;
+  let latitude = 0;
+  let longitude = 0;
+
+  while (index < encoded.length) {
+    const deltas: number[] = [];
+    for (let axis = 0; axis < 2; axis += 1) {
+      let result = 0;
+      let shift = 0;
+      let byte: number;
+      do {
+        if (index >= encoded.length || shift > 30) {
+          throw new BadGatewayException(
+            'The directions provider returned invalid route geometry.',
+          );
+        }
+        byte = encoded.charCodeAt(index++) - 63;
+        if (byte < 0 || byte > 63) {
+          throw new BadGatewayException(
+            'The directions provider returned invalid route geometry.',
+          );
+        }
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+      deltas.push(result & 1 ? ~(result >> 1) : result >> 1);
+    }
+
+    const latitudeDelta = deltas[0];
+    const longitudeDelta = deltas[1];
+    if (latitudeDelta === undefined || longitudeDelta === undefined) {
+      throw new BadGatewayException(
+        'The directions provider returned invalid route geometry.',
+      );
+    }
+    latitude += latitudeDelta;
+    longitude += longitudeDelta;
+    coordinates.push({
+      latitude: latitude / 1e5,
+      longitude: longitude / 1e5,
+    });
+  }
+  return coordinates;
+}
+
 @Injectable()
 export class CustomerPortalService {
+  private readonly logger = new Logger(CustomerPortalService.name);
+
   constructor(
     @InjectModel(User.name) private readonly users: Model<User>,
     @InjectModel(RegistrationRequest.name)
@@ -74,6 +212,38 @@ export class CustomerPortalService {
     private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  private async getShopRatings(shopIds: Types.ObjectId[]) {
+    if (!shopIds.length) {
+      return new Map<string, { rating: number; reviewCount: number }>();
+    }
+
+    const reviewGroups = await this.reviews
+      .aggregate<{
+        _id: Types.ObjectId;
+        averageRating: number;
+        reviewCount: number;
+      }>([
+        { $match: { shopId: { $in: shopIds } } },
+        {
+          $group: {
+            _id: '$shopId',
+            averageRating: { $avg: '$overallRating' },
+            reviewCount: { $sum: 1 },
+          },
+        },
+      ])
+      .exec();
+    return new Map(
+      reviewGroups.map((group) => [
+        group._id.toString(),
+        {
+          rating: Math.round(group.averageRating * 100) / 100,
+          reviewCount: group.reviewCount,
+        },
+      ]),
+    );
+  }
 
   async searchShops(input: ShopSearchDto): Promise<ShopSearchResult[]> {
     if (
@@ -122,31 +292,7 @@ export class CustomerPortalService {
     const approvedIds = new Set(
       approved.map((registration) => registration.userId.toString()),
     );
-    const reviewGroups = await this.reviews
-      .aggregate<{
-        _id: Types.ObjectId;
-        averageRating: number;
-        reviewCount: number;
-      }>([
-        { $match: { shopId: { $in: shopIds } } },
-        {
-          $group: {
-            _id: '$shopId',
-            averageRating: { $avg: '$overallRating' },
-            reviewCount: { $sum: 1 },
-          },
-        },
-      ])
-      .exec();
-    const shopRatings = new Map(
-      reviewGroups.map((group) => [
-        group._id.toString(),
-        {
-          rating: Math.round(group.averageRating * 100) / 100,
-          reviewCount: group.reviewCount,
-        },
-      ]),
-    );
+    const shopRatings = await this.getShopRatings(shopIds);
 
     const searchText =
       input.latitude === undefined
@@ -225,6 +371,11 @@ export class CustomerPortalService {
         (shop) =>
           input.maxDistanceKm === undefined ||
           (shop.distanceKm !== null && shop.distanceKm <= input.maxDistanceKm),
+      )
+      .filter(
+        (shop) =>
+          input.minRating === undefined ||
+          (shop.rating !== null && shop.rating >= input.minRating),
       );
 
     if (
@@ -235,6 +386,13 @@ export class CustomerPortalService {
         (left, right) =>
           (left.distanceKm ?? Number.MAX_VALUE) -
           (right.distanceKm ?? Number.MAX_VALUE),
+      );
+    } else if (input.sort === 'rating') {
+      results.sort(
+        (left, right) =>
+          (right.rating ?? -1) - (left.rating ?? -1) ||
+          right.reviewCount - left.reviewCount ||
+          left.shopName.localeCompare(right.shopName),
       );
     } else {
       const terms = searchText?.split(/[\s,]+/).filter(Boolean) ?? [];
@@ -443,7 +601,7 @@ export class CustomerPortalService {
       shopIds.map((shopId) => new Types.ObjectId(shopId)),
       {
         title: 'New Repair Request Received',
-        message: `${customer.fullName ?? 'A customer'} submitted a ${input.appliance.trim()} repair request. Request ID: ${request._id.toString()}.`,
+        message: `${formatUserName(customer) || 'A customer'} submitted a ${input.appliance.trim()} repair request. Request ID: ${request._id.toString()}.`,
         type: 'new_repair_request',
         relatedEntityId: request._id,
         relatedEntityType: 'repair_request',
@@ -561,7 +719,7 @@ export class CustomerPortalService {
       shopIds.map((id) => new Types.ObjectId(id)),
       {
         title: 'Repair Request Updated',
-        message: `${customer.fullName ?? 'A customer'} updated a ${input.appliance.trim()} repair request. Please review the latest details.`,
+        message: `${formatUserName(customer) || 'A customer'} updated a ${input.appliance.trim()} repair request. Please review the latest details.`,
         type: 'new_repair_request',
         relatedEntityId: updated._id,
         relatedEntityType: 'repair_request',
@@ -655,7 +813,7 @@ export class CustomerPortalService {
     const requests = await this.repairRequests
       .find({ customerId: customer._id })
       .select(
-        '_id appliance brand model description preferredServiceDate serviceType createdAt',
+        '_id appliance brand model description preferredServiceDate serviceType status repairJob.status createdAt',
       )
       .lean()
       .exec();
@@ -680,15 +838,17 @@ export class CustomerPortalService {
       ? await this.users
           .find({ _id: { $in: shopIds } })
           .select(
-            'shopDetails.shopName shopDetails.address shopDetails.city shopDetails.state shopDetails.country shopDetails.location',
+            'shopDetails.shopName shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.postalCode shopDetails.country shopDetails.location',
           )
           .lean()
           .exec()
       : [];
     const shopMap = new Map(shops.map((shop) => [shop._id.toString(), shop]));
+    const shopRatings = await this.getShopRatings(shopIds);
     const allQuotations = rawQuotations.map((quote) => {
       const request = requestMap.get(quote.repairRequestId.toString());
       const shop = shopMap.get(quote.shopId.toString());
+      const rating = shopRatings.get(quote.shopId.toString());
       return {
         ...quote,
         status: this.normalizeQuotationStatus(quote.status),
@@ -696,17 +856,10 @@ export class CustomerPortalService {
         shop: {
           id: quote.shopId.toString(),
           shopName: shop?.shopDetails?.shopName ?? 'Repair shop',
-          address: [
-            shop?.shopDetails?.address,
-            shop?.shopDetails?.city,
-            shop?.shopDetails?.state,
-            shop?.shopDetails?.country,
-          ]
-            .filter(Boolean)
-            .join(', '),
+          address: formatShopAddress(shop?.shopDetails),
           location: shop?.shopDetails?.location ?? null,
-          rating: null,
-          reviewCount: 0,
+          rating: rating?.rating ?? null,
+          reviewCount: rating?.reviewCount ?? 0,
           logoUrl: null,
         },
       };
@@ -765,7 +918,7 @@ export class CustomerPortalService {
     const customers = customerIds.length
       ? await this.users
           .find({ _id: { $in: customerIds } })
-          .select('fullName')
+          .select('firstName lastName fullName')
           .lean()
           .exec()
       : [];
@@ -781,9 +934,13 @@ export class CustomerPortalService {
           status: this.normalizeQuotationStatus(quote.status),
           repairRequest: request,
           customer: {
-            fullName:
-              customerMap.get(request!.customerId.toString())?.fullName ??
-              'Customer',
+            ...userNameParts(
+              customerMap.get(request!.customerId.toString()) ?? {},
+            ),
+            displayName:
+              formatUserName(
+                customerMap.get(request!.customerId.toString()) ?? {},
+              ) || 'Customer',
           },
           shop: {
             id: shop._id.toString(),
@@ -872,7 +1029,9 @@ export class CustomerPortalService {
                       from: 'users',
                       localField: 'customerId',
                       foreignField: '_id',
-                      pipeline: [{ $project: { fullName: 1 } }],
+                      pipeline: [
+                        { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                      ],
                       as: 'customer',
                     },
                   },
@@ -894,7 +1053,16 @@ export class CustomerPortalService {
                       customerLongitude: 1,
                       shopResponse: 1,
                       repairJob: { status: '$repairJob.status' },
-                      customer: { fullName: '$customer.fullName' },
+                      customer: {
+                        firstName: '$customer.firstName',
+                        lastName: '$customer.lastName',
+                        displayName: mongoCustomerDisplayName(
+                          '$customer.firstName',
+                          '$customer.lastName',
+                          '$customer.fullName',
+                          'Customer',
+                        ),
+                      },
                     },
                   },
                 ],
@@ -944,7 +1112,9 @@ export class CustomerPortalService {
                       from: 'users',
                       localField: 'customerId',
                       foreignField: '_id',
-                      pipeline: [{ $project: { fullName: 1 } }],
+                      pipeline: [
+                        { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                      ],
                       as: 'customer',
                     },
                   },
@@ -961,7 +1131,16 @@ export class CustomerPortalService {
                       description: 1,
                       updatedAt: 1,
                       repairJob: { status: '$repairJob.status' },
-                      customer: { fullName: '$customer.fullName' },
+                      customer: {
+                        firstName: '$customer.firstName',
+                        lastName: '$customer.lastName',
+                        displayName: mongoCustomerDisplayName(
+                          '$customer.firstName',
+                          '$customer.lastName',
+                          '$customer.fullName',
+                          'Customer',
+                        ),
+                      },
                       acceptedQuotation: {
                         $arrayElemAt: ['$acceptedQuotation', 0],
                       },
@@ -1033,7 +1212,15 @@ export class CustomerPortalService {
                             from: 'users',
                             localField: 'customerId',
                             foreignField: '_id',
-                            pipeline: [{ $project: { fullName: 1 } }],
+                            pipeline: [
+                              {
+                                $project: {
+                                  firstName: 1,
+                                  lastName: 1,
+                                  fullName: 1,
+                                },
+                              },
+                            ],
                             as: 'customer',
                           },
                         },
@@ -1046,7 +1233,16 @@ export class CustomerPortalService {
                         {
                           $project: {
                             appliance: 1,
-                            customer: { fullName: '$customer.fullName' },
+                            customer: {
+                              firstName: '$customer.firstName',
+                              lastName: '$customer.lastName',
+                              displayName: mongoCustomerDisplayName(
+                                '$customer.firstName',
+                                '$customer.lastName',
+                                '$customer.fullName',
+                                'Customer',
+                              ),
+                            },
                           },
                         },
                       ],
@@ -1063,7 +1259,12 @@ export class CustomerPortalService {
                       status: 1,
                       createdAt: 1,
                       validUntil: 1,
-                      customerName: '$repairRequest.customer.fullName',
+                      customerName: mongoCustomerDisplayName(
+                        '$repairRequest.customer.firstName',
+                        '$repairRequest.customer.lastName',
+                        '$repairRequest.customer.fullName',
+                        'Customer',
+                      ),
                       appliance: '$repairRequest.appliance',
                     },
                   },
@@ -1100,7 +1301,9 @@ export class CustomerPortalService {
                       from: 'users',
                       localField: 'customerId',
                       foreignField: '_id',
-                      pipeline: [{ $project: { fullName: 1 } }],
+                      pipeline: [
+                        { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                      ],
                       as: 'customer',
                     },
                   },
@@ -1118,7 +1321,12 @@ export class CustomerPortalService {
                       title: 1,
                       reviewText: 1,
                       createdAt: 1,
-                      customerName: '$customer.fullName',
+                      customerName: mongoCustomerDisplayName(
+                        '$customer.firstName',
+                        '$customer.lastName',
+                        '$customer.fullName',
+                        'Customer',
+                      ),
                     },
                   },
                 ],
@@ -1142,18 +1350,8 @@ export class CustomerPortalService {
       ? (reviewData.distribution as Array<{ _id: number; count: number }>)
       : [];
     const repairStatuses = [
-      'confirmed',
-      'inspection_pending',
-      'inspection_in_progress',
-      'awaiting_customer_approval',
-      'inspection_approved',
-      'repair_declined',
-      'in_progress',
-      'on_hold',
-      'repair_completed',
-      'ready_for_pickup',
-      'picked_up',
-      'completed',
+      ...REPAIR_JOB_STATUSES,
+      ...LEGACY_REPAIR_JOB_STATUSES,
     ];
     const quotationStatuses = [
       'pending',
@@ -1327,7 +1525,7 @@ export class CustomerPortalService {
     ];
     const customers = await this.users
       .find({ _id: { $in: customerIds } })
-      .select('fullName location')
+      .select('firstName lastName fullName location')
       .lean()
       .exec();
     const customerMap = new Map(
@@ -1378,7 +1576,7 @@ export class CustomerPortalService {
       const search = filters.search?.trim().toLocaleLowerCase();
       return (
         !search ||
-        `${request._id.toString()} ${request.appliance} ${request.brand ?? ''} ${request.model ?? ''} ${request.description} ${customerMap.get(request.customerId.toString())?.fullName ?? ''}`
+        `${request._id.toString()} ${request.appliance} ${request.brand ?? ''} ${request.model ?? ''} ${request.description} ${formatUserName(customerMap.get(request.customerId.toString()) ?? {})}`
           .toLocaleLowerCase()
           .includes(search)
       );
@@ -1400,7 +1598,8 @@ export class CustomerPortalService {
         return {
           ...safeRequest,
           customer: {
-            fullName: customer?.fullName ?? 'Customer',
+            ...userNameParts(customer ?? {}),
+            displayName: formatUserName(customer ?? {}) || 'Customer',
             location:
               request.customerLatitude !== undefined &&
               request.customerLongitude !== undefined
@@ -1508,7 +1707,7 @@ export class CustomerPortalService {
     }
     const customer = await this.users
       .findById(request.customerId)
-      .select('fullName email countryCode mobileNumber location')
+      .select('firstName lastName fullName email countryCode mobileNumber location')
       .lean()
       .exec();
     if (!customer) {
@@ -1529,7 +1728,8 @@ export class CustomerPortalService {
       ...safeRequest,
       ...(acceptedByThisShop && repairJob ? { repairJob } : {}),
       customer: {
-        fullName: customer.fullName ?? 'Customer',
+        ...userNameParts(customer),
+        displayName: formatUserName(customer) || 'Customer',
         email: customer.email,
         phone:
           customer.countryCode && customer.mobileNumber
@@ -2037,6 +2237,11 @@ export class CustomerPortalService {
           .lean()
           .exec()
       : null;
+    const quotations = await this.quotations
+      .find({ repairRequestId: request._id })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
     const shopIds = request.shopIds ?? [];
     const assignedShops = shopIds.length
       ? await this.users
@@ -2075,20 +2280,13 @@ export class CustomerPortalService {
           declineReason: response?.declineReason,
         };
       }),
+      quotations,
       acceptedQuotation: quotation,
       shop: shop
         ? {
             id: shop._id.toString(),
             name: shop.shopDetails?.shopName ?? 'Repair shop',
-            address: [
-              shop.shopDetails?.address,
-              shop.shopDetails?.area,
-              shop.shopDetails?.city,
-              shop.shopDetails?.state,
-              shop.shopDetails?.postalCode,
-            ]
-              .filter(Boolean)
-              .join(', '),
+            address: formatShopAddress(shop.shopDetails),
             phone:
               shop.countryCode && shop.mobileNumber
                 ? `${shop.countryCode} ${shop.mobileNumber}`
@@ -3200,12 +3398,12 @@ export class CustomerPortalService {
           },
           {
             $project: {
-              customerName: {
-                $ifNull: [
-                  { $arrayElemAt: ['$customer.fullName', 0] },
-                  'Customer',
-                ],
-              },
+              customerName: mongoCustomerDisplayName(
+                { $arrayElemAt: ['$customer.firstName', 0] },
+                { $arrayElemAt: ['$customer.lastName', 0] },
+                { $arrayElemAt: ['$customer.fullName', 0] },
+                'Customer',
+              ),
               repairRequestId: 1,
               overallRating: 1,
               repairQuality: 1,
@@ -3264,6 +3462,324 @@ export class CustomerPortalService {
       throw new ForbiddenException('An active customer account is required.');
     }
     return user;
+  }
+
+  async getShopRepairRoute(
+    shopId: string,
+    requestId: string,
+  ): Promise<{
+    distanceMeters: number;
+    durationSeconds: number;
+    description: string;
+    path: RouteCoordinate[];
+  }> {
+    const shop = await this.requireApprovedShop(shopId);
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair request was not found');
+    }
+    const request = await this.repairRequests
+      .findOne({ _id: requestId, shopIds: shop._id })
+      .lean()
+      .exec();
+    if (!request) {
+      throw new NotFoundException('Repair request was not found');
+    }
+
+    const customer = await this.users
+      .findById(request.customerId)
+      .select('location')
+      .lean()
+      .exec();
+    if (!customer) {
+      throw new NotFoundException('Customer account was not found');
+    }
+    const origin = shop.shopDetails?.location;
+    const destination =
+      typeof request.customerLatitude === 'number' &&
+      typeof request.customerLongitude === 'number'
+        ? {
+            latitude: request.customerLatitude,
+            longitude: request.customerLongitude,
+          }
+        : customer.location;
+    if (!this.isValidRouteCoordinate(origin)) {
+      throw new BadRequestException(
+        'Add a valid shop location before requesting directions.',
+      );
+    }
+    if (!this.isValidRouteCoordinate(destination)) {
+      throw new BadRequestException(
+        'The customer has not provided a valid location for this request.',
+      );
+    }
+
+    const apiKey = this.config.get<string>('GOOGLE_APIKEY')?.trim();
+    if (!apiKey) {
+      throw new ServiceUnavailableException(
+        'Google Maps routing is not configured on the server.',
+      );
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(
+        'https://routes.googleapis.com/directions/v2:computeRoutes',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask':
+              'routes.distanceMeters,routes.duration,routes.description,routes.polyline.encodedPolyline',
+          },
+          body: JSON.stringify({
+            origin: {
+              location: {
+                latLng: {
+                  latitude: origin.latitude,
+                  longitude: origin.longitude,
+                },
+              },
+            },
+            destination: {
+              location: {
+                latLng: {
+                  latitude: destination.latitude,
+                  longitude: destination.longitude,
+                },
+              },
+            },
+            travelMode: 'DRIVE',
+            routingPreference: 'TRAFFIC_AWARE_OPTIMAL',
+            languageCode: 'en',
+          }),
+          signal: AbortSignal.timeout(10000),
+        },
+      );
+    } catch (error: unknown) {
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      this.logger.error(
+        `Google Routes API request could not be completed (${errorName}).`,
+      );
+      throw new BadGatewayException(
+        'Google Maps directions are temporarily unavailable.',
+      );
+    }
+    if (!response.ok) {
+      let providerStatus = 'unknown';
+      let providerMessage = 'No provider error details were returned.';
+      try {
+        const errorPayload: unknown = await response.json();
+        if (
+          errorPayload &&
+          typeof errorPayload === 'object' &&
+          'error' in errorPayload &&
+          errorPayload.error &&
+          typeof errorPayload.error === 'object'
+        ) {
+          const providerError = errorPayload.error as {
+            status?: unknown;
+            message?: unknown;
+          };
+          if (typeof providerError.status === 'string') {
+            providerStatus = providerError.status;
+          }
+          if (typeof providerError.message === 'string') {
+            providerMessage = providerError.message.slice(0, 500);
+          }
+        }
+      } catch {
+        providerMessage = 'The provider error response was not valid JSON.';
+      }
+      if (
+        response.status === 403 &&
+        providerStatus === 'PERMISSION_DENIED' &&
+        /Routes API.*(?:not been used|not enabled|disabled)/i.test(
+          providerMessage,
+        )
+      ) {
+        this.logger.warn(
+          'Google Routes API is not enabled for this project; trying the Directions API instead.',
+        );
+        return this.getGoogleDirectionsRoute(apiKey, origin, destination);
+      }
+      this.logger.error(
+        `Google Routes API request failed (HTTP ${response.status}, ${providerStatus}): ${providerMessage}`,
+      );
+      throw new BadGatewayException(
+        'Google Maps directions could not be calculated. Check the Routes API configuration.',
+      );
+    }
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new BadGatewayException(
+        'Google Maps returned an invalid directions response.',
+      );
+    }
+
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      !('routes' in payload) ||
+      !Array.isArray(payload.routes)
+    ) {
+      throw new BadGatewayException(
+        'Google Maps returned an invalid directions response.',
+      );
+    }
+
+    const routes = payload.routes as GoogleRoute[];
+    const fastest = routes
+      .map((route) => ({
+        route,
+        durationSeconds:
+          typeof route.duration === 'string'
+            ? Number.parseFloat(route.duration.replace(/s$/, ''))
+            : Number.NaN,
+      }))
+      .filter(
+        ({ route, durationSeconds }) =>
+          typeof route.distanceMeters === 'number' &&
+          Number.isFinite(route.distanceMeters) &&
+          durationSeconds >= 0 &&
+          typeof route.polyline?.encodedPolyline === 'string',
+      )
+      .sort((left, right) => left.durationSeconds - right.durationSeconds)[0];
+    if (!fastest || typeof fastest.route.distanceMeters !== 'number') {
+      throw new BadGatewayException(
+        'Google Maps did not find a driving route for these locations.',
+      );
+    }
+
+    return {
+      distanceMeters: fastest.route.distanceMeters,
+      durationSeconds: fastest.durationSeconds,
+      description: fastest.route.description?.trim() || 'Fastest driving route',
+      path: decodeGooglePolyline(fastest.route.polyline!.encodedPolyline!),
+    };
+  }
+
+  private async getGoogleDirectionsRoute(
+    apiKey: string,
+    origin: RouteCoordinate,
+    destination: RouteCoordinate,
+  ): Promise<ShopRepairRouteResult> {
+    const url = new URL('https://maps.googleapis.com/maps/api/directions/json');
+    url.searchParams.set('origin', `${origin.latitude},${origin.longitude}`);
+    url.searchParams.set(
+      'destination',
+      `${destination.latitude},${destination.longitude}`,
+    );
+    url.searchParams.set('mode', 'driving');
+    url.searchParams.set('key', apiKey);
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        signal: AbortSignal.timeout(10000),
+      });
+    } catch (error: unknown) {
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      this.logger.error(
+        `Google Directions API request could not be completed (${errorName}).`,
+      );
+      throw new BadGatewayException(
+        'Google Maps directions are temporarily unavailable.',
+      );
+    }
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new BadGatewayException(
+        'Google Maps returned an invalid directions response.',
+      );
+    }
+    if (!response.ok || !payload || typeof payload !== 'object') {
+      this.logger.error(
+        `Google Directions API request failed (HTTP ${response.status}).`,
+      );
+      throw new BadGatewayException(
+        'Google Maps directions could not be calculated. Check the Directions API configuration.',
+      );
+    }
+
+    const directionsResponse = payload as {
+      status?: unknown;
+      error_message?: unknown;
+      routes?: unknown;
+    };
+    const providerStatus =
+      typeof directionsResponse.status === 'string'
+        ? directionsResponse.status
+        : 'unknown';
+    const providerMessage =
+      typeof directionsResponse.error_message === 'string'
+        ? directionsResponse.error_message.slice(0, 500)
+        : 'No provider error details were returned.';
+    if (providerStatus !== 'OK' || !Array.isArray(directionsResponse.routes)) {
+      this.logger.error(
+        `Google Directions API request failed (${providerStatus}): ${providerMessage}`,
+      );
+      throw new BadGatewayException(
+        'Google Maps directions could not be calculated. Check the Directions API configuration.',
+      );
+    }
+
+    const fastest = (directionsResponse.routes as GoogleDirectionsRoute[])
+      .map((route) => {
+        const legs = Array.isArray(route.legs) ? route.legs : [];
+        return {
+          route,
+          distanceMeters: legs.reduce(
+            (total, leg) => total + (leg.distance?.value ?? Number.NaN),
+            0,
+          ),
+          durationSeconds: legs.reduce(
+            (total, leg) => total + (leg.duration?.value ?? Number.NaN),
+            0,
+          ),
+        };
+      })
+      .filter(
+        ({ distanceMeters, durationSeconds, route }) =>
+          Number.isFinite(distanceMeters) &&
+          distanceMeters >= 0 &&
+          Number.isFinite(durationSeconds) &&
+          durationSeconds >= 0 &&
+          typeof route.overview_polyline?.points === 'string',
+      )
+      .sort((left, right) => left.durationSeconds - right.durationSeconds)[0];
+    if (!fastest || !fastest.route.overview_polyline?.points) {
+      throw new BadGatewayException(
+        'Google Maps did not find a driving route for these locations.',
+      );
+    }
+
+    return {
+      distanceMeters: fastest.distanceMeters,
+      durationSeconds: fastest.durationSeconds,
+      description: fastest.route.summary?.trim() || 'Fastest driving route',
+      path: decodeGooglePolyline(fastest.route.overview_polyline.points),
+    };
+  }
+
+  private isValidRouteCoordinate(
+    location: RouteCoordinate | null | undefined,
+  ): location is RouteCoordinate {
+    return (
+      !!location &&
+      Number.isFinite(location.latitude) &&
+      location.latitude >= -90 &&
+      location.latitude <= 90 &&
+      Number.isFinite(location.longitude) &&
+      location.longitude >= -180 &&
+      location.longitude <= 180
+    );
   }
 
   private async requireApprovedShop(id: string) {
@@ -3404,7 +3920,7 @@ export class CustomerPortalService {
         brand?: string;
         model?: string;
       };
-      customer?: { fullName?: string };
+      customer?: { firstName?: string; lastName?: string };
       shop?: { shopName?: string };
     },
     filters: QuotationListQueryDto,
@@ -3453,7 +3969,10 @@ export class CustomerPortalService {
     if (
       !includes(filters.appliance, request?.appliance) ||
       !includes(filters.shop, quote.shop?.shopName) ||
-      !includes(filters.customer, quote.customer?.fullName)
+      !includes(
+        filters.customer,
+        formatUserName(quote.customer ?? {}),
+      )
     ) {
       return false;
     }
@@ -3468,7 +3987,7 @@ export class CustomerPortalService {
       request?.description,
       request?.brand,
       request?.model,
-      quote.customer?.fullName,
+      formatUserName(quote.customer ?? {}),
       quote.shop?.shopName,
     ]
       .filter(Boolean)

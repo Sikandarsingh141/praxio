@@ -65,6 +65,24 @@ export class ShopRepairRequestsController {
     };
   }
 
+  @Get(':id/directions')
+  @ApiOperation({
+    summary: 'Get driving directions for a repair request shared with this shop',
+  })
+  async getDirections(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+  ) {
+    return {
+      data: {
+        route: await this.repairRequests.getShopRepairRoute(
+          this.shopId(request),
+          requestId,
+        ),
+      },
+    };
+  }
+
   @Post(':id/quotation')
   @ApiOperation({
     summary: 'Accept a shared repair request and submit a quotation',

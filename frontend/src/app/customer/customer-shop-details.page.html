@@ -74,7 +74,17 @@
         </div>
         <div class="review-empty">
           <strong>Ratings and reviews</strong>
-          <span>Review data is not available yet.</span>
+          @if (shop.reviewCount > 0) {
+            <span>
+              @if (shop.rating !== null) {
+                {{ shop.rating | number: '1.1-1' }} / 5 ·
+              }
+              {{ shop.reviewCount }}
+              {{ shop.reviewCount === 1 ? 'review' : 'reviews' }}
+            </span>
+          } @else {
+            <span>No reviews yet.</span>
+          }
         </div>
       </section>
 

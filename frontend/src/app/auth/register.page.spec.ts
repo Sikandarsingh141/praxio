@@ -24,7 +24,12 @@ describe('RegisterPage', () => {
     const fixture = TestBed.createComponent(RegisterPage);
     fixture.detectChanges();
     const page = fixture.componentInstance;
-    page.form.setValue({ email: 'invalid', password: 'short' });
+    page.form.setValue({
+      firstName: 'Alex',
+      lastName: 'Repair',
+      email: 'invalid',
+      password: 'short',
+    });
 
     page.submit();
 
@@ -36,7 +41,12 @@ describe('RegisterPage', () => {
     const fixture = TestBed.createComponent(RegisterPage);
     fixture.detectChanges();
     const page = fixture.componentInstance;
-    page.form.setValue({ email: 'person@example.com', password: 'Abcdef1!' });
+    page.form.setValue({
+      firstName: 'Alex',
+      lastName: 'Repair',
+      email: 'person@example.com',
+      password: 'Abcdef1!',
+    });
 
     expect(page.form.valid).toBe(true);
   });
@@ -46,6 +56,8 @@ describe('RegisterPage', () => {
     fixture.detectChanges();
     const page = fixture.componentInstance;
     page.form.setValue({
+      firstName: 'Alex',
+      lastName: 'Repair',
       email: 'person@example.com',
       password: 'CorrectHorse7Battery',
     });

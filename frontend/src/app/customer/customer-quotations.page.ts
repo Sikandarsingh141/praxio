@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -10,6 +10,7 @@ import {
   FilterConfig,
   FilterValues,
 } from '../shared/common-filter.component';
+import { PaginationComponent } from '../shared/pagination.component';
 import { CustomerQuotation, QuotationListFilters } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
 
@@ -19,7 +20,7 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
 @Component({
   selector: 'app-customer-quotations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CommonFilterComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
   template: `
     <section class="page customer-quotations-page" aria-labelledby="title">
       <header class="heading">
@@ -243,7 +244,9 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
                 </details>
                 @if (quote.status === 'accepted') {
                   <div class="repair-active-row">
-                    <span class="repair-active-badge">Repair Active</span>
+                    <span class="repair-active-badge">
+                      {{ repairStatusLabel(quote.repairRequest) }}
+                    </span>
                     <a [routerLink]="['/customer/repair-requests', quote.repairRequest._id]">
                       Repair status
                     </a>
@@ -299,21 +302,14 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
             </article>
           }
         </div>
-        @if (total() > limit) {
-          <div class="pagination">
-            <button type="button" [disabled]="page() <= 1" (click)="changePage(page() - 1)">
-              Previous
-            </button>
-            <span>Page {{ page() }} of {{ pageCount() }}</span>
-            <button
-              type="button"
-              [disabled]="page() >= pageCount()"
-              (click)="changePage(page() + 1)"
-            >
-              Next
-            </button>
-          </div>
-        }
+        <app-pagination
+          [total]="total()"
+          [page]="page()"
+          [pageSize]="limit"
+          [disabled]="loading()"
+          ariaLabel="Customer quotations pages"
+          (pageChange)="changePage($event)"
+        />
       }
 
       @if (response(); as pending) {
@@ -500,9 +496,8 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly page = signal(1);
-  readonly limit = 10;
+  readonly limit = 5;
   readonly total = signal(0);
-  readonly pageCount = computed(() => Math.max(1, Math.ceil(this.total() / this.limit)));
   readonly compareQuotes = signal<CustomerQuotation[]>([]);
   readonly response = signal<{ quote: CustomerQuotation; status: 'accepted' | 'declined' } | null>(
     null,
@@ -589,6 +584,18 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
   }
   quotationStatusLabel(status: CustomerQuotation['status']): string {
     return status === 'declined' ? 'Rejected' : status;
+  }
+  repairStatusLabel(request: CustomerQuotation['repairRequest']): string {
+    if (request.status === 'cancelled') return 'Repair Cancelled';
+    if (request.status === 'completed' || request.repairJob?.status === 'completed') {
+      return 'Repair Completed';
+    }
+    if (request.repairJob?.status === 'repair_declined') return 'Repair Declined';
+    if (request.repairJob?.status === 'disputed') return 'Repair Disputed';
+    if (request.repairJob?.status === 'ready_for_pickup') return 'Ready for Pickup';
+    if (request.repairJob?.status === 'picked_up') return 'Picked Up';
+    if (request.repairJob?.status === 'repair_completed') return 'Repair Completed · Pickup Pending';
+    return 'Repair Active';
   }
   applyFilters(): void {
     this.page.set(1);

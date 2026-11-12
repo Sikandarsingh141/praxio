@@ -1,0 +1,176 @@
+:host {
+  display: block;
+  min-width: 0;
+  height: 100%;
+}
+
+.route-card {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid #e3ebe3;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 4%);
+}
+
+.route-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.route-icon {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e2f5e7;
+  color: #176b34;
+  font-size: 1.1rem;
+}
+
+.route-heading h2 {
+  margin: 0;
+  color: #176b34;
+  font-size: 0.95rem;
+}
+
+.route-heading p {
+  margin: 0.2rem 0 0;
+  color: #6d7c72;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.route-map {
+  position: relative;
+  min-height: 18rem;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #eef2ef;
+}
+
+.route-map-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 18rem;
+}
+
+.route-map-placeholder {
+  display: grid;
+  min-height: 18rem;
+  padding: 1.25rem;
+  place-items: center;
+  color: #68796e;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.route-error {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  left: 0.6rem;
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  background: #fff3f1;
+  color: #a34842;
+  font-size: 0.68rem;
+}
+
+.route-summary {
+  display: flex;
+  min-height: 3.3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.route-metric {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  color: #176b34;
+}
+
+.route-metric > span {
+  font-size: 1.05rem;
+}
+
+.route-metric div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.route-metric small {
+  color: #79867e;
+  font-size: 0.62rem;
+}
+
+.route-metric strong {
+  color: #176b34;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.route-choice {
+  flex: 1;
+}
+
+.route-choice strong {
+  color: #4b5c51;
+  font-size: 0.67rem;
+}
+
+.route-status {
+  flex: 1;
+  margin: 0;
+  color: #68796e;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.directions-button {
+  display: inline-flex;
+  min-height: 2.4rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.6rem;
+  background: #087c3b;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.directions-button:hover {
+  background: #05612e;
+}
+
+.directions-button.disabled {
+  background: #aab8ad;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1020px) {
+  .route-map,
+  .route-map-placeholder,
+  .route-map-canvas {
+    min-height: 22rem;
+  }
+}

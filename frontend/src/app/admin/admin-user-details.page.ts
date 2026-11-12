@@ -4,6 +4,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { LoaderDirective } from '../loaders/overlay/local/loader.directive';
+import { formatShopAddress } from '../shared/format-shop-address';
 import { LocationMapComponent } from '../shared/location-map.component';
 import { AdminService, AdminUserActivity, AdminUserDetails } from './admin.service';
 
@@ -70,18 +71,7 @@ export class AdminUserDetailsPage implements OnInit {
       return '';
     }
 
-    return [
-      user.shop.street,
-      user.shop.area,
-      user.shop.address,
-      user.shop.landmark,
-      user.shop.city,
-      user.shop.state,
-      user.shop.postalCode,
-      user.shop.country,
-    ]
-      .filter(Boolean)
-      .join(', ');
+    return formatShopAddress(user.shop);
   }
 
   scrollToSection(section: 'overview' | 'activity' | 'repair-requests' | 'quotations' | 'payments'): void {

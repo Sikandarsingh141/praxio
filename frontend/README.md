@@ -21,6 +21,16 @@ repository copy blank and inject the deployment value during release. Browser
 API keys are visible to users, so restrict them by HTTP referrer and enable
 Maps JavaScript API, Places API (New), and billing in Google Cloud.
 
+Shop repair-request directions use the server-side Google Routes API, with a
+Google Directions API fallback if Routes API is disabled for the key's project.
+Configure `GOOGLE_APIKEY` in `backend/.env`, enable the applicable API and
+billing in Google Cloud, and keep this server key out of frontend runtime
+configuration. The backend calculates the fastest driving route between saved
+shop and customer coordinates and displays its road distance and travel time;
+without a valid server key, enabled API, or saved locations, the page does not
+show estimated route values. The map uses OpenStreetMap tiles to avoid exposing
+the server key to the browser.
+
 Run frontend tests and a production build with:
 
 ```powershell

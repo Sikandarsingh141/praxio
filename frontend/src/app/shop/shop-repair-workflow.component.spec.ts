@@ -18,7 +18,7 @@ describe('ShopRepairWorkflowComponent', () => {
       photos: [],
       status: 'open',
       createdAt: new Date().toISOString(),
-      customer: { fullName: 'Customer' },
+      customer: { firstName: 'Customer', lastName: 'Example' },
       shopResponse: { status: 'customer_accepted' },
       quotations: [
         {
@@ -65,5 +65,51 @@ describe('ShopRepairWorkflowComponent', () => {
     expect(fixture.componentInstance.findings()).toBe('Motor winding is damaged');
     expect(findings.value).toBe('Motor winding is damaged');
     expect(fixture.nativeElement.textContent).toContain('Submit Inspection & Request Approval');
+  });
+
+  it('handles saved inspections with missing parts arrays', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ShopRepairWorkflowComponent],
+      providers: [{ provide: ShopRepairRequestsService, useValue: {} }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ShopRepairWorkflowComponent);
+    const request: ShopRepairRequest = {
+      _id: 'request-1',
+      appliance: 'Washing machine',
+      description: 'It does not spin',
+      photos: [],
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      customer: { firstName: 'Customer', lastName: 'Example' },
+      shopResponse: { status: 'customer_accepted' },
+      quotations: [],
+      repairJob: {
+        status: 'inspection_in_progress',
+        inspection: {
+          status: 'draft',
+          identifiedProblem: 'Broken motor',
+          findings: 'Motor winding is damaged',
+          requiredRepairWork: 'Replace the motor',
+          parts: [],
+          partsTotal: 0,
+          labourCharge: 20,
+          inspectionCharges: 10,
+          otherCharges: 0,
+          estimatedTotal: 30,
+          images: [],
+        },
+      },
+    };
+    const savedInspection = request.repairJob?.inspection;
+    if (!savedInspection) {
+      throw new Error('Inspection fixture is required.');
+    }
+    Object.defineProperty(savedInspection, 'parts', { value: undefined });
+    fixture.componentRef.setInput('request', request);
+    expect(() => fixture.detectChanges()).not.toThrow();
+    expect(fixture.componentInstance.inspectionParts()).toEqual([
+      { name: '', quantity: 1, unitPrice: 0 },
+    ]);
   });
 });

@@ -59,6 +59,10 @@ describe('AdminRepairMonitorPage', () => {
     repairStatuses: [
       { status: 'in_progress', count: 4 },
       { status: 'completed', count: 3 },
+      { status: 'confirmed', count: 2 },
+      { status: 'inspection_pending', count: 1 },
+      { status: 'ready_for_pickup', count: 1 },
+      { status: 'picked_up', count: 1 },
     ],
     quotationStatuses: [],
     categories: [],
@@ -99,15 +103,33 @@ describe('AdminRepairMonitorPage', () => {
     flushInitialRequests();
     fixture.detectChanges();
 
+    const metrics = fixture.nativeElement.querySelectorAll(
+      '.summary-grid .summary-card strong',
+    ) as NodeListOf<HTMLElement>;
+    const statusOptions = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        'select option',
+      ) as NodeListOf<HTMLOptionElement>,
+      (option) => option.value,
+    );
     const text = fixture.nativeElement.textContent as string;
+    for (const status of [
+      'inspection_pending',
+      'inspection_in_progress',
+      'awaiting_customer_approval',
+      'inspection_approved',
+      'repair_declined',
+      'disputed',
+    ]) {
+      expect(statusOptions).toContain(status);
+    }
     expect(text).toContain('12');
     expect(text).toContain('Total repairs');
-    expect(text).toContain('4');
     expect(text).toContain('In progress');
-    expect(text).toContain('3');
     expect(text).toContain('Completed');
+    expect(metrics[1].textContent?.trim()).toBe('7');
+    expect(metrics[2].textContent?.trim()).toBe('5');
     expect(text).toContain('1');
-    expect(text).not.toContain('Disputed');
     expect(text).toContain('No repair jobs match this status.');
   });
 
@@ -124,12 +146,12 @@ describe('AdminRepairMonitorPage', () => {
         data: {
           jobs: [
             {
-              _id: '507f1f77bcf86cd799439011',
+              _id: '507f1f77bcf86cd709a3ca32',
               appliance: 'Laptop',
               description: 'Screen is cracked.',
               createdAt: '2026-03-01T10:00:00.000Z',
               updatedAt: '2026-03-02T10:00:00.000Z',
-              customer: { fullName: 'Customer Example', email: 'customer@example.com' },
+              customer: { firstName: 'Customer', lastName: 'Example', email: 'customer@example.com' },
               repairJob: { status: 'confirmed' },
             },
           ],
@@ -142,7 +164,68 @@ describe('AdminRepairMonitorPage', () => {
 
     const link = fixture.nativeElement.querySelector('.details-link') as HTMLAnchorElement;
     expect(link.textContent).toContain('View details');
-    expect(link.getAttribute('href')).toBe('/admin/repair-jobs/507f1f77bcf86cd799439011');
+    expect(link.getAttribute('href')).toBe('/admin/repair-jobs/507f1f77bcf86cd709a3ca32');
+    expect(fixture.nativeElement.querySelector('.request-id')?.textContent?.trim()).toBe(
+      'Request ID: 09A3CA32',
+    );
+  });
+
+  it('shows all completed repairs with completion details and a full-details link', () => {
+    const fixture = TestBed.createComponent(AdminRepairMonitorPage);
+    fixture.detectChanges();
+    flushInitialRequests();
+
+    const completedTab = Array.from(
+      fixture.nativeElement.querySelectorAll('.monitor-tabs button') as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Completed repairs'));
+    expect(completedTab).toBeDefined();
+    completedTab?.click();
+    fixture.detectChanges();
+
+    const completedRequest = httpTestingController.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/admin/repair-jobs`,
+    );
+    expect(completedRequest.request.params.get('status')).toBe('completed');
+    expect(completedRequest.request.params.has('from')).toBeFalse();
+    expect(completedRequest.request.params.has('to')).toBeFalse();
+    completedRequest.flush({
+      data: {
+        jobs: [
+          {
+            _id: '507f1f77bcf86cd799439012',
+            appliance: 'Laptop',
+            description: 'Screen replacement',
+            createdAt: '2025-01-01T10:00:00.000Z',
+            updatedAt: '2025-01-03T10:00:00.000Z',
+            customer: { firstName: 'Customer', lastName: 'Example', email: 'customer@example.com' },
+            shopName: 'Repair Shop',
+            quotation: { amount: 125, currency: 'INR' },
+            repairJob: {
+              status: 'completed',
+              completedAt: '2025-01-03T10:00:00.000Z',
+              approvedRepairAmount: 125,
+              completionDescription: 'Screen replaced and tested.',
+              workPerformed: 'Replaced display panel.',
+              partsReplaced: 'LCD panel',
+              history: [{ action: 'completed', at: '2025-01-03T10:00:00.000Z' }],
+            },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 1,
+      },
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Showing completed repairs across all dates.');
+    expect(text).toContain('Screen replaced and tested.');
+    expect(text).toContain('Replaced display panel.');
+    expect(text).toContain('LCD panel');
+    expect(text).toContain('View status history');
+    const link = fixture.nativeElement.querySelector('.details-link') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/admin/repair-jobs/507f1f77bcf86cd799439012');
   });
 
   it('applies selected date and status filters to repair requests', () => {

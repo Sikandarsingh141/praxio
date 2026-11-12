@@ -42,7 +42,8 @@ describe('AdminUserDetailsPage', () => {
     httpTestingController.expectOne(`${environment.apiBaseUrl}/admin/users/user-id`).flush({
       data: {
         id: 'user-id',
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         email: 'customer@example.com',
         countryCode: '',
         mobileNumber: '',
@@ -79,7 +80,8 @@ describe('AdminUserDetailsPage', () => {
     request.flush({
       data: {
         id: 'user-id',
-        fullName: 'Shop Owner',
+        firstName: 'Shop',
+        lastName: 'Owner',
         email: 'shop@example.com',
         countryCode: '+91',
         mobileNumber: '9876543210',
@@ -94,7 +96,7 @@ describe('AdminUserDetailsPage', () => {
           businessType: 'Repair',
           description: 'Repair services',
           yearsOfExperience: 5,
-          address: 'Main Road',
+          address: 'Main Road, Delhi, Delhi, 110001, India',
           street: '',
           area: '',
           city: 'Delhi',
@@ -116,7 +118,17 @@ describe('AdminUserDetailsPage', () => {
           paymentCurrency: 'usd',
           paidAt: null,
         },
-        repairActivity: [],
+        repairActivity: [
+          {
+            id: 'completed-repair',
+            appliance: 'Washing machine',
+            description: 'Repair completed',
+            status: 'completed',
+            repairStatus: 'completed',
+            createdAt: '2026-01-02T00:00:00.000Z',
+            preferredServiceDate: null,
+          },
+        ],
         quotationActivity: [],
       },
     });
@@ -139,13 +151,18 @@ describe('AdminUserDetailsPage', () => {
       });
     harness.detectChanges();
 
-    expect(page.user()?.fullName).toBe('Shop Owner');
+    expect(page.user()?.firstName).toBe('Shop');
+    expect(page.shopAddress(page.user()!)).toBe('Main Road, Delhi, 110001, India');
     expect(harness.routeNativeElement?.textContent).toContain('Example Repairs');
     expect(harness.routeNativeElement?.textContent).toContain('shop@example.com');
     expect(harness.routeNativeElement?.textContent).toContain('Registration details');
     expect(harness.routeNativeElement?.textContent).toContain('Payment details');
     expect(harness.routeNativeElement?.textContent).toContain('Administrative activity');
     expect(harness.routeNativeElement?.textContent).toContain('Registration Approved');
+    expect(harness.routeNativeElement?.textContent).toContain('Request status: Completed');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Request status: Active');
+    expect(harness.routeNativeElement?.textContent).not.toContain('Repair status: Completed');
+    expect(harness.routeNativeElement?.querySelector('.repair-status-link')).toBeTruthy();
     expect(harness.routeNativeElement?.querySelector('#repair-requests')).toBeTruthy();
     expect(harness.routeNativeElement?.querySelector('#quotations')).toBeTruthy();
     expect(harness.routeNativeElement?.querySelector('.profile-tabs')?.textContent).toContain(
@@ -178,7 +195,8 @@ describe('AdminUserDetailsPage', () => {
     httpTestingController.expectOne(`${environment.apiBaseUrl}/admin/users/user-id`).flush({
       data: {
         id: 'user-id',
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         email: 'customer@example.com',
         countryCode: '',
         mobileNumber: '',

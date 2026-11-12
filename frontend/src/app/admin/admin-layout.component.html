@@ -33,7 +33,7 @@
               {{ getUserInitial() }}
             </span>
           }
-          <span class="account-name">{{ getUserFullName() }}</span>
+          <span class="account-name">{{ getUserDisplayName() }}</span>
           <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="m5 7.5 5 5 5-5" />
           </svg>
@@ -41,9 +41,17 @@
         @if (accountMenuOpen()) {
           <div class="account-dropdown" role="menu">
             <div class="dropdown-identity">
-              <strong>{{ getUserFullName() }}</strong>
+              <strong>{{ getUserDisplayName() }}</strong>
               <span>{{ authService.currentUser()?.email }}</span>
             </div>
+            <a
+              class="dropdown-item"
+              routerLink="/admin/profile"
+              role="menuitem"
+              (click)="closeAccountMenu()"
+            >
+              My profile
+            </a>
             <button
               class="dropdown-item sign-out-menu-item"
               type="button"
@@ -69,6 +77,12 @@
         ><svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M4 13h6V4H4zm10 7h6v-9h-6zm0-16v3h6V4zM4 20h6v-3H4z" /></svg
         >Dashboard</a
+      >
+      <a class="admin-nav" routerLink="/admin/profile" routerLinkActive="active"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="3" />
+          <path d="M5 20a7 7 0 0 1 14 0" /></svg
+        >My profile</a
       >
       <a
         class="admin-nav"

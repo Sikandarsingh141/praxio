@@ -44,7 +44,7 @@
         <select
           aria-label="Sort requests"
           [ngModel]="sortOrder()"
-          (ngModelChange)="sortOrder.set($event)"
+          (ngModelChange)="changeSortOrder($event)"
         >
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
@@ -89,7 +89,7 @@
       <p class="action-error" role="alert">{{ actionError() }}</p>
     }
     <div class="request-list">
-      @for (request of visibleRequests(); track request._id) {
+      @for (request of pagedRequests(); track request._id) {
         <article class="request-card">
           <div class="request-summary">
             @if (request.photos?.length) {
@@ -158,6 +158,13 @@
                   }
                 }
               </div>
+              <app-pagination
+                [total]="visibleRequests().length"
+                [page]="page()"
+                [pageSize]="pageSize"
+                ariaLabel="Repair request pages"
+                (pageChange)="goToPage($event)"
+              />
             }
             @if (request.quotations.length) {
               @for (quote of request.quotations; track quote._id) {

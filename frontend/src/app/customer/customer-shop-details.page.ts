@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ShopSearchResult } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
+import { formatShopAddress } from '../shared/format-shop-address';
 import { ShopResultsMapComponent } from './shop-results-map.component';
 
 @Component({
@@ -48,10 +49,6 @@ export class CustomerShopDetailsPage implements OnInit {
 
   get address(): string {
     const shop = this.shop();
-    return shop
-      ? [shop.address, shop.area, shop.city, shop.state, shop.postalCode, shop.country]
-          .filter(Boolean)
-          .join(', ')
-      : '';
+    return shop ? formatShopAddress(shop) : '';
   }
 }

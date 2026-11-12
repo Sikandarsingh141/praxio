@@ -2611,3 +2611,628 @@ a {
   outline: 3px solid #7ba995;
   outline-offset: 3px;
 }
+
+.request-details-page {
+  .request-id {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    background: #eaf7ec;
+    color: #176b34;
+    font-size: 0.68rem;
+    font-weight: 650;
+  }
+
+  .request-id strong {
+    font-weight: 800;
+  }
+
+  .request-progress {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin: 1rem 0 0.85rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .request-progress::before {
+    position: absolute;
+    top: 0.72rem;
+    right: 12.5%;
+    left: 12.5%;
+    height: 2px;
+    background: #dce5de;
+    content: '';
+  }
+
+  .request-progress li {
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: 0.3rem;
+    color: #728078;
+    text-align: center;
+  }
+
+  .progress-marker {
+    display: grid;
+    width: 1.45rem;
+    height: 1.45rem;
+    place-items: center;
+    border: 1px solid #bac8bd;
+    border-radius: 50%;
+    background: #fff;
+    color: #6b796f;
+    font-size: 0.65rem;
+    font-weight: 750;
+  }
+
+  .request-progress li.completed .progress-marker,
+  .request-progress li.current .progress-marker {
+    border-color: #087c3b;
+    background: #087c3b;
+    color: #fff;
+  }
+
+  .request-progress li strong {
+    font-size: 0.65rem;
+    font-weight: 650;
+  }
+
+  .request-progress li.current strong {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #e6f5e9;
+    color: #176b34;
+  }
+
+  .request-progress time {
+    color: #87938a;
+    font-size: 0.58rem;
+  }
+
+  .card-heading small {
+    color: #78877d;
+    font-size: 0.62rem;
+    font-weight: 550;
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  }
+
+  .photo-grid a {
+    display: grid;
+    min-height: 6rem;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #e3e9e3;
+    border-radius: 0.6rem;
+    background: #fafcfb;
+  }
+
+  .photo-grid img {
+    width: 100%;
+    height: 8rem;
+    object-fit: cover;
+  }
+
+  .diagnosis-pending,
+  .diagnosis-summary {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.8rem;
+    border: 1px solid #e3eee5;
+    border-radius: 0.65rem;
+    background: #f5faf6;
+  }
+
+  .diagnosis-pending strong,
+  .diagnosis-summary strong {
+    color: #40594a;
+    font-size: 0.76rem;
+  }
+
+  .diagnosis-pending p,
+  .diagnosis-summary p {
+    margin: 0;
+    color: #6b7b70;
+    font-size: 0.68rem;
+    line-height: 1.5;
+  }
+
+  .diagnosis-pending::before {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: #20a34a;
+    box-shadow: 0 0 0 3px #dff3e4;
+    content: '';
+  }
+
+  .quotation-table-wrap {
+    overflow-x: auto;
+  }
+
+  .quotation-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #37463b;
+    font-size: 0.68rem;
+    text-align: left;
+  }
+
+  .quotation-table th {
+    padding: 0.55rem 0.65rem;
+    background: #f4f7f5;
+    color: #3e4b42;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .quotation-table td {
+    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid #e8eee9;
+    vertical-align: middle;
+  }
+
+  .quotation-amount {
+    font-weight: 750;
+    white-space: nowrap;
+  }
+
+  .quotation-status {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: #edf5ef;
+    color: #36734a;
+    font-size: 0.62rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .quotation-status[data-status='rejected'],
+  .quotation-status[data-status='declined'] {
+    background: #fff0ef;
+    color: #a14c43;
+  }
+
+  .quotation-details summary {
+    color: #176b34;
+    cursor: pointer;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .quotation-details > div {
+    display: grid;
+    min-width: 12rem;
+    gap: 0.25rem;
+    padding: 0.45rem 0;
+    color: #6b7b70;
+    font-size: 0.63rem;
+    white-space: normal;
+  }
+
+  .quotation-details p {
+    margin: 0;
+  }
+
+  @media (max-width: 540px) {
+    .request-progress {
+      gap: 0.2rem;
+    }
+
+    .request-progress li strong {
+      font-size: 0.55rem;
+    }
+
+    .request-progress time {
+      display: none;
+    }
+  }
+
+  .repair-job-page {
+    .request-id {
+      min-height: 0;
+      gap: 0.35rem;
+      margin: -0.5rem 0 0.75rem;
+      padding: 0.35rem 0.65rem;
+      border-color: #d7eddb;
+      border-radius: 999px;
+      background: #eaf7ec;
+      font-size: 0.7rem;
+    }
+
+    .request-id svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .request-id strong {
+      font-size: 0.75rem;
+    }
+
+    .job-header {
+      align-items: center;
+      margin-bottom: 0.4rem;
+    }
+
+    .job-header h1 {
+      margin-top: 0.2rem;
+      font-size: clamp(1.45rem, 2.5vw, 1.8rem);
+    }
+
+    .job-header .status-badge {
+      margin-top: 0;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.7rem;
+    }
+
+    .request-progress {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.6rem;
+      margin: 0.8rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .request-progress::before {
+      position: absolute;
+      top: 0.72rem;
+      right: 12.5%;
+      left: 12.5%;
+      height: 2px;
+      background: #dce5de;
+      content: '';
+    }
+
+    .request-progress li {
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 0.25rem;
+      color: #728078;
+      text-align: center;
+    }
+
+    .progress-marker {
+      display: grid;
+      width: 1.45rem;
+      height: 1.45rem;
+      place-items: center;
+      border: 1px solid #bac8bd;
+      border-radius: 50%;
+      background: #fff;
+      color: #6b796f;
+      font-size: 0.65rem;
+      font-weight: 750;
+    }
+
+    .request-progress li.completed .progress-marker,
+    .request-progress li.current .progress-marker {
+      border-color: #087c3b;
+      background: #087c3b;
+      color: #fff;
+    }
+
+    .request-progress li strong {
+      font-size: 0.65rem;
+      font-weight: 650;
+    }
+
+    .request-progress li.current strong {
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      background: #e6f5e9;
+      color: #176b34;
+    }
+
+    .request-progress time {
+      color: #87938a;
+      font-size: 0.58rem;
+    }
+
+    .customer-detail-grid {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.95fr) minmax(300px, 1.2fr);
+      align-items: stretch;
+      gap: 0.75rem;
+    }
+
+    .request-summary-card {
+      min-width: 0;
+      padding: 0.9rem;
+      border-color: #e3ebe3;
+      border-radius: 0.85rem;
+      box-shadow: 0 2px 8px rgb(20 40 28 / 4%);
+    }
+
+    .request-summary-card:not(.customer-quotations-card) {
+      grid-row: 1;
+    }
+
+    .request-summary-card.photos-summary-card,
+    .request-summary-card.diagnosis-summary-card {
+      grid-row: 2;
+    }
+
+    .request-summary-card.route-summary-card {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+    }
+
+    .request-summary-card .panel-heading {
+      min-height: 2rem;
+      gap: 0.5rem;
+      margin: 0 0 0.65rem;
+      padding: 0;
+      background: none;
+      color: #176b34;
+      font-size: 0.88rem;
+    }
+
+    .summary-icon {
+      display: grid;
+      width: 1.8rem;
+      height: 1.8rem;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: #e2f5e7;
+      color: #176b34;
+      font-size: 0.9rem;
+    }
+
+    .request-summary-card .panel-heading small {
+      color: #738178;
+      font-size: 0.62rem;
+      font-weight: 550;
+    }
+
+    .request-summary-card .details {
+      gap: 0;
+    }
+
+    .request-summary-card .details > div {
+      grid-template-columns: minmax(5.5rem, 0.75fr) minmax(0, 1.25fr);
+      align-items: start;
+      gap: 0.6rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid #edf1ed;
+    }
+
+    .request-summary-card .details dt,
+    .request-summary-card .details dd {
+      font-size: 0.68rem;
+      line-height: 1.45;
+    }
+
+    .request-summary-card .details dt {
+      color: #79877d;
+    }
+
+    .request-summary-card .details dd {
+      color: #33463a;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .request-summary-card > p {
+      font-size: 0.72rem;
+    }
+
+    .request-summary-card .assigned-shops li {
+      grid-template-columns: 2.2rem minmax(0, 1fr);
+      gap: 0.6rem;
+      padding: 0.45rem 0;
+      font-size: 0.72rem;
+    }
+
+    .request-summary-card .shop-avatar {
+      width: 2.2rem;
+      font-size: 0.75rem;
+    }
+
+    .request-summary-card .assigned-shops strong {
+      font-size: 0.78rem;
+    }
+
+    .request-summary-card .shop-identity > span {
+      font-size: 0.68rem;
+    }
+
+    .request-summary-card .detail-photos {
+      grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+    }
+
+    .request-summary-card .detail-photos img {
+      aspect-ratio: 1;
+    }
+
+    .diagnosis-callout,
+    .route-preview {
+      display: grid;
+      gap: 0.35rem;
+      padding: 0.75rem;
+      border: 1px solid #e3eee5;
+      border-radius: 0.65rem;
+      background: #f5faf6;
+    }
+
+    .diagnosis-callout strong,
+    .route-preview strong {
+      color: #40594a;
+      font-size: 0.75rem;
+    }
+
+    .diagnosis-callout p,
+    .route-preview p {
+      margin: 0;
+      color: #6b7b70;
+      font-size: 0.67rem;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .diagnosis-pending {
+      border-color: #dceee0;
+      background: #f0f9f2;
+    }
+
+    .route-preview {
+      grid-template-columns: 2rem minmax(0, 1fr);
+      align-items: center;
+      min-height: 5rem;
+    }
+
+    .route-pin {
+      display: grid;
+      width: 1.8rem;
+      height: 1.8rem;
+      place-items: center;
+      border-radius: 50%;
+      background: #dff3e4;
+      color: #087c3b;
+      font-size: 1rem;
+    }
+
+    .route-pending {
+      min-height: 5rem;
+    }
+
+    .map-directions-button {
+      gap: 0.35rem;
+      margin-top: 0.65rem;
+      background: #087c3b;
+      color: #fff;
+    }
+
+    .customer-quotations-card {
+      grid-column: 1 / -1;
+    }
+
+    .quotation-table-wrap {
+      overflow-x: auto;
+    }
+
+    .customer-quotation-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: #37463b;
+      font-size: 0.68rem;
+      text-align: left;
+    }
+
+    .customer-quotation-table th {
+      padding: 0.55rem 0.65rem;
+      background: #f4f7f5;
+      color: #3e4b42;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .customer-quotation-table td {
+      padding: 0.55rem 0.65rem;
+      border-bottom: 1px solid #e8eee9;
+      vertical-align: middle;
+    }
+
+    .customer-quotation-table .quote-amount {
+      color: #263d2e;
+      font-size: 0.72rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .quotation-status {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      background: #edf5ef;
+      color: #36734a;
+      font-size: 0.62rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .quotation-status[data-status='rejected'],
+    .quotation-status[data-status='declined'] {
+      background: #fff0ef;
+      color: #a14c43;
+    }
+
+    .more-request-details {
+      margin-top: 0.8rem;
+      border: 1px solid #e3ebe3;
+      border-radius: 0.75rem;
+      background: #fff;
+    }
+
+    .more-request-details > summary {
+      padding: 0.75rem 0.9rem;
+      color: #477656;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .more-request-details[open] {
+      padding-bottom: 0.8rem;
+    }
+
+    .more-request-details > .job-grid {
+      margin: 0 0.8rem;
+    }
+
+    @media (max-width: 1020px) {
+      .customer-detail-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .request-summary-card:not(.customer-quotations-card),
+      .photos-summary-card,
+      .diagnosis-summary-card,
+      .route-summary-card {
+        grid-column: auto;
+        grid-row: auto;
+      }
+
+      .request-summary-card.route-summary-card,
+      .customer-quotations-card {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .customer-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .request-summary-card.route-summary-card,
+      .customer-quotations-card {
+        grid-column: auto;
+      }
+
+      .request-progress {
+        gap: 0.2rem;
+      }
+
+      .request-progress li strong {
+        font-size: 0.55rem;
+      }
+
+      .request-progress time {
+        display: none;
+      }
+    }
+  }
+}

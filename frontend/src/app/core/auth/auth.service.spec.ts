@@ -36,14 +36,61 @@ describe('AuthService', () => {
     expect(service.isAuthenticated()).toBe(true);
   });
 
+  it('fetches paginated shop invoices for the authenticated account', () => {
+    let result: unknown;
+    service.getMyShopInvoices(2).subscribe((invoices) => (result = invoices));
+    const request = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/payments/invoices?page=2`,
+    );
+    expect(request.request.method).toBe('GET');
+    const page = {
+      invoices: [],
+      pagination: { page: 2, limit: 5, total: 6, totalPages: 2 },
+    };
+    request.flush({ data: page });
+
+    expect(result).toEqual(page);
+  });
+
+  it('shares an in-flight profile lookup and reuses the loaded user', () => {
+    const firstResults: Array<UserProfile | null> = [];
+    const secondResults: Array<UserProfile | null> = [];
+    service.getCurrentUser().subscribe((profile) => firstResults.push(profile));
+    service.getCurrentUser().subscribe((profile) => secondResults.push(profile));
+
+    httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`).flush({
+      data: { user },
+    });
+
+    expect(firstResults).toEqual([user]);
+    expect(secondResults).toEqual([user]);
+    service.getCurrentUser().subscribe((profile) => expect(profile).toEqual(user));
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
+  });
+
   it('updates the cached user profile after saving a name', () => {
-    service.updateMyProfile('Updated Person').subscribe();
+    service.updateMyProfile('Updated', 'Person').subscribe();
     const request = httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me/profile`);
     expect(request.request.method).toBe('PATCH');
-    expect(request.request.body).toEqual({ fullName: 'Updated Person' });
-    request.flush({ data: { user: { ...user, fullName: 'Updated Person' } } });
+    expect(request.request.body).toEqual({
+      firstName: 'Updated',
+      lastName: 'Person',
+    });
+    request.flush({ data: { user: { ...user, firstName: 'Updated', lastName: 'Person' } } });
 
-    expect(service.currentUser()?.fullName).toBe('Updated Person');
+    expect(service.currentUser()?.firstName).toBe('Updated');
+    expect(service.currentUser()?.lastName).toBe('Person');
+  });
+
+  it('changes the authenticated user password without returning password data', () => {
+    service.changeMyPassword('OldPassword1', 'NewPassword2').subscribe();
+    const request = httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me/password`);
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body).toEqual({
+      currentPassword: 'OldPassword1',
+      newPassword: 'NewPassword2',
+    });
+    request.flush({ data: { changed: true } });
   });
 
   it('fetches public geocoded suggestions for shop registration', () => {
@@ -133,9 +180,7 @@ describe('AuthService', () => {
       location: null,
     };
     let updatedProfile: unknown;
-    service
-      .updateMyShopBusinessDetails(update)
-      .subscribe((profile) => (updatedProfile = profile));
+    service.updateMyShopBusinessDetails(update).subscribe((profile) => (updatedProfile = profile));
     const request = httpTestingController.expectOne(
       `${environment.apiBaseUrl}/shops/my-profile/business-details`,
     );
@@ -143,7 +188,8 @@ describe('AuthService', () => {
     expect(request.request.body).toEqual(update);
     const profile = {
       shopName: 'Updated Repairs',
-      ownerName: 'Shop Owner',
+      ownerFirstName: 'Shop',
+      ownerLastName: 'Owner',
       email: user.email,
     };
     request.flush({ data: { profile } });

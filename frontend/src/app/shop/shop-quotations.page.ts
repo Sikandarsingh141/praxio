@@ -10,6 +10,7 @@ import {
   FilterConfig,
   FilterValues,
 } from '../shared/common-filter.component';
+import { PaginationComponent } from '../shared/pagination.component';
 import { ShopQuotationFilters, ShopQuotationPage } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 
@@ -18,7 +19,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
 @Component({
   selector: 'app-shop-quotations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CommonFilterComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
   template: `
     <section class="page shop-quotations-page" aria-labelledby="title">
       <header class="heading">
@@ -141,7 +142,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
                   <span class="eyebrow"
                     >REQUEST #{{ quote.repairRequestId.slice(-8).toUpperCase() }}</span
                   >
-                  <h2>{{ quote.customer.fullName }}</h2>
+                  <h2>{{ quote.customer.displayName || (quote.customer.firstName + ' ' + quote.customer.lastName) }}</h2>
                   <p class="device-name">
                     {{ quote.repairRequest.appliance
                     }}{{ quote.repairRequest.brand ? ' · ' + quote.repairRequest.brand : ''
@@ -202,21 +203,14 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
             </article>
           }
         </div>
-        @if (total() > limit) {
-          <div class="pagination">
-            <button type="button" [disabled]="page() <= 1" (click)="changePage(page() - 1)">
-              Previous
-            </button>
-            <span>Page {{ page() }} of {{ pageCount() }}</span>
-            <button
-              type="button"
-              [disabled]="page() >= pageCount()"
-              (click)="changePage(page() + 1)"
-            >
-              Next
-            </button>
-          </div>
-        }
+        <app-pagination
+          [total]="total()"
+          [page]="page()"
+          [pageSize]="limit"
+          [disabled]="loading()"
+          ariaLabel="Shop quotations pages"
+          (pageChange)="changePage($event)"
+        />
       }
     </section>
   `,
@@ -351,9 +345,8 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly page = signal(1);
-  readonly limit = 10;
+  readonly limit = 5;
   readonly total = signal(0);
-  readonly pageCount = () => Math.max(1, Math.ceil(this.total() / this.limit));
   readonly appliedFilters = signal<FilterValues>({});
   readonly filterConfig: FilterConfig = {
     title: 'Quotation filters',

@@ -56,4 +56,27 @@ describe('ShopRepairRequestsService', () => {
       },
     });
   });
+
+  it('requests directions for a repair request without sending client coordinates', () => {
+    service.getDirections('request/123').subscribe((route) => {
+      expect(route.distanceMeters).toBe(4800);
+      expect(route.path).toEqual([{ latitude: 30.72, longitude: 76.72 }]);
+    });
+
+    const request = http.expectOne(
+      `${environment.apiBaseUrl}/shop/repair-requests/request%2F123/directions`,
+    );
+    expect(request.request.method).toBe('GET');
+    expect(request.request.body).toBeNull();
+    request.flush({
+      data: {
+        route: {
+          distanceMeters: 4800,
+          durationSeconds: 720,
+          description: 'Fastest driving route',
+          path: [{ latitude: 30.72, longitude: 76.72 }],
+        },
+      },
+    });
+  });
 });

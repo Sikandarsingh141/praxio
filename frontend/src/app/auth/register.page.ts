@@ -22,6 +22,8 @@ export class RegisterPage {
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
   readonly form = this.formBuilder.nonNullable.group({
+    firstName: ['', [Validators.required, Validators.maxLength(50)]],
+    lastName: ['', [Validators.required, Validators.maxLength(50)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
     password: [
       '',
@@ -43,9 +45,9 @@ export class RegisterPage {
     this.errorMessage.set('');
     this.successMessage.set('');
     this.submitting.set(true);
-    const { email, password } = this.form.getRawValue();
+    const { firstName, lastName, email, password } = this.form.getRawValue();
     this.authService
-      .register(email, password)
+      .register(firstName.trim(), lastName.trim(), email, password)
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
         next: () => {

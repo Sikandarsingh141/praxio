@@ -10,7 +10,8 @@ describe('ShopProfileEditorComponent', () => {
     businessType: 'Electronics Repair Shop',
     description: 'Repair services',
     yearsOfExperience: 5,
-    ownerName: 'Shop Owner',
+    ownerFirstName: 'Shop',
+    ownerLastName: 'Owner',
     email: 'shop@example.com',
     countryCode: '+91',
     mobileNumber: '9876543210',
@@ -63,8 +64,15 @@ describe('ShopProfileEditorComponent', () => {
     fixture.componentRef.setInput('profile', profile);
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector('.edit-button') as HTMLButtonElement).click();
-    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Company Information');
+    expect(fixture.nativeElement.textContent).toContain('Business Address Information');
+    expect(
+      (
+        fixture.nativeElement.querySelector(
+          '[aria-label="Email address (read only)"]',
+        ) as HTMLInputElement
+      ).readOnly,
+    ).toBeTrue();
     const search = fixture.nativeElement.querySelector('input[type="search"]') as HTMLInputElement;
     search.value = 'Pune';
     search.dispatchEvent(new Event('input'));

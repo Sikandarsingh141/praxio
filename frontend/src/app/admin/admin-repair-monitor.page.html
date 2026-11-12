@@ -5,7 +5,7 @@
       <h1 id="monitor-title">Repair monitoring</h1>
       <p>Review repair progress, customer-reported issues, and verified feedback.</p>
     </div>
-    @if (view() === 'jobs') {
+    @if (view() !== 'reviews') {
       <button type="button" class="export-button" [disabled]="!jobs().length" (click)="exportRepairs()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" /></svg>
         Export
@@ -26,12 +26,33 @@
       </article>
       <article class="summary-card">
         <span class="summary-icon progress-icon" aria-hidden="true">⟳</span>
-        <strong>{{ overview() ? countStatus('in_progress') : '—' }}</strong>
+        <strong>        {{
+          overview()
+            ? countStatus(
+                'confirmed',
+                'inspection_pending',
+                'inspection_in_progress',
+                'awaiting_customer_approval',
+                'inspection_approved',
+                'in_progress',
+                'on_hold'
+              )
+            : '—'
+        }}</strong>
         <span>In progress</span>
       </article>
       <article class="summary-card">
         <span class="summary-icon completed-icon" aria-hidden="true">✓</span>
-        <strong>{{ overview() ? countStatus('completed', 'repair_completed') : '—' }}</strong>
+        <strong>        {{
+          overview()
+            ? countStatus(
+                'repair_completed',
+                'ready_for_pickup',
+                'picked_up',
+                'completed'
+              )
+            : '—'
+        }}</strong>
         <span>Completed</span>
       </article>
     </section>
@@ -39,37 +60,48 @@
 
   <nav class="monitor-tabs" aria-label="Repair monitoring views">
     <button type="button" [class.active]="view() === 'jobs'" [attr.aria-pressed]="view() === 'jobs'" (click)="setView('jobs')"><span aria-hidden="true">⚒</span> Repair jobs</button>
+    <button type="button" [class.active]="view() === 'completed'" [attr.aria-pressed]="view() === 'completed'" (click)="setView('completed')"><span aria-hidden="true">✓</span> Completed repairs</button>
     <button type="button" [class.active]="view() === 'reviews'" [attr.aria-pressed]="view() === 'reviews'" (click)="setView('reviews')"><span aria-hidden="true">☆</span> Customer reviews</button>
   </nav>
 
-  @if (view() === 'jobs') {
+  @if (view() !== 'reviews') {
     <div class="filter-row">
       <label class="repair-search">
         <span class="visually-hidden">Search repairs</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
-        <input type="search" [value]="searchText()" (input)="updateSearch($any($event.target).value)" placeholder="Search by repair ID, customer, shop, or device..." />
+        <input type="search" [value]="searchText()" (input)="updateSearch($any($event.target).value)" [placeholder]="view() === 'completed' ? 'Search completed repairs by ID, customer, shop, or device...' : 'Search by repair ID, customer, shop, or device...'" />
       </label>
-      <label class="toolbar-select">
-        <span>Status</span>
-        <select [value]="status()" (change)="setStatus($event)">
-          <option value="all">All statuses</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="in_progress">In progress</option>
-          <option value="on_hold">On hold</option>
-          <option value="repair_completed">Repair completed</option>
-          <option value="ready_for_pickup">Ready for pickup</option>
-          <option value="picked_up">Picked up</option>
-          <option value="completed">Completed</option>
-        </select>
-      </label>
-      <label class="toolbar-select date-select">
-        <span>Date</span>
-        <select [value]="dateRange()" (change)="setDateRange($event)">
-          <option value="30d">Last 30 days</option>
-          <option value="90d">Last 90 days</option>
-          <option value="month">This month</option>
-        </select>
-      </label>
+      @if (view() === 'jobs') {
+        <label class="toolbar-select">
+          <span>Status</span>
+          <select [value]="status()" (change)="setStatus($event)">
+            <option value="all">All statuses</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="inspection_pending">Inspection pending</option>
+            <option value="inspection_in_progress">Inspection in progress</option>
+            <option value="awaiting_customer_approval">Estimate awaiting approval</option>
+            <option value="inspection_approved">Inspection approved</option>
+            <option value="repair_declined">Repair declined</option>
+            <option value="in_progress">In progress</option>
+            <option value="on_hold">On hold</option>
+            <option value="repair_completed">Repair completed</option>
+            <option value="ready_for_pickup">Ready for pickup</option>
+            <option value="picked_up">Picked up</option>
+            <option value="completed">Completed</option>
+            <option value="disputed">Disputed</option>
+          </select>
+        </label>
+        <label class="toolbar-select date-select">
+          <span>Date</span>
+          <select [value]="dateRange()" (change)="setDateRange($event)">
+            <option value="30d">Last 30 days</option>
+            <option value="90d">Last 90 days</option>
+            <option value="month">This month</option>
+          </select>
+        </label>
+      } @else {
+        <p class="completed-range-note">Showing completed repairs across all dates.</p>
+      }
     </div>
   }
 
@@ -80,24 +112,26 @@
     </div>
   } @else if (loading()) {
     <div class="state-card" role="status">Loading repair activity…</div>
-  } @else if (view() === 'jobs' && !jobs().length) {
-    <div class="state-card">No repair jobs match this status.</div>
+  } @else if (view() !== 'reviews' && !jobs().length) {
+    <div class="state-card">
+      {{ view() === 'completed' ? 'No completed repairs were found.' : 'No repair jobs match this status.' }}
+    </div>
   } @else if (view() === 'reviews' && !reviews().length) {
     <div class="state-card">No verified repair reviews have been submitted yet.</div>
   } @else {
-    @if (view() === 'jobs') {
+    @if (view() !== 'reviews') {
       <div class="monitor-list">
         @for (job of jobs(); track job._id) {
           <article class="monitor-card" [class.completed-card]="job.repairJob.status === 'completed' || job.repairJob.status === 'repair_completed'">
             <div class="repair-main-row">
               <span class="appliance-icon" aria-hidden="true">⚙</span>
               <div class="appliance-info">
-                <span class="request-id">REPAIR #{{ job._id.slice(-8).toUpperCase() }}</span>
+                <span class="request-id">Request ID: {{ job._id.slice(-8).toUpperCase() }}</span>
                 <h2>{{ job.appliance }}</h2>
                 <p class="description">{{ job.description }}</p>
               </div>
               <div class="repair-meta">
-                <div class="meta-person"><span aria-hidden="true">♙</span><div>{{ job.customer.fullName || 'Customer' }}<small>{{ job.customer.email || 'Contact unavailable' }}</small></div></div>
+                <div class="meta-person"><span aria-hidden="true">♙</span><div>{{ job.customer.displayName || (job.customer.firstName + ' ' + job.customer.lastName) }}<small>{{ job.customer.email || 'Contact unavailable' }}</small></div></div>
                 <div class="meta-shop"><span aria-hidden="true">⌂</span>{{ job.shopName || 'Repair shop' }}</div>
                 <div class="meta-amount"><span aria-hidden="true">₹</span>{{ job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : '—' }}</div>
                 <div class="meta-date"><span aria-hidden="true">▣</span>{{ job.createdAt | date: 'MMM d, y' }}</div>
@@ -123,6 +157,26 @@
             }
             @if (job.repairJob.completionDescription) {
               <p class="completion-note"><strong>Completion summary:</strong> {{ job.repairJob.completionDescription }}</p>
+            }
+            @if (view() === 'completed') {
+              <dl class="completed-details" aria-label="Completed repair details">
+                <div>
+                  <dt>Completed</dt>
+                  <dd>{{ job.repairJob.completedAt ? (job.repairJob.completedAt | date: 'medium') : 'Date unavailable' }}</dd>
+                </div>
+                <div>
+                  <dt>Approved amount</dt>
+                  <dd>{{ job.repairJob.approvedRepairAmount !== undefined ? (job.repairJob.approvedRepairAmount | currency: (job.quotation?.currency || 'INR')) : (job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : 'Not available') }}</dd>
+                </div>
+                <div>
+                  <dt>Work performed</dt>
+                  <dd>{{ job.repairJob.workPerformed || 'Not provided' }}</dd>
+                </div>
+                <div>
+                  <dt>Parts replaced</dt>
+                  <dd>{{ job.repairJob.partsReplaced || 'None recorded' }}</dd>
+                </div>
+              </dl>
             }
             @if (job.repairJob.history?.length) {
               <details>
@@ -167,12 +221,13 @@
       </div>
     }
 
-    <footer class="pagination" aria-label="Repair monitoring pagination">
-      <span>{{ total() }} total · Page {{ page() }} of {{ totalPages() }}</span>
-      <div>
-        <button type="button" [disabled]="page() <= 1" (click)="changePage(-1)">Previous</button>
-        <button type="button" [disabled]="page() >= totalPages()" (click)="changePage(1)">Next</button>
-      </div>
-    </footer>
+    <app-pagination
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize"
+      [disabled]="loading()"
+      ariaLabel="Repair monitoring pages"
+      (pageChange)="goToPage($event)"
+    />
   }
 </section>

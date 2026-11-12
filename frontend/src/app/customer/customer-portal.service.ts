@@ -22,6 +22,7 @@ export interface ShopSearchOptions {
   latitude?: number;
   longitude?: number;
   maxDistanceKm?: number;
+  minRating?: number;
   sort?: 'nearest' | 'relevant' | 'rating';
 }
 

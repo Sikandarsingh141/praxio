@@ -5,7 +5,8 @@ export interface UserProfile {
   accountType?: 'customer' | 'shop' | 'admin';
   accountStatus?: 'active' | 'pending_approval' | 'rejected';
   accountLifecycleStatus?: 'active' | 'inactive' | 'suspended';
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   profileImageUrl?: string;
   countryCode?: string;
   mobileNumber?: string;
@@ -41,7 +42,8 @@ export interface ShopProfile {
   businessType: string;
   description: string;
   yearsOfExperience: number;
-  ownerName: string;
+  ownerFirstName: string;
+  ownerLastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
@@ -88,6 +90,25 @@ export interface ShopPaymentStatus {
   stripeSubscriptionId: string | null;
   stripePaymentIntentId: string | null;
   paymentId: string | null;
+}
+
+export interface ShopInvoice {
+  stripeInvoiceId: string;
+  invoiceNumber: string | null;
+  totalAmountCents: number;
+  amountPaidCents: number;
+  refundedAmountCents: number;
+  currency: string;
+  status: string;
+  generatedAt: string;
+  paidAt: string | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdfUrl: string | null;
+}
+
+export interface ShopInvoicePage {
+  invoices: ShopInvoice[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
 export interface RegistrationNotification {
@@ -156,12 +177,14 @@ export interface RegistrationNotification {
 }
 
 export interface CustomerRegistrationRequest {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
   password: string;
   acceptTerms: true;
+  profileImageData?: string;
   notificationToken?: string;
   latitude?: number;
   longitude?: number;

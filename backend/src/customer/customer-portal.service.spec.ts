@@ -1,4 +1,5 @@
 import { getModelToken } from '@nestjs/mongoose';
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { Types } from 'mongoose';
@@ -122,7 +123,11 @@ describe('CustomerPortalService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn().mockReturnValue('https://photon.komoot.io/api/'),
+            get: jest.fn((key: string) =>
+              key === 'GOOGLE_APIKEY'
+                ? 'test-google-api-key'
+                : 'https://photon.komoot.io/api/',
+            ),
           },
         },
         { provide: NotificationsService, useValue: notificationsService },
@@ -172,6 +177,99 @@ describe('CustomerPortalService', () => {
     );
     expect(results.map((shop) => shop.id)).toEqual([nearShopId.toString()]);
     expect(results[0]?.distanceKm).toBe(0);
+  });
+
+  it('filters by minimum rating and sorts shops by rating and review count', async () => {
+    reviewModel.aggregate.mockReturnValue(
+      createQuery([
+        { _id: nearShopId, averageRating: 4.2, reviewCount: 1 },
+        { _id: farShopId, averageRating: 5, reviewCount: 2 },
+      ]),
+    );
+
+    const results = await service.searchShops({
+      minRating: 4,
+      sort: 'rating',
+    });
+    expect(results.map((shop) => shop.id)).toEqual([
+      farShopId.toString(),
+      nearShopId.toString(),
+    ]);
+
+    const highRatingResults = await service.searchShops({
+      minRating: 5,
+      sort: 'relevant',
+    });
+    expect(highRatingResults.map((shop) => shop.id)).toEqual([
+      farShopId.toString(),
+    ]);
+  });
+
+  it('includes workflow status and shop ratings in customer quotation details', async () => {
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    userModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: shopId,
+          shopDetails: { shopName: 'Nearby Repair', address: 'Main Road' },
+        },
+      ]),
+    );
+    repairRequestModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: requestId,
+          appliance: 'Mobile',
+          description: 'Screen issue',
+          status: 'completed',
+          repairJob: { status: 'completed' },
+        },
+      ]),
+    );
+    quotationModel.find
+      .mockReturnValueOnce(createQuery([]))
+      .mockReturnValueOnce(
+        createQuery([
+          {
+            _id: new Types.ObjectId(),
+            repairRequestId: requestId,
+            shopId,
+            amount: 100,
+            currency: 'INR',
+            status: 'accepted',
+            createdAt: new Date(),
+          },
+        ]),
+      );
+    reviewModel.aggregate.mockReturnValue(
+      createQuery([{ _id: shopId, averageRating: 4.5, reviewCount: 2 }]),
+    );
+
+    const result = await service.getCustomerQuotations(customerId.toString(), {});
+
+    expect(result).toMatchObject({
+      quotations: [
+        {
+          shop: {
+            rating: 4.5,
+            reviewCount: 2,
+          },
+          repairRequest: {
+            status: 'completed',
+            repairJob: { status: 'completed' },
+          },
+        },
+      ],
+    });
   });
 
   it('requires both customer coordinates before applying a distance filter', async () => {
@@ -285,6 +383,17 @@ describe('CustomerPortalService', () => {
         { _id: shopId, shopDetails: { shopName: 'Nearby Repair' } },
       ]),
     );
+    quotationModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: new Types.ObjectId(),
+          repairRequestId: requestId,
+          amount: 1250,
+          currency: 'INR',
+          status: 'sent',
+        },
+      ]),
+    );
 
     const result = await service.getCustomerRepairJob(
       customerId.toString(),
@@ -294,6 +403,7 @@ describe('CustomerPortalService', () => {
     expect(result).toMatchObject({
       _id: requestId,
       photos,
+      quotations: [{ amount: 1250, status: 'sent' }],
       shops: [
         {
           id: shopId.toString(),
@@ -305,6 +415,9 @@ describe('CustomerPortalService', () => {
     expect(repairRequestModel.findOne).toHaveBeenCalledWith({
       _id: requestId.toString(),
       customerId,
+    });
+    expect(quotationModel.find).toHaveBeenCalledWith({
+      repairRequestId: requestId,
     });
   });
 
@@ -437,7 +550,10 @@ describe('CustomerPortalService', () => {
       .mockReturnValueOnce(
         createQuery([
           {
-            statuses: [{ _id: 'ready_for_pickup', count: 1 }],
+            statuses: [
+              { _id: 'ready_for_pickup', count: 1 },
+              { _id: 'disputed', count: 1 },
+            ],
             active: [],
             readyForPickup: [{ count: 1 }],
           },
@@ -469,7 +585,7 @@ describe('CustomerPortalService', () => {
     expect(result).toMatchObject({
       requests: { total: 2, new: 2 },
       quotations: { total: 1, pending: 1 },
-      repairs: { total: 1, readyForPickup: 1 },
+      repairs: { total: 2, readyForPickup: 1, disputed: 1, active: 2 },
       reviews: { averageRating: 4.5, total: 2 },
       revenue: { available: false },
     });
@@ -480,6 +596,9 @@ describe('CustomerPortalService', () => {
     expect(quotationModel.aggregate).toHaveBeenCalledWith(
       expect.arrayContaining([{ $match: { shopId: nearShopId } }]),
     );
+    const reviewPipeline = reviewModel.aggregate.mock.calls[0]?.[0] as unknown[];
+    expect(JSON.stringify(reviewPipeline)).not.toContain('$arrayElemAt');
+    expect(JSON.stringify(reviewPipeline)).toContain('$customer.firstName');
   });
 
   it('starts an accepted repair job atomically and notifies its customer', async () => {
@@ -564,6 +683,260 @@ describe('CustomerPortalService', () => {
       _id: requestId.toString(),
       shopIds: shopId,
     });
+  });
+
+  it('calculates the fastest authorized shop route with the server-side Google API key', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById
+      .mockReturnValueOnce(
+        createQuery({
+          _id: shopId,
+          accountType: 'shop',
+          accountStatus: 'active',
+          shopDetails: {
+            location: { latitude: 30.72, longitude: 76.72 },
+          },
+        }),
+      )
+      .mockReturnValueOnce(
+        createQuery({ location: { latitude: 30.7, longitude: 76.7 } }),
+      );
+    registrationModel.findOne.mockReturnValue(
+      createQuery({ registrationStatus: 'approved', paymentStatus: 'paid' }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        customerId,
+        customerLatitude: 30.7,
+        customerLongitude: 76.7,
+      }),
+    );
+    const fetch = jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          routes: [
+            {
+              distanceMeters: 5000,
+              duration: '600s',
+              description: 'Alternate route',
+              polyline: { encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' },
+            },
+            {
+              distanceMeters: 4800,
+              duration: '300s',
+              description: 'Fastest route via Sector 68',
+              polyline: { encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    try {
+      const result = await service.getShopRepairRoute(
+        shopId.toString(),
+        requestId.toString(),
+      );
+
+      expect(result.distanceMeters).toBe(4800);
+      expect(result.durationSeconds).toBe(300);
+      expect(result.description).toBe('Fastest route via Sector 68');
+      expect(result.path).toEqual([
+        { latitude: 38.5, longitude: -120.2 },
+        { latitude: 40.7, longitude: -120.95 },
+        { latitude: 43.252, longitude: -126.453 },
+      ]);
+      expect(repairRequestModel.findOne).toHaveBeenCalledWith({
+        _id: requestId.toString(),
+        shopIds: shopId,
+      });
+      expect(fetch).toHaveBeenCalledWith(
+        'https://routes.googleapis.com/directions/v2:computeRoutes',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-Goog-Api-Key': 'test-google-api-key',
+          }),
+        }),
+      );
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it('falls back to the Google Directions API when Routes API is disabled', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById
+      .mockReturnValueOnce(
+        createQuery({
+          _id: shopId,
+          accountType: 'shop',
+          accountStatus: 'active',
+          shopDetails: {
+            location: { latitude: 30.72, longitude: 76.72 },
+          },
+        }),
+      )
+      .mockReturnValueOnce(
+        createQuery({ location: { latitude: 30.7, longitude: 76.7 } }),
+      );
+    registrationModel.findOne.mockReturnValue(
+      createQuery({ registrationStatus: 'approved', paymentStatus: 'paid' }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        customerId,
+        customerLatitude: 30.7,
+        customerLongitude: 76.7,
+      }),
+    );
+    const fetch = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              status: 'PERMISSION_DENIED',
+              message:
+                'Routes API has not been used in this project or it is disabled.',
+            },
+          }),
+          { status: 403 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'OK',
+            routes: [
+              {
+                summary: 'Fastest route via Main Road',
+                legs: [
+                  {
+                    distance: { value: 4800, text: '4.8 km' },
+                    duration: { value: 300, text: '5 mins' },
+                  },
+                ],
+                overview_polyline: {
+                  points: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      );
+
+    try {
+      const result = await service.getShopRepairRoute(
+        shopId.toString(),
+        requestId.toString(),
+      );
+
+      expect(result).toEqual({
+        distanceMeters: 4800,
+        durationSeconds: 300,
+        description: 'Fastest route via Main Road',
+        path: [
+          { latitude: 38.5, longitude: -120.2 },
+          { latitude: 40.7, longitude: -120.95 },
+          { latitude: 43.252, longitude: -126.453 },
+        ],
+      });
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          href: expect.stringContaining(
+            'https://maps.googleapis.com/maps/api/directions/json',
+          ),
+        }),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+      const fallbackUrl = new URL(String(fetch.mock.calls[1]?.[0]));
+      expect(fallbackUrl.searchParams.get('origin')).toBe('30.72,76.72');
+      expect(fallbackUrl.searchParams.get('destination')).toBe('30.7,76.7');
+      expect(fallbackUrl.searchParams.get('key')).toBe('test-google-api-key');
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it('logs Google Routes API status and provider message without logging the API key', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById
+      .mockReturnValueOnce(
+        createQuery({
+          _id: shopId,
+          accountType: 'shop',
+          accountStatus: 'active',
+          shopDetails: {
+            location: { latitude: 30.72, longitude: 76.72 },
+          },
+        }),
+      )
+      .mockReturnValueOnce(
+        createQuery({ location: { latitude: 30.7, longitude: 76.7 } }),
+      );
+    registrationModel.findOne.mockReturnValue(
+      createQuery({ registrationStatus: 'approved', paymentStatus: 'paid' }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        customerId,
+        customerLatitude: 30.7,
+        customerLongitude: 76.7,
+      }),
+    );
+    const fetch = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              status: 'PERMISSION_DENIED',
+              message: 'Routes API is not enabled for this project.',
+            },
+          }),
+          { status: 403 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 'REQUEST_DENIED',
+            error_message: 'Directions API is not enabled for this project.',
+            routes: [],
+          }),
+          { status: 200 },
+        ),
+      );
+    const loggerError = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      await expect(
+        service.getShopRepairRoute(shopId.toString(), requestId.toString()),
+      ).rejects.toMatchObject({ status: 502 });
+
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Google Directions API request failed (REQUEST_DENIED): Directions API is not enabled for this project.',
+        ),
+      );
+      expect(loggerError.mock.calls.flat().join(' ')).not.toContain(
+        'test-google-api-key',
+      );
+    } finally {
+      fetch.mockRestore();
+      loggerError.mockRestore();
+    }
   });
 
   it('rejects duplicate or expired declines through an atomic response-status filter', async () => {

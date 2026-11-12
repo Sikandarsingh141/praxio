@@ -64,7 +64,8 @@ describe('ShopRegisterPage', () => {
     page.next();
 
     expect(page.currentStep()).toBe(0);
-    expect(page.form.controls.ownerFullName.touched).toBe(true);
+    expect(page.form.controls.ownerFirstName.touched).toBe(true);
+    expect(page.form.controls.ownerLastName.touched).toBe(true);
   });
 
   it('lets shop owners capture location without manually entering coordinates', () => {
@@ -138,7 +139,7 @@ describe('ShopRegisterPage', () => {
     const page = fixture.componentInstance;
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.icon-field .field-icon').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.icon-field .field-icon').length).toBe(4);
     expect(fixture.nativeElement.querySelectorAll('.password-field .field-icon').length).toBe(2);
 
     page.currentStep.set(1);
@@ -265,7 +266,8 @@ describe('ShopRegisterPage', () => {
     expect(page.addressLookupMessage()).toContain('map coordinates were filled');
 
     page.form.patchValue({
-      ownerFullName: 'Shop Owner',
+      ownerFirstName: 'Shop',
+      ownerLastName: 'Owner',
       email: 'owner@example.com',
       countryCode: '+91',
       mobileNumber: '9876543210',
@@ -322,7 +324,8 @@ describe('ShopRegisterPage', () => {
     spyOn(router, 'navigateByUrl').and.resolveTo(true);
 
     page.form.patchValue({
-      ownerFullName: 'Shop Owner',
+      ownerFirstName: 'Shop',
+      ownerLastName: 'Owner',
       email: 'owner@example.com',
       countryCode: '+91',
       mobileNumber: '5551234567',
@@ -403,7 +406,8 @@ describe('ShopRegisterPage', () => {
     const fixture = TestBed.createComponent(ShopRegisterPage);
     const page = fixture.componentInstance;
     page.form.patchValue({
-      ownerFullName: 'Shop Owner',
+      ownerFirstName: 'Shop',
+      ownerLastName: 'Owner',
       email: 'owner@example.com',
       countryCode: '+91',
       mobileNumber: '5551234567',
@@ -448,7 +452,8 @@ describe('ShopRegisterPage', () => {
     const fixture = TestBed.createComponent(ShopRegisterPage);
     const page = fixture.componentInstance;
     page.form.patchValue({
-      ownerFullName: 'Shop Owner',
+      ownerFirstName: 'Shop',
+      ownerLastName: 'Owner',
       email: 'owner@example.com',
       countryCode: '+91',
       mobileNumber: '5551234567',

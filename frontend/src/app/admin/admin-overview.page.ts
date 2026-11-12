@@ -6,6 +6,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../core/auth/auth.service';
 import { NotificationRealtimeService } from '../core/notifications/notification-realtime.service';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
+import {
+  CommonFilterComponent,
+  FilterConfig,
+  FilterValues,
+} from '../shared/common-filter.component';
 import { AdminDashboardOverview, AdminService } from './admin.service';
 
 type DashboardRange = 'today' | '7d' | '30d' | '90d' | 'month' | 'last-month' | 'year' | 'custom';
@@ -13,7 +18,7 @@ type DashboardRange = 'today' | '7d' | '30d' | '90d' | 'month' | 'last-month' | 
 @Component({
   selector: 'app-admin-overview-page',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, RouterLink, SlicePipe, TitleCasePipe],
+  imports: [CommonFilterComponent, DatePipe, DecimalPipe, RouterLink, SlicePipe, TitleCasePipe],
   templateUrl: './admin-overview.page.html',
 })
 export class AdminOverviewPage implements OnInit {
@@ -29,7 +34,33 @@ export class AdminOverviewPage implements OnInit {
   readonly range = signal<DashboardRange>('30d');
   readonly fromDate = signal(this.daysAgo(29));
   readonly toDate = signal(this.today());
-  readonly adminName = this.authService.currentUser()?.fullName || 'Administrator';
+  readonly appliedFilters = signal<FilterValues>({ period: '30d' });
+  readonly filterConfig: FilterConfig = {
+    title: 'Dashboard filters',
+    fields: [
+      {
+        key: 'period',
+        label: 'Date range',
+        type: 'select',
+        defaultValue: '30d',
+        options: [
+          { label: 'Today', value: 'today' },
+          { label: 'Last 7 days', value: '7d' },
+          { label: 'Last 30 days', value: '30d' },
+          { label: 'Last 90 days', value: '90d' },
+          { label: 'This month', value: 'month' },
+          { label: 'Last month', value: 'last-month' },
+          { label: 'This year', value: 'year' },
+          { label: 'Custom range', value: 'custom' },
+        ],
+      },
+      { key: 'customRange', label: 'Custom dates', type: 'date-range' },
+    ],
+  };
+  readonly adminName =
+    [this.authService.currentUser()?.firstName, this.authService.currentUser()?.lastName]
+      .filter(Boolean)
+      .join(' ') || 'Administrator';
 
   ngOnInit(): void {
     this.refreshRequests
@@ -70,52 +101,18 @@ export class AdminOverviewPage implements OnInit {
       .subscribe(() => this.refresh(true));
   }
 
-  selectRange(event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLSelectElement)) {
-      return;
-    }
-    const value = target.value as DashboardRange;
-    if (!['today', '7d', '30d', '90d', 'month', 'last-month', 'year', 'custom'].includes(value)) {
-      return;
-    }
-    this.range.set(value);
-    if (value !== 'custom') {
-      const current = new Date();
-      const end = this.today();
-      let start = end;
-      if (value === '7d') start = this.daysAgo(6);
-      if (value === '30d') start = this.daysAgo(29);
-      if (value === '90d') start = this.daysAgo(89);
-      if (value === 'month') {
-        start = this.dateString(
-          new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 1)),
-        );
-      }
-      if (value === 'last-month') {
-        start = this.dateString(
-          new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() - 1, 1)),
-        );
-        this.toDate.set(
-          this.dateString(new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 0))),
-        );
-      } else {
-        this.toDate.set(end);
-      }
-      if (value === 'year') start = `${current.getUTCFullYear()}-01-01`;
-      this.fromDate.set(start);
-      this.refresh();
-    }
-  }
-
-  updateDate(kind: 'from' | 'to', event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement) || !target.value) {
-      return;
-    }
-    if (kind === 'from') this.fromDate.set(target.value);
-    else this.toDate.set(target.value);
-    this.range.set('custom');
+  applyDateFilters(filters: FilterValues): void {
+    const rawPeriod = filters['period'];
+    const period = this.isDashboardRange(rawPeriod) ? rawPeriod : '30d';
+    const dates = this.getRangeDates(period, filters['customRange']);
+    this.range.set(period);
+    this.fromDate.set(dates.from);
+    this.toDate.set(dates.to);
+    this.appliedFilters.set(
+      period === 'custom'
+        ? { period, customRange: { from: dates.from, to: dates.to } }
+        : { period },
+    );
     this.refresh();
   }
 
@@ -151,6 +148,12 @@ export class AdminOverviewPage implements OnInit {
 
   repairStatusCount(overview: AdminDashboardOverview, status: string): number {
     return overview.repairStatuses.find((item) => item.status === status)?.count ?? 0;
+  }
+
+  repairStatusLabel(status: string): string {
+    return status
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
   repairProgressCount(overview: AdminDashboardOverview): number {
@@ -234,6 +237,52 @@ export class AdminOverviewPage implements OnInit {
 
   private today(): string {
     return this.dateString(new Date());
+  }
+
+  private isDashboardRange(value: unknown): value is DashboardRange {
+    return (
+      typeof value === 'string' &&
+      ['today', '7d', '30d', '90d', 'month', 'last-month', 'year', 'custom'].includes(value)
+    );
+  }
+
+  private getRangeDates(
+    range: DashboardRange,
+    customRange: FilterValues['customRange'],
+  ): { from: string; to: string } {
+    if (range === 'custom') {
+      const bounds =
+        customRange &&
+        typeof customRange === 'object' &&
+        !Array.isArray(customRange) &&
+        'from' in customRange
+          ? customRange
+          : {};
+      const today = this.today();
+      return {
+        from: typeof bounds.from === 'string' && bounds.from ? bounds.from : today,
+        to: typeof bounds.to === 'string' && bounds.to ? bounds.to : today,
+      };
+    }
+
+    const current = new Date();
+    const end = this.today();
+    let start = end;
+    let to = end;
+    if (range === '7d') start = this.daysAgo(6);
+    if (range === '30d') start = this.daysAgo(29);
+    if (range === '90d') start = this.daysAgo(89);
+    if (range === 'month') {
+      start = this.dateString(new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 1)));
+    }
+    if (range === 'last-month') {
+      start = this.dateString(
+        new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() - 1, 1)),
+      );
+      to = this.dateString(new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 0)));
+    }
+    if (range === 'year') start = `${current.getUTCFullYear()}-01-01`;
+    return { from: start, to };
   }
 
   private daysAgo(days: number): string {

@@ -23,9 +23,6 @@
     </div>
   </header>
 
-  @if (errorMessage()) {
-    <p class="feedback error" role="alert">{{ errorMessage() }}</p>
-  }
   <section class="welcome-card" aria-labelledby="welcome-shop-title">
     <div class="welcome-icon" aria-hidden="true">
       {{ shopName() ? shopName().slice(0, 1).toUpperCase() : 'P' }}
@@ -180,6 +177,10 @@
               <span class="pipeline-icon" aria-hidden="true">□</span>
               <span>Picked up</span><strong>{{ data.repairs.picked_up }}</strong>
             </div>
+            <div>
+              <span class="pipeline-icon" aria-hidden="true">✓</span>
+              <span>Completed</span><strong>{{ data.repairs.completed }}</strong>
+            </div>
           </div>
         </article>
       </div>
@@ -191,7 +192,7 @@
       <div>
         <span class="section-kicker">CUSTOMER ACTIVITY</span>
         <h2 id="incoming-requests-title">Incoming repair requests</h2>
-        <p>Recent requests shared with your shop, ready to review and quote.</p>
+        <p>Recent requests shared with your shop, with their current status.</p>
       </div>
       <a class="view-all-link" routerLink="/shop/repair-requests">View all requests</a>
     </header>
@@ -206,7 +207,7 @@
                 <span class="request-id">REQUEST #{{ request._id.slice(-8).toUpperCase() }}</span>
                 <h3>{{ request.appliance }}</h3>
                 <p>
-                  {{ request.customer?.fullName || 'Customer' }} ·
+                  {{ request.customer?.displayName || (request.customer?.firstName + ' ' + request.customer?.lastName) }} ·
                   {{ request.createdAt | date: 'mediumDate' }}
                 </p>
                 <p class="request-description">{{ request.description }}</p>
@@ -301,9 +302,7 @@
                       class="review-stars"
                       [attr.aria-label]="review.overallRating + ' out of 5 stars'"
                     >
-                      {{
-                        '★'.repeat(review.overallRating) + '☆'.repeat(5 - review.overallRating)
-                      }}
+                      {{ '★'.repeat(review.overallRating) + '☆'.repeat(5 - review.overallRating) }}
                     </span>
                   </div>
                   <p>{{ review.title || review.reviewText }}</p>
@@ -316,7 +315,6 @@
           }
         </section>
       </div>
-
     </div>
   }
 </section>

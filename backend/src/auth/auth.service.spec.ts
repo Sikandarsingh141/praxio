@@ -26,6 +26,8 @@ describe('AuthService', () => {
   const usersService = {
     findByEmailForAuthentication: jest.fn(),
     findById: jest.fn(),
+    findByIdForAuthentication: jest.fn(),
+    updatePasswordHash: jest.fn(),
   };
   const registrationService = {
     submit: jest.fn(),
@@ -66,7 +68,7 @@ describe('AuthService', () => {
     jest.restoreAllMocks();
   });
 
-  it('routes legacy email-only registrations through Admin approval', async () => {
+  it('registers separate names through Admin approval', async () => {
     registrationService.submit.mockResolvedValue({
       user: { ...user, accountStatus: 'pending_approval' },
       registrationRequest: {
@@ -79,6 +81,8 @@ describe('AuthService', () => {
 
     const result = await service.register(
       Object.assign(new RegisterDto(), {
+        firstName: 'Example',
+        lastName: 'Person',
         email: user.email,
         password: 'a-correct-horse-battery',
       }),
@@ -86,12 +90,46 @@ describe('AuthService', () => {
 
     expect(registrationService.submit).toHaveBeenCalledWith(
       expect.objectContaining({
+        firstName: 'Example',
+        lastName: 'Person',
         email: user.email,
         accountType: 'customer',
         accountStatus: 'pending_approval',
       }),
     );
     expect(result.user.accountStatus).toBe('pending_approval');
+  });
+
+  it('verifies the current password and stores a hash for the new password', async () => {
+    usersService.findByIdForAuthentication.mockResolvedValue(user);
+    await service.changePassword(
+      user._id.toString(),
+      'a-correct-horse-battery',
+      'NewPassword2',
+    );
+
+    expect(usersService.updatePasswordHash).toHaveBeenCalledWith(
+      user._id.toString(),
+      expect.any(String),
+    );
+    const savedHash = usersService.updatePasswordHash.mock
+      .calls[0][1] as string;
+    await expect(bcrypt.compare('NewPassword2', savedHash)).resolves.toBe(true);
+    await expect(
+      bcrypt.compare('a-correct-horse-battery', savedHash),
+    ).resolves.toBe(false);
+  });
+
+  it('rejects password changes when the current password is incorrect', async () => {
+    usersService.findByIdForAuthentication.mockResolvedValue(user);
+    await expect(
+      service.changePassword(
+        user._id.toString(),
+        'incorrect-password',
+        'NewPassword2',
+      ),
+    ).rejects.toMatchObject({ status: 401 });
+    expect(usersService.updatePasswordHash).not.toHaveBeenCalled();
   });
 
   it('includes account lifecycle status in the shop profile', async () => {
@@ -132,7 +170,8 @@ describe('AuthService', () => {
       businessType: 'Electronics Repair Shop',
       description: 'Repair services',
       yearsOfExperience: 5,
-      ownerName: 'Example Person',
+      ownerFirstName: 'Example',
+      ownerLastName: 'Person',
       address: 'Main Road',
       street: 'Unit 2',
       area: 'Central',
@@ -167,20 +206,24 @@ describe('AuthService', () => {
     );
 
     const result = await service.registerCustomer({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       email: 'person@example.com',
       countryCode: '+1',
       mobileNumber: '5551234567',
       password: 'a-correct-horse-battery',
       acceptTerms: true,
+      profileImageData: 'data:image/png;base64,YWJj',
       latitude: 28.6139,
       longitude: 77.209,
     });
 
     expect(registration).toMatchObject({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       accountType: 'customer',
       accountStatus: 'pending_approval',
+      profileImageData: 'data:image/png;base64,YWJj',
       location: { latitude: 28.6139, longitude: 77.209 },
     });
     expect(
@@ -211,7 +254,8 @@ describe('AuthService', () => {
     );
 
     const result = await service.registerShop({
-      fullName: 'Shop Owner',
+      firstName: 'Shop',
+      lastName: 'Owner',
       email: 'shop@example.com',
       countryCode: '+91',
       mobileNumber: '9876543210',
@@ -334,7 +378,8 @@ describe('AuthService', () => {
 
     await expect(
       service.registerCustomer({
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         email: 'person@example.com',
         countryCode: '+1',
         mobileNumber: '5551234567',
@@ -374,7 +419,8 @@ describe('AuthService', () => {
         accountType: 'customer',
         accountStatus: 'active',
         accountLifecycleStatus: 'active',
-        fullName: 'Example Person',
+        firstName: 'Example',
+        lastName: 'Person',
         customerAuthorization: {
           registrationStatus: 'not_found',
           accountStatus: 'active',
@@ -449,7 +495,8 @@ describe('AuthService', () => {
         profileImageData,
       } as import('../users/schemas/user.schema').UserDocument),
     ).toMatchObject({
-      fullName: 'Example Person',
+      firstName: 'Example',
+      lastName: 'Person',
       profileImageUrl: profileImageData,
     });
   });
@@ -573,7 +620,8 @@ describe('AuthService', () => {
 
     await expect(
       service.registerCustomer({
-        fullName: 'Example Person',
+        firstName: 'Example',
+        lastName: 'Person',
         email: user.email,
         countryCode: '+1',
         mobileNumber: '5551234567',
@@ -594,7 +642,8 @@ describe('AuthService', () => {
 
     await expect(
       service.registerCustomer({
-        fullName: 'Example Person',
+        firstName: 'Example',
+        lastName: 'Person',
         email: user.email,
         countryCode: '+1',
         mobileNumber: '5551234567',

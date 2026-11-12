@@ -1,0 +1,150 @@
+import { DatePipe, TitleCasePipe } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { AuthService } from '../core/auth/auth.service';
+import { ProfileEditorComponent } from '../shared/profile-editor.component';
+
+@Component({
+  selector: 'app-admin-profile-page',
+  standalone: true,
+  imports: [DatePipe, TitleCasePipe, ProfileEditorComponent],
+  template: `
+    <section class="admin-profile-page" aria-labelledby="admin-profile-title">
+      <header class="page-heading">
+        <div>
+          @if (editing()) {
+            <button class="back-link" type="button" (click)="editing.set(false)">
+              <span aria-hidden="true">←</span> My profile <span aria-hidden="true">›</span> Edit
+              profile
+            </button>
+            <h1 id="admin-profile-title">Edit Admin Profile</h1>
+            <p>Update your profile photo, name, and password.</p>
+          } @else {
+            <span class="page-eyebrow">ADMINISTRATION</span>
+            <h1 id="admin-profile-title">My profile</h1>
+            <p>Manage your administrator account information and security.</p>
+          }
+        </div>
+      </header>
+
+      @if (authService.currentUser(); as user) {
+        <div class="profile-layout">
+          <aside class="profile-summary">
+            <div class="profile-photo">
+              @if (user.profileImageUrl; as imageUrl) {
+                <img [src]="imageUrl" [alt]="displayName(user) + ' profile photo'" />
+              } @else {
+                <span>{{ initials(user.firstName || user.email) }}</span>
+              }
+            </div>
+            <h2>{{ displayName(user) || 'Admin' }}</h2>
+            <span class="account-role">Administrator</span>
+            <span
+              class="status-badge"
+              [class.status-active]="user.accountLifecycleStatus === 'active'"
+            >
+              {{ user.accountLifecycleStatus || user.accountStatus || 'active' | titlecase }}
+            </span>
+            <div class="summary-divider"></div>
+            <div class="summary-item">
+              <span class="summary-icon" aria-hidden="true">✉</span>
+              <div>
+                <span>Email address</span>
+                <strong>{{ user.email }}</strong>
+              </div>
+            </div>
+            <div class="summary-item">
+              <span class="summary-icon" aria-hidden="true">♙</span>
+              <div>
+                <span>Account type</span>
+                <strong>{{ user.accountType || 'admin' | titlecase }}</strong>
+              </div>
+            </div>
+          </aside>
+
+          <main class="profile-details">
+            @if (editing()) {
+              <app-profile-editor [allowPasswordChange]="true" />
+              <div class="actions">
+                <button class="cancel-button" type="button" (click)="editing.set(false)">
+                  Done
+                </button>
+              </div>
+            } @else {
+              <div class="details-toolbar">
+                <h2>Account Information</h2>
+                <button class="edit-button" type="button" (click)="editing.set(true)">
+                  <span aria-hidden="true">✎</span> Edit Profile
+                </button>
+              </div>
+              <section class="details-section" aria-label="Administrator account information">
+                <h3>Personal Information</h3>
+                <dl>
+                  <div>
+                    <dt>First Name</dt>
+                    <dd>{{ user.firstName || 'Not provided' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Last Name</dt>
+                    <dd>{{ user.lastName || 'Not provided' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Email Address</dt>
+                    <dd>{{ user.email }}</dd>
+                  </div>
+                  <div>
+                    <dt>Phone Number</dt>
+                    <dd>
+                      {{
+                        user.countryCode && user.mobileNumber
+                          ? user.countryCode + ' ' + user.mobileNumber
+                          : 'Not provided'
+                      }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Account Role</dt>
+                    <dd>{{ user.accountType || 'admin' | titlecase }}</dd>
+                  </div>
+                  <div>
+                    <dt>Account Status</dt>
+                    <dd>
+                      {{
+                        user.accountLifecycleStatus || user.accountStatus || 'active' | titlecase
+                      }}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Member Since</dt>
+                    <dd>{{ user.createdAt | date: 'mediumDate' }}</dd>
+                  </div>
+                </dl>
+              </section>
+              <section class="security-section" aria-label="Account security">
+                <div>
+                  <h3>Password</h3>
+                  <p>Keep your account secure by using a strong, unique password.</p>
+                </div>
+                <button class="secondary-button" type="button" (click)="editing.set(true)">
+                  Change Password
+                </button>
+              </section>
+            }
+          </main>
+        </div>
+      }
+    </section>
+  `,
+  styleUrl: './admin-profile.page.scss',
+})
+export class AdminProfilePage {
+  readonly authService = inject(AuthService);
+  readonly editing = signal(false);
+
+  displayName(user: { firstName?: string; lastName?: string }): string {
+    return [user.firstName, user.lastName].filter(Boolean).join(' ');
+  }
+
+  initials(value: string): string {
+    return value.trim().slice(0, 1).toUpperCase() || 'A';
+  }
+}

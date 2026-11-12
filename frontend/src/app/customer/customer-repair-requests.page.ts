@@ -15,13 +15,14 @@ import {
   FilterConfig,
   FilterValues,
 } from '../shared/common-filter.component';
+import { PaginationComponent } from '../shared/pagination.component';
 
 type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed';
 
 @Component({
   selector: 'app-customer-repair-requests',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CommonFilterComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
   templateUrl: './customer-repair-requests.page.html',
   styleUrl: './customer-repair-requests.page.scss',
 })
@@ -36,6 +37,8 @@ export class CustomerRepairRequestsPage implements OnInit {
     { key: 'completed', label: 'Completed' },
   ];
   readonly sortOrder = signal<'newest' | 'oldest'>('newest');
+  readonly page = signal(1);
+  readonly pageSize = 5;
   readonly visibleRequests = computed(() => {
     const filtered = this.requests().filter((request) => {
       switch (this.selectedStatus()) {
@@ -57,6 +60,10 @@ export class CustomerRepairRequestsPage implements OnInit {
       (left, right) =>
         direction * (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()),
     );
+  });
+  readonly pagedRequests = computed(() => {
+    const start = (this.page() - 1) * this.pageSize;
+    return this.visibleRequests().slice(start, start + this.pageSize);
   });
   readonly loading = signal(true);
   readonly error = signal('');
@@ -147,6 +154,8 @@ export class CustomerRepairRequestsPage implements OnInit {
       .subscribe({
         next: (requests) => {
           this.requests.set(requests);
+          const pageCount = Math.max(1, Math.ceil(this.visibleRequests().length / this.pageSize));
+          this.page.set(Math.min(this.page(), pageCount));
           this.loading.set(false);
         },
         error: (error: HttpErrorResponse) => {
@@ -159,6 +168,7 @@ export class CustomerRepairRequestsPage implements OnInit {
   applyFilters(filters: FilterValues): void {
     if (JSON.stringify(this.appliedFilters()) === JSON.stringify(filters)) return;
     this.appliedFilters.set(filters);
+    this.page.set(1);
     this.loadRequests();
   }
 
@@ -185,6 +195,18 @@ export class CustomerRepairRequestsPage implements OnInit {
 
   selectStatus(status: RequestStatusTab): void {
     this.selectedStatus.set(status);
+    this.page.set(1);
+  }
+
+  changeSortOrder(order: 'newest' | 'oldest'): void {
+    this.sortOrder.set(order);
+    this.page.set(1);
+  }
+
+  goToPage(page: number): void {
+    const pageCount = Math.ceil(this.visibleRequests().length / this.pageSize);
+    if (page < 1 || page > pageCount || page === this.page()) return;
+    this.page.set(page);
   }
 
   requestStatusLabel(request: CustomerRepairRequest): string {

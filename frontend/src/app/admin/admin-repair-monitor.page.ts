@@ -11,13 +11,14 @@ import {
   AdminRepairReview,
   AdminService,
 } from './admin.service';
+import { PaginationComponent } from '../shared/pagination.component';
 
-type MonitorView = 'jobs' | 'reviews';
+type MonitorView = 'jobs' | 'completed' | 'reviews';
 
 @Component({
   selector: 'app-admin-repair-monitor-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, RouterLink, SlicePipe, TitleCasePipe],
+  imports: [CurrencyPipe, DatePipe, PaginationComponent, RouterLink, SlicePipe, TitleCasePipe],
   templateUrl: './admin-repair-monitor.page.html',
 })
 export class AdminRepairMonitorPage implements OnInit {
@@ -38,7 +39,7 @@ export class AdminRepairMonitorPage implements OnInit {
   readonly jobs = signal<AdminRepairJob[]>([]);
   readonly reviews = signal<AdminRepairReview[]>([]);
   readonly page = signal(1);
-  readonly pageSize = 10;
+  readonly pageSize = 5;
   readonly total = signal(0);
   readonly loading = signal(true);
   readonly error = signal('');
@@ -126,7 +127,7 @@ export class AdminRepairMonitorPage implements OnInit {
       job._id,
       job.appliance,
       job.description,
-      job.customer.fullName || '',
+      job.customer.displayName || `${job.customer.firstName ?? ''} ${job.customer.lastName ?? ''}`,
       job.shopName || '',
       job.quotation ? `${job.quotation.amount} ${job.quotation.currency}` : '',
       job.repairJob.status,
@@ -144,10 +145,9 @@ export class AdminRepairMonitorPage implements OnInit {
     this.exportMessage.set(`Exported ${rows.length} repair records from this page.`);
   }
 
-  changePage(delta: number): void {
-    const next = this.page() + delta;
-    if (next < 1 || next > this.totalPages()) return;
-    this.page.set(next);
+  goToPage(page: number): void {
+    if (page < 1 || page > this.totalPages() || page === this.page()) return;
+    this.page.set(page);
     this.load();
   }
 
@@ -176,16 +176,17 @@ export class AdminRepairMonitorPage implements OnInit {
   private load(): void {
     this.loading.set(true);
     this.error.set('');
-    if (this.view() === 'jobs') {
+    if (this.view() !== 'reviews') {
+      const completedView = this.view() === 'completed';
       this.adminService
         .getRepairJobs(
-          this.status(),
+          completedView ? 'completed' : this.status(),
           this.page(),
           this.pageSize,
           this.requestId(),
           this.searchText(),
-          this.fromDate(),
-          this.toDate(),
+          completedView ? undefined : this.fromDate(),
+          completedView ? undefined : this.toDate(),
         )
         .subscribe({
           next: (result) => {

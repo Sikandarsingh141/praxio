@@ -12,6 +12,13 @@ export interface ShopRepairPhoto {
   data: string;
 }
 
+export interface ShopRepairRoute {
+  distanceMeters: number;
+  durationSeconds: number;
+  description: string;
+  path: Array<{ latitude: number; longitude: number }>;
+}
+
 import { RepairWorkflowJob } from '../shared/repair-workflow.models';
 
 export interface ShopRepairRequest {
@@ -28,7 +35,9 @@ export interface ShopRepairRequest {
   status: 'open' | 'cancelled' | 'completed';
   createdAt: string;
   customer: {
-    fullName: string;
+    firstName: string;
+    lastName: string;
+    displayName?: string;
     email?: string;
     phone?: string | null;
     location?: { latitude: number; longitude: number } | null;
@@ -92,7 +101,7 @@ export interface ShopQuotationPage {
         model?: string;
         description: string;
       };
-      customer: { fullName: string };
+      customer: { firstName: string; lastName: string; displayName?: string };
       shop: { id: string; shopName: string };
     }
   >;
@@ -140,7 +149,7 @@ export interface ShopDashboardOverview {
       description: string;
       createdAt: string;
       shopResponse: { status: ShopRequestStatus };
-      customer?: { fullName?: string };
+      customer?: { firstName?: string; lastName?: string; displayName?: string };
       repairJob?: { status: string };
     }>;
   };
@@ -186,7 +195,7 @@ export interface ShopDashboardOverview {
       description: string;
       updatedAt: string;
       repairJob: { status: string };
-      customer?: { fullName?: string };
+      customer?: { firstName?: string; lastName?: string; displayName?: string };
     }>;
   };
   reviews: {

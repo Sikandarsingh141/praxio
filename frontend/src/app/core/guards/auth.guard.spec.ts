@@ -7,6 +7,7 @@ import { RouterOutlet } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { authInterceptor } from '../auth/auth.interceptor';
 import { AuthService } from '../auth/auth.service';
+import { SKIP_GLOBAL_LOADER } from '../loading/global-loader.context';
 import { authGuard } from './auth.guard';
 
 @Component({ standalone: true, template: '' })
@@ -40,6 +41,12 @@ describe('authGuard', () => {
         children: [
           {
             path: '',
+            component: TestPage,
+            canActivate: [authGuard],
+            data: { accountType: 'shop', shopAccess: 'portal' },
+          },
+          {
+            path: 'repair-requests',
             component: TestPage,
             canActivate: [authGuard],
             data: { accountType: 'shop', shopAccess: 'portal' },
@@ -147,8 +154,18 @@ describe('authGuard', () => {
         },
       },
     });
+    await navigation;
+
+    expect(router.url).toBe('/shop');
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
+  });
+
+  it('reuses the authenticated user when navigating between shop pages', async () => {
+    const navigation = router.navigateByUrl('/shop');
     await new Promise((resolve) => setTimeout(resolve, 0));
-    httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`).flush({
+    const profileRequest = httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`);
+    expect(profileRequest.request.context.get(SKIP_GLOBAL_LOADER)).toBeTrue();
+    profileRequest.flush({
       data: {
         user: {
           id: 'shop-id',
@@ -170,7 +187,10 @@ describe('authGuard', () => {
     });
     await navigation;
 
-    expect(router.url).toBe('/shop');
+    await router.navigateByUrl('/shop/repair-requests');
+
+    expect(router.url).toBe('/shop/repair-requests');
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
   });
 
   it('redirects an admin account away from the customer portal', async () => {
@@ -187,22 +207,10 @@ describe('authGuard', () => {
         },
       },
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`).flush({
-      data: {
-        user: {
-          id: 'admin-id',
-          email: 'admin@example.com',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          accountType: 'admin',
-          accountStatus: 'active',
-        },
-      },
-    });
-
     await navigation;
 
     expect(router.url).toBe('/admin');
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
   });
 
   it('restricts pending customers to their own profile route', async () => {
@@ -227,29 +235,9 @@ describe('authGuard', () => {
         },
       },
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`).flush({
-      data: {
-        user: {
-          id: 'customer-id',
-          email: 'customer@example.com',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          accountType: 'customer',
-          accountStatus: 'pending_approval',
-          customerAuthorization: {
-            registrationStatus: 'pending',
-            accountStatus: 'pending_approval',
-            destination: '/customer/profile',
-            submittedAt: '2026-01-01T00:00:00.000Z',
-            reviewedAt: null,
-            declineReason: null,
-          },
-        },
-      },
-    });
-
     await navigation;
     expect(router.url).toBe('/customer/profile');
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
   });
 
   it('surfaces a session-check failure on the login route', async () => {
@@ -287,31 +275,10 @@ describe('authGuard', () => {
         },
       },
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`).flush({
-      data: {
-        user: {
-          id: 'shop-id',
-          email: 'shop@example.com',
-          createdAt: '2026-01-01T00:00:00.000Z',
-          accountType: 'shop',
-          accountStatus: 'pending_approval',
-          shopAuthorization: {
-            registrationStatus: 'pending',
-            paymentStatus: 'unpaid',
-            accountStatus: 'pending_approval',
-            destination: '/shop/profile',
-            submittedAt: '2026-01-01T00:00:00.000Z',
-            reviewedAt: null,
-            declineReason: null,
-          },
-        },
-      },
-    });
-
     await navigation;
 
     expect(router.url).toBe('/shop/profile');
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
   });
 
   it('allows paid pending shops to access only their registration profile', async () => {

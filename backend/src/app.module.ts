@@ -47,6 +47,7 @@ import { ChatModule } from './chat/chat.module';
         FIREBASE_PROJECT_ID: Joi.string().allow('').optional(),
         FIREBASE_CLIENT_EMAIL: Joi.string().email().allow('').optional(),
         FIREBASE_PRIVATE_KEY: Joi.string().allow('').optional(),
+        GOOGLE_APIKEY: Joi.string().allow('').optional(),
         GEOCODER_URL: Joi.string()
           .uri({ scheme: ['https'] })
           .optional(),

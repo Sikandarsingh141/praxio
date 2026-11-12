@@ -3,8 +3,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ShopProfile } from '../core/auth/auth.models';
+import { AuthService } from '../core/auth/auth.service';
 import { ShopRepairRequest } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
+import { ShopRepairRouteComponent } from './shop-repair-route.component';
 import { ShopRepairWorkflowComponent } from './shop-repair-workflow.component';
 
 const DECLINE_REASONS = [
@@ -18,13 +21,14 @@ const DECLINE_REASONS = [
 @Component({
   selector: 'app-shop-repair-request-details-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ShopRepairWorkflowComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ShopRepairRouteComponent, ShopRepairWorkflowComponent],
   templateUrl: './shop-repair-request-details.page.html',
   styleUrl: './shop-repair-request-details.page.scss',
 })
 export class ShopRepairRequestDetailsPage implements OnInit {
   readonly reasons = DECLINE_REASONS;
   readonly request = signal<ShopRepairRequest | null>(null);
+  readonly shopProfile = signal<ShopProfile | null>(null);
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -48,6 +52,41 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly pickupInstructions = signal('');
   readonly pickupMessage = signal('');
   readonly repairFormError = signal('');
+  readonly customerCoordinates = computed(() => {
+    const request = this.request();
+    if (!request) return null;
+    if (request.customer.location) return request.customer.location;
+    if (
+      typeof request.customerLatitude === 'number' &&
+      typeof request.customerLongitude === 'number'
+    ) {
+      return {
+        latitude: request.customerLatitude,
+        longitude: request.customerLongitude,
+      };
+    }
+    return null;
+  });
+  readonly customerMapUrl = computed(() => {
+    const location = this.customerCoordinates();
+    return this.isValidCoordinates(location)
+      ? `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
+      : null;
+  });
+  readonly progressSteps = [
+    'Request Submitted',
+    'Inspection Pending',
+    'Quotation',
+    'Repair & Complete',
+  ];
+  readonly currentProgressStep = computed(() => {
+    const request = this.request();
+    if (!request) return 1;
+    if (request.repairJob || request.shopResponse.status === 'customer_accepted') return 4;
+    if (request.shopResponse.status === 'quotation_submitted') return 3;
+    return 2;
+  });
+
   readonly canRespond = computed(() => {
     const request = this.request();
     if (!request || request.status !== 'open') {
@@ -63,6 +102,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly requestsService: ShopRepairRequestsService,
+    private readonly authService: AuthService,
   ) {}
 
   setRequest(request: ShopRepairRequest): void {
@@ -84,6 +124,14 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       error: (error: HttpErrorResponse) => {
         this.error.set(error.error?.message || 'Repair request could not be loaded.');
         this.loading.set(false);
+      },
+    });
+    this.authService.getMyShopProfile().subscribe({
+      next: (profile) => {
+        this.shopProfile.set(profile);
+      },
+      error: (error: HttpErrorResponse) => {
+        console.error('Shop location could not be loaded for repair directions.', error);
       },
     });
   }
@@ -255,5 +303,19 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       error: (error: HttpErrorResponse) =>
         this.error.set(error.error?.message || 'Updated request could not be reloaded.'),
     });
+  }
+
+  private isValidCoordinates(
+    location: { latitude: number; longitude: number } | null | undefined,
+  ): location is { latitude: number; longitude: number } {
+    return (
+      !!location &&
+      Number.isFinite(location.latitude) &&
+      location.latitude >= -90 &&
+      location.latitude <= 90 &&
+      Number.isFinite(location.longitude) &&
+      location.longitude >= -180 &&
+      location.longitude <= 180
+    );
   }
 }

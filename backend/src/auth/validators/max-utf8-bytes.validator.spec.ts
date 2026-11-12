@@ -4,6 +4,8 @@ import { RegisterDto } from '../dto/register.dto';
 describe('MaxUtf8Bytes', () => {
   it('accepts a password within bcrypt byte limits', async () => {
     const input = Object.assign(new RegisterDto(), {
+      firstName: 'Alex',
+      lastName: 'Repair',
       email: 'person@example.com',
       password: `Abcdef1!${'🙂'.repeat(16)}`,
     });
@@ -13,6 +15,8 @@ describe('MaxUtf8Bytes', () => {
 
   it('rejects a password beyond bcrypt byte limits', async () => {
     const input = Object.assign(new RegisterDto(), {
+      firstName: 'Alex',
+      lastName: 'Repair',
       email: 'person@example.com',
       password: `Abcdef1!${'🙂'.repeat(17)}`,
     });

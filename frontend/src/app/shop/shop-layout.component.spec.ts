@@ -30,7 +30,8 @@ describe('ShopLayout', () => {
         user: {
           id: 'shop-id',
           email: 'shop@example.com',
-          fullName: 'Shop Owner',
+          firstName: 'Shop',
+          lastName: 'Owner',
           profileImageUrl: 'data:image/png;base64,abc',
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'shop',
@@ -98,12 +99,13 @@ describe('ShopLayout', () => {
       updatedPhoto,
     );
 
-    authService.updateMyProfile('Updated Shop Owner').subscribe();
+    authService.updateMyProfile('Updated Shop', 'Owner').subscribe();
     httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me/profile`).flush({
       data: {
         user: {
           ...authService.currentUser(),
-          fullName: 'Updated Shop Owner',
+          firstName: 'Updated Shop',
+          lastName: 'Owner',
         },
       },
     });
@@ -144,7 +146,7 @@ describe('ShopLayout', () => {
             {
               _id: 'req-1',
               appliance: 'Washer',
-              customer: { fullName: 'Alex Customer' },
+              customer: { firstName: 'Alex', lastName: 'Customer' },
             },
           ],
         },
@@ -163,7 +165,7 @@ describe('ShopLayout', () => {
               amount: 125,
               currency: 'USD',
               repairRequest: { appliance: 'Washer' },
-              customer: { fullName: 'Alex Customer' },
+              customer: { firstName: 'Alex', lastName: 'Customer' },
             },
           ],
         },

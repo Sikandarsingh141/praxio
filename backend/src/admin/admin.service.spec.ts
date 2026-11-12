@@ -230,7 +230,7 @@ describe('AdminService', () => {
     });
   });
 
-  it('lists only confirmed repair jobs and applies the requested workflow filter', async () => {
+  it('lists completed repairs from either persisted completion status', async () => {
     const jobsQuery = {
       exec: jest.fn().mockResolvedValue([
         {
@@ -256,9 +256,44 @@ describe('AdminService', () => {
     expect(pipeline[0]).toEqual({
       $match: expect.objectContaining({
         _id: new Types.ObjectId('507f1f77bcf86cd799439015'),
-        acceptedQuotationId: { $exists: true },
-        'repairJob.status': 'completed',
+        $or: [
+          {
+            $and: [
+              { 'repairJob.status': 'completed' },
+              { acceptedQuotationId: { $exists: true } },
+            ],
+          },
+          {
+            $and: [
+              { 'repairJob.status': { $exists: false } },
+              { status: 'completed' },
+            ],
+          },
+        ],
       }),
+    });
+    expect(pipeline).toContainEqual({
+      $addFields: {
+        repairJob: {
+          $cond: [
+            {
+              $and: [
+                { $eq: ['$status', 'completed'] },
+                {
+                  $eq: [{ $ifNull: ['$repairJob.status', null] }, null],
+                },
+              ],
+            },
+            {
+              $mergeObjects: [
+                { $ifNull: ['$repairJob', {}] },
+                { status: 'completed' },
+              ],
+            },
+            '$repairJob',
+          ],
+        },
+      },
     });
     expect(pipeline.at(-1)).toEqual({
       $facet: expect.objectContaining({
@@ -295,8 +330,14 @@ describe('AdminService', () => {
       serviceType: 1,
       preferredServiceDate: 1,
       quotation: {
-        amount: '$quotation.amount',
-        proposedSolution: '$quotation.proposedSolution',
+        $cond: [
+          { $ifNull: ['$quotation._id', false] },
+          expect.objectContaining({
+            amount: '$quotation.amount',
+            proposedSolution: '$quotation.proposedSolution',
+          }),
+          null,
+        ],
       },
       shop: {
         email: '$shop.email',
@@ -311,6 +352,50 @@ describe('AdminService', () => {
       },
     });
   });
+
+  it('includes request-level completed repairs in the all-status monitor', async () => {
+    repairRequestsModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
+    });
+
+    await service.getRepairJobMonitor({ status: 'all' });
+
+    const pipeline = repairRequestsModel.aggregate.mock.calls[0][0];
+    expect(pipeline[0].$match).toEqual({
+      $or: [
+        {
+          $and: [
+            { 'repairJob.status': { $exists: true } },
+            { acceptedQuotationId: { $exists: true } },
+          ],
+        },
+        {
+          $and: [
+            { 'repairJob.status': { $exists: false } },
+            { status: 'completed' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it.each(['inspection_pending', 'disputed'])(
+    'accepts the %s repair status filter',
+    async (status) => {
+      repairRequestsModel.aggregate.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
+      });
+
+      await service.getRepairJobMonitor({ status });
+
+      expect(repairRequestsModel.aggregate.mock.calls[0][0][0]).toEqual({
+        $match: {
+          'repairJob.status': status,
+          acceptedQuotationId: { $exists: true },
+        },
+      });
+    },
+  );
 
   it('filters repair jobs by date and escaped search across repair, customer, and shop fields', async () => {
     repairRequestsModel.aggregate.mockReturnValue({
@@ -372,7 +457,8 @@ describe('AdminService', () => {
     await expect(service.getPendingShops()).resolves.toEqual([
       {
         id: '507f1f77bcf86cd799439011',
-        ownerName: 'Shop Owner',
+        ownerFirstName: 'Shop',
+        ownerLastName: 'Owner',
         email: 'shop@example.com',
         countryCode: '+91',
         mobileNumber: '9876543210',
@@ -386,7 +472,7 @@ describe('AdminService', () => {
     await expect(
       service.getUsers({
         page: 1,
-        limit: 10,
+        limit: 5,
         status: 'pending',
         accountType: 'customer',
       }),
@@ -405,10 +491,115 @@ describe('AdminService', () => {
     expect(usersModel.aggregate).toHaveBeenCalledTimes(1);
   });
 
+  it('accepts five-item pages for the Shop account filter', async () => {
+    await service.getUsers({
+      page: 1,
+      limit: 5,
+      status: 'all',
+      accountType: 'shop',
+    });
+
+    expect(usersModel.aggregate.mock.calls[0][0][0]).toEqual({
+      $match: { accountType: 'shop' },
+    });
+  });
+
   it('rejects invalid dashboard date filters before querying analytics', async () => {
     await expect(
       service.getDashboardOverview('2026-02-30', '2026-03-01'),
     ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('uses the repair workflow status as the admin dashboard status source', async () => {
+    const emptyResult = () => ({ exec: jest.fn().mockResolvedValue([]) });
+    const emptyCount = () => ({ exec: jest.fn().mockResolvedValue(0) });
+    usersModel.aggregate.mockReturnValue(emptyResult());
+    usersModel.countDocuments.mockReturnValue(emptyCount());
+    repairRequestsModel.countDocuments.mockReturnValue(emptyCount());
+    let dashboardStatusExpression: unknown;
+    let recentRepairStatusExpression: unknown;
+    repairRequestsModel.aggregate.mockImplementation(
+      (pipeline: Array<Record<string, unknown>>) => {
+        const statusStage = pipeline.find(
+          (stage) =>
+            '$addFields' in stage &&
+            typeof stage['$addFields'] === 'object' &&
+            stage['$addFields'] !== null &&
+            'dashboardStatus' in
+              (stage['$addFields'] as Record<string, unknown>),
+        );
+        if (statusStage) {
+          dashboardStatusExpression = (
+            statusStage['$addFields'] as Record<string, unknown>
+          )['dashboardStatus'];
+        }
+        const recentRepairsStage = pipeline.find(
+          (stage) =>
+            '$project' in stage &&
+            typeof stage['$project'] === 'object' &&
+            stage['$project'] !== null &&
+            'appliance' in (stage['$project'] as Record<string, unknown>),
+        );
+        if (recentRepairsStage) {
+          recentRepairStatusExpression = (
+            recentRepairsStage['$project'] as Record<string, unknown>
+          ).status;
+        }
+        return {
+          exec: jest.fn().mockResolvedValue(
+            statusStage
+              ? [
+                  { _id: 'completed', count: 1 },
+                  { _id: 'open', count: 2 },
+                ]
+              : [],
+          ),
+        };
+      },
+    );
+    let completedShopStatusMatch: unknown;
+    repairQuotationsModel.aggregate.mockImplementation(
+      (pipeline: Array<Record<string, unknown>>) => {
+        const completedMatch = pipeline.find(
+          (stage) =>
+            '$match' in stage &&
+            typeof stage['$match'] === 'object' &&
+            stage['$match'] !== null &&
+            '$expr' in (stage['$match'] as Record<string, unknown>),
+        );
+        if (completedMatch) {
+          completedShopStatusMatch = (
+            completedMatch['$match'] as Record<string, unknown>
+          ).$expr;
+        }
+        return emptyResult();
+      },
+    );
+    repairQuotationsModel.countDocuments.mockReturnValue(emptyCount());
+    auditLogs.aggregate.mockReturnValue(emptyResult());
+
+    const overview = await service.getDashboardOverview(
+      '2026-03-01',
+      '2026-03-07',
+    );
+
+    expect(overview.repairs.completed).toBe(1);
+    expect(overview.repairStatuses).toContainEqual({
+      status: 'completed',
+      count: 1,
+    });
+    expect(dashboardStatusExpression).toEqual({
+      $ifNull: ['$repairJob.status', '$status'],
+    });
+    expect(recentRepairStatusExpression).toEqual({
+      $ifNull: ['$repairJob.status', '$status'],
+    });
+    expect(completedShopStatusMatch).toEqual({
+      $eq: [
+        { $ifNull: ['$repair.repairJob.status', '$repair.status'] },
+        'completed',
+      ],
+    });
   });
 
   it('returns an empty but valid date-filtered dashboard overview', async () => {
@@ -438,7 +629,7 @@ describe('AdminService', () => {
     expect(overview.recentActivities).toEqual([]);
   });
 
-  it('calculates subscription receivables, overdue balances, and net collected revenue', async () => {
+  it('calculates subscription finances and includes paid invoices without webhook events', async () => {
     const emptyResult = () => ({ exec: jest.fn().mockResolvedValue([]) });
     const emptyCount = () => ({ exec: jest.fn().mockResolvedValue(0) });
     const queryResult = (value: unknown[]) => ({
@@ -506,6 +697,19 @@ describe('AdminService', () => {
           ],
         },
         {
+          stripeInvoiceId: 'in_paid_without_event',
+          registrationRequestId,
+          userId,
+          totalAmountCents: 2900,
+          amountPaidCents: 2900,
+          refundedAmountCents: 0,
+          currency: 'usd',
+          status: 'paid',
+          generatedAt: new Date('2026-03-03T00:00:00.000Z'),
+          paidAt: new Date('2026-03-03T00:00:00.000Z'),
+          events: [],
+        },
+        {
           stripeInvoiceId: 'in_void',
           registrationRequestId,
           userId,
@@ -567,9 +771,14 @@ describe('AdminService', () => {
         currency: 'USD',
         accountReceivableCents: 1900,
         overdueAmountCents: 1900,
-        subscriptionRevenueCents: 4900,
+        subscriptionRevenueCents: 7800,
       },
     ]);
+    expect(
+      overview.recentActivities.filter(
+        (activity) => activity.type === 'subscription_payment_received',
+      ),
+    ).toHaveLength(2);
     expect(overview.recentActivities).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -590,6 +799,13 @@ describe('AdminService', () => {
           status: 'paid',
         }),
         expect.objectContaining({
+          id: 'in_paid_without_event:paid',
+          description: 'Subscription Payment Received',
+          relatedName: 'Amit Shop',
+          amountCents: 2900,
+          status: 'paid',
+        }),
+        expect.objectContaining({
           description: 'Shop Subscription Purchased',
           relatedName: 'Amit Shop',
           amountCents: 2900,
@@ -604,7 +820,8 @@ describe('AdminService', () => {
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
     usersService.findById.mockResolvedValue({
       _id: userId,
-      fullName: 'Shop Owner',
+      firstName: 'Shop',
+      lastName: 'Owner',
       email: 'shop@example.com',
       countryCode: '+91',
       mobileNumber: '9876543210',
@@ -642,7 +859,8 @@ describe('AdminService', () => {
 
     expect(profile).toMatchObject({
       id: userId.toString(),
-      fullName: 'Shop Owner',
+      firstName: 'Shop',
+      lastName: 'Owner',
       accountType: 'shop',
       location: { latitude: 28.6139, longitude: 77.209 },
       shop: {
@@ -662,56 +880,65 @@ describe('AdminService', () => {
     });
   });
 
-  it('marks an accepted repair as active and keeps its repair workflow status', async () => {
-    const userId = new Types.ObjectId('507f1f77bcf86cd799439011');
-    const acceptedQuotationId = new Types.ObjectId('507f1f77bcf86cd799439016');
-    usersService.findById.mockResolvedValue({
-      _id: userId,
-      fullName: 'Shop Owner',
-      email: 'shop@example.com',
-      accountType: 'shop',
-      accountStatus: 'active',
-      createdAt: new Date('2026-01-01T00:00:00.000Z'),
-      shopDetails: { shopName: 'Example Repairs' },
-    });
-    requestQuery.exec.mockResolvedValue(null);
-    historyQuery.exec.mockResolvedValue([
-      {
-        _id: new Types.ObjectId('507f1f77bcf86cd799439014'),
-        appliance: 'Washing machine',
-        description: 'Not draining',
-        status: 'open',
-        repairJob: {
-          status: 'confirmed',
-          acceptedQuotationId,
-        },
-        createdAt: new Date('2026-01-02T00:00:00.000Z'),
-      },
-    ]);
-    repairQuotationsModel.find.mockReturnValue({
-      select: jest.fn().mockReturnThis(),
-      sort: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      lean: jest.fn().mockReturnThis(),
-      exec: jest.fn().mockResolvedValue([
+  it.each([
+    ['confirmed', 'active'],
+    ['completed', 'completed'],
+    ['repair_declined', 'open'],
+  ])(
+    'reports an accepted repair with %s workflow status as %s',
+    async (repairStatus, expectedRequestStatus) => {
+      const userId = new Types.ObjectId('507f1f77bcf86cd799439011');
+      const acceptedQuotationId = new Types.ObjectId(
+        '507f1f77bcf86cd799439016',
+      );
+      usersService.findById.mockResolvedValue({
+        _id: userId,
+        fullName: 'Shop Owner',
+        email: 'shop@example.com',
+        accountType: 'shop',
+        accountStatus: 'active',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        shopDetails: { shopName: 'Example Repairs' },
+      });
+      requestQuery.exec.mockResolvedValue(null);
+      historyQuery.exec.mockResolvedValue([
         {
-          _id: acceptedQuotationId,
-          repairRequestId: new Types.ObjectId('507f1f77bcf86cd799439014'),
-          amount: 1500,
-          currency: 'INR',
-          status: 'accepted',
+          _id: new Types.ObjectId('507f1f77bcf86cd799439014'),
+          appliance: 'Washing machine',
+          description: 'Not draining',
+          status: 'open',
+          repairJob: {
+            status: repairStatus,
+            acceptedQuotationId,
+          },
           createdAt: new Date('2026-01-02T00:00:00.000Z'),
         },
-      ]),
-    });
+      ]);
+      repairQuotationsModel.find.mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        sort: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue([
+          {
+            _id: acceptedQuotationId,
+            repairRequestId: new Types.ObjectId('507f1f77bcf86cd799439014'),
+            amount: 1500,
+            currency: 'INR',
+            status: 'accepted',
+            createdAt: new Date('2026-01-02T00:00:00.000Z'),
+          },
+        ]),
+      });
 
-    const profile = await service.getUserDetails(userId.toString());
+      const profile = await service.getUserDetails(userId.toString());
 
-    expect(profile.repairActivity[0]).toMatchObject({
-      status: 'active',
-      repairStatus: 'confirmed',
-    });
-  });
+      expect(profile.repairActivity[0]).toMatchObject({
+        status: expectedRequestStatus,
+        repairStatus,
+      });
+    },
+  );
 
   it('suspends an approved account atomically, audits it, and notifies the intended user', async () => {
     requestQuery.exec.mockResolvedValue({ registrationStatus: 'approved' });

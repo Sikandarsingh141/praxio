@@ -125,6 +125,10 @@ ShopSubscriptionInvoiceSchema.index(
   { name: 'IX_shop_subscription_invoices_generated' },
 );
 ShopSubscriptionInvoiceSchema.index(
+  { registrationRequestId: 1, userId: 1, generatedAt: -1 },
+  { name: 'IX_shop_subscription_invoices_registration_history' },
+);
+ShopSubscriptionInvoiceSchema.index(
   { dueAt: 1, status: 1 },
   { name: 'IX_shop_subscription_invoices_due_status' },
 );

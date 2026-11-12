@@ -136,6 +136,42 @@ describe('AdminOverviewPage', () => {
     expect(text).toContain('$29.00');
     expect(text).toContain('Mobile Phones');
     expect(fixture.nativeElement.querySelector('.trend-line')).toBeTruthy();
+    expect(text).not.toContain('UTC');
+    expect(text).not.toContain('Refresh data');
+    expect(fixture.nativeElement.querySelector('.filter-trigger')).toBeTruthy();
+  });
+
+  it('displays recent repair IDs using the uppercase eight-character request reference', () => {
+    const fixture = TestBed.createComponent(AdminOverviewPage);
+    fixture.detectChanges();
+
+    http.expectOne((req) => req.url.endsWith('/admin/dashboard/overview')).flush({
+      data: {
+        ...overview,
+        recentRepairs: [
+          {
+            id: '507f1f77bcf86cd709a3ca32',
+            customerId: 'customer-id',
+            customerName: 'Customer Example',
+            appliance: 'Laptop',
+            description: 'Screen is cracked.',
+            createdAt: '2026-11-09T17:40:00.000Z',
+            shopsNotified: 1,
+            status: 'inspection_pending',
+          },
+        ],
+      },
+    });
+    fixture.detectChanges();
+
+    const requestId = fixture.nativeElement.querySelector(
+      '.recent-repairs-panel tbody code',
+    ) as HTMLElement;
+    expect(requestId.textContent?.trim()).toBe('Request ID: 09A3CA32');
+    const status = fixture.nativeElement.querySelector(
+      '.recent-repairs-panel tbody .status-pill',
+    ) as HTMLElement;
+    expect(status.textContent?.trim()).toBe('Inspection Pending');
   });
 
   it('requests updated analytics when the date range changes', () => {
@@ -146,13 +182,50 @@ describe('AdminOverviewPage', () => {
     initialRequest.flush({ data: overview });
     fixture.detectChanges();
 
-    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    const filterTrigger = fixture.nativeElement.querySelector(
+      '.filter-trigger',
+    ) as HTMLButtonElement;
+    filterTrigger.click();
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector('#period') as HTMLSelectElement;
     select.value = '7d';
     select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
+    const applyButton = fixture.nativeElement.querySelector(
+      '.apply-button',
+    ) as HTMLButtonElement;
+    applyButton.click();
+    fixture.detectChanges();
+
     const request = http.expectOne((req) => req.url.endsWith('/admin/dashboard/overview'));
     expect(request.request.params.get('from')).not.toBe(initialFrom);
+    request.flush({ data: overview });
+  });
+
+  it('applies custom dates from the dashboard filter drawer', () => {
+    const fixture = TestBed.createComponent(AdminOverviewPage);
+    fixture.detectChanges();
+    http.expectOne((req) => req.url.endsWith('/admin/dashboard/overview')).flush({ data: overview });
+
+    (fixture.nativeElement.querySelector('.filter-trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const period = fixture.nativeElement.querySelector('#period') as HTMLSelectElement;
+    period.value = 'custom';
+    period.dispatchEvent(new Event('change'));
+    const from = fixture.nativeElement.querySelector('#customRange-from') as HTMLInputElement;
+    const to = fixture.nativeElement.querySelector('#customRange-to') as HTMLInputElement;
+    from.value = '2026-10-01';
+    from.dispatchEvent(new Event('input'));
+    to.value = '2026-10-15';
+    to.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.apply-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const request = http.expectOne((req) => req.url.endsWith('/admin/dashboard/overview'));
+    expect(request.request.params.get('from')).toBe('2026-10-01');
+    expect(request.request.params.get('to')).toBe('2026-10-15');
     request.flush({ data: overview });
   });
 });

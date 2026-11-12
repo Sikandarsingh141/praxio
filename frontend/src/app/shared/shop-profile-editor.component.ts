@@ -1,4 +1,13 @@
-import { Component, DestroyRef, EventEmitter, Input, Output, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
@@ -16,18 +25,6 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
   imports: [ReactiveFormsModule],
   template: `
     <section class="shop-profile-editor" aria-labelledby="business-details-title">
-      <div class="section-heading">
-        <div>
-          <span class="section-eyebrow">YOUR BUSINESS</span>
-          <h2 id="business-details-title">{{ profile.shopName }}</h2>
-        </div>
-        @if (!editing()) {
-          <button class="edit-button" type="button" (click)="startEditing()">
-            Edit name &amp; address
-          </button>
-        }
-      </div>
-
       @if (errorMessage()) {
         <p class="feedback error" role="alert">{{ errorMessage() }}</p>
       }
@@ -38,13 +35,65 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
       @if (editing()) {
         <form [formGroup]="form" (ngSubmit)="saveAddress()">
           <div class="form-grid">
-            <label class="wide">
-              Shop name
+            <h2 id="business-details-title" class="form-section-heading wide">
+              <span aria-hidden="true">▤</span> Company Information
+            </h2>
+            <label>
+              Company Name <span class="required" aria-hidden="true">*</span>
               <input formControlName="shopName" maxlength="120" />
               @if (form.controls.shopName.touched && form.controls.shopName.invalid) {
                 <small class="field-error">Enter a shop name (up to 120 characters).</small>
               }
             </label>
+            <label>
+              First Name
+              <input
+                [value]="profile.ownerFirstName"
+                readonly
+                aria-label="First name (read only)"
+              />
+            </label>
+            <label>
+              Last Name
+              <input
+                [value]="profile.ownerLastName"
+                readonly
+                aria-label="Last name (read only)"
+              />
+            </label>
+            <label>
+              Email Address
+              <input [value]="profile.email" readonly aria-label="Email address (read only)" />
+            </label>
+            <label>
+              Phone Number
+              <input
+                [value]="profile.countryCode + ' ' + profile.mobileNumber"
+                readonly
+                aria-label="Phone number (read only)"
+              />
+            </label>
+            <label>
+              Business Type
+              <input
+                [value]="profile.businessType"
+                readonly
+                aria-label="Business type (read only)"
+              />
+            </label>
+            <label>
+              Experience
+              <input
+                [value]="
+                  profile.yearsOfExperience + (profile.yearsOfExperience === 1 ? ' year' : ' years')
+                "
+                readonly
+                aria-label="Experience (read only)"
+              />
+            </label>
+            <h2 class="form-section-heading wide">
+              <span aria-hidden="true">⌖</span> Business Address Information
+            </h2>
             <label class="wide address-search">
               Search address
               <input
@@ -95,21 +144,29 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
               }
             </label>
             <label>
-              City
-              <input formControlName="city" maxlength="100" />
-              @if (form.controls.city.touched && form.controls.city.invalid) {
-                <small class="field-error">Enter a city.</small>
-              }
+              Country
+              <input
+                [value]="profile.country || 'Not provided'"
+                readonly
+                aria-label="Country (read only)"
+              />
             </label>
             <label>
-              State or province
+              State <span class="required" aria-hidden="true">*</span>
               <input formControlName="state" maxlength="100" />
               @if (form.controls.state.touched && form.controls.state.invalid) {
                 <small class="field-error">Enter a state or province.</small>
               }
             </label>
             <label>
-              Zip code
+              City <span class="required" aria-hidden="true">*</span>
+              <input formControlName="city" maxlength="100" />
+              @if (form.controls.city.touched && form.controls.city.invalid) {
+                <small class="field-error">Enter a city.</small>
+              }
+            </label>
+            <label>
+              Zip Code <span class="required" aria-hidden="true">*</span>
               <input formControlName="postalCode" maxlength="12" />
               @if (form.controls.postalCode.touched && form.controls.postalCode.invalid) {
                 <small class="field-error">Enter a valid zip or postal code.</small>
@@ -131,15 +188,19 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
               Cancel
             </button>
             <button class="save-button" type="submit" [disabled]="saving()">
-              {{ saving() ? 'Saving address…' : 'Save address' }}
+              {{ saving() ? 'Saving changes…' : 'Save Changes' }}
             </button>
           </div>
         </form>
       } @else {
         <dl>
           <div>
-            <dt>Business owner</dt>
-            <dd>{{ profile.ownerName }}</dd>
+            <dt>First Name</dt>
+            <dd>{{ profile.ownerFirstName }}</dd>
+          </div>
+          <div>
+            <dt>Last Name</dt>
+            <dd>{{ profile.ownerLastName }}</dd>
           </div>
           <div>
             <dt>Email</dt>
@@ -182,37 +243,26 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
     .shop-profile-editor {
       display: grid;
       gap: 1rem;
-      padding: clamp(1rem, 2vw, 1.25rem);
-      border: 1px solid #e1e6e3;
-      border-radius: 0.95rem;
-      background: #fff;
-      box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
     }
 
-    .section-heading {
+    .form-section-heading {
       display: flex;
+      min-height: 2rem;
       align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid #edf1ed;
-    }
-
-    .section-eyebrow {
-      color: #63806d;
-      font-size: 0.65rem;
+      gap: 0.55rem;
+      margin: 0;
+      padding: 0.35rem 0.65rem;
+      border-radius: 0.5rem;
+      background: #edf6ee;
+      color: #17231b;
+      font-size: 0.85rem;
       font-weight: 750;
-      letter-spacing: 0.1em;
     }
 
-    h2 {
-      margin: 0.2rem 0 0;
-      color: #18221d;
-      font-size: 1rem;
-      font-weight: 760;
+    .form-section-heading span {
+      color: #16803c;
     }
 
-    .edit-button,
     .save-button,
     .cancel-button {
       min-height: 2.4rem;
@@ -238,11 +288,10 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
       opacity: 0.65;
     }
 
-    dl,
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1rem 2rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.9rem 1rem;
       margin: 0;
     }
 
@@ -275,23 +324,30 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
 
     .form-grid > label {
       display: grid;
-      gap: 0.4rem;
-      color: #43544a;
-      font-size: 0.75rem;
-      font-weight: 650;
+      min-width: 0;
+      gap: 0.35rem;
+      color: #27342c;
+      font-size: 0.73rem;
+      font-weight: 700;
     }
 
     input,
     textarea {
+      box-sizing: border-box;
       width: 100%;
-      min-height: 2.5rem;
-      padding: 0.55rem 0.65rem;
-      border: 1px solid #dce5de;
-      border-radius: 0.5rem;
+      min-height: 2.4rem;
+      padding: 0.55rem 0.7rem;
+      border: 1px solid #d8dfdc;
+      border-radius: 0.45rem;
       background: #fff;
-      color: #263a2e;
+      color: #26352c;
       font: inherit;
       font-size: 0.78rem;
+    }
+
+    input[readonly] {
+      background: #f7f8f7;
+      color: #59665e;
     }
 
     textarea {
@@ -300,6 +356,10 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
 
     .wide {
       grid-column: 1 / -1;
+    }
+
+    .required {
+      color: #dc2626;
     }
 
     .form-actions {
@@ -369,7 +429,16 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
     }
 
     @media (max-width: 620px) {
-      dl,
+      .form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .wide {
+        grid-column: auto;
+      }
+    }
+
+    @media (max-width: 420px) {
       .form-grid {
         grid-template-columns: 1fr;
       }
@@ -380,13 +449,14 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
     }
   `,
 })
-export class ShopProfileEditorComponent {
+export class ShopProfileEditorComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
   private readonly addressQueryInput = new Subject<string>();
   @Input({ required: true }) profile!: ShopProfile;
   @Output() readonly profileUpdated = new EventEmitter<ShopProfile>();
+  @Output() readonly editCancelled = new EventEmitter<void>();
 
   readonly editing = signal(false);
   readonly saving = signal(false);
@@ -451,6 +521,10 @@ export class ShopProfileEditorComponent {
       });
   }
 
+  ngOnInit(): void {
+    this.startEditing();
+  }
+
   startEditing(): void {
     this.errorMessage.set('');
     this.successMessage.set('');
@@ -471,9 +545,9 @@ export class ShopProfileEditorComponent {
   }
 
   cancelEdit(): void {
-    this.editing.set(false);
     this.errorMessage.set('');
     this.addressSuggestionsVisible.set(false);
+    this.editCancelled.emit();
   }
 
   searchAddress(event: Event): void {

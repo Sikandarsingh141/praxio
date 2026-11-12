@@ -14,7 +14,7 @@
       <dl>
         <div>
           <dt>Customer</dt>
-          <dd>{{ request.customer.fullName }}</dd>
+          <dd>{{ request.customer.displayName || (request.customer.firstName + ' ' + request.customer.lastName) }}</dd>
         </div>
         <div>
           <dt>Device</dt>
@@ -288,9 +288,9 @@
           <p><strong>Identified problem:</strong> {{ inspection.identifiedProblem }}</p>
           <p><strong>Findings:</strong> {{ inspection.findings }}</p>
           <p><strong>Required repair work:</strong> {{ inspection.requiredRepairWork }}</p>
-          @if (inspection.parts.length) {
+          @if (inspectionPartsForDisplay(inspection.parts).length) {
             <h4>Parts</h4>
-            @for (part of inspection.parts; track $index) {
+            @for (part of inspectionPartsForDisplay(inspection.parts); track $index) {
               <p>
                 {{ part.name }} · {{ part.quantity }} ×
                 {{ part.unitPrice | currency: acceptedQuotation?.currency }} =

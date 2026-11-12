@@ -11,7 +11,8 @@ import {
 export interface RegistrationAccount {
   email: string;
   passwordHash: string;
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   profileImageData?: string;
   countryCode?: string;
   mobileNumber?: string;
@@ -75,6 +76,30 @@ export class UsersService {
       .exec();
   }
 
+  async findByIdForAuthentication(id: string): Promise<UserDocument | null> {
+    if (!isObjectIdOrHexString(id)) {
+      return null;
+    }
+    return this.users.findById(id).select('+passwordHash').exec();
+  }
+
+  async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    if (!isObjectIdOrHexString(id)) {
+      throw new NotFoundException('User account was not found');
+    }
+
+    const user = await this.users
+      .findByIdAndUpdate(
+        id,
+        { $set: { passwordHash } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      throw new NotFoundException('User account was not found');
+    }
+  }
+
   async findById(id: string): Promise<UserDocument | null> {
     if (!isObjectIdOrHexString(id)) {
       return null;
@@ -84,7 +109,11 @@ export class UsersService {
 
   async updateProfile(
     id: string,
-    updates: { fullName?: string; profileImageData?: string },
+    updates: {
+      firstName?: string;
+      lastName?: string;
+      profileImageData?: string;
+    },
   ): Promise<UserDocument> {
     if (!isObjectIdOrHexString(id)) {
       throw new NotFoundException('User account was not found');

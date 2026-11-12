@@ -30,7 +30,8 @@ describe('AdminLayout', () => {
         user: {
           id: 'admin-id',
           email: 'admin@example.com',
-          fullName: 'Admin Example',
+          firstName: 'Admin',
+          lastName: 'Example',
           profileImageUrl: 'data:image/png;base64,abc',
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'admin',

@@ -73,7 +73,8 @@ describe('RegistrationService', () => {
     const result = await service.submit({
       email: 'person@example.com',
       passwordHash: 'bcrypt-hash',
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       countryCode: '+1',
       mobileNumber: '5551234567',
       accountType: 'customer',
@@ -154,7 +155,8 @@ describe('RegistrationService', () => {
     await service.submit({
       email: 'shop@example.com',
       passwordHash: 'bcrypt-hash',
-      fullName: 'Shop Owner',
+      firstName: 'Shop',
+      lastName: 'Owner',
       countryCode: '+91',
       mobileNumber: '9876543210',
       accountType: 'shop',

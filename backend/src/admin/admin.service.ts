@@ -16,9 +16,12 @@ import { RegistrationRequest } from '../registrations/schemas/registration-reque
 import { NotificationsService } from '../notifications/notifications.service';
 import { ShopDetails, User, UserDocument } from '../users/schemas/user.schema';
 import { UsersService } from '../users/users.service';
+import { formatUserName, userNameParts } from '../users/user-name';
 import { DeclineRegistrationDto } from './dto/decline-registration.dto';
 import { AdminAuditLog } from './schemas/admin-audit-log.schema';
 import {
+  LEGACY_REPAIR_JOB_STATUSES,
+  REPAIR_JOB_STATUSES,
   RepairQuotation,
   RepairReview,
   RepairRequest,
@@ -27,7 +30,8 @@ import { ShopSubscriptionInvoice } from '../payments/schemas/shop-subscription-i
 
 export interface ShopApplication {
   id: string;
-  ownerName: string;
+  ownerFirstName: string;
+  ownerLastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
@@ -93,7 +97,8 @@ export interface RegistrationRequestPage {
 
 export interface AdminUserDetails {
   id: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
@@ -311,13 +316,8 @@ export class AdminService {
   }> {
     const statuses = [
       'all',
-      'confirmed',
-      'in_progress',
-      'on_hold',
-      'repair_completed',
-      'ready_for_pickup',
-      'picked_up',
-      'completed',
+      ...REPAIR_JOB_STATUSES,
+      ...LEGACY_REPAIR_JOB_STATUSES,
     ];
     const status = query.status || 'all';
     const page = query.page ?? 1;
@@ -328,10 +328,45 @@ export class AdminService {
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       throw new BadRequestException('Page size must be between 1 and 100');
     }
-    const match: Record<string, unknown> = {
-      'repairJob.status': { $exists: true },
-      acceptedQuotationId: { $exists: true },
-    };
+    const match: Record<string, unknown> =
+      status === 'all'
+        ? {
+            $or: [
+              {
+                $and: [
+                  { 'repairJob.status': { $exists: true } },
+                  { acceptedQuotationId: { $exists: true } },
+                ],
+              },
+              {
+                $and: [
+                  { 'repairJob.status': { $exists: false } },
+                  { status: 'completed' },
+                ],
+              },
+            ],
+          }
+        : status === 'completed'
+          ? {
+              $or: [
+                {
+                  $and: [
+                    { 'repairJob.status': 'completed' },
+                    { acceptedQuotationId: { $exists: true } },
+                  ],
+                },
+                {
+                  $and: [
+                    { 'repairJob.status': { $exists: false } },
+                    { status: 'completed' },
+                  ],
+                },
+              ],
+            }
+          : {
+              'repairJob.status': { $exists: true },
+              acceptedQuotationId: { $exists: true },
+            };
     if (query.from || query.to) {
       const start = query.from
         ? this.parseDashboardDate(query.from, 'start')
@@ -353,7 +388,7 @@ export class AdminService {
       }
       match._id = new Types.ObjectId(query.requestId);
     }
-    if (status !== 'all') {
+    if (status !== 'all' && status !== 'completed') {
       match['repairJob.status'] = status;
     }
     const search = query.search?.trim();
@@ -374,6 +409,8 @@ export class AdminService {
             pipeline: [
               {
                 $project: {
+                  firstName: 1,
+                  lastName: 1,
                   fullName: 1,
                   email: 1,
                   countryCode: 1,
@@ -423,6 +460,8 @@ export class AdminService {
             pipeline: [
               {
                 $project: {
+                  firstName: 1,
+                  lastName: 1,
                   fullName: 1,
                   email: 1,
                   countryCode: 1,
@@ -449,6 +488,8 @@ export class AdminService {
                     { appliance: searchPattern },
                     { description: searchPattern },
                     { 'customer.fullName': searchPattern },
+                    { 'customer.firstName': searchPattern },
+                    { 'customer.lastName': searchPattern },
                     { 'customer.email': searchPattern },
                     { 'shop.shopDetails.shopName': searchPattern },
                   ],
@@ -456,6 +497,29 @@ export class AdminService {
               },
             ]
           : []),
+        {
+          $addFields: {
+            repairJob: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ['$status', 'completed'] },
+                    {
+                      $eq: [{ $ifNull: ['$repairJob.status', null] }, null],
+                    },
+                  ],
+                },
+                {
+                  $mergeObjects: [
+                    { $ifNull: ['$repairJob', {}] },
+                    { status: 'completed' },
+                  ],
+                },
+                '$repairJob',
+              ],
+            },
+          },
+        },
         {
           $facet: {
             jobs: [
@@ -514,14 +578,27 @@ export class AdminService {
                     history: 1,
                   },
                   customer: {
-                    fullName: '$customer.fullName',
+                    firstName: '$customer.firstName',
+                    lastName: '$customer.lastName',
+                    displayName: mongoUserDisplayName(
+                      '$customer.firstName',
+                      '$customer.lastName',
+                      '$customer.fullName',
+                      'Customer',
+                    ),
                     email: '$customer.email',
                     countryCode: '$customer.countryCode',
                     mobileNumber: '$customer.mobileNumber',
                   },
                   shopName: '$shop.shopDetails.shopName',
                   shop: {
-                    fullName: '$shop.fullName',
+                    firstName: '$shop.firstName',
+                    lastName: '$shop.lastName',
+                    displayName: mongoUserDisplayName(
+                      '$shop.firstName',
+                      '$shop.lastName',
+                      '$shop.fullName',
+                    ),
                     email: '$shop.email',
                     countryCode: '$shop.countryCode',
                     mobileNumber: '$shop.mobileNumber',
@@ -531,21 +608,27 @@ export class AdminService {
                     postalCode: '$shop.shopDetails.postalCode',
                   },
                   quotation: {
-                    id: { $toString: '$quotation._id' },
-                    amount: '$quotation.amount',
-                    currency: '$quotation.currency',
-                    status: '$quotation.status',
-                    message: '$quotation.message',
-                    inspectionCharge: '$quotation.inspectionCharge',
-                    partsCost: '$quotation.partsCost',
-                    labourCharge: '$quotation.labourCharge',
-                    additionalCharges: '$quotation.additionalCharges',
-                    proposedSolution: '$quotation.proposedSolution',
-                    warrantyInformation: '$quotation.warrantyInformation',
-                    additionalNotes: '$quotation.additionalNotes',
-                    estimatedDays: '$quotation.estimatedDays',
-                    validUntil: '$quotation.validUntil',
-                    createdAt: '$quotation.createdAt',
+                    $cond: [
+                      { $ifNull: ['$quotation._id', false] },
+                      {
+                        id: { $toString: '$quotation._id' },
+                        amount: '$quotation.amount',
+                        currency: '$quotation.currency',
+                        status: '$quotation.status',
+                        message: '$quotation.message',
+                        inspectionCharge: '$quotation.inspectionCharge',
+                        partsCost: '$quotation.partsCost',
+                        labourCharge: '$quotation.labourCharge',
+                        additionalCharges: '$quotation.additionalCharges',
+                        proposedSolution: '$quotation.proposedSolution',
+                        warrantyInformation: '$quotation.warrantyInformation',
+                        additionalNotes: '$quotation.additionalNotes',
+                        estimatedDays: '$quotation.estimatedDays',
+                        validUntil: '$quotation.validUntil',
+                        createdAt: '$quotation.createdAt',
+                      },
+                      null,
+                    ],
                   },
                 },
               },
@@ -595,7 +678,9 @@ export class AdminService {
               from: 'users',
               localField: 'customerId',
               foreignField: '_id',
-              pipeline: [{ $project: { fullName: 1 } }],
+              pipeline: [
+                { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+              ],
               as: 'customer',
             },
           },
@@ -636,7 +721,11 @@ export class AdminService {
               wouldRecommend: 1,
               verifiedAt: 1,
               createdAt: 1,
-              customerName: '$customer.fullName',
+              customerName: mongoUserDisplayName(
+                '$customer.firstName',
+                '$customer.lastName',
+                '$customer.fullName',
+              ),
               shopName: '$shop.shopDetails.shopName',
               appliance: '$repair.appliance',
             },
@@ -835,7 +924,9 @@ export class AdminService {
           shopResponses: { $elemMatch: { status: 'expired' } },
         })
         .exec(),
-      countedStatus(this.repairRequests, {}),
+      countedStatus(this.repairRequests, {}, {
+        $ifNull: ['$repairJob.status', '$status'],
+      }),
       this.repairRequests
         .aggregate<{ _id: string; count: number }>([
           { $unwind: '$shopResponses' },
@@ -923,16 +1014,16 @@ export class AdminService {
             $project: {
               appliance: 1,
               description: 1,
-              status: 1,
+              status: { $ifNull: ['$repairJob.status', '$status'] },
               createdAt: 1,
               shopIds: 1,
               customerId: 1,
-              customerName: {
-                $ifNull: [
-                  { $arrayElemAt: ['$customer.fullName', 0] },
-                  'Customer',
-                ],
-              },
+              customerName: mongoUserDisplayName(
+                { $arrayElemAt: ['$customer.firstName', 0] },
+                { $arrayElemAt: ['$customer.lastName', 0] },
+                { $arrayElemAt: ['$customer.fullName', 0] },
+                'Customer',
+              ),
             },
           },
         ])
@@ -973,6 +1064,8 @@ export class AdminService {
           {
             $project: {
               accountType: 1,
+              firstName: 1,
+              lastName: 1,
               fullName: 1,
               shopDetails: 1,
               createdAt: 1,
@@ -1000,12 +1093,12 @@ export class AdminService {
               targetName: {
                 $ifNull: [
                   { $arrayElemAt: ['$target.shopDetails.shopName', 0] },
-                  {
-                    $ifNull: [
-                      { $arrayElemAt: ['$target.fullName', 0] },
-                      'User',
-                    ],
-                  },
+                  mongoUserDisplayName(
+                    { $arrayElemAt: ['$target.firstName', 0] },
+                    { $arrayElemAt: ['$target.lastName', 0] },
+                    { $arrayElemAt: ['$target.fullName', 0] },
+                    'User',
+                  ),
                 ],
               },
             },
@@ -1031,7 +1124,21 @@ export class AdminService {
             },
           },
           { $unwind: '$repair' },
-          { $match: { 'repair.status': 'completed' } },
+          {
+            $match: {
+              $expr: {
+                $eq: [
+                  {
+                    $ifNull: [
+                      '$repair.repairJob.status',
+                      '$repair.status',
+                    ],
+                  },
+                  'completed',
+                ],
+              },
+            },
+          },
           { $group: { _id: '$shopId', count: { $sum: 1 } } },
           { $sort: { count: -1 } },
           { $limit: 5 },
@@ -1157,7 +1264,7 @@ export class AdminService {
           (record.accountType === 'shop'
             ? (record.shopDetails as { shopName?: string } | undefined)
                 ?.shopName
-            : (record.fullName as string | undefined)) ?? null,
+            : formatUserName(record)) || null,
         createdAt: record.createdAt as Date,
         link: `/admin/users/${String(record._id)}`,
       })),
@@ -1287,7 +1394,7 @@ export class AdminService {
           (record.accountType === 'shop'
             ? (record.shopDetails as { shopName?: string } | undefined)
                 ?.shopName
-            : (record.fullName as string | undefined)) ?? 'New account',
+            : formatUserName(record)) || 'New account',
         accountType: record.accountType as 'customer' | 'shop',
         createdAt: record.createdAt as Date,
       })),
@@ -1439,6 +1546,9 @@ export class AdminService {
     for (const invoice of invoices) {
       const currency = invoice.currency.toUpperCase();
       const total = getTotals(currency);
+      const hasPaidActivity = (invoice.events ?? []).some(
+        (event) => event.type === 'invoice.paid' && inRange(event.occurredAt),
+      );
       const isCancelled = ['void', 'cancelled', 'canceled', 'draft'].includes(
         invoice.status.toLowerCase(),
       );
@@ -1488,6 +1598,26 @@ export class AdminService {
             status: event.status,
           });
         }
+      }
+
+      if (
+        invoice.status === 'paid' &&
+        invoice.paidAt &&
+        inRange(invoice.paidAt) &&
+        invoice.amountPaidCents > 0 &&
+        !hasPaidActivity
+      ) {
+        activities.push({
+          id: `${invoice.stripeInvoiceId}:paid`,
+          type: 'subscription_payment_received',
+          description: 'Subscription Payment Received',
+          relatedName: shopName,
+          createdAt: invoice.paidAt,
+          link: `/admin/users/${String(invoice.userId)}`,
+          amountCents: invoice.amountPaidCents,
+          currency,
+          status: 'paid',
+        });
       }
 
       if (
@@ -1613,9 +1743,9 @@ export class AdminService {
     sortOrder?: string;
   }): Promise<RegistrationRequestPage> {
     const page = Math.max(1, options.page);
-    const allowedLimits = [10, 25, 50, 100];
+    const allowedLimits = [5, 10, 25, 50, 100];
     if (!allowedLimits.includes(options.limit)) {
-      throw new BadRequestException('Page size must be 10, 25, 50, or 100');
+      throw new BadRequestException('Page size must be 5, 10, 25, 50, or 100');
     }
     const limit = options.limit;
     const match: Record<string, unknown> = {
@@ -1687,7 +1817,10 @@ export class AdminService {
             $ifNull: ['$registrationRequest.submittedAt', '$createdAt'],
           },
           displayName: {
-            $ifNull: ['$shopDetails.shopName', '$fullName'],
+            $ifNull: [
+              '$shopDetails.shopName',
+              mongoUserDisplayName('$firstName', '$lastName', '$fullName'),
+            ],
           },
         },
       },
@@ -1716,6 +1849,8 @@ export class AdminService {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const searchConditions: Record<string, unknown>[] = [
         { fullName: { $regex: escapedSearch, $options: 'i' } },
+        { firstName: { $regex: escapedSearch, $options: 'i' } },
+        { lastName: { $regex: escapedSearch, $options: 'i' } },
         { 'shopDetails.shopName': { $regex: escapedSearch, $options: 'i' } },
         { email: { $regex: escapedSearch, $options: 'i' } },
         { countryCode: { $regex: escapedSearch, $options: 'i' } },
@@ -1803,7 +1938,11 @@ export class AdminService {
                 userId: '$_id',
                 registrationRequestId: '$registrationRequest._id',
                 registrationNumber: '$registrationRequest.registrationNumber',
-                applicantName: '$fullName',
+                applicantName: mongoUserDisplayName(
+                  '$firstName',
+                  '$lastName',
+                  '$fullName',
+                ),
                 shopName: '$shopDetails.shopName',
                 businessType: '$shopDetails.businessType',
                 businessAddress: {
@@ -2094,7 +2233,9 @@ export class AdminService {
         .filter((record) => record.status === 'accepted')
         .map((record) => record._id.toString()),
     );
-    const isActiveRepair = (record: (typeof requestRecords)[number]): boolean =>
+    const hasAssignedRepair = (
+      record: (typeof requestRecords)[number],
+    ): boolean =>
       Boolean(
         record.repairJob?.status &&
         (user.accountType === 'customer' ||
@@ -2102,6 +2243,25 @@ export class AdminService {
             record.repairJob.acceptedQuotationId?.toString() ?? '',
           )),
       );
+    const isActiveRepair = (record: (typeof requestRecords)[number]): boolean =>
+        hasAssignedRepair(record) &&
+        !['completed', 'repair_declined'].includes(
+          record.repairJob?.status ?? '',
+        );
+    const repairActivityStatus = (
+      record: (typeof requestRecords)[number],
+    ): string => {
+      if (isActiveRepair(record)) {
+        return 'active';
+      }
+      if (
+        hasAssignedRepair(record) &&
+        record.repairJob?.status === 'completed'
+      ) {
+        return 'completed';
+      }
+      return record.status;
+    };
     const approvalStatus =
       registration?.registrationStatus ??
       (user.accountStatus === 'pending_approval'
@@ -2112,7 +2272,7 @@ export class AdminService {
 
     return {
       id: user._id.toString(),
-      fullName: user.fullName ?? '',
+      ...userNameParts(user),
       email: user.email,
       countryCode: user.countryCode ?? '',
       mobileNumber: user.mobileNumber ?? '',
@@ -2161,8 +2321,8 @@ export class AdminService {
         id: record._id.toString(),
         appliance: record.appliance,
         description: record.description,
-        status: isActiveRepair(record) ? 'active' : record.status,
-        repairStatus: isActiveRepair(record)
+        status: repairActivityStatus(record),
+        repairStatus: hasAssignedRepair(record)
           ? (record.repairJob?.status ?? null)
           : null,
         createdAt: record.createdAt,
@@ -2612,7 +2772,11 @@ export class AdminService {
             _id: 1,
             userId: '$user._id',
             registrationNumber: 1,
-            applicantName: '$user.fullName',
+            applicantName: mongoUserDisplayName(
+              '$user.firstName',
+              '$user.lastName',
+              '$user.fullName',
+            ),
             shopName: '$user.shopDetails.shopName',
             businessType: '$user.shopDetails.businessType',
             businessAddress: {
@@ -2830,6 +2994,8 @@ export class AdminService {
 
   private toShopApplication(user: {
     _id: { toString(): string };
+    firstName?: string;
+    lastName?: string;
     fullName?: string;
     email: string;
     countryCode?: string;
@@ -2839,7 +3005,8 @@ export class AdminService {
   }): ShopApplication {
     return {
       id: user._id.toString(),
-      ownerName: user.fullName ?? '',
+      ownerFirstName: userNameParts(user).firstName,
+      ownerLastName: userNameParts(user).lastName,
       email: user.email,
       countryCode: user.countryCode ?? '',
       mobileNumber: user.mobileNumber ?? '',
@@ -2847,4 +3014,35 @@ export class AdminService {
       shop: user.shopDetails ?? null,
     };
   }
+}
+
+function mongoUserDisplayName(
+  firstName: unknown,
+  lastName: unknown,
+  legacyName: unknown,
+  fallback = '',
+): Record<string, unknown> {
+  const joined = {
+    $trim: {
+      input: {
+        $concat: [
+          { $ifNull: [firstName, ''] },
+          ' ',
+          { $ifNull: [lastName, ''] },
+        ],
+      },
+    },
+  };
+  return {
+    $let: {
+      vars: { joined },
+      in: {
+        $cond: [
+          { $ne: ['$$joined', ''] },
+          '$$joined',
+          { $ifNull: [legacyName, fallback] },
+        ],
+      },
+    },
+  };
 }

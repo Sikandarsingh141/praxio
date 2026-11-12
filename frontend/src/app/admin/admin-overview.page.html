@@ -6,39 +6,11 @@
       <p>Here’s what’s happening across your repair marketplace.</p>
     </div>
     <div class="header-tools">
-      <label class="date-select">
-        <span class="visually-hidden">Dashboard date range</span>
-        <select [value]="range()" (change)="selectRange($event)">
-          <option value="today">Today</option>
-          <option value="7d">Last 7 days</option>
-          <option value="30d">Last 30 days</option>
-          <option value="90d">Last 90 days</option>
-          <option value="month">This month</option>
-          <option value="last-month">Last month</option>
-          <option value="year">This year</option>
-          <option value="custom">Custom range</option>
-        </select>
-      </label>
-      @if (range() === 'custom') {
-        <label class="custom-date">
-          <span class="visually-hidden">From date</span>
-          <input type="date" [value]="fromDate()" (change)="updateDate('from', $event)" />
-        </label>
-        <label class="custom-date">
-          <span class="visually-hidden">To date</span>
-          <input type="date" [value]="toDate()" (change)="updateDate('to', $event)" />
-        </label>
-      }
-      @if (overview(); as data) {
-        <span class="today">
-          {{ data.range.from | date: 'MMM d, y' : 'UTC' }} –
-          {{ data.range.to | date: 'MMM d, y' : 'UTC' }} UTC
-        </span>
-      }
-      <button type="button" class="refresh-button" (click)="refresh()" [disabled]="loading()">
-        <span aria-hidden="true">⟳</span>
-        {{ loading() ? 'Refreshing…' : 'Refresh data' }}
-      </button>
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyDateFilters($event)"
+      />
     </div>
   </header>
 
@@ -274,7 +246,7 @@
                 @for (repair of data.recentRepairs | slice: 0 : 5; track repair.id) {
                   <tr>
                     <td>
-                      <code>{{ repair.id | slice: 0 : 8 }}</code>
+                      <code>Request ID: {{ repair.id.slice(-8).toUpperCase() }}</code>
                     </td>
                     <td>
                       <a class="text-link" [routerLink]="['/admin/users', repair.customerId]">{{
@@ -283,7 +255,7 @@
                     </td>
                     <td>{{ repair.appliance }}</td>
                     <td>
-                      <span class="status-pill">{{ repair.status | titlecase }}</span>
+                      <span class="status-pill">{{ repairStatusLabel(repair.status) }}</span>
                     </td>
                   </tr>
                 }

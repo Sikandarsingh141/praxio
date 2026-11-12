@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
@@ -30,6 +35,7 @@ describe('StripePaymentsService', () => {
     registrationStatus: 'pending' as string,
     paymentStatus: 'unpaid' as string | undefined,
     stripeCheckoutSessionId: undefined,
+    stripeCheckoutInvoiceId: 'in_checkout_invoice',
     stripeSubscriptionId: undefined as string | undefined,
   };
   const lookupQuery = {
@@ -40,6 +46,15 @@ describe('StripePaymentsService', () => {
   };
   const invoiceLookupQuery = {
     exec: jest.fn().mockResolvedValue(null),
+  };
+  const invoiceListQuery = {
+    sort: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue([]),
+  };
+  const invoiceCountQuery = {
+    exec: jest.fn().mockResolvedValue(0),
   };
   const registrationRequests = {
     findOne: jest.fn().mockReturnValue(lookupQuery),
@@ -55,6 +70,8 @@ describe('StripePaymentsService', () => {
       .mockReturnValue(updateQuery),
   };
   const subscriptionInvoices = {
+    find: jest.fn().mockReturnValue(invoiceListQuery),
+    countDocuments: jest.fn().mockReturnValue(invoiceCountQuery),
     findOne: jest.fn().mockReturnValue(invoiceLookupQuery),
     findOneAndUpdate: jest
       .fn<
@@ -88,6 +105,23 @@ describe('StripePaymentsService', () => {
     updateQuery.exec.mockResolvedValue(registrationRequest);
     subscriptionInvoices.findOne.mockReturnValue(invoiceLookupQuery);
     subscriptionInvoices.findOneAndUpdate.mockReturnValue(updateQuery);
+    subscriptionInvoices.find.mockReturnValue(invoiceListQuery);
+    subscriptionInvoices.countDocuments.mockReturnValue(invoiceCountQuery);
+    invoiceListQuery.exec.mockResolvedValue([]);
+    invoiceCountQuery.exec.mockResolvedValue(0);
+    mockStripeClient.invoices.retrieve.mockResolvedValue({
+      id: 'in_test_invoice',
+      number: 'INV-1001',
+      hosted_invoice_url: 'https://invoice.stripe.test/hosted',
+      invoice_pdf: 'https://invoice.stripe.test/invoice.pdf',
+      total: 2900,
+      amount_due: 2900,
+      amount_paid: 2900,
+      currency: 'usd',
+      status: 'paid',
+      created: 1772323200,
+      status_transitions: { paid_at: 1772323260 },
+    });
     mockStripeClient.checkout.sessions.create.mockResolvedValue({
       id: 'cs_test_checkout',
       status: 'open',
@@ -103,6 +137,99 @@ describe('StripePaymentsService', () => {
       subscriptionInvoices as unknown as import('mongoose').Model<
         import('./schemas/shop-subscription-invoice.schema').ShopSubscriptionInvoice
       >,
+    );
+  });
+
+  it('lists only the authenticated shop invoices with official Stripe document links', async () => {
+    invoiceListQuery.exec.mockResolvedValue([
+      {
+        stripeInvoiceId: 'in_test_invoice',
+        totalAmountCents: 2900,
+        amountPaidCents: 2900,
+        refundedAmountCents: 0,
+        currency: 'usd',
+        status: 'paid',
+        generatedAt: new Date('2026-03-01T00:00:00.000Z'),
+        paidAt: new Date('2026-03-01T00:01:00.000Z'),
+      },
+    ]);
+    invoiceCountQuery.exec.mockResolvedValue(7);
+
+    await expect(service.getShopInvoices(userId, 2)).resolves.toMatchObject({
+      invoices: [
+        {
+          stripeInvoiceId: 'in_test_invoice',
+          invoiceNumber: 'INV-1001',
+          hostedInvoiceUrl: 'https://invoice.stripe.test/hosted',
+          invoicePdfUrl: 'https://invoice.stripe.test/invoice.pdf',
+        },
+      ],
+      pagination: { page: 2, limit: 5, total: 7, totalPages: 2 },
+    });
+
+    expect(subscriptionInvoices.find).toHaveBeenCalledWith({
+      registrationRequestId: registrationRequest._id,
+      userId: new Types.ObjectId(userId),
+    });
+    expect(invoiceListQuery.skip).toHaveBeenCalledWith(5);
+    expect(invoiceListQuery.limit).toHaveBeenCalledWith(5);
+    expect(mockStripeClient.invoices.retrieve).toHaveBeenCalledWith(
+      'in_test_invoice',
+    );
+  });
+
+  it('rejects invoice history requests without a Shop registration', async () => {
+    lookupQuery.exec.mockResolvedValueOnce(null);
+
+    await expect(service.getShopInvoices(userId, 1)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(subscriptionInvoices.find).not.toHaveBeenCalled();
+  });
+
+  it('retrieves the original Stripe invoice when its webhook record is missing', async () => {
+    await expect(service.getShopInvoices(userId, 1)).resolves.toMatchObject({
+      invoices: [
+        {
+          stripeInvoiceId: 'in_test_invoice',
+          invoiceNumber: 'INV-1001',
+          totalAmountCents: 2900,
+          amountPaidCents: 2900,
+          hostedInvoiceUrl: 'https://invoice.stripe.test/hosted',
+          invoicePdfUrl: 'https://invoice.stripe.test/invoice.pdf',
+        },
+      ],
+      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+    });
+    expect(mockStripeClient.invoices.retrieve).toHaveBeenCalledWith(
+      'in_checkout_invoice',
+    );
+  });
+
+  it('rejects invalid invoice page numbers', async () => {
+    await expect(service.getShopInvoices(userId, 0)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('surfaces Stripe invoice retrieval failures', async () => {
+    invoiceListQuery.exec.mockResolvedValue([
+      {
+        stripeInvoiceId: 'in_missing_invoice',
+        totalAmountCents: 2900,
+        amountPaidCents: 0,
+        refundedAmountCents: 0,
+        currency: 'usd',
+        status: 'open',
+        generatedAt: new Date('2026-03-01T00:00:00.000Z'),
+      },
+    ]);
+    mockStripeClient.invoices.retrieve.mockRejectedValueOnce(
+      new Error('Stripe unavailable'),
+    );
+
+    await expect(service.getShopInvoices(userId, 1)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
     );
   });
 

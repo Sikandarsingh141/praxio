@@ -78,6 +78,7 @@ describe('AdminDashboardPage', () => {
     );
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('status')).toBe('all');
+    expect(request.request.params.get('limit')).toBe('5');
     request.flush({
       data: {
         requests: [pendingRequest],
@@ -114,6 +115,7 @@ describe('AdminDashboardPage', () => {
         request.url === `${environment.apiBaseUrl}/admin/users` &&
         request.params.get('accountType') === 'shop',
     );
+    expect(shopsRequest.request.params.get('limit')).toBe('5');
     shopsRequest.flush({
       data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 },
     });
@@ -133,6 +135,7 @@ describe('AdminDashboardPage', () => {
         request.url === `${environment.apiBaseUrl}/admin/users` &&
         request.params.get('accountType') === 'customer',
     );
+    expect(customersRequest.request.params.get('limit')).toBe('5');
     customersRequest.flush({
       data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 },
     });
@@ -413,6 +416,64 @@ describe('AdminDashboardPage', () => {
       .expectOne((req) => req.url.endsWith('/admin/users'))
       .flush({ data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 } });
     flushStatistics();
+  });
+
+  it('refreshes account data after another Admin changed the status', () => {
+    const fixture = TestBed.createComponent(AdminDashboardPage);
+    fixture.detectChanges();
+    httpTestingController
+      .expectOne((req) => req.url.endsWith('/admin/users'))
+      .flush({
+        data: {
+          requests: [
+            { ...pendingRequest, registrationStatus: 'approved', accountStatus: 'active' },
+          ],
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1,
+        },
+      });
+    flushStatistics();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector('.account-action-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement).click();
+
+    const update = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/admin/users/user-id/status`,
+    );
+    expect(update.request.body).toEqual({ status: 'inactive' });
+    update.flush(
+      { message: 'This account was updated by another Admin. Refresh and try again.' },
+      { status: 409, statusText: 'Conflict' },
+    );
+
+    const refreshedUsers = httpTestingController.expectOne(
+      (req) => req.url === `${environment.apiBaseUrl}/admin/users`,
+    );
+    const refreshedStatistics = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/admin/users/statistics`,
+    );
+    refreshedUsers.flush({
+      data: {
+        requests: [
+          { ...pendingRequest, registrationStatus: 'approved', accountStatus: 'inactive' },
+        ],
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+      },
+    });
+    refreshedStatistics.flush(statisticsResponse);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'This account was updated by another Admin. Refresh and try again.',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Inactive');
   });
 
   it('cancels a confirmation without sending the decision', () => {

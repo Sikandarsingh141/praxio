@@ -77,6 +77,13 @@ export const ShopDetailsSchema = SchemaFactory.createForClass(ShopDetails);
 
 @Schema({ collection: 'users', timestamps: true, versionKey: false })
 export class User {
+  @Prop({ type: String, trim: true, maxlength: 50 })
+  firstName?: string;
+
+  @Prop({ type: String, trim: true, maxlength: 50 })
+  lastName?: string;
+
+  // Retained for reading accounts created before names were stored separately.
   @Prop({ type: String, trim: true, maxlength: 100 })
   fullName?: string;
 

@@ -166,16 +166,17 @@ export class CustomerLayout implements OnInit, OnDestroy {
 
   getUserInitial(): string {
     const user = this.authService.currentUser();
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
     return (
-      user?.fullName?.trim().slice(0, 1).toUpperCase() ??
-      user?.email.slice(0, 1).toUpperCase() ??
+      name.slice(0, 1).toUpperCase() ||
+      user?.email.slice(0, 1).toUpperCase() ||
       'P'
     );
   }
 
-  getUserFirstName(): string {
-    const fullName = this.authService.currentUser()?.fullName?.trim();
-    return fullName || 'Account';
+  getUserDisplayName(): string {
+    const user = this.authService.currentUser();
+    return [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || 'Account';
   }
 
   get breadcrumbPage(): string {

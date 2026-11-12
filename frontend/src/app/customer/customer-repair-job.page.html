@@ -48,10 +48,277 @@
       </a>
     }
 
+    <ol class="request-progress" aria-label="Repair request progress">
+      @for (step of progressSteps; track step; let index = $index) {
+        <li
+          [class.completed]="isRepairComplete || index + 1 < currentProgressStep"
+          [class.current]="!isRepairComplete && index + 1 === currentProgressStep"
+          [attr.aria-current]="
+            !isRepairComplete && index + 1 === currentProgressStep ? 'step' : null
+          "
+        >
+          <span class="progress-marker" aria-hidden="true">
+            @if (isRepairComplete || index + 1 < currentProgressStep) {
+              ✓
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <strong>{{ step }}</strong>
+          @if (index === 0) {
+            <time>{{ repair.createdAt | date: 'medium' }}</time>
+          }
+        </li>
+      }
+    </ol>
+
+    @if (repair.repairJob?.status === 'ready_for_pickup') {
+      <section class="pickup-alert" aria-labelledby="pickup-title">
+        <span class="pickup-icon" aria-hidden="true">✓</span>
+        <div>
+          <h2 id="pickup-title">Your item is ready for pickup</h2>
+          <p>Visit {{ repair.shop?.name || 'the repair shop' }} to collect your repaired item.</p>
+          @if (repair.repairJob?.pickupMessage) {
+            <p>{{ repair.repairJob?.pickupMessage }}</p>
+          }
+        </div>
+      </section>
+    }
+
+    <div class="job-grid customer-detail-grid">
+      <section class="panel request-summary-card">
+        <h2 class="panel-heading">
+          <span class="summary-icon" aria-hidden="true">⚒</span>
+          Repair Information
+        </h2>
+        <dl class="details">
+          <div>
+            <dt>Device</dt>
+            <dd>
+              {{ repair.appliance }}{{ repair.brand ? ' · ' + repair.brand : ''
+              }}{{ repair.model ? ' · ' + repair.model : '' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Request Date</dt>
+            <dd>{{ repair.createdAt | date: 'medium' }}</dd>
+          </div>
+          <div>
+            <dt>Preferred Date</dt>
+            <dd>
+              {{
+                repair.preferredServiceDate
+                  ? (repair.preferredServiceDate | date: 'mediumDate')
+                  : 'Not specified'
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Service Type</dt>
+            <dd>{{ repair.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd>
+          </div>
+          <div>
+            <dt>Issue / Description</dt>
+            <dd>{{ repair.description }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="panel request-summary-card shop-summary-card">
+        <h2 class="panel-heading">
+          <span class="summary-icon" aria-hidden="true">⌂</span>
+          {{ repair.shop ? 'Repair Shop' : 'Selected Repair Shops' }}
+        </h2>
+        @if (repair.shop; as shop) {
+          <dl class="details">
+            <div>
+              <dt>Shop</dt>
+              <dd>{{ shop.name }}</dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd>{{ shop.address || 'Contact shop for pickup location' }}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{{ shop.phone || 'Not provided' }}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>{{ shop.email }}</dd>
+            </div>
+          </dl>
+          @if (shop.phone) {
+            <a class="secondary-button" [href]="'tel:' + shop.phone">Contact shop</a>
+          }
+        } @else if (repair.shops?.length) {
+          <ul class="assigned-shops">
+            @for (assignedShop of repair.shops; track assignedShop.id) {
+              <li>
+                <span class="shop-avatar" aria-hidden="true">{{ shopInitials(assignedShop.name) }}</span>
+                <span class="shop-identity">
+                  <strong>{{ assignedShop.name }}</strong>
+                  <span>{{
+                    assignedShop.responseStatus?.replaceAll('_', ' ') || 'Awaiting response'
+                      | titlecase
+                  }}</span>
+                </span>
+                @if (assignedShop.declineReason) {
+                  <small>{{ assignedShop.declineReason }}</small>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <p>No repair shops have been selected for this request.</p>
+        }
+        @if (!repair.shop) {
+          <a class="secondary-button quotations-button" routerLink="/customer/quotations">
+            View Quotations
+          </a>
+        }
+      </section>
+
+      <section class="panel request-summary-card photos-summary-card">
+        <h2 class="panel-heading">
+          <span class="summary-icon" aria-hidden="true">▧</span>
+          Uploaded Photos <small>({{ repair.photos?.length || 0 }})</small>
+        </h2>
+        @if (repair.photos?.length) {
+          <div class="detail-photos" aria-label="Repair request photos">
+            @for (photo of repair.photos; track $index) {
+              <img
+                [src]="photo.data"
+                [alt]="'Repair photo ' + ($index + 1) + ' for ' + repair.appliance"
+                loading="lazy"
+              />
+            }
+          </div>
+        } @else {
+          <p>No photos were attached.</p>
+        }
+      </section>
+
+      <section class="panel request-summary-card diagnosis-summary-card">
+        <h2 class="panel-heading">
+          <span class="summary-icon" aria-hidden="true">✚</span>
+          Repair Diagnosis
+        </h2>
+        @if (repair.repairJob?.inspection; as inspection) {
+          <div class="diagnosis-callout">
+            <strong>{{ inspection.identifiedProblem || 'Inspection in progress' }}</strong>
+            @if (inspection.findings) {
+              <p>{{ inspection.findings }}</p>
+            }
+            @if (inspection.requiredRepairWork) {
+              <p><b>Recommended repair:</b> {{ inspection.requiredRepairWork }}</p>
+            }
+          </div>
+        } @else if (repair.repairJob?.completionDescription) {
+          <div class="diagnosis-callout">
+            <strong>Repair summary</strong>
+            <p>{{ repair.repairJob?.completionDescription }}</p>
+            @if (repair.repairJob?.workPerformed) {
+              <p><b>Work performed:</b> {{ repair.repairJob?.workPerformed }}</p>
+            }
+            @if (repair.repairJob?.partsReplaced) {
+              <p><b>Parts replaced:</b> {{ repair.repairJob?.partsReplaced }}</p>
+            }
+          </div>
+        } @else {
+          <div class="diagnosis-callout diagnosis-pending">
+            <strong>Pending Inspection</strong>
+            <p>The repair shop will inspect your device and share a diagnosis and quotation.</p>
+          </div>
+        }
+      </section>
+
+      <section class="panel request-summary-card route-summary-card">
+        <h2 class="panel-heading">
+          <span class="summary-icon" aria-hidden="true">⌖</span>
+          Route to Repair Shop
+        </h2>
+        @if (repair.shop; as shop) {
+          @if (shopDirectionsUrl(shop.address); as directionsUrl) {
+            <div class="route-preview">
+              <span class="route-pin" aria-hidden="true">⌖</span>
+              <div>
+                <strong>{{ shop.name }}</strong>
+                <p>{{ shop.address }}</p>
+              </div>
+            </div>
+            <a
+              class="primary-button map-directions-button"
+              [href]="directionsUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open in Maps <span aria-hidden="true">↗</span>
+            </a>
+          } @else {
+            <p>The shop has not provided an address for directions yet.</p>
+          }
+        } @else {
+          <div class="route-preview route-pending">
+            <span class="route-pin" aria-hidden="true">⌖</span>
+            <div>
+              <strong>Shop directions will appear here</strong>
+              <p>Directions become available after a repair shop is confirmed.</p>
+            </div>
+          </div>
+        }
+      </section>
+
+      @if (repair.acceptedQuotation || repair.quotations.length) {
+        <section class="panel request-summary-card customer-quotations-card">
+          <h2 class="panel-heading">
+            <span class="summary-icon" aria-hidden="true">▤</span>
+            Quotation Details
+          </h2>
+          <div class="quotation-table-wrap">
+            <table class="customer-quotation-table">
+              <thead>
+                <tr>
+                  <th scope="col">Quotation</th>
+                  <th scope="col">Service &amp; Parts</th>
+                  <th scope="col">Total Amount</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (quote of repair.quotations; track quote._id; let index = $index) {
+                  <tr>
+                    <td>QTN-{{ (index + 1).toString().padStart(3, '0') }}</td>
+                    <td>{{ quote.proposedSolution || quote.message }}</td>
+                    <td class="quote-amount">{{ quote.amount | currency: quote.currency }}</td>
+                    <td>
+                      <span class="quotation-status" [attr.data-status]="quote.status">
+                        {{ quote.status | titlecase }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+                @if (!repair.quotations.length && repair.acceptedQuotation; as quote) {
+                  <tr>
+                    <td>Accepted</td>
+                    <td>{{ quote.proposedSolution || quote.message }}</td>
+                    <td class="quote-amount">{{ quote.amount | currency: quote.currency }}</td>
+                    <td><span class="quotation-status">Accepted</span></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    </div>
+
     @if (repair.repairJob) {
       <app-customer-repair-workflow [request]="repair" (requestUpdated)="job.set($event)" />
     }
 
+    <details class="more-request-details">
+      <summary>View full repair progress and additional details</summary>
     @if (!repair.repairJob) {
       <div class="job-grid request-detail-grid">
         <section class="panel request-panel">
@@ -174,19 +441,6 @@
         </section>
       </div>
     } @else {
-      @if (repair.repairJob.status === 'ready_for_pickup') {
-        <section class="pickup-alert" aria-labelledby="pickup-title">
-          <span class="pickup-icon" aria-hidden="true">✓</span>
-          <div>
-            <h2 id="pickup-title">Your item is ready for pickup</h2>
-            <p>Visit {{ repair.shop?.name || 'the repair shop' }} to collect your repaired item.</p>
-            @if (repair.repairJob.pickupMessage) {
-              <p>{{ repair.repairJob.pickupMessage }}</p>
-            }
-          </div>
-        </section>
-      }
-
       @if (
         repair.repairJob.status === 'in_progress' ||
         repair.repairJob.status === 'on_hold' ||
@@ -286,6 +540,7 @@
         </div>
       }
     }
+    </details>
 
     @if (repair.repairJob?.status === 'ready_for_pickup') {
       <section class="panel action-panel" aria-labelledby="verification-title">

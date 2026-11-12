@@ -24,6 +24,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogConfig,
 } from './confirmation-dialog.component';
+import { PaginationComponent } from './pagination.component';
 
 type DisputeConfirmationAction =
   | 'confirmResolution'
@@ -56,6 +57,7 @@ const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
     RouterLink,
     CommonFilterComponent,
     ConfirmationDialogComponent,
+    PaginationComponent,
   ],
   templateUrl: './dispute-center.component.html',
   styleUrl: './dispute-center.component.scss',
@@ -297,9 +299,10 @@ export class DisputeCenterComponent implements OnInit {
       : '';
   }
 
-  changePage(delta: number): void {
-    const pages = this.list()?.pagination.totalPages ?? 1;
-    this.page = Math.min(pages, Math.max(1, this.page + delta));
+  goToPage(page: number): void {
+    const totalPages = this.list()?.pagination.totalPages ?? 1;
+    if (page < 1 || page > totalPages || page === this.page) return;
+    this.page = page;
     this.loadList();
   }
 
@@ -321,7 +324,7 @@ export class DisputeCenterComponent implements OnInit {
         to: this.toDate,
         sort: this.sortOrder,
         page: this.page,
-        limit: 25,
+        limit: 5,
       })
       .subscribe({
         next: (result) => {
@@ -337,6 +340,8 @@ export class DisputeCenterComponent implements OnInit {
     this.disputes.get(this.role(), id).subscribe({
       next: (dispute) => {
         this.dispute.set(dispute);
+        this.adminStatus = dispute.status;
+        this.selectedPriority = dispute.priority;
         this.loading.set(false);
       },
       error: (error: HttpErrorResponse) => this.fail(error, 'Dispute details could not be loaded.'),
@@ -953,6 +958,13 @@ export class DisputeCenterComponent implements OnInit {
 
   get latestCompletion() {
     return this.dispute()?.reworkCompletions?.at(-1);
+  }
+
+  hasCompletedRework(dispute: RepairDispute): boolean {
+    return (
+      Array.isArray(dispute.reworkCompletions) &&
+      dispute.reworkCompletions.length > 0
+    );
   }
 
   get latestVerification() {

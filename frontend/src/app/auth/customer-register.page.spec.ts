@@ -26,10 +26,12 @@ describe('CustomerRegisterPage', () => {
     const page = fixture.componentInstance;
 
     page.form.setValue({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       email: 'customer@example.com',
       countryCode: '+1',
       mobileNumber: '5551234567',
+      profileImageData: '',
       password: 'lowercasepassword',
       confirmPassword: 'differentpassword',
       acceptTerms: false,
@@ -52,10 +54,12 @@ describe('CustomerRegisterPage', () => {
     const page = fixture.componentInstance;
 
     page.form.setValue({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       email: 'customer@example.com',
       countryCode: '+1',
       mobileNumber: '5551234567',
+      profileImageData: '',
       password: 'Abcdef1!',
       confirmPassword: 'Abcdef1!',
       acceptTerms: true,
@@ -70,7 +74,8 @@ describe('CustomerRegisterPage', () => {
       `${environment.apiBaseUrl}/auth/register/customer`,
     );
     expect(request.request.body).toEqual({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       email: 'customer@example.com',
       countryCode: '+1',
       mobileNumber: '5551234567',
@@ -98,7 +103,8 @@ describe('CustomerRegisterPage', () => {
     fixture.detectChanges();
     const page = fixture.componentInstance;
     page.form.patchValue({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       email: 'customer@example.com',
       countryCode: '+1',
       mobileNumber: '5551234567',
@@ -132,14 +138,83 @@ describe('CustomerRegisterPage', () => {
     });
   });
 
+  it('lets customers upload and remove an optional profile photo', async () => {
+    const fixture = TestBed.createComponent(CustomerRegisterPage);
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    const input = document.createElement('input');
+    input.type = 'file';
+    const file = new File(['profile image'], 'customer.png', { type: 'image/png' });
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] });
+
+    page.selectProfileImage({ target: input } as unknown as Event);
+    await new Promise<void>((resolve, reject) => {
+      const deadline = Date.now() + 2000;
+      const check = () => {
+        if (page.profileImageData()) resolve();
+        else if (Date.now() >= deadline) reject(new Error('The selected image was not read.'));
+        else setTimeout(check, 10);
+      };
+      check();
+    });
+    fixture.detectChanges();
+
+    expect(page.profileImageData()).toMatch(/^data:image\/png;base64,/);
+    expect(page.form.controls.profileImageData.value).toBe(page.profileImageData());
+    expect(page.profileImageError()).toBe('');
+    expect(fixture.nativeElement.textContent).toContain('customer.png');
+
+    page.removeProfileImage();
+    fixture.detectChanges();
+    expect(page.profileImageData()).toBe('');
+    expect(page.profileImageName()).toBe('');
+    expect(page.form.controls.profileImageData.value).toBe('');
+  });
+
+  it('submits a selected profile photo with customer registration', () => {
+    const fixture = TestBed.createComponent(CustomerRegisterPage);
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    page.form.patchValue({
+      firstName: 'Customer',
+      lastName: 'Example',
+      email: 'customer@example.com',
+      countryCode: '+1',
+      mobileNumber: '5551234567',
+      profileImageData: 'data:image/png;base64,YWJj',
+      password: 'Abcdef1!',
+      confirmPassword: 'Abcdef1!',
+      acceptTerms: true,
+    });
+
+    page.submit();
+    const request = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/auth/register/customer`,
+    );
+    expect(request.request.body.profileImageData).toBe('data:image/png;base64,YWJj');
+    request.flush({
+      data: {
+        user: {
+          id: 'user-id',
+          email: 'customer@example.com',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          accountType: 'customer',
+          accountStatus: 'pending_approval',
+        },
+      },
+    });
+  });
+
   it('displays API errors without claiming registration succeeded', () => {
     const fixture = TestBed.createComponent(CustomerRegisterPage);
     const page = fixture.componentInstance;
     page.form.setValue({
-      fullName: 'Customer Example',
+      firstName: 'Customer',
+      lastName: 'Example',
       email: 'customer@example.com',
       countryCode: '+1',
       mobileNumber: '5551234567',
+      profileImageData: '',
       password: 'Abcdef1!',
       confirmPassword: 'Abcdef1!',
       acceptTerms: true,
@@ -204,11 +279,12 @@ describe('CustomerRegisterPage', () => {
     expect(fixture.nativeElement.querySelector('.customer-benefits')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.customer-illustration svg')).toBeTruthy();
     expect(fixture.nativeElement.textContent).toContain('Find Trusted Shops');
-    expect(fixture.nativeElement.querySelector('#customer-name')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#customer-first-name')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#customer-last-name')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('#customer-mobile')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('#customer-password')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('#customer-confirm-password')).toBeTruthy();
-    expect(fixture.nativeElement.querySelectorAll('.icon-field .field-icon').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.icon-field .field-icon').length).toBe(4);
     expect(fixture.nativeElement.querySelectorAll('.password-field .field-icon').length).toBe(2);
     expect(fixture.nativeElement.querySelector('.location-field .secondary-action')).toBeTruthy();
   });

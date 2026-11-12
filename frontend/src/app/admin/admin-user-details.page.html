@@ -14,12 +14,12 @@
         <img class="profile-image" [src]="profile.profileImageUrl" alt="" />
       } @else {
         <span class="profile-placeholder" aria-hidden="true">
-          {{ (profile.fullName || profile.shop?.shopName || 'U').charAt(0) | uppercase }}
+          {{ (profile.firstName || profile.shop?.shopName || 'U').charAt(0) | uppercase }}
         </span>
       }
       <div class="profile-identity">
         <span class="page-kicker">USER PROFILE</span>
-        <h1 id="user-title">{{ profile.shop?.shopName || profile.fullName || 'Unnamed user' }}</h1>
+        <h1 id="user-title">{{ profile.shop?.shopName || (profile.firstName || profile.lastName ? profile.firstName + ' ' + profile.lastName : 'Unnamed user') }}</h1>
         <p>
           {{ profile.accountType | titlecase }} account · Joined
           {{ profile.createdAt | date: 'mediumDate' }}
@@ -50,8 +50,12 @@
         <h2 id="contact-title"><span class="card-icon" aria-hidden="true">♙</span>Contact information</h2>
         <dl>
           <div>
-            <dt>Full name</dt>
-            <dd>{{ profile.fullName || '—' }}</dd>
+            <dt>First Name</dt>
+            <dd>{{ profile.firstName || '—' }}</dd>
+          </div>
+          <div>
+            <dt>Last Name</dt>
+            <dd>{{ profile.lastName || '—' }}</dd>
           </div>
           <div>
             <dt>User ID</dt>
@@ -213,8 +217,8 @@
               <li>
                 <strong>{{ repair.appliance }}</strong>
                 <span>{{ repair.description }}</span>
-                <span>Status: {{ repair.status | titlecase }}</span>
-                @if (repair.repairStatus) {
+                <span>Request status: {{ repair.status | titlecase }}</span>
+                @if (repair.repairStatus && repair.status !== repair.repairStatus) {
                   <span>Repair status: {{ repair.repairStatus.replaceAll('_', ' ') | titlecase }}</span>
                 }
                 <time>{{ repair.createdAt | date: 'mediumDate' }}</time>

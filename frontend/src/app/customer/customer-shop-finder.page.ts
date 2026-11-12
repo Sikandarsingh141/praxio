@@ -23,6 +23,8 @@ import {
 } from 'rxjs';
 import { AddressSuggestion, ShopSearchResult } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
+import { formatShopAddress } from '../shared/format-shop-address';
+import { PaginationComponent } from '../shared/pagination.component';
 import { ShopResultsMapComponent } from './shop-results-map.component';
 
 const SHOP_SERVICES = [
@@ -39,7 +41,7 @@ const SHOP_SERVICES = [
 @Component({
   selector: 'app-customer-shop-finder',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ShopResultsMapComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, ShopResultsMapComponent],
   templateUrl: './customer-shop-finder.page.html',
   styleUrl: './customer-shop-finder.page.scss',
 })
@@ -48,6 +50,12 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
 
   readonly services = SHOP_SERVICES;
   readonly shops = signal<ShopSearchResult[]>([]);
+  readonly page = signal(1);
+  readonly pageSize = 5;
+  readonly visibleShops = computed(() => {
+    const start = (this.page() - 1) * this.pageSize;
+    return this.shops().slice(start, start + this.pageSize);
+  });
   readonly shopDirectory = signal<ShopSearchResult[]>([]);
   readonly suggestions = signal<AddressSuggestion[]>([]);
   readonly selectedShops = signal<string[]>([]);
@@ -75,7 +83,8 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   readonly latitude = signal<number | null>(null);
   readonly longitude = signal<number | null>(null);
   readonly maxDistanceKm = signal('');
-  readonly sortBy = signal<'nearest' | 'relevant'>('relevant');
+  readonly minimumRating = signal('');
+  readonly sortBy = signal<'nearest' | 'relevant' | 'rating'>('relevant');
   readonly appliance = signal('');
   readonly brand = signal('');
   readonly model = signal('');
@@ -241,6 +250,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
 
   search(): void {
     const version = ++this.searchVersion;
+    this.page.set(1);
     this.loading.set(true);
     this.error.set('');
     const latitude = this.latitude();
@@ -255,6 +265,9 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
           latitude !== null && longitude !== null && this.maxDistanceKm()
             ? Number(this.maxDistanceKm())
             : undefined,
+        minRating: this.minimumRating()
+          ? Number(this.minimumRating())
+          : undefined,
         sort: this.sortBy(),
       })
       .subscribe({
@@ -327,7 +340,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   }
 
   allVisibleShopsSelected(): boolean {
-    const selectableShops = this.shops().slice(0, 5);
+    const selectableShops = this.visibleShops();
     return (
       selectableShops.length > 0 &&
       selectableShops.every((shop) => this.selectedShops().includes(shop.id))
@@ -335,9 +348,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   }
 
   toggleVisibleShops(): void {
-    const selectableIds = this.shops()
-      .slice(0, 5)
-      .map((shop) => shop.id);
+    const selectableIds = this.visibleShops().map((shop) => shop.id);
     if (this.allVisibleShopsSelected()) {
       this.selectedShops.update((selected) =>
         selected.filter((shopId) => !selectableIds.includes(shopId)),
@@ -357,6 +368,12 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
       }
       return next;
     });
+  }
+
+  goToPage(page: number): void {
+    const pageCount = Math.ceil(this.shops().length / this.pageSize);
+    if (page < 1 || page > pageCount || page === this.page()) return;
+    this.page.set(page);
   }
 
   onPhotoSelection(event: Event): void {
@@ -423,8 +440,6 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   }
 
   addressFor(shop: ShopSearchResult): string {
-    return [shop.address, shop.area, shop.city, shop.state, shop.postalCode]
-      .filter(Boolean)
-      .join(', ');
+    return formatShopAddress(shop);
   }
 }

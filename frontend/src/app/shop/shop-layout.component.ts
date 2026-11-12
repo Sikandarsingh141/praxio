@@ -70,13 +70,14 @@ export class ShopLayout implements OnInit, OnDestroy {
   }
 
   getUserInitial(): string {
-    const name = this.authService.currentUser()?.fullName?.trim();
+    const user = this.authService.currentUser();
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
     return name ? name.slice(0, 1).toUpperCase() : 'P';
   }
 
-  getUserFirstName(): string {
-    const fullName = this.authService.currentUser()?.fullName?.trim();
-    return fullName || 'Account';
+  getUserDisplayName(): string {
+    const user = this.authService.currentUser();
+    return [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || 'Account';
   }
 
   updateSearchQuery(event: Event): void {
@@ -110,14 +111,14 @@ export class ShopLayout implements OnInit, OnDestroy {
             id: request._id,
             kind: 'request' as const,
             title: request.appliance,
-            details: `${request.customer.fullName} · Request #${request._id.slice(-8).toUpperCase()}`,
+            details: `${request.customer.displayName || `${request.customer.firstName} ${request.customer.lastName}`} · Request #${request._id.slice(-8).toUpperCase()}`,
             route: ['/shop/repair-requests', request._id],
           })),
           ...quotations.quotations.map((quotation) => ({
             id: quotation._id,
             kind: 'quotation' as const,
             title: quotation.repairRequest.appliance,
-            details: `${quotation.customer.fullName} · ${quotation.amount} ${quotation.currency}`,
+            details: `${quotation.customer.displayName || `${quotation.customer.firstName} ${quotation.customer.lastName}`} · ${quotation.amount} ${quotation.currency}`,
             route: ['/shop/quotations'],
             queryParams: { quotationId: quotation._id },
           })),

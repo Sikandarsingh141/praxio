@@ -66,8 +66,15 @@
 
       <label class="field rating-field">
         <span>Rating</span>
-        <select disabled aria-label="Rating filter unavailable">
-          <option>Rating unavailable</option>
+        <select
+          aria-label="Minimum rating"
+          [ngModel]="minimumRating()"
+          (ngModelChange)="minimumRating.set($event); search()"
+        >
+          <option value="">Any rating</option>
+          <option value="5">5 stars</option>
+          <option value="4">4 stars &amp; up</option>
+          <option value="3">3 stars &amp; up</option>
         </select>
       </label>
 
@@ -128,7 +135,7 @@
       <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event); search()">
         <option value="nearest" [disabled]="latitude() === null">Nearest</option>
         <option value="relevant">Most relevant</option>
-        <option value="rating" disabled>Highest rated (no rating data)</option>
+        <option value="rating">Highest rated</option>
       </select>
     </label>
     <span class="data-note">
@@ -151,7 +158,7 @@
       <div class="shop-results">
         @if (shops().length) {
           <div class="shop-grid">
-            @for (shop of shops(); track shop.id) {
+            @for (shop of visibleShops(); track shop.id) {
               <article class="shop-card" [class.selected]="selectedShops().includes(shop.id)">
                 <div class="shop-heading">
                   <label class="select-shop" [attr.aria-label]="'Select ' + shop.shopName">
@@ -206,6 +213,13 @@
               </article>
             }
           </div>
+          <app-pagination
+            [total]="shops().length"
+            [page]="page()"
+            [pageSize]="pageSize"
+            ariaLabel="Repair shop results pages"
+            (pageChange)="goToPage($event)"
+          />
         } @else {
           <div class="empty-state">
             <span aria-hidden="true">⌖</span>

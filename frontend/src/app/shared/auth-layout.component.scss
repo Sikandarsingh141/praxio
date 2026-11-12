@@ -233,6 +233,12 @@ h1 {
   padding: 0.25rem 0 0.75rem;
 }
 
+@media (max-height: 800px) and (min-width: 761px) {
+  .customer-registration-mode.auth-main {
+    align-content: start;
+  }
+}
+
 .account-selection-mode {
   width: min(100%, 1060px);
   align-self: center;

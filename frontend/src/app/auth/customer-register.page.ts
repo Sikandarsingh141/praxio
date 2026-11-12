@@ -13,6 +13,9 @@ import { AuthService } from '../core/auth/auth.service';
 import { FirebaseMessagingService } from '../core/notifications/firebase-messaging.service';
 import { PHONE_COUNTRY_CODES } from './phone-country-codes';
 
+const REGISTRATION_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const PROFILE_IMAGE_MAX_BYTES = 1024 * 1024;
+
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   const password = control.get('password')?.value;
   const confirmPassword = control.get('confirmPassword')?.value;
@@ -39,6 +42,9 @@ export class CustomerRegisterPage {
   readonly locationMessage = signal('');
   readonly passwordVisible = signal(false);
   readonly confirmPasswordVisible = signal(false);
+  readonly profileImageData = signal('');
+  readonly profileImageName = signal('');
+  readonly profileImageError = signal('');
 
   togglePasswordVisibility(field: 'password' | 'confirmPassword'): void {
     if (field === 'password') {
@@ -51,10 +57,12 @@ export class CustomerRegisterPage {
 
   readonly form = this.formBuilder.nonNullable.group(
     {
-      fullName: ['', [Validators.required, Validators.maxLength(100)]],
+      firstName: ['', [Validators.required, Validators.maxLength(50)]],
+      lastName: ['', [Validators.required, Validators.maxLength(50)]],
       email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
       countryCode: ['+91', Validators.required],
       mobileNumber: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
+      profileImageData: [''],
       password: [
         '',
         [
@@ -103,6 +111,45 @@ export class CustomerRegisterPage {
     return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
   }
 
+  selectProfileImage(event: Event): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const image = input.files?.[0];
+    input.value = '';
+    this.profileImageError.set('');
+    if (!image) return;
+    if (
+      !REGISTRATION_IMAGE_TYPES.has(image.type) ||
+      image.size === 0 ||
+      image.size > PROFILE_IMAGE_MAX_BYTES
+    ) {
+      this.profileImageError.set('Choose a JPEG, PNG, or WebP image up to 1 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        this.profileImageError.set('The selected image could not be read. Try another image.');
+        return;
+      }
+      this.profileImageData.set(reader.result);
+      this.profileImageName.set(image.name);
+      this.form.controls.profileImageData.setValue(reader.result);
+    };
+    reader.onerror = () => {
+      this.profileImageError.set('The selected image could not be read. Try another image.');
+    };
+    reader.readAsDataURL(image);
+  }
+
+  removeProfileImage(): void {
+    this.profileImageData.set('');
+    this.profileImageName.set('');
+    this.form.controls.profileImageData.setValue('');
+    this.profileImageError.set('');
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -114,22 +161,26 @@ export class CustomerRegisterPage {
     this.pushWarning.set('');
     this.submitting.set(true);
     const {
-      fullName,
+      firstName,
+      lastName,
       email,
       countryCode,
       mobileNumber,
+      profileImageData,
       password,
       enableNotifications,
       latitude,
       longitude,
     } = this.form.getRawValue();
     const input: Parameters<AuthService['registerCustomer']>[0] = {
-      fullName,
+      firstName,
+      lastName,
       email,
       countryCode,
       mobileNumber,
       password,
       acceptTerms: true,
+      ...(profileImageData ? { profileImageData } : {}),
       ...(latitude !== null && longitude !== null ? { latitude, longitude } : {}),
     };
 
@@ -159,6 +210,8 @@ export class CustomerRegisterPage {
       .subscribe({
         next: () => {
           this.form.reset();
+          this.profileImageData.set('');
+          this.profileImageName.set('');
           this.successMessage.set(
             'Your registration has been submitted and is awaiting Admin approval. Sign-in is unavailable until your account is approved.',
           );

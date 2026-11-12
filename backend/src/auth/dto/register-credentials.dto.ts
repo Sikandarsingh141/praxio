@@ -21,12 +21,19 @@ export const PHONE_COUNTRY_CODES = [
 ] as const;
 
 export class RegisterCredentialsDto {
-  @ApiProperty({ example: 'Alex Repair', maxLength: 100 })
+  @ApiProperty({ example: 'Alex', maxLength: 50 })
   @IsString()
   @MinLength(1)
-  @MaxLength(100)
+  @MaxLength(50)
   @Matches(/\S/)
-  fullName!: string;
+  firstName!: string;
+
+  @ApiProperty({ example: 'Repair', maxLength: 50 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  @Matches(/\S/)
+  lastName!: string;
 
   @ApiProperty({ example: 'alex@example.com', maxLength: 254 })
   @IsEmail()

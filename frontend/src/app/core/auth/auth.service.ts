@@ -1,6 +1,6 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { computed, Injectable, signal } from '@angular/core';
-import { Observable, catchError, finalize, map, of, tap, throwError } from 'rxjs';
+import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_GLOBAL_LOADER } from '../loading/global-loader.context';
 import {
@@ -11,6 +11,7 @@ import {
   ShopRegistrationResult,
   ShopProfile,
   ShopPaymentStatus,
+  ShopInvoicePage,
   RegistrationNotification,
   RegistrationAddressSuggestion,
   UserProfile,
@@ -22,6 +23,7 @@ export class AuthService {
   private readonly userState = signal<UserProfile | null>(null);
   private readonly loginDestinationState = signal<string | null>(null);
   private readonly shopNameState = signal('');
+  private currentUserRequest: Observable<UserProfile | null> | null = null;
   readonly currentUser = this.userState.asReadonly();
   readonly loginDestination = this.loginDestinationState.asReadonly();
   readonly shopName = this.shopNameState.asReadonly();
@@ -29,9 +31,16 @@ export class AuthService {
 
   constructor(private readonly http: HttpClient) {}
 
-  register(email: string, password: string): Observable<UserProfile> {
+  register(
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+  ): Observable<UserProfile> {
     return this.http
       .post<ApiEnvelope<AuthUserData>>(`${environment.apiBaseUrl}/auth/register`, {
+        firstName,
+        lastName,
         email,
         password,
       })
@@ -87,6 +96,15 @@ export class AuthService {
       .pipe(map((response) => response.data.payment));
   }
 
+  getMyShopInvoices(page = 1): Observable<ShopInvoicePage> {
+    const params = new HttpParams().set('page', page);
+    return this.http
+      .get<ApiEnvelope<ShopInvoicePage>>(`${environment.apiBaseUrl}/payments/invoices`, {
+        params,
+      })
+      .pipe(map((response) => response.data));
+  }
+
   getMyShopProfile(): Observable<ShopProfile> {
     return this.http
       .get<ApiEnvelope<{ profile: ShopProfile }>>(`${environment.apiBaseUrl}/shops/my-profile`)
@@ -119,10 +137,11 @@ export class AuthService {
       .pipe(map((response) => response.data.profile));
   }
 
-  updateMyProfile(fullName: string): Observable<UserProfile> {
+  updateMyProfile(firstName: string, lastName: string): Observable<UserProfile> {
     return this.http
       .patch<ApiEnvelope<{ user: UserProfile }>>(`${environment.apiBaseUrl}/users/me/profile`, {
-        fullName,
+        firstName,
+        lastName,
       })
       .pipe(
         map((response) => response.data.user),
@@ -142,6 +161,15 @@ export class AuthService {
         map((response) => response.data.user),
         tap((user) => this.userState.set(user)),
       );
+  }
+
+  changeMyPassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http
+      .patch<ApiEnvelope<{ changed: true }>>(`${environment.apiBaseUrl}/users/me/password`, {
+        currentPassword,
+        newPassword,
+      })
+      .pipe(map(() => undefined));
   }
 
   getShopDashboard(): Observable<{ shopName: string }> {
@@ -244,6 +272,24 @@ export class AuthService {
       );
   }
 
+  getCurrentUser(silent = false): Observable<UserProfile | null> {
+    const user = this.userState();
+    if (user) return of(user);
+    if (this.currentUserRequest) return this.currentUserRequest;
+
+    let request: Observable<UserProfile | null>;
+    request = this.loadCurrentUser(silent).pipe(
+      finalize(() => {
+        if (this.currentUserRequest === request) {
+          this.currentUserRequest = null;
+        }
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+    this.currentUserRequest = request;
+    return request;
+  }
+
   logout(): Observable<void> {
     return this.http
       .post<void>(`${environment.apiBaseUrl}/auth/logout`, {})
@@ -253,5 +299,6 @@ export class AuthService {
   clearSession(): void {
     this.userState.set(null);
     this.loginDestinationState.set(null);
+    this.currentUserRequest = null;
   }
 }

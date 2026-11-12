@@ -43,7 +43,7 @@
           <span class="summary-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="m8 12 2.5 2.5L16.5 9" /></svg>
           </span>
-          <span class="summary-copy"><span>Resolved</span><strong>{{ summary['RESOLVED'] || 0 }}</strong></span>
+          <span class="summary-copy"><span>Closed / Resolved</span><strong>{{ (summary['RESOLVED'] || 0) + (summary['CLOSED'] || 0) }}</strong></span>
         </article>
       </div>
     }
@@ -142,27 +142,14 @@
         }
       </section>
       <p class="result-count">{{ list()?.pagination?.total }} case(s)</p>
-      @if ((list()?.pagination?.totalPages ?? 0) > 1) {
-        <div class="pagination-controls">
-          <button
-            class="button secondary"
-            type="button"
-            [disabled]="page <= 1 || loading()"
-            (click)="changePage(-1)"
-          >
-            Previous
-          </button>
-          <span>Page {{ list()?.pagination?.page }} of {{ list()?.pagination?.totalPages }}</span>
-          <button
-            class="button secondary"
-            type="button"
-            [disabled]="page >= (list()?.pagination?.totalPages ?? 1) || loading()"
-            (click)="changePage(1)"
-          >
-            Next
-          </button>
-        </div>
-      }
+      <app-pagination
+        [total]="list()?.pagination?.total ?? 0"
+        [page]="list()?.pagination?.page ?? 1"
+        [pageSize]="5"
+        [disabled]="loading()"
+        ariaLabel="Dispute pages"
+        (pageChange)="goToPage($event)"
+      />
     } @else {
       <div class="state-card">
         <h2>No disputes found</h2>
@@ -653,45 +640,47 @@
           }
         </section>
 
-        <section class="panel admin-actions">
-          <h2>Manage dispute status</h2>
-          <div class="form-grid">
-            <label
-              >Status<select [(ngModel)]="adminStatus" name="adminStatus">
-                <option value="OPEN">Open</option>
-                <option value="UNDER_REVIEW">Under review</option>
-                <option value="AWAITING_SHOP_RESPONSE">Awaiting shop response</option>
-                <option value="AWAITING_CUSTOMER_RESPONSE">Awaiting customer response</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
-            </label>
-            <label
-              >Priority<select [(ngModel)]="selectedPriority" name="selectedPriority">
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </label>
-            <label class="wide"
-              >Reason<textarea
-                [(ngModel)]="adminStatusReason"
-                name="adminStatusReason"
-                rows="2"
-                maxlength="1000"
-                required
-              ></textarea>
-            </label>
-            <button
-              class="button secondary"
-              type="button"
-              [disabled]="saving() || !adminStatusReason.trim()"
-              (click)="updateAdminStatus()"
-            >
-              Update status
-            </button>
-          </div>
-        </section>
+        @if (item.status !== 'CLOSED' && item.status !== 'RESOLVED') {
+          <section class="panel admin-actions">
+            <h2>Manage dispute status</h2>
+            <div class="form-grid">
+              <label
+                >Status<select [(ngModel)]="adminStatus" name="adminStatus">
+                  <option value="OPEN">Open</option>
+                  <option value="UNDER_REVIEW">Under review</option>
+                  <option value="AWAITING_SHOP_RESPONSE">Awaiting shop response</option>
+                  <option value="AWAITING_CUSTOMER_RESPONSE">Awaiting customer response</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </label>
+              <label
+                >Priority<select [(ngModel)]="selectedPriority" name="selectedPriority">
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </label>
+              <label class="wide"
+                >Reason<textarea
+                  [(ngModel)]="adminStatusReason"
+                  name="adminStatusReason"
+                  rows="2"
+                  maxlength="1000"
+                  required
+                ></textarea>
+              </label>
+              <button
+                class="button secondary"
+                type="button"
+                [disabled]="saving() || !adminStatusReason.trim()"
+                (click)="updateAdminStatus()"
+              >
+                Update status
+              </button>
+            </div>
+          </section>
+        }
 
         @if (item.status !== 'CLOSED' && item.status !== 'RESOLVED' && item.resolution.state !== 'proposed') {
           <section class="panel action-panel">
@@ -1311,7 +1300,8 @@
       @if (
         role() === 'customer' &&
         (item.status === 'CUSTOMER_VERIFICATION_PENDING' ||
-          item.status === 'AWAITING_CUSTOMER_RESPONSE')
+          item.status === 'AWAITING_CUSTOMER_RESPONSE') &&
+        hasCompletedRework(item)
       ) {
         <section class="panel action-panel">
           <h2>Please inspect and test your device</h2>

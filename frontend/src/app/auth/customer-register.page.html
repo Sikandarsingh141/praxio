@@ -59,23 +59,43 @@
     <div class="registration-card">
       <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="field name-field">
-          <label for="customer-name">Full name <span class="required-mark">*</span></label>
+          <label for="customer-first-name">First Name <span class="required-mark">*</span></label>
           <div class="icon-field">
             <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M20 21a8 8 0 0 0-16 0" />
               <circle cx="12" cy="8" r="4" />
             </svg>
             <input
-              id="customer-name"
+              id="customer-first-name"
               type="text"
-              formControlName="fullName"
-              autocomplete="name"
-              placeholder="Your full name"
+              formControlName="firstName"
+              autocomplete="given-name"
+              placeholder="First name"
               required
             />
           </div>
-          @if (form.controls.fullName.touched && form.controls.fullName.invalid) {
-            <span class="field-error">Enter your name (up to 100 characters).</span>
+          @if (form.controls.firstName.touched && form.controls.firstName.invalid) {
+            <span class="field-error">Enter your first name (up to 50 characters).</span>
+          }
+        </div>
+        <div class="field name-field">
+          <label for="customer-last-name">Last Name <span class="required-mark">*</span></label>
+          <div class="icon-field">
+            <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 21a8 8 0 0 0-16 0" />
+              <circle cx="12" cy="8" r="4" />
+            </svg>
+            <input
+              id="customer-last-name"
+              type="text"
+              formControlName="lastName"
+              autocomplete="family-name"
+              placeholder="Last name"
+              required
+            />
+          </div>
+          @if (form.controls.lastName.touched && form.controls.lastName.invalid) {
+            <span class="field-error">Enter your last name (up to 50 characters).</span>
           }
         </div>
 
@@ -100,7 +120,7 @@
           }
         </div>
 
-        <div class="field field-full">
+        <div class="field field-full mobile-field">
           <label for="customer-mobile">Mobile number <span class="required-mark">*</span></label>
           <div class="phone-field">
             <label class="visually-hidden" for="customer-country-code">Country calling code</label>
@@ -144,12 +164,48 @@
           }
         </div>
 
+        <div class="field field-full">
+          <label for="customer-profile-image">
+            Profile photo <span class="optional">(optional)</span>
+          </label>
+          <div class="customer-image-control">
+            <label class="customer-image-dropzone" for="customer-profile-image">
+              <span class="customer-image-upload-icon" aria-hidden="true">↥</span>
+              <span class="customer-image-upload-copy">
+                @if (profileImageName()) {
+                  <strong>{{ profileImageName() }}</strong>
+                  <small>Ready to upload</small>
+                } @else {
+                  <strong>Upload profile photo</strong>
+                  <small>JPG, PNG or WebP (max 1 MB).</small>
+                }
+              </span>
+              <span class="customer-image-upload-button">
+                {{ profileImageName() ? 'Change file' : 'Choose file' }}
+              </span>
+              <input
+                id="customer-profile-image"
+                class="visually-hidden"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-label="Upload profile photo"
+                (change)="selectProfileImage($event)"
+              />
+            </label>
+            @if (profileImageData()) {
+              <button type="button" class="customer-image-remove" (click)="removeProfileImage()">
+                Remove
+              </button>
+            }
+          </div>
+          @if (profileImageError()) {
+            <span class="field-error" role="alert">{{ profileImageError() }}</span>
+          }
+        </div>
+
         <div class="field field-full location-field">
           <!-- <span class="field-label">Your location <span class="optional">(optional)</span></span> -->
-          <p class="input-hint">
-            Share your location to help match you with nearby repair shops. It is saved with your
-            registration.
-          </p>
+          <p class="input-hint">Optional: add your location to find nearby repair shops.</p>
           <div class="location-actions">
             <button type="button" class="secondary-action" (click)="useCurrentLocation()">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -274,7 +330,7 @@
           }
         </div>
 
-        <label class="terms-row">
+        <label class="terms-row customer-terms-row">
           <input type="checkbox" formControlName="acceptTerms" />
           <span>I accept Fixroa’s Terms and Conditions and Privacy Policy.</span>
         </label>
@@ -283,7 +339,7 @@
         }
 
         @if (pushConfigured) {
-          <label class="terms-row">
+          <label class="terms-row notification-row">
             <input type="checkbox" formControlName="enableNotifications" />
             <span>Enable browser notifications for registration updates (optional).</span>
           </label>

@@ -165,6 +165,10 @@
       grid-column: auto;
     }
 
+    .registration-card form > .mobile-field {
+      grid-column: auto;
+    }
+
     .name-field,
     .email-field {
       grid-column: auto;
@@ -300,6 +304,13 @@
       font-size: 0.72rem;
     }
 
+    .registration-card form > .customer-terms-row,
+    .registration-card form > .notification-row {
+      grid-column: auto;
+      align-self: center;
+      margin-top: 0.3rem;
+    }
+
     .password-field input {
       padding-right: 2.6rem;
     }
@@ -364,6 +375,43 @@
 
       .registration-card {
         padding-block: 0.45rem;
+      }
+
+      .customer-image-dropzone {
+        min-height: 2.5rem;
+        padding-block: 0.35rem;
+      }
+
+      .customer-image-upload-icon {
+        width: 1.8rem;
+        height: 1.8rem;
+      }
+
+      .location-field {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        column-gap: 0.7rem;
+      }
+
+      .location-field > .input-hint {
+        margin: 0;
+        line-height: 1.2;
+      }
+
+      .location-field .location-actions {
+        justify-content: flex-end;
+        margin: 0;
+      }
+
+      .location-field .secondary-action {
+        min-height: 1.65rem;
+        margin: 0;
+        padding-block: 0.2rem;
+      }
+
+      .location-field > .input-hint[role='status'] {
+        grid-column: 1 / -1;
       }
 
       .registration-card form {

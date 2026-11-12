@@ -129,22 +129,41 @@
             <fieldset>
               <legend>Owner information</legend>
               <div class="field">
-                <label for="owner-name">Owner name</label>
+                <label for="owner-first-name">First Name</label>
                 <div class="icon-field">
                   <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20 21a8 8 0 0 0-16 0" />
                     <circle cx="12" cy="8" r="4" />
                   </svg>
                   <input
-                    id="owner-name"
+                    id="owner-first-name"
                     type="text"
-                    formControlName="ownerFullName"
-                    autocomplete="name"
+                    formControlName="ownerFirstName"
+                    autocomplete="given-name"
                     required
                   />
                 </div>
-                @if (form.controls.ownerFullName.touched && form.controls.ownerFullName.invalid) {
-                  <span class="field-error">Enter the owner’s name.</span>
+                @if (form.controls.ownerFirstName.touched && form.controls.ownerFirstName.invalid) {
+                  <span class="field-error">Enter the owner’s first name.</span>
+                }
+              </div>
+              <div class="field">
+                <label for="owner-last-name">Last Name</label>
+                <div class="icon-field">
+                  <svg class="field-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 21a8 8 0 0 0-16 0" />
+                    <circle cx="12" cy="8" r="4" />
+                  </svg>
+                  <input
+                    id="owner-last-name"
+                    type="text"
+                    formControlName="ownerLastName"
+                    autocomplete="family-name"
+                    required
+                  />
+                </div>
+                @if (form.controls.ownerLastName.touched && form.controls.ownerLastName.invalid) {
+                  <span class="field-error">Enter the owner’s last name.</span>
                 }
               </div>
               <div class="field">
@@ -166,7 +185,7 @@
                   <span class="field-error">Enter a valid email address.</span>
                 }
               </div>
-              <div class="field field-full">
+              <div class="field field-full mobile-field">
                 <label for="shop-mobile">Mobile number</label>
                 <div class="phone-field">
                   <label class="visually-hidden" for="shop-country-code"

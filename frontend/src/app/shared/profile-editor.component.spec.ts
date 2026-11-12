@@ -8,38 +8,43 @@ describe('ProfileEditorComponent', () => {
   const user: UserProfile = {
     id: 'user-id',
     email: 'person@example.com',
-    fullName: 'Taylor Example',
+    firstName: 'Taylor',
+    lastName: 'Example',
     createdAt: '2026-01-01T00:00:00.000Z',
   };
   const authService = {
     currentUser: () => user,
     updateMyProfile: jasmine.createSpy().and.returnValue(of(user)),
     uploadMyProfileImage: jasmine.createSpy().and.returnValue(of(user)),
+    changeMyPassword: jasmine.createSpy().and.returnValue(of(undefined)),
   };
 
   beforeEach(async () => {
     authService.updateMyProfile.calls.reset();
     authService.uploadMyProfileImage.calls.reset();
+    authService.changeMyPassword.calls.reset();
     await TestBed.configureTestingModule({
       imports: [ProfileEditorComponent],
       providers: [{ provide: AuthService, useValue: authService }],
     }).compileComponents();
   });
 
-  it('saves the edited name through the account profile API', () => {
+  it('saves separate first and last names through the account profile API', () => {
     const fixture = TestBed.createComponent(ProfileEditorComponent);
     fixture.detectChanges();
 
-    const input = fixture.nativeElement.querySelector('#profile-full-name') as HTMLInputElement;
-    input.value = 'Taylor Updated';
-    input.dispatchEvent(new Event('input'));
+    const firstName = fixture.nativeElement.querySelector(
+      '#profile-first-name',
+    ) as HTMLInputElement;
+    firstName.value = 'Taylor Updated';
+    firstName.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     (fixture.nativeElement.querySelector('form') as HTMLFormElement).dispatchEvent(
       new Event('submit'),
     );
     fixture.detectChanges();
 
-    expect(authService.updateMyProfile).toHaveBeenCalledWith('Taylor Updated');
+    expect(authService.updateMyProfile).toHaveBeenCalledWith('Taylor Updated', 'Example');
     expect(fixture.nativeElement.textContent).toContain('Your name has been updated.');
   });
 
@@ -56,5 +61,24 @@ describe('ProfileEditorComponent', () => {
     expect(fixture.nativeElement.textContent).toContain(
       'Choose a JPEG, PNG, or WebP image smaller than 1 MB.',
     );
+  });
+
+  it('requires matching new passwords and sends password changes securely', () => {
+    const fixture = TestBed.createComponent(ProfileEditorComponent);
+    fixture.componentRef.setInput('allowPasswordChange', true);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.currentPassword.set('OldPassword1');
+    component.newPassword.set('NewPassword2');
+    component.confirmPassword.set('DifferentPassword2');
+    component.changePassword(new Event('submit'));
+    expect(authService.changeMyPassword).not.toHaveBeenCalled();
+    expect(component.passwordError()).toBe('The new passwords do not match.');
+
+    component.confirmPassword.set('NewPassword2');
+    component.changePassword(new Event('submit'));
+    expect(authService.changeMyPassword).toHaveBeenCalledWith('OldPassword1', 'NewPassword2');
+    expect(component.passwordSuccess()).toBe('Your password has been updated.');
+    expect(component.currentPassword()).toBe('');
   });
 });

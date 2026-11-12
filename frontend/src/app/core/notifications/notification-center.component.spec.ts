@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { FirebaseMessagingService } from './firebase-messaging.service';
 import { NotificationCenterComponent } from './notification-center.component';
@@ -32,6 +32,20 @@ describe('NotificationCenterComponent', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('does not poll notifications while the portal remains open', fakeAsync(() => {
+    const fixture = TestBed.createComponent(NotificationCenterComponent);
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiBaseUrl}/notifications/my`).flush({
+      data: { notifications: [] },
+    });
+
+    tick(15000);
+
+    http.expectNone(`${environment.apiBaseUrl}/notifications/my`);
+    expect(fixture.componentInstance.notifications()).toEqual([]);
+    fixture.destroy();
+  }));
 
   it('lists the signed-in user notifications and marks an item read', () => {
     const fixture = TestBed.createComponent(NotificationCenterComponent);
@@ -79,7 +93,7 @@ describe('NotificationCenterComponent', () => {
     expect(fixture.nativeElement.querySelector('.notification-count')).toBeNull();
   });
 
-  it('polls for a decline, displays it immediately, and reloads the account status', () => {
+  it('refreshes for a decline, displays it immediately, and reloads the account status', () => {
     const fixture = TestBed.createComponent(NotificationCenterComponent);
     fixture.detectChanges();
     http.expectOne(`${environment.apiBaseUrl}/notifications/my`).flush({

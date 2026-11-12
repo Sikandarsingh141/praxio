@@ -11,12 +11,11 @@
     <header class="request-hero">
       <span class="appliance-icon" aria-hidden="true">▣</span>
       <div class="request-hero-copy">
-        <span class="eyebrow">REQUEST #{{ request._id.slice(-8).toUpperCase() }}</span>
+        <span class="eyebrow">REPAIR REQUEST DETAILS</span>
         <h1 id="request-details-title">{{ request.appliance }}</h1>
-        <p>
-          {{ request.brand || 'Brand not provided'
-          }}{{ request.model ? ' · ' + request.model : '' }}
-        </p>
+        <span class="request-id">
+          Request ID: <strong>{{ request._id.slice(-8).toUpperCase() }}</strong>
+        </span>
       </div>
       <span class="status-badge" [attr.data-status]="request.shopResponse.status">
         {{
@@ -26,6 +25,28 @@
         }}
       </span>
     </header>
+
+    <ol class="request-progress" aria-label="Repair request progress">
+        @for (step of progressSteps; track step; let index = $index) {
+          <li
+            [class.completed]="index + 1 < currentProgressStep()"
+            [class.current]="index + 1 === currentProgressStep()"
+            [attr.aria-current]="index + 1 === currentProgressStep() ? 'step' : null"
+          >
+            <span class="progress-marker" aria-hidden="true">
+              @if (index + 1 < currentProgressStep()) {
+                ✓
+              } @else {
+                {{ index + 1 }}
+              }
+            </span>
+            <strong>{{ step }}</strong>
+            @if (index === 0) {
+              <time>{{ request.createdAt | date: 'medium' }}</time>
+            }
+          </li>
+        }
+    </ol>
 
     @if (request.repairJob) {
       <app-shop-repair-workflow [request]="request" (requestUpdated)="setRequest($event)" />
@@ -37,7 +58,7 @@
           <span class="card-icon" aria-hidden="true">♙</span>
           Customer information
         </h2>
-        <h3 class="customer-title">{{ request.customer.fullName }}</h3>
+        <h3 class="customer-title">{{ request.customer.displayName || (request.customer.firstName + ' ' + request.customer.lastName) }}</h3>
         <dl>
           <div>
             <dt><span aria-hidden="true">✉</span>Email</dt>
@@ -50,17 +71,12 @@
           <div>
             <dt><span aria-hidden="true">⌖</span>Location</dt>
             <dd>
-              @if (request.customer.location; as location) {
+              @if (customerMapUrl(); as mapUrl) {
                 <a
-                  [href]="
-                    'https://www.google.com/maps/search/?api=1&query=' +
-                    location.latitude +
-                    ',' +
-                    location.longitude
-                  "
+                  [href]="mapUrl"
                   target="_blank"
                   rel="noopener noreferrer"
-                  >{{ location.latitude }}, {{ location.longitude }} · Open map</a
+                  >View on Map</a
                 >
               } @else {
                 Location not provided
@@ -134,19 +150,91 @@
         }
       </section>
 
-      @if (request.quotations.length) {
-        <section class="detail-card quotations-card">
-          <span class="section-kicker">QUOTATION HISTORY</span>
-          @for (quotation of request.quotations; track quotation._id) {
-            <article class="quotation-history">
-              <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
-              <span>{{ quotation.status }} · {{ quotation.createdAt | date: 'medium' }}</span>
-              <p>{{ quotation.message }}</p>
-            </article>
-          }
-        </section>
-      }
+      <section class="detail-card diagnosis-card">
+        <h2 class="card-heading">
+          <span class="card-icon" aria-hidden="true">✚</span>
+          Initial Diagnosis <small>(by Shop)</small>
+        </h2>
+        @if (request.repairJob?.inspection; as inspection) {
+          <div class="diagnosis-summary">
+            <strong>{{ inspection.identifiedProblem || 'Diagnosis in progress' }}</strong>
+            @if (inspection.findings) {
+              <p>{{ inspection.findings }}</p>
+            }
+            @if (inspection.requiredRepairWork) {
+              <p><b>Recommended repair:</b> {{ inspection.requiredRepairWork }}</p>
+            }
+          </div>
+        } @else {
+          <div class="diagnosis-pending">
+            <strong>Pending Inspection</strong>
+            <p>Our technician will inspect the device and share a detailed diagnosis and quotation.</p>
+          </div>
+        }
+      </section>
+
+      <app-shop-repair-route
+        class="route-panel"
+        [requestId]="request._id"
+        [shopLocation]="shopProfile()?.location"
+        [customerLocation]="customerCoordinates()"
+      />
+
     </div>
+
+    @if (request.quotations.length) {
+      <section class="detail-card quotations-card" aria-labelledby="quotation-details-title">
+        <h2 class="card-heading" id="quotation-details-title">
+          <span class="card-icon" aria-hidden="true">▤</span>
+          Quotation Details
+        </h2>
+        <div class="quotation-table-wrap">
+          <table class="quotation-table">
+            <thead>
+              <tr>
+                <th scope="col">Quotation #</th>
+                <th scope="col">Shop Name</th>
+                <th scope="col">Service &amp; Parts</th>
+                <th scope="col">Total Amount</th>
+                <th scope="col">Status</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (quotation of request.quotations; track quotation._id; let index = $index) {
+                <tr>
+                  <td>QTN-{{ (index + 1).toString().padStart(3, '0') }}</td>
+                  <td>{{ shopProfile()?.shopName || 'Your shop' }}</td>
+                  <td>{{ quotation.proposedSolution || quotation.message }}</td>
+                  <td class="quotation-amount">
+                    {{ quotation.amount | currency: quotation.currency }}
+                  </td>
+                  <td>
+                    <span class="quotation-status" [attr.data-status]="quotation.status">
+                      {{ quotation.status | titlecase }}
+                    </span>
+                  </td>
+                  <td>
+                    <details class="quotation-details">
+                      <summary>View Details</summary>
+                      <div>
+                        <p>{{ quotation.message }}</p>
+                        @if (quotation.estimatedDays) {
+                          <span>Estimated completion: {{ quotation.estimatedDays }} days</span>
+                        }
+                        @if (quotation.validUntil) {
+                          <span>Valid until: {{ quotation.validUntil | date: 'mediumDate' }}</span>
+                        }
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
 
     @if (request.repairJob; as job) {
       <section
@@ -335,7 +423,11 @@
             } @else if (job.status === 'picked_up') {
               Customer pickup is confirmed. Waiting for their repair review.
             } @else {
-              This repair is complete.
+              @if (job.status === 'completed') {
+                This repair is complete.
+              } @else {
+                This repair is not yet complete.
+              }
             }
           </p>
         }

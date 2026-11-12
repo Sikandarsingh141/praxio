@@ -17,6 +17,7 @@ import {
   RepairRequest,
 } from '../customer/repair-request.schema';
 import { User } from '../users/schemas/user.schema';
+import { formatUserName } from '../users/user-name';
 import {
   AdminDisputeStatusDto,
   CloseDisputeDto,
@@ -857,8 +858,9 @@ export class DisputesService {
     }
     const dispute = await this.findAccessible(actor, id);
     if (
-      dispute.status !== 'CUSTOMER_VERIFICATION_PENDING' &&
-      dispute.status !== 'AWAITING_CUSTOMER_RESPONSE'
+      (dispute.status !== 'CUSTOMER_VERIFICATION_PENDING' &&
+        dispute.status !== 'AWAITING_CUSTOMER_RESPONSE') ||
+      (dispute.reworkCompletions?.length ?? 0) === 0
     ) {
       throw new BadRequestException(
         'This dispute is not awaiting customer verification.',
@@ -1032,10 +1034,13 @@ export class DisputesService {
     const dispute = await this.findAccessible(actor, id);
     const [request, customer, shop] = await Promise.all([
       this.repairRequests.findById(dispute.repairRequestId).lean(),
-      this.users.findById(dispute.customerId).select('fullName email').lean(),
+      this.users
+        .findById(dispute.customerId)
+        .select('firstName lastName fullName email')
+        .lean(),
       this.users
         .findById(dispute.shopId)
-        .select('fullName email shopDetails.shopName')
+        .select('firstName lastName fullName email shopDetails.shopName')
         .lean(),
     ]);
     if (!request) {
@@ -1054,14 +1059,14 @@ export class DisputesService {
         customer: customer
           ? {
               id: customer._id.toString(),
-              name: customer.fullName,
+              name: formatUserName(customer),
               ...(actor.role === 'admin' ? { email: customer.email } : {}),
             }
           : null,
         shop: shop
           ? {
               id: shop._id.toString(),
-              name: shop.shopDetails?.shopName ?? shop.fullName,
+              name: shop.shopDetails?.shopName ?? formatUserName(shop),
               ...(actor.role === 'admin' ? { email: shop.email } : {}),
             }
           : null,
@@ -1645,6 +1650,8 @@ export class DisputesService {
         .find({
           $or: [
             { fullName: regex },
+            { firstName: regex },
+            { lastName: regex },
             { email: regex },
             { 'shopDetails.shopName': regex },
           ],

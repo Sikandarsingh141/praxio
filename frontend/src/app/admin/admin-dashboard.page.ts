@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -13,6 +14,7 @@ import {
   FilterConfig,
   FilterValues,
 } from '../shared/common-filter.component';
+import { PaginationComponent } from '../shared/pagination.component';
 import {
   AdminRegistrationRequest,
   AdminService,
@@ -43,6 +45,7 @@ interface RegistrationConfirmation {
     UpperCasePipe,
     ConfirmationDialogComponent,
     CommonFilterComponent,
+    PaginationComponent,
   ],
   templateUrl: './admin-dashboard.page.html',
   styleUrl: './admin-dashboard.page.scss',
@@ -70,7 +73,7 @@ export class AdminDashboardPage implements OnInit {
   readonly page = signal(1);
   readonly total = signal(0);
   readonly totalPages = signal(0);
-  readonly pageSize = signal(10);
+  readonly pageSize = signal(5);
   readonly confirmation = signal<RegistrationConfirmation | null>(null);
   readonly appliedFilters = signal<FilterValues>({});
   readonly pageTitle = () =>
@@ -272,40 +275,8 @@ export class AdminDashboardPage implements OnInit {
     this.loadRequests();
   }
 
-  updatePageSize(event: Event): void {
-    const target = event.target;
-    if (target instanceof HTMLSelectElement && ['10', '25', '50', '100'].includes(target.value)) {
-      this.pageSize.set(Number(target.value));
-      this.page.set(1);
-      this.loadRequests();
-    }
-  }
-
   search(value: string): void {
     this.searchChanges.next(value.trim());
-  }
-
-  changePage(delta: number): void {
-    const nextPage = this.page() + delta;
-    if (nextPage < 1 || nextPage > this.totalPages()) {
-      return;
-    }
-    this.page.set(nextPage);
-    this.loadRequests();
-  }
-
-  get firstVisibleUser(): number {
-    return this.total() ? (this.page() - 1) * this.pageSize() + 1 : 0;
-  }
-
-  get lastVisibleUser(): number {
-    return Math.min(this.page() * this.pageSize(), this.total());
-  }
-
-  get visiblePages(): number[] {
-    const totalPages = this.totalPages();
-    const firstPage = Math.max(1, Math.min(this.page() - 2, totalPages - 4));
-    return Array.from({ length: Math.min(5, totalPages) }, (_, index) => firstPage + index);
   }
 
   goToPage(page: number): void {
@@ -434,9 +405,11 @@ export class AdminDashboardPage implements OnInit {
     );
   }
 
-  private loadRequests(): void {
+  private loadRequests(clearError = true): void {
     this.loading.set(true);
-    this.errorMessage.set('');
+    if (clearError) {
+      this.errorMessage.set('');
+    }
     this.adminService
       .getRegistrationRequests({
         page: this.page(),
@@ -537,8 +510,14 @@ export class AdminDashboardPage implements OnInit {
           this.loadRequests();
           this.loadStatistics();
         },
-        error: (error: unknown) =>
-          this.errorMessage.set(getAuthErrorMessage(error, 'Unable to update account status.')),
+        error: (error: unknown) => {
+          const message = getAuthErrorMessage(error, 'Unable to update account status.');
+          if (error instanceof HttpErrorResponse && error.status === 409) {
+            this.loadRequests(false);
+            this.loadStatistics();
+          }
+          this.errorMessage.set(message);
+        },
       });
   }
 }

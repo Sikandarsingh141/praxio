@@ -5,7 +5,11 @@
       <h1 id="requests-title">
         {{ completedRepairs() ? 'Completed Repairs' : 'Repair requests' }}
       </h1>
-      <p>Review requests shared specifically with your shop and respond with a quotation.</p>
+      @if (completedRepairs()) {
+        <p>Review repair jobs completed by your shop.</p>
+      } @else {
+        <p>Review requests shared specifically with your shop and respond with a quotation.</p>
+      }
     </div>
   </header>
 
@@ -98,7 +102,7 @@
             <div class="request-summary">
                 <span class="request-id">Request #{{ request._id.slice(-8).toUpperCase() }}</span>
                 <h2>{{ request.appliance }}</h2>
-                <p class="customer-name">{{ request.customer.fullName }}</p>
+                <p class="customer-name">{{ request.customer.displayName || (request.customer.firstName + ' ' + request.customer.lastName) }}</p>
                 <p class="description">{{ request.description }}</p>
             </div>
             <div class="request-meta">
@@ -146,21 +150,14 @@
           </article>
         }
       </div>
-      <footer class="pagination">
-        <span>Page {{ pageData()!.page }} · {{ pageData()!.total }} total</span>
-        <div>
-          <button type="button" [disabled]="pageData()!.page <= 1" (click)="changePage(-1)">
-            Previous
-          </button>
-          <button
-            type="button"
-            [disabled]="pageData()!.page * pageData()!.limit >= pageData()!.total"
-            (click)="changePage(1)"
-          >
-            Next
-          </button>
-        </div>
-      </footer>
+      <app-pagination
+        [total]="pageData()!.total"
+        [page]="pageData()!.page"
+        [pageSize]="pageData()!.limit"
+        [disabled]="loading()"
+        ariaLabel="Repair request pages"
+        (pageChange)="goToPage($event)"
+      />
     } @else {
       <div class="state empty">
         <span aria-hidden="true">▤</span>

@@ -62,6 +62,7 @@ describe('AuthController', () => {
     getAccessTokenTtlSeconds: jest.fn().mockReturnValue(86400),
     toSafeUser: jest.fn().mockReturnValue(safeUser),
     toAuthenticatedUser: jest.fn().mockResolvedValue(safeUser),
+    changePassword: jest.fn().mockResolvedValue(undefined),
     getCurrentShopAuthorization: jest.fn().mockResolvedValue({
       registrationStatus: 'pending',
       paymentStatus: 'unpaid',
@@ -166,17 +167,23 @@ describe('AuthController', () => {
     );
   });
 
-  it('registers a legacy account as a pending customer request', async () => {
+  it('registers a named account as a pending customer request', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/auth/register')
       .send({
+        firstName: 'Alex',
+        lastName: 'Repair',
         email: safeUser.email,
         password: 'CorrectHorse7Battery',
       })
       .expect(201);
 
     expect(authService.register).toHaveBeenCalledWith(
-      expect.objectContaining({ email: safeUser.email }),
+      expect.objectContaining({
+        firstName: 'Alex',
+        lastName: 'Repair',
+        email: safeUser.email,
+      }),
     );
     expect(response.text).toContain('"accountStatus":"pending_approval"');
     expect(response.text).toContain('"registrationStatus":"pending"');
@@ -205,12 +212,14 @@ describe('AuthController', () => {
     const response = await request(app.getHttpServer())
       .post('/api/auth/register/customer')
       .send({
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         email: safeUser.email,
         countryCode: '+1',
         mobileNumber: '5551234567',
         password: 'CorrectHorse7Battery',
         acceptTerms: true,
+        profileImageData: 'data:image/png;base64,YWJj',
       })
       .expect(201);
 
@@ -218,10 +227,12 @@ describe('AuthController', () => {
     expect(response.text).toContain('"registrationStatus":"pending"');
     expect(authService.registerCustomer).toHaveBeenCalledWith(
       expect.objectContaining({
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         countryCode: '+1',
         mobileNumber: '5551234567',
         acceptTerms: true,
+        profileImageData: 'data:image/png;base64,YWJj',
       }),
     );
   });
@@ -230,7 +241,8 @@ describe('AuthController', () => {
     const response = await request(app.getHttpServer())
       .post('/api/auth/register/shop')
       .send({
-        fullName: 'Shop Owner',
+        firstName: 'Shop',
+        lastName: 'Owner',
         email: 'shop@example.com',
         countryCode: '+91',
         mobileNumber: '9876543210',
@@ -267,7 +279,8 @@ describe('AuthController', () => {
     await request(app.getHttpServer())
       .post('/api/auth/register/customer')
       .send({
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         email: safeUser.email,
         countryCode: '+1',
         mobileNumber: '12345',
@@ -279,11 +292,30 @@ describe('AuthController', () => {
     expect(authService.registerCustomer).not.toHaveBeenCalled();
   });
 
+  it('rejects unsupported customer profile image data', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/register/customer')
+      .send({
+        firstName: 'Customer',
+        lastName: 'Example',
+        email: safeUser.email,
+        countryCode: '+1',
+        mobileNumber: '5551234567',
+        password: 'CorrectHorse7Battery',
+        acceptTerms: true,
+        profileImageData: 'data:image/gif;base64,YWJj',
+      })
+      .expect(400);
+
+    expect(authService.registerCustomer).not.toHaveBeenCalled();
+  });
+
   it('does not allow public registration to assign an administrator role', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/register/customer')
       .send({
-        fullName: 'Customer Example',
+        firstName: 'Customer',
+        lastName: 'Example',
         email: safeUser.email,
         countryCode: '+1',
         mobileNumber: '5551234567',
@@ -338,7 +370,12 @@ describe('AuthController', () => {
   it('accepts an 8-character password with uppercase, lowercase, and a number', async () => {
     await request(app.getHttpServer())
       .post('/api/auth/register')
-      .send({ email: safeUser.email, password: 'Abcdef1!' })
+      .send({
+        firstName: 'Alex',
+        lastName: 'Repair',
+        email: safeUser.email,
+        password: 'Abcdef1!',
+      })
       .expect(201);
 
     expect(authService.register).toHaveBeenCalled();
@@ -349,7 +386,12 @@ describe('AuthController', () => {
     async (password) => {
       await request(app.getHttpServer())
         .post('/api/auth/register')
-        .send({ email: safeUser.email, password })
+        .send({
+          firstName: 'Alex',
+          lastName: 'Repair',
+          email: safeUser.email,
+          password,
+        })
         .expect(400);
 
       expect(authService.register).not.toHaveBeenCalled();
@@ -379,12 +421,52 @@ describe('AuthController', () => {
     await request(app.getHttpServer())
       .patch('/api/users/me/profile')
       .set('Cookie', `access_token=${token}`)
-      .send({ fullName: 'Updated Person' })
+      .send({ firstName: 'Updated', lastName: 'Person' })
       .expect(200, { data: { user: serializedUser } });
 
     expect(usersService.updateProfile).toHaveBeenCalledWith(safeUser.id, {
-      fullName: 'Updated Person',
+      firstName: 'Updated',
+      lastName: 'Person',
     });
+  });
+
+  it('changes the authenticated user password', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/users/me/password')
+      .set('Cookie', `access_token=${token}`)
+      .send({
+        currentPassword: 'OldPassword1',
+        newPassword: 'NewPassword2',
+      })
+      .expect(200, { data: { changed: true } });
+
+    expect(authService.changePassword).toHaveBeenCalledWith(
+      safeUser.id,
+      'OldPassword1',
+      'NewPassword2',
+    );
+  });
+
+  it('rejects weak new passwords', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/users/me/password')
+      .set('Cookie', `access_token=${token}`)
+      .send({ currentPassword: 'OldPassword1', newPassword: 'weak' })
+      .expect(400);
+
+    expect(authService.changePassword).not.toHaveBeenCalled();
   });
 
   it('stores a valid uploaded profile image in the user record', async () => {
@@ -503,7 +585,11 @@ describe('AuthController', () => {
     await request(app.getHttpServer())
       .patch('/api/shops/my-profile/business-details')
       .set('Cookie', `access_token=${token}`)
-      .send({ ...businessDetailsUpdate, fullName: 'Other profile data' })
+      .send({
+        ...businessDetailsUpdate,
+        firstName: 'Other',
+        lastName: 'Profile',
+      })
       .expect(400);
   });
 

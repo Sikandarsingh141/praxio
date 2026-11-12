@@ -24,6 +24,7 @@ import { AuthService, SafeUser } from './auth.service';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import {
   hasValidImageSignature,
   UPLOADED_IMAGE_MAX_BYTES,
@@ -76,9 +77,29 @@ export class ProfileController {
     }
 
     const user = await this.usersService.updateProfile(userId, {
-      fullName: input.fullName.trim(),
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
     });
     return { data: { user: await this.authService.toAuthenticatedUser(user) } };
+  }
+
+  @Patch('me/password')
+  @ApiOperation({ summary: 'Change the authenticated user password' })
+  async changePassword(
+    @Req() request: AuthenticatedRequest,
+    @Body() input: ChangePasswordDto,
+  ): Promise<{ data: { changed: true } }> {
+    const userId = request.auth?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    await this.authService.changePassword(
+      userId,
+      input.currentPassword,
+      input.newPassword,
+    );
+    return { data: { changed: true } };
   }
 
   @Post('me/profile-image')
@@ -116,5 +137,4 @@ export class ProfileController {
     });
     return { data: { user: await this.authService.toAuthenticatedUser(user) } };
   }
-
 }

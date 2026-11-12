@@ -13,6 +13,32 @@
   }
 
   <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <label for="register-first-name">First Name</label>
+    <input
+      id="register-first-name"
+      type="text"
+      formControlName="firstName"
+      autocomplete="given-name"
+      maxlength="50"
+      required
+    />
+    @if (form.controls.firstName.touched && form.controls.firstName.invalid) {
+      <span class="field-error">Enter your first name.</span>
+    }
+
+    <label for="register-last-name">Last Name</label>
+    <input
+      id="register-last-name"
+      type="text"
+      formControlName="lastName"
+      autocomplete="family-name"
+      maxlength="50"
+      required
+    />
+    @if (form.controls.lastName.touched && form.controls.lastName.invalid) {
+      <span class="field-error">Enter your last name.</span>
+    }
+
     <label for="register-email">Email address</label>
     <input
       id="register-email"

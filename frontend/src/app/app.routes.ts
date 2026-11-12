@@ -250,6 +250,11 @@ export const routes: Routes = [
       { path: 'users/:id', component: AdminUserDetailsPage },
       { path: 'users', component: AdminDashboardPage },
       {
+        path: 'profile',
+        loadComponent: () =>
+          import('./admin/admin-profile.page').then((module) => module.AdminProfilePage),
+      },
+      {
         path: 'repair-jobs/:id',
         loadComponent: () =>
           import('./admin/admin-repair-job-details.page').then(

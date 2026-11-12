@@ -7,7 +7,7 @@ export const authGuard: CanActivateFn = (route) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  const profile$ = authService.loadCurrentUser();
+  const profile$ = authService.getCurrentUser(route.data['accountType'] === 'shop');
 
   return profile$.pipe(
     map((user) => {

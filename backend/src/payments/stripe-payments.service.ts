@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -26,6 +27,32 @@ export interface ShopPaymentStatus {
   stripePaymentIntentId: string | null;
   paymentId: string | null;
 }
+
+export interface ShopInvoiceSummary {
+  stripeInvoiceId: string;
+  invoiceNumber: string | null;
+  totalAmountCents: number;
+  amountPaidCents: number;
+  refundedAmountCents: number;
+  currency: string;
+  status: string;
+  generatedAt: Date;
+  paidAt: Date | null;
+  hostedInvoiceUrl: string | null;
+  invoicePdfUrl: string | null;
+}
+
+export interface ShopInvoicePage {
+  invoices: ShopInvoiceSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+const SHOP_INVOICE_PAGE_SIZE = 5;
 
 @Injectable()
 export class StripePaymentsService {
@@ -196,6 +223,142 @@ export class StripePaymentsService {
       stripeSubscriptionId: request?.stripeSubscriptionId ?? null,
       stripePaymentIntentId: request?.stripePaymentIntentId ?? null,
       paymentId: request?.stripePaymentId ?? null,
+    };
+  }
+
+  async getShopInvoices(
+    userId: string,
+    page: number,
+  ): Promise<ShopInvoicePage> {
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Invoice page must be a positive integer.');
+    }
+
+    const userObjectId = this.toObjectId(userId);
+    const registration = await this.registrationRequests
+      .findOne({ userId: userObjectId, accountType: 'shop' })
+      .exec();
+    if (!registration) {
+      throw new NotFoundException(
+        'No Shop registration was found for this account.',
+      );
+    }
+
+    const filter = {
+      registrationRequestId: registration._id,
+      userId: userObjectId,
+    };
+    const [records, total] = await Promise.all([
+      this.subscriptionInvoices
+        .find(filter)
+        .sort({ generatedAt: -1, _id: -1 })
+        .skip((page - 1) * SHOP_INVOICE_PAGE_SIZE)
+        .limit(SHOP_INVOICE_PAGE_SIZE)
+        .exec(),
+      this.subscriptionInvoices.countDocuments(filter).exec(),
+    ]);
+
+    if (
+      !records.length &&
+      total === 0 &&
+      page === 1 &&
+      registration.stripeCheckoutInvoiceId
+    ) {
+      let stripeInvoice: Stripe.Invoice;
+      try {
+        stripeInvoice = await this.getStripe().invoices.retrieve(
+          registration.stripeCheckoutInvoiceId,
+        );
+      } catch {
+        throw new ServiceUnavailableException(
+          'Invoice documents are temporarily unavailable. Please try again later.',
+        );
+      }
+
+      const totalAmountCents = Math.max(
+        0,
+        stripeInvoice.total ?? stripeInvoice.amount_due,
+      );
+      return {
+        invoices: [
+          {
+            stripeInvoiceId: stripeInvoice.id,
+            invoiceNumber: stripeInvoice.number ?? null,
+            totalAmountCents,
+            amountPaidCents: Math.max(0, stripeInvoice.amount_paid),
+            refundedAmountCents: Math.min(
+              totalAmountCents,
+              Math.max(0, registration.paymentRefundedAmountCents ?? 0),
+            ),
+            currency: stripeInvoice.currency,
+            status: stripeInvoice.status ?? 'unknown',
+            generatedAt: new Date(stripeInvoice.created * 1000),
+            paidAt: stripeInvoice.status_transitions.paid_at
+              ? new Date(stripeInvoice.status_transitions.paid_at * 1000)
+              : null,
+            hostedInvoiceUrl: stripeInvoice.hosted_invoice_url ?? null,
+            invoicePdfUrl: stripeInvoice.invoice_pdf ?? null,
+          },
+        ],
+        pagination: {
+          page: 1,
+          limit: SHOP_INVOICE_PAGE_SIZE,
+          total: 1,
+          totalPages: 1,
+        },
+      };
+    }
+
+    if (!records.length) {
+      return {
+        invoices: [],
+        pagination: {
+          page,
+          limit: SHOP_INVOICE_PAGE_SIZE,
+          total,
+          totalPages: Math.ceil(total / SHOP_INVOICE_PAGE_SIZE),
+        },
+      };
+    }
+
+    const stripe = this.getStripe();
+    const invoices = await Promise.all(
+      records.map(async (record): Promise<ShopInvoiceSummary> => {
+        let stripeInvoice: Stripe.Invoice;
+        try {
+          stripeInvoice = await stripe.invoices.retrieve(
+            record.stripeInvoiceId,
+          );
+        } catch {
+          throw new ServiceUnavailableException(
+            'Invoice documents are temporarily unavailable. Please try again later.',
+          );
+        }
+
+        return {
+          stripeInvoiceId: record.stripeInvoiceId,
+          invoiceNumber: stripeInvoice.number ?? null,
+          totalAmountCents: record.totalAmountCents,
+          amountPaidCents: record.amountPaidCents,
+          refundedAmountCents: record.refundedAmountCents,
+          currency: record.currency,
+          status: record.status,
+          generatedAt: record.generatedAt,
+          paidAt: record.paidAt ?? null,
+          hostedInvoiceUrl: stripeInvoice.hosted_invoice_url ?? null,
+          invoicePdfUrl: stripeInvoice.invoice_pdf ?? null,
+        };
+      }),
+    );
+
+    return {
+      invoices,
+      pagination: {
+        page,
+        limit: SHOP_INVOICE_PAGE_SIZE,
+        total,
+        totalPages: Math.ceil(total / SHOP_INVOICE_PAGE_SIZE),
+      },
     };
   }
 

@@ -18,11 +18,16 @@ describe('UsersService', () => {
     exec: jest.fn().mockResolvedValue(user),
   };
   const idQuery = { exec: jest.fn().mockResolvedValue(user) };
+  const authIdQuery = {
+    select: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(user),
+  };
   const updateQuery = { exec: jest.fn().mockResolvedValue(user) };
   const model = {
     create: jest.fn().mockResolvedValue(user),
     findOne: jest.fn().mockReturnValue(emailQuery),
     findById: jest.fn().mockReturnValue(idQuery),
+    findByIdForAuthentication: jest.fn(),
     findByIdAndUpdate: jest.fn().mockReturnValue(updateQuery),
     findOneAndUpdate: jest.fn().mockReturnValue(updateQuery),
   };
@@ -52,7 +57,8 @@ describe('UsersService', () => {
     await service.createRegistrationAccount({
       email: '  Shop@Example.com ',
       passwordHash: 'bcrypt-hash',
-      fullName: 'Shop Owner',
+      firstName: 'Shop',
+      lastName: 'Owner',
       countryCode: '+91',
       mobileNumber: '9876543210',
       accountType: 'shop',
@@ -116,9 +122,29 @@ describe('UsersService', () => {
     expect(model.findById).not.toHaveBeenCalled();
   });
 
+  it('selects the password hash only for password-change authentication', async () => {
+    model.findById.mockReturnValue(authIdQuery);
+    await service.findByIdForAuthentication('507f1f77bcf86cd799439011');
+    expect(model.findById).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+    expect(authIdQuery.select).toHaveBeenCalledWith('+passwordHash');
+  });
+
+  it('updates the password hash without returning it', async () => {
+    await service.updatePasswordHash(
+      '507f1f77bcf86cd799439011',
+      'new-bcrypt-hash',
+    );
+    expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      { $set: { passwordHash: 'new-bcrypt-hash' } },
+      { new: true, runValidators: true },
+    );
+  });
+
   it('updates only the supplied profile fields and returns the saved user', async () => {
     await service.updateProfile('507f1f77bcf86cd799439011', {
-      fullName: 'Updated Name',
+      firstName: 'Updated',
+      lastName: 'Name',
       profileImageData: 'data:image/png;base64,abc',
     });
 
@@ -126,14 +152,18 @@ describe('UsersService', () => {
       '507f1f77bcf86cd799439011',
       {
         $set: {
-          fullName: 'Updated Name',
+          firstName: 'Updated',
+          lastName: 'Name',
           profileImageData: 'data:image/png;base64,abc',
         },
       },
       { new: true, runValidators: true },
     );
     await expect(
-      service.updateProfile('not-an-object-id', { fullName: 'Invalid' }),
+      service.updateProfile('not-an-object-id', {
+        firstName: 'In',
+        lastName: 'Valid',
+      }),
     ).rejects.toMatchObject({ status: 404 });
   });
 

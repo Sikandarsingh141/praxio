@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 
 export interface ShopRegistrationDraft {
-  ownerFullName: string;
+  ownerFirstName: string;
+  ownerLastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;

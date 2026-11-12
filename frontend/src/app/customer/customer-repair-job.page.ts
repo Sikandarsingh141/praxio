@@ -45,6 +45,12 @@ export class CustomerRepairJobPage implements OnInit {
   readonly improvement = signal('');
   readonly wouldRecommend = signal(true);
   readonly starValues = [1, 2, 3, 4, 5];
+  readonly progressSteps = [
+    'Request Submitted',
+    'Inspection Pending',
+    'Quotation',
+    'Repair & Complete',
+  ];
   readonly ratingFields: Array<{ key: RepairRatingKey; label: string }> = [
     { key: 'overallRating', label: 'Overall shop rating' },
     { key: 'repairQuality', label: 'Repair quality' },
@@ -181,6 +187,42 @@ export class CustomerRepairJobPage implements OnInit {
       .join('');
   }
 
+  get currentProgressStep(): number {
+    const repair = this.job();
+    if (!repair) return 1;
+    const status = repair.repairJob?.status;
+    if (
+      status === 'awaiting_customer_approval' ||
+      status === 'repair_declined'
+    ) {
+      return 3;
+    }
+    if (status === 'inspection_approved') return 4;
+    if (
+      status === 'in_progress' ||
+      status === 'on_hold' ||
+      status === 'repair_completed' ||
+      status === 'ready_for_pickup' ||
+      status === 'picked_up' ||
+      status === 'completed' ||
+      status === 'disputed'
+    ) {
+      return 4;
+    }
+    if (repair.repairJob) return 2;
+    return repair.quotations.length ? 3 : 2;
+  }
+
+  get isRepairComplete(): boolean {
+    return this.job()?.repairJob?.status === 'completed';
+  }
+
+  shopDirectionsUrl(address: string): string | null {
+    const destination = address.trim();
+    if (!destination) return null;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  }
+
   setRating(key: RepairRatingKey, value: number): void {
     this[key].set(value);
   }
@@ -194,7 +236,7 @@ export class CustomerRepairJobPage implements OnInit {
         ? [
             {
               action: 'confirmed',
-              label: 'Quotation accepted · repair confirmed',
+              label: 'Quotation accepted',
               at: job.repairJob?.confirmedAt,
             },
           ]

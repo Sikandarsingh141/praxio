@@ -50,7 +50,8 @@ describe('CustomerLayout', () => {
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'customer',
           accountStatus: 'active',
-          fullName: 'Taylor Example',
+          firstName: 'Taylor',
+          lastName: 'Example',
           profileImageUrl: 'data:image/png;base64,abc',
           customerAuthorization: {
             registrationStatus: 'approved',

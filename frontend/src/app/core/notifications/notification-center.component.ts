@@ -633,7 +633,6 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
   private readonly realtime = inject(NotificationRealtimeService);
   private realtimeSubscription: Subscription | null = null;
   private unsubscribeFromMessages: Unsubscribe | null = null;
-  private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private liveMessageTimeout: ReturnType<typeof setTimeout> | null = null;
   private readonly knownNotificationIds = new Set<string>();
   private hasLoadedNotifications = false;
@@ -714,13 +713,6 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
     this.realtimeSubscription = this.realtime.notifications$.subscribe((notification) =>
       this.zone.run(() => this.receiveRealtimeNotification(notification)),
     );
-    this.zone.runOutsideAngular(() => {
-      this.refreshTimer = setInterval(() => {
-        if (!document.hidden) {
-          this.zone.run(() => this.refresh(true));
-        }
-      }, 5000);
-    });
     document.addEventListener('visibilitychange', this.onVisibilityChange);
     void this.firebaseMessaging
       .listen(() => this.refresh(true))
@@ -744,9 +736,6 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
     this.realtimeSubscription?.unsubscribe();
     this.realtime.disconnect();
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-    }
     if (this.liveMessageTimeout) {
       clearTimeout(this.liveMessageTimeout);
     }

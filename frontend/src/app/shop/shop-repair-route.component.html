@@ -1,0 +1,75 @@
+<section class="route-card" id="route-map" aria-labelledby="route-title">
+  <header class="route-heading">
+    <span class="route-icon" aria-hidden="true">⌖</span>
+    <div>
+      <h2 id="route-title">Route to Customer</h2>
+      <p>Driving directions from your shop to the customer’s location.</p>
+    </div>
+  </header>
+
+  <div class="route-map">
+    @if (hasRouteCoordinates()) {
+      <div
+        #mapElement
+        class="route-map-canvas"
+        role="img"
+        aria-label="Map showing the driving route from the shop to the customer"
+      ></div>
+    } @else {
+      <div class="route-map-placeholder" role="status">
+        A valid shop and customer location are required to show the route.
+      </div>
+    }
+    @if (directionsError()) {
+      <p class="route-error" role="alert">{{ directionsError() }}</p>
+    }
+  </div>
+
+  <div class="route-summary">
+    @if (route(); as result) {
+      <div class="route-metric">
+        <span aria-hidden="true">⌖</span>
+        <div>
+          <small>Distance</small>
+          <strong>{{ result.distanceMeters / 1000 | number: '1.1-1' }} km</strong>
+        </div>
+      </div>
+      <div class="route-metric">
+        <span aria-hidden="true">◷</span>
+        <div>
+          <small>Estimated time</small>
+          <strong>{{ result.durationSeconds / 60 | number: '1.0-0' }} min</strong>
+        </div>
+      </div>
+      <div class="route-metric route-choice">
+        <span aria-hidden="true">↗</span>
+        <div>
+          <small>Route</small>
+          <strong>{{ result.description || 'Fastest driving route' }}</strong>
+        </div>
+      </div>
+    } @else {
+      <p class="route-status" role="status">
+        @if (directionsLoading()) {
+          Calculating the fastest driving route…
+        } @else if (directionsError()) {
+          {{ directionsError() }}
+        } @else {
+          Distance and travel time will appear when directions are available.
+        }
+      </p>
+    }
+    @if (googleDirectionsUrl(); as directionsUrl) {
+      <a
+        class="directions-button"
+        [href]="directionsUrl"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Get Directions <span aria-hidden="true">↗</span>
+      </a>
+    } @else {
+      <span class="directions-button disabled" aria-disabled="true">Get Directions</span>
+    }
+  </div>
+</section>

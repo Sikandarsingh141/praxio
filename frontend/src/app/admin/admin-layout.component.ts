@@ -49,12 +49,13 @@ export class AdminLayout {
 
   getUserInitial(): string {
     const user = this.authService.currentUser();
-    const name = user?.fullName?.trim();
+    const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
     return name ? name.slice(0, 1).toUpperCase() : (user?.email.slice(0, 1).toUpperCase() ?? 'P');
   }
 
-  getUserFullName(): string {
-    return this.authService.currentUser()?.fullName?.trim() || 'Account';
+  getUserDisplayName(): string {
+    const user = this.authService.currentUser();
+    return [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || 'Account';
   }
 
   signOut(): void {

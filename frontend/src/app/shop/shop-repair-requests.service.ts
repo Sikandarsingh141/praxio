@@ -19,6 +19,7 @@ import {
   ShopQuotationPage,
   ShopDashboardOverview,
   ShopReviewSummary,
+  ShopRepairRoute,
 } from './shop-repair-requests.models';
 
 @Injectable({ providedIn: 'root' })
@@ -62,6 +63,14 @@ export class ShopRepairRequestsService {
     return this.http
       .get<ApiEnvelope<{ request: ShopRepairRequest }>>(`${this.baseUrl}/${encodeURIComponent(id)}`)
       .pipe(map((response) => response.data.request));
+  }
+
+  getDirections(id: string): Observable<ShopRepairRoute> {
+    return this.http
+      .get<ApiEnvelope<{ route: ShopRepairRoute }>>(
+        `${this.baseUrl}/${encodeURIComponent(id)}/directions`,
+      )
+      .pipe(map((response) => response.data.route));
   }
 
   getReviews(): Observable<ShopReviewSummary> {

@@ -2,6 +2,7 @@ import { ActivatedRoute, provideRouter, Router, convertToParamMap } from '@angul
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { ShopSearchResult } from './customer-portal.models';
+import { formatShopAddress } from '../shared/format-shop-address';
 import { CustomerPortalService } from './customer-portal.service';
 import { CustomerShopFinderPage } from './customer-shop-finder.page';
 
@@ -242,6 +243,60 @@ describe('CustomerShopFinderPage', () => {
       '/customer/repair-requests',
       'created-request-id',
     ]);
+  });
+
+  it('does not repeat address parts already present in the full address', () => {
+    expect(
+      formatShopAddress({
+        address: 'Agra, Uttar Pradesh, 280001',
+        street: '',
+        area: 'Agra',
+        city: 'Agra',
+        state: 'Uttar Pradesh',
+        postalCode: '280001',
+        country: 'India',
+      }),
+    ).toBe('Agra, Uttar Pradesh, 280001, India');
+  });
+
+  it('enables rating filtering and highest-rated sorting', () => {
+    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
+      'searchShops',
+      'createRepairRequest',
+    ]);
+    portal.searchShops.and.returnValue(of([]));
+    portal.createRepairRequest.and.returnValue(of('created-request-id'));
+
+    TestBed.configureTestingModule({
+      imports: [CustomerShopFinderPage],
+      providers: [
+        { provide: CustomerPortalService, useValue: portal },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+        provideRouter([]),
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CustomerShopFinderPage);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const ratingSelect = fixture.nativeElement.querySelector(
+      'select[aria-label="Minimum rating"]',
+    ) as HTMLSelectElement;
+    expect(ratingSelect.disabled).toBeFalse();
+    expect(
+      Array.from(ratingSelect.options).map((option) => option.textContent?.trim()),
+    ).toContain('4 stars & up');
+
+    page.minimumRating.set('4');
+    page.sortBy.set('rating');
+    page.search();
+    expect(portal.searchShops.calls.mostRecent().args[0]).toEqual(
+      jasmine.objectContaining({ minRating: 4, sort: 'rating' }),
+    );
   });
 });
 

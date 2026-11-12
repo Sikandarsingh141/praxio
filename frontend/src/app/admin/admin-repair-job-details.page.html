@@ -14,7 +14,7 @@
     <header class="detail-header">
       <div class="appliance-icon" aria-hidden="true">⚙</div>
       <div class="identity">
-        <span class="eyebrow">REPAIR MONITORING · #{{ repair._id.slice(-8).toUpperCase() }}</span>
+        <span class="eyebrow">REPAIR MONITORING · Request ID: {{ repair._id.slice(-8).toUpperCase() }}</span>
         <h1 id="repair-title">{{ repair.appliance }}</h1>
         <p>{{ repair.description }}</p>
         <div class="header-meta">
@@ -65,7 +65,7 @@
         <section class="detail-card customer-card" aria-labelledby="customer-heading">
           <h2 id="customer-heading"><span aria-hidden="true">♙</span> Customer</h2>
           <dl>
-            <div><dt>Name</dt><dd>{{ repair.customer.fullName || 'Customer' }}</dd></div>
+            <div><dt>Name</dt><dd>{{ repair.customer.displayName || (repair.customer.firstName + ' ' + repair.customer.lastName) }}</dd></div>
             <div><dt>Email</dt><dd>{{ repair.customer.email || '—' }}</dd></div>
             <div><dt>Phone</dt><dd>{{ repair.customer.countryCode }} {{ repair.customer.mobileNumber || '—' }}</dd></div>
           </dl>
@@ -75,7 +75,7 @@
           <h2 id="shop-heading"><span aria-hidden="true">⌂</span> Assigned repair shop</h2>
           <dl>
             <div><dt>Shop</dt><dd>{{ repair.shopName || 'Repair shop' }}</dd></div>
-            <div><dt>Contact</dt><dd>{{ repair.shop?.fullName || '—' }}</dd></div>
+            <div><dt>Contact</dt><dd>{{ repair.shop?.displayName || (repair.shop?.firstName + ' ' + repair.shop?.lastName) }}</dd></div>
             <div><dt>Email</dt><dd>{{ repair.shop?.email || '—' }}</dd></div>
             <div><dt>Phone</dt><dd>{{ repair.shop?.countryCode }} {{ repair.shop?.mobileNumber || '—' }}</dd></div>
             <div><dt>Location</dt><dd>{{ shopLocation(repair) || '—' }}</dd></div>

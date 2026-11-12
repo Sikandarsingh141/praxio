@@ -173,6 +173,36 @@ describe('DisputesService', () => {
     expect(notifications.notifyUsers).not.toHaveBeenCalled();
   });
 
+  it.each([
+    'AWAITING_CUSTOMER_RESPONSE',
+    'CUSTOMER_VERIFICATION_PENDING',
+  ] as const)(
+    'does not allow customer verification before rework is completed (%s)',
+    async (status) => {
+      const disputeId = new Types.ObjectId();
+      disputes.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: disputeId,
+          customerId,
+          shopId,
+          status,
+          reinspections: [{ findings: 'The issue was identified.' }],
+          reworkCompletions: [],
+        }),
+      });
+
+      await expect(
+        service.confirmResolution(
+          { userId: customerId.toString(), role: 'customer' },
+          disputeId.toString(),
+          { message: 'It is fixed.' },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
+    },
+  );
+
   it('rejects duplicate active cases using the atomic unique issue key', async () => {
     save.mockRejectedValue({ code: 11000 });
 

@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -33,7 +34,8 @@ export interface SafeUser {
   accountType: 'customer' | 'shop' | 'admin';
   accountStatus: 'active' | 'pending_approval' | 'rejected';
   accountLifecycleStatus: 'active' | 'inactive' | 'suspended';
-  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   profileImageUrl?: string;
   countryCode?: string;
   mobileNumber?: string;
@@ -75,7 +77,8 @@ export interface ShopProfile {
   businessType: string;
   description: string;
   yearsOfExperience: number;
-  ownerName: string;
+  ownerFirstName: string;
+  ownerLastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
@@ -125,6 +128,8 @@ export class AuthService {
       const submission = await this.registrationService.submit({
         email: input.email,
         passwordHash,
+        firstName: input.firstName,
+        lastName: input.lastName,
         accountType: 'customer',
         accountStatus: 'pending_approval',
       });
@@ -146,7 +151,11 @@ export class AuthService {
       const submission = await this.registrationService.submit({
         email: input.email,
         passwordHash,
-        fullName: input.fullName,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        ...(input.profileImageData
+          ? { profileImageData: input.profileImageData }
+          : {}),
         countryCode: input.countryCode,
         mobileNumber: input.mobileNumber,
         ...(input.latitude !== undefined && input.longitude !== undefined
@@ -180,7 +189,8 @@ export class AuthService {
       const submission = await this.registrationService.submit({
         email: input.email,
         passwordHash,
-        fullName: input.fullName,
+        firstName: input.firstName,
+        lastName: input.lastName,
         ...(input.profileImageData
           ? { profileImageData: input.profileImageData }
           : {}),
@@ -311,6 +321,28 @@ export class AuthService {
     };
   }
 
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.usersService.findByIdForAuthentication(userId);
+    if (!user || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException({
+        code: 'INVALID_CURRENT_PASSWORD',
+        message: 'Current password is incorrect.',
+      });
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      throw new BadRequestException(
+        'Choose a password different from your current password.',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, this.bcryptRounds);
+    await this.usersService.updatePasswordHash(userId, passwordHash);
+  }
+
   getAccessTokenTtlSeconds(): number {
     return this.configService.getOrThrow<number>(ACCESS_TOKEN_EXPIRES_IN);
   }
@@ -325,7 +357,12 @@ export class AuthService {
       accountLifecycleStatus:
         user.accountLifecycleStatus ??
         (user.accountStatus === 'active' ? 'active' : 'inactive'),
-      ...(user.fullName ? { fullName: user.fullName } : {}),
+      ...(user.firstName || user.fullName
+        ? { firstName: user.firstName ?? this.legacyFirstName(user.fullName) }
+        : {}),
+      ...(user.lastName || user.fullName
+        ? { lastName: user.lastName ?? this.legacyLastName(user.fullName) }
+        : {}),
       ...(user.profileImageData
         ? { profileImageUrl: user.profileImageData }
         : {}),
@@ -452,7 +489,8 @@ export class AuthService {
       businessType: shopDetails.businessType,
       description: shopDetails.description,
       yearsOfExperience: shopDetails.yearsOfExperience,
-      ownerName: user.fullName ?? '',
+      ownerFirstName: user.firstName ?? this.legacyFirstName(user.fullName),
+      ownerLastName: user.lastName ?? this.legacyLastName(user.fullName),
       email: user.email,
       countryCode: user.countryCode ?? '',
       mobileNumber: user.mobileNumber ?? '',
@@ -491,6 +529,14 @@ export class AuthService {
           : authorization.registrationStatus,
       declineReason: authorization.declineReason,
     };
+  }
+
+  private legacyFirstName(value?: string): string {
+    return value?.trim().split(/\s+/)[0] ?? '';
+  }
+
+  private legacyLastName(value?: string): string {
+    return value?.trim().split(/\s+/).slice(1).join(' ') ?? '';
   }
 
   async getCurrentShopAuthorization(

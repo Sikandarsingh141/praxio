@@ -16,6 +16,10 @@ import {
   Min,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import {
+  LEGACY_REPAIR_JOB_STATUSES,
+  REPAIR_JOB_STATUSES,
+} from './repair-request.schema';
 
 function parseJsonArrayField(value: unknown): unknown {
   if (typeof value !== 'string') {
@@ -62,8 +66,15 @@ export class ShopSearchDto {
   maxDistanceKm?: number;
 
   @IsOptional()
-  @IsIn(['nearest', 'relevant'])
-  sort?: 'nearest' | 'relevant';
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  minRating?: number;
+
+  @IsOptional()
+  @IsIn(['nearest', 'relevant', 'rating'])
+  sort?: 'nearest' | 'relevant' | 'rating';
 }
 
 export class GeocodeQueryDto {
@@ -229,33 +240,10 @@ export class RepairRequestListQueryDto {
   sort?: 'newest' | 'oldest';
 
   @IsOptional()
-  @IsIn([
-    'confirmed',
-    'inspection_pending',
-    'inspection_in_progress',
-    'awaiting_customer_approval',
-    'inspection_approved',
-    'repair_declined',
-    'in_progress',
-    'on_hold',
-    'repair_completed',
-    'ready_for_pickup',
-    'picked_up',
-    'completed',
-  ])
+  @IsIn([...REPAIR_JOB_STATUSES, ...LEGACY_REPAIR_JOB_STATUSES])
   repairStatus?:
-    | 'confirmed'
-    | 'inspection_pending'
-    | 'inspection_in_progress'
-    | 'awaiting_customer_approval'
-    | 'inspection_approved'
-    | 'repair_declined'
-    | 'in_progress'
-    | 'on_hold'
-    | 'repair_completed'
-    | 'ready_for_pickup'
-    | 'picked_up'
-    | 'completed';
+    | (typeof REPAIR_JOB_STATUSES)[number]
+    | (typeof LEGACY_REPAIR_JOB_STATUSES)[number];
 
   @IsOptional()
   @Type(() => Number)

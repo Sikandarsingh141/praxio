@@ -2,7 +2,7 @@ import { Component, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { interval, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { NotificationRealtimeService } from '../core/notifications/notification-realtime.service';
 import {
@@ -24,9 +24,7 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly repairRequests = inject(ShopRepairRequestsService);
   private readonly realtimeSubscription: Subscription;
-  private refreshSubscription?: Subscription;
-  readonly shopName = signal('');
-  readonly errorMessage = signal('');
+  readonly shopName = this.authService.shopName;
   readonly dashboardError = signal('');
   readonly dashboardLoading = signal(true);
   readonly dashboard = signal<ShopDashboardOverview | null>(null);
@@ -62,18 +60,11 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.authService.getShopDashboard().subscribe({
-      next: (dashboard) => this.shopName.set(dashboard.shopName),
-      error: () =>
-        this.errorMessage.set('Unable to verify Shop Portal access. Refresh or sign in again.'),
-    });
     this.loadDashboard();
-    this.refreshSubscription = interval(30_000).subscribe(() => this.loadDashboard(true));
   }
 
   ngOnDestroy(): void {
     this.realtimeSubscription.unsubscribe();
-    this.refreshSubscription?.unsubscribe();
   }
 
   refreshDashboard(): void {
@@ -99,9 +90,7 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
           this.dashboardLoading.set(false);
         },
         error: (error: HttpErrorResponse) => {
-          this.dashboardError.set(
-            error.error?.message || 'Dashboard metrics could not be loaded.',
-          );
+          this.dashboardError.set(error.error?.message || 'Dashboard metrics could not be loaded.');
           this.dashboardLoading.set(false);
         },
       });
@@ -111,17 +100,11 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
     this.appliedDateFilters.set(filters);
     const dateRange = filters['dateRange'];
     const from =
-      dateRange &&
-      typeof dateRange === 'object' &&
-      !Array.isArray(dateRange) &&
-      'from' in dateRange
+      dateRange && typeof dateRange === 'object' && !Array.isArray(dateRange) && 'from' in dateRange
         ? dateRange.from
         : undefined;
     const to =
-      dateRange &&
-      typeof dateRange === 'object' &&
-      !Array.isArray(dateRange) &&
-      'to' in dateRange
+      dateRange && typeof dateRange === 'object' && !Array.isArray(dateRange) && 'to' in dateRange
         ? dateRange.to
         : undefined;
     this.dateFrom.set(typeof from === 'string' ? from : '');

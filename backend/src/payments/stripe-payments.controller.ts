@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   Headers,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -15,7 +18,10 @@ import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service';
 import { ConfirmShopPaymentDto } from './dto/confirm-shop-payment.dto';
-import type { ShopPaymentStatus } from './stripe-payments.service';
+import type {
+  ShopInvoicePage,
+  ShopPaymentStatus,
+} from './stripe-payments.service';
 import { StripePaymentsService } from './stripe-payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
@@ -55,6 +61,26 @@ export class StripePaymentsController {
       data: {
         payment: await this.authService.getCurrentShopPaymentStatus(userId),
       },
+    };
+  }
+
+  @Get('invoices')
+  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth('access_token')
+  @ApiOperation({
+    summary: 'List the authenticated shop subscription invoices',
+  })
+  async getInvoices(
+    @Req() request: AuthenticatedRequest,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+  ): Promise<{ data: ShopInvoicePage }> {
+    const userId = request.auth?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    return {
+      data: await this.stripePaymentsService.getShopInvoices(userId, page),
     };
   }
 

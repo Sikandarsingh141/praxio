@@ -38,6 +38,94 @@
   padding-inline: 0.65rem;
 }
 
+.customer-image-control {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.customer-image-dropzone {
+  display: flex;
+  min-height: 3.65rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px dashed #cbd9ce;
+  border-radius: 0.7rem;
+  background: #fbfdfb;
+  cursor: pointer;
+}
+
+.customer-image-dropzone:focus-within {
+  border-color: #168047;
+  box-shadow: 0 0 0 3px rgb(22 128 71 / 12%);
+}
+
+.customer-image-upload-icon {
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #eff8f0;
+  color: #078137;
+  font-size: 1.45rem;
+  font-weight: 650;
+}
+
+.customer-image-upload-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+  gap: 0.15rem;
+}
+
+.customer-image-upload-copy strong {
+  overflow: hidden;
+  color: #17212d;
+  font-size: 0.72rem;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-image-upload-copy small {
+  color: #718078;
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+.customer-image-upload-button {
+  min-height: 1.9rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #d5e0d7;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #315d4b;
+  font-size: 0.65rem;
+  font-weight: 680;
+}
+
+.customer-image-remove {
+  min-height: 3.65rem;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.55rem;
+  border: 1px solid #d5e0d7;
+  border-radius: 0.7rem;
+  background: #fff;
+  color: #526459;
+  font-size: 0.68rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
 .visually-hidden {
   position: absolute;
   overflow: hidden;
@@ -99,4 +187,131 @@
 
 .form-footer a {
   margin-left: 0.2rem;
+}
+
+.registration-card label.customer-image-dropzone {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.registration-card input.visually-hidden {
+  position: absolute;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (max-height: 800px) and (min-width: 761px) {
+  .registration-page {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding-top: 0.9rem;
+  }
+
+  .page-intro {
+    margin-bottom: 0.45rem;
+  }
+
+  .page-intro h1 {
+    margin: 0.3rem 0 0.25rem;
+  }
+
+  .page-intro p {
+    font-size: 0.75rem;
+  }
+
+  .registration-card {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 1.1rem clamp(1.1rem, 2.2vw, 1.8rem);
+  }
+
+  .registration-card form {
+    row-gap: 0;
+  }
+
+  .registration-card label {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 0.73rem;
+  }
+
+  .registration-card label.customer-image-dropzone {
+    min-height: 3.2rem;
+    margin: 0.25rem 0 0;
+    padding-block: 0.35rem;
+  }
+
+  .registration-card input:not([type='checkbox']),
+  .registration-card select {
+    min-height: 2.35rem;
+    padding-block: 0.4rem;
+  }
+
+  .registration-card form > .field.field-full.mobile-field {
+    grid-column: auto;
+  }
+
+  .customer-image-control {
+    margin-top: 0.25rem;
+  }
+
+  .customer-image-upload-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+  }
+
+  .location-field {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.7rem;
+  }
+
+  .location-field > .input-hint {
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .location-field .location-actions {
+    justify-content: flex-end;
+    margin: 0;
+  }
+
+  .location-field .secondary-action {
+    min-height: 2rem;
+    margin: 0;
+    padding-block: 0.2rem;
+  }
+
+  .location-field > .input-hint[role='status'] {
+    grid-column: 1 / -1;
+  }
+
+  .registration-card form > .customer-terms-row,
+  .registration-card form > .notification-row {
+    grid-column: auto;
+    align-self: center;
+    margin-top: 0.25rem;
+    font-size: 0.66rem;
+    line-height: 1.35;
+  }
+
+  .signup-submit {
+    min-height: 2.35rem;
+    margin-top: 0.45rem;
+    padding-block: 0.4rem;
+  }
+
+  .registration-card .form-footer {
+    margin-top: 0.5rem;
+  }
 }

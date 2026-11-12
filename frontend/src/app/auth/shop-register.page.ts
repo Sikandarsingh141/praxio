@@ -153,7 +153,8 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
 
   readonly form = this.formBuilder.nonNullable.group(
     {
-      ownerFullName: ['', [Validators.required, Validators.maxLength(100)]],
+      ownerFirstName: ['', [Validators.required, Validators.maxLength(50)]],
+      ownerLastName: ['', [Validators.required, Validators.maxLength(50)]],
       email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
       countryCode: ['+91', Validators.required],
       mobileNumber: ['', [Validators.required, Validators.pattern(/^\d{10}$/)]],
@@ -206,7 +207,7 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
   }
 
   private readonly controlsByStep = [
-    ['ownerFullName', 'email', 'mobileNumber', 'password', 'confirmPassword'],
+    ['ownerFirstName', 'ownerLastName', 'email', 'mobileNumber', 'password', 'confirmPassword'],
     ['shopName', 'businessType', 'description', 'yearsOfExperience'],
     ['address', 'city', 'state', 'postalCode', 'landmark'],
     ['services'],
@@ -484,7 +485,8 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
   private submitRegistration(draft: ShopRegistrationDraft, notificationToken?: string): void {
     this.authService
       .registerShop({
-        fullName: draft.ownerFullName,
+        firstName: draft.ownerFirstName,
+        lastName: draft.ownerLastName,
         email: draft.email,
         countryCode: draft.countryCode,
         mobileNumber: draft.mobileNumber,

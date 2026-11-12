@@ -127,6 +127,12 @@
     }
   }
 
+  @media (max-height: 700px) and (min-width: 701px) {
+    .auth-shell.shop-registration-shell .auth-main.registration-mode.shop-registration-mode {
+      padding-bottom: 0;
+    }
+  }
+
   @media (max-width: 760px) {
     .auth-shell.shop-registration-shell .auth-header {
       min-height: 56px;
@@ -306,6 +312,10 @@
     }
 
     .shop-registration .registration-card .field {
+      grid-column: auto;
+    }
+
+    .shop-registration .registration-card .field.field-full.mobile-field {
       grid-column: auto;
     }
 

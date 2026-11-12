@@ -15,6 +15,7 @@ import {
   AdditionalChargeRequestInput,
   InspectionReportInput,
   RepairEstimatePartInput,
+  RepairInspectionReport,
   RepairWorkflowImageInput,
 } from '../shared/repair-workflow.models';
 import {
@@ -91,6 +92,12 @@ export class ShopRepairWorkflowComponent implements OnChanges {
 
   constructor(private readonly requests: ShopRepairRequestsService) {}
 
+  inspectionPartsForDisplay(
+    parts: RepairInspectionReport['parts'],
+  ): RepairInspectionReport['parts'] {
+    return Array.isArray(parts) ? parts : [];
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['request']) return;
 
@@ -99,9 +106,10 @@ export class ShopRepairWorkflowComponent implements OnChanges {
       this.identifiedProblem.set(inspection.identifiedProblem ?? '');
       this.findings.set(inspection.findings ?? '');
       this.requiredRepairWork.set(inspection.requiredRepairWork ?? '');
+      const inspectionParts = inspection.parts ?? [];
       this.inspectionParts.set(
-        inspection.parts.length
-          ? inspection.parts.map(({ name, quantity, unitPrice }) => ({
+        inspectionParts.length
+          ? inspectionParts.map(({ name, quantity, unitPrice }) => ({
               name,
               quantity,
               unitPrice,
@@ -127,9 +135,10 @@ export class ShopRepairWorkflowComponent implements OnChanges {
     this.additionalIssue.set(draft.issue ?? '');
     this.additionalReason.set(draft.reason ?? '');
     this.additionalDescription.set(draft.repairDescription ?? '');
+    const draftParts = draft.parts ?? [];
     this.additionalParts.set(
-      draft.parts.length
-        ? draft.parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
+      draftParts.length
+        ? draftParts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
         : [{ name: '', quantity: 1, unitPrice: 0 }],
     );
     this.additionalLabour.set(draft.labourCharge);

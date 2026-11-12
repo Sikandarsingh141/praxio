@@ -45,14 +45,14 @@
           type="search"
           placeholder="Search reviews..."
           [ngModel]="searchText()"
-          (ngModelChange)="searchText.set($event)"
+          (ngModelChange)="changeSearchText($event)"
         />
       </label>
       <label class="select-control">
         <span class="visually-hidden">Filter by rating</span>
         <select
           [ngModel]="ratingFilter()"
-          (ngModelChange)="ratingFilter.set($event)"
+          (ngModelChange)="changeRatingFilter($event)"
         >
           <option value="all">All ratings</option>
           <option value="5">5 stars</option>
@@ -66,7 +66,7 @@
         <span class="visually-hidden">Sort reviews</span>
         <select
           [ngModel]="sortOrder()"
-          (ngModelChange)="sortOrder.set($event)"
+          (ngModelChange)="changeSortOrder($event)"
         >
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
@@ -76,7 +76,7 @@
 
     @if (filteredReviews().length) {
       <div class="review-list">
-        @for (review of filteredReviews(); track review.repairRequestId) {
+        @for (review of pagedReviews(); track review.repairRequestId) {
           <article class="review-card">
             <header>
               <div class="review-identity">
@@ -126,6 +126,13 @@
           </article>
         }
       </div>
+      <app-pagination
+        [total]="filteredReviews().length"
+        [page]="page()"
+        [pageSize]="pageSize"
+        ariaLabel="Review pages"
+        (pageChange)="goToPage($event)"
+      />
     } @else {
       <div class="state-card empty">
         <h2>{{ data.reviews.length ? 'No matching reviews' : 'No reviews yet' }}</h2>

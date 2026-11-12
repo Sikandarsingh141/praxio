@@ -78,8 +78,8 @@ export class RegistrationService {
             admins,
             createdRequest._id,
             account.accountType,
-            account.shopDetails?.shopName ??
-              account.fullName ??
+            (account.shopDetails?.shopName ??
+              [account.firstName, account.lastName].filter(Boolean).join(' ')) ||
               'A new customer',
             session,
           );
@@ -102,7 +102,7 @@ export class RegistrationService {
       const applicantName =
         account.accountType === 'shop'
           ? account.shopDetails?.shopName
-          : account.fullName;
+          : [account.firstName, account.lastName].filter(Boolean).join(' ');
       const subject = applicantName || 'A new customer';
       await this.notificationsService.sendToUsers(
         adminIds.map((id) => new Types.ObjectId(id)),
@@ -263,7 +263,7 @@ function hasCompleteShopRegistrationData(
 } {
   const details = user.shopDetails;
   const requiredText = [
-    user.fullName,
+    [user.firstName, user.lastName].filter(Boolean).join(' ') || user.fullName,
     user.email,
     user.countryCode,
     user.mobileNumber,

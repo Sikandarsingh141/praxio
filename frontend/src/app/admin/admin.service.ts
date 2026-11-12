@@ -8,7 +8,8 @@ import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 
 export interface ShopApplication {
   id: string;
-  ownerName: string;
+  ownerFirstName: string;
+  ownerLastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
@@ -186,7 +187,8 @@ export interface AdminUserActivity {
 
 export interface AdminUserDetails {
   id: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   countryCode: string;
   mobileNumber: string;
@@ -294,14 +296,18 @@ export interface AdminRepairJob {
     history?: Array<{ action: string; notes?: string; at: string }>;
   };
   customer: {
-    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
     email?: string;
     countryCode?: string;
     mobileNumber?: string;
   };
   shopName?: string;
   shop?: {
-    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    displayName?: string;
     email?: string;
     countryCode?: string;
     mobileNumber?: string;

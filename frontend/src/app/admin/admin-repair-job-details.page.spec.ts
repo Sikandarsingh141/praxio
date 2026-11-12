@@ -29,13 +29,13 @@ describe('AdminRepairJobDetailsPage', () => {
   it('loads and displays repair, customer, shop, quotation, and history details', async () => {
     const harness = await RouterTestingHarness.create();
     const page = await harness.navigateByUrl(
-      '/admin/repair-jobs/repair-123',
+      '/admin/repair-jobs/507f1f77bcf86cd709a3ca32',
       AdminRepairJobDetailsPage,
     );
     const request = httpTestingController.expectOne(
       (request) =>
         request.url === `${environment.apiBaseUrl}/admin/repair-jobs` &&
-        request.params.get('requestId') === 'repair-123',
+        request.params.get('requestId') === '507f1f77bcf86cd709a3ca32',
     );
     expect(request.request.params.get('status')).toBe('all');
     expect(request.request.params.get('limit')).toBe('1');
@@ -43,7 +43,7 @@ describe('AdminRepairJobDetailsPage', () => {
       data: {
         jobs: [
           {
-            _id: 'repair-123',
+            _id: '507f1f77bcf86cd709a3ca32',
             appliance: 'Washing machine',
             description: 'Stops during the spin cycle.',
             brand: 'Example',
@@ -54,14 +54,16 @@ describe('AdminRepairJobDetailsPage', () => {
             createdAt: '2026-03-01T10:00:00.000Z',
             updatedAt: '2026-03-03T10:00:00.000Z',
             customer: {
-              fullName: 'Customer Example',
+              firstName: 'Customer',
+                lastName: 'Example',
               email: 'customer@example.com',
               countryCode: '+91',
               mobileNumber: '9876543210',
             },
             shopName: 'Repair Shop',
             shop: {
-              fullName: 'Owner Example',
+              firstName: 'Owner',
+                lastName: 'Example',
               email: 'shop@example.com',
               countryCode: '+91',
               mobileNumber: '9876543211',
@@ -101,6 +103,7 @@ describe('AdminRepairJobDetailsPage', () => {
 
     const text = harness.routeNativeElement?.textContent as string;
     expect(text).toContain('Washing machine');
+    expect(text).toContain('Request ID: 09A3CA32');
     expect(text).toContain('Customer Example');
     expect(text).toContain('Repair Shop');
     expect(text).toContain('Replace the drive belt.');

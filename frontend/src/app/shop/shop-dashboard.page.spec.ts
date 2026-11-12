@@ -2,7 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { environment } from '../../environments/environment';
+import { AuthService } from '../core/auth/auth.service';
 import { ShopDashboardPage } from './shop-dashboard.page';
 
 describe('ShopDashboardPage', () => {
@@ -15,14 +17,17 @@ describe('ShopDashboardPage', () => {
   it('shows shop-specific tools without presenting customer portal content', async () => {
     await TestBed.configureTestingModule({
       imports: [ShopDashboardPage],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        { provide: AuthService, useValue: { shopName: signal('Example Repairs') } },
+      ],
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);
     const fixture = TestBed.createComponent(ShopDashboardPage);
     fixture.detectChanges();
-    httpTestingController
-      .expectOne(`${environment.apiBaseUrl}/shops/dashboard`)
-      .flush({ data: { shopName: 'Example Repairs' } });
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/shops/dashboard`);
     httpTestingController.expectOne(`${environment.apiBaseUrl}/shop/dashboard/overview`).flush({
       data: {
         range: { from: null, to: null },
@@ -41,7 +46,7 @@ describe('ShopDashboardPage', () => {
               description: 'Needs inspection.',
               createdAt: '2026-01-04T00:00:00.000Z',
               shopResponse: { status: 'new' },
-              customer: { fullName: 'Customer One' },
+              customer: { firstName: 'Customer', lastName: 'One' },
             },
             {
               _id: 'request-2',
@@ -49,7 +54,7 @@ describe('ShopDashboardPage', () => {
               description: 'Needs inspection.',
               createdAt: '2026-01-03T00:00:00.000Z',
               shopResponse: { status: 'new' },
-              customer: { fullName: 'Customer Two' },
+              customer: { firstName: 'Customer', lastName: 'Two' },
             },
             {
               _id: 'request-3',
@@ -57,7 +62,7 @@ describe('ShopDashboardPage', () => {
               description: 'Needs inspection.',
               createdAt: '2026-01-02T00:00:00.000Z',
               shopResponse: { status: 'new' },
-              customer: { fullName: 'Customer Three' },
+              customer: { firstName: 'Customer', lastName: 'Three' },
             },
             {
               _id: 'request-4',
@@ -65,7 +70,7 @@ describe('ShopDashboardPage', () => {
               description: 'Needs inspection.',
               createdAt: '2026-01-01T00:00:00.000Z',
               shopResponse: { status: 'new' },
-              customer: { fullName: 'Customer Four' },
+              customer: { firstName: 'Customer', lastName: 'Four' },
             },
           ],
         },
@@ -93,7 +98,7 @@ describe('ShopDashboardPage', () => {
           repair_completed: 0,
           ready_for_pickup: 0,
           picked_up: 0,
-          completed: 0,
+          completed: 1,
           disputed: 0,
           recent: [],
         },
@@ -116,6 +121,11 @@ describe('ShopDashboardPage', () => {
     expect(fixture.nativeElement.querySelectorAll('.metric-card')).toHaveSize(6);
     expect(fixture.nativeElement.querySelector('.welcome-card')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.pipeline-grid')).toBeTruthy();
+    const pipelineGrid = fixture.nativeElement.querySelector('.pipeline-grid') as HTMLElement;
+    const completedPipelineRow = Array.from(pipelineGrid.children).find((row) =>
+      row.textContent?.includes('Completed'),
+    );
+    expect(completedPipelineRow?.textContent).toContain('1');
     expect(fixture.nativeElement.querySelector('.header-actions .filter-trigger')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.header-actions .date-filters')).toBeFalsy();
     expect(fixture.nativeElement.querySelector('.recent-side-panels')).toBeTruthy();

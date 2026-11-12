@@ -2,12 +2,21 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateProfileDto {
-  @ApiProperty({ example: 'Alex Repair', minLength: 1, maxLength: 100 })
+  @ApiProperty({ example: 'Alex', minLength: 1, maxLength: 50 })
   @IsString()
   @MinLength(1)
-  @MaxLength(100)
+  @MaxLength(50)
   @Matches(/\S/, {
-    message: 'Name must contain at least one non-space character.',
+    message: 'First name must contain at least one non-space character.',
   })
-  fullName!: string;
+  firstName!: string;
+
+  @ApiProperty({ example: 'Repair', minLength: 1, maxLength: 50 })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  @Matches(/\S/, {
+    message: 'Last name must contain at least one non-space character.',
+  })
+  lastName!: string;
 }
