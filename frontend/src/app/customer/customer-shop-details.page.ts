@@ -6,11 +6,12 @@ import { ShopSearchResult } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
 import { formatShopAddress } from '../shared/format-shop-address';
 import { ShopResultsMapComponent } from './shop-results-map.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-customer-shop-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, ShopResultsMapComponent],
+  imports: [AdminPageHeaderComponent, CommonModule, RouterLink, ShopResultsMapComponent],
   templateUrl: './customer-shop-details.page.html',
   styleUrl: './customer-shop-details.page.scss',
 })

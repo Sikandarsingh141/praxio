@@ -6,6 +6,7 @@ import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { LoaderDirective } from '../loaders/overlay/local/loader.directive';
 import { formatShopAddress } from '../shared/format-shop-address';
 import { LocationMapComponent } from '../shared/location-map.component';
+import { AdminPageHeaderComponent } from './admin-page-header.component';
 import { AdminService, AdminUserActivity, AdminUserDetails } from './admin.service';
 
 @Component({
@@ -18,6 +19,7 @@ import { AdminService, AdminUserActivity, AdminUserDetails } from './admin.servi
     LocationMapComponent,
     OverlayModule,
     RouterLink,
+    AdminPageHeaderComponent,
     TitleCasePipe,
     UpperCasePipe,
   ],

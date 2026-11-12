@@ -3,16 +3,11 @@
   margin: 0 auto;
 }
 
-.page-heading,
 .section-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.page-heading {
-  margin-bottom: 1.5rem;
 }
 
 .eyebrow,
@@ -23,25 +18,10 @@
   letter-spacing: 0.13em;
 }
 
-h1,
 h2,
 h3,
 p {
   margin-top: 0;
-}
-
-h1 {
-  margin-bottom: 0.35rem;
-  color: #25352e;
-  font-size: clamp(1.75rem, 3vw, 2.2rem);
-  font-weight: 740;
-  letter-spacing: -0.05em;
-}
-
-.page-heading p {
-  margin-bottom: 0;
-  color: #78867e;
-  font-size: 0.87rem;
 }
 
 .preview-badge {
@@ -505,17 +485,7 @@ h1 {
 }
 
 @media (max-width: 560px) {
-  .page-heading {
-    align-items: flex-start;
-  }
-
-  .page-heading p {
-    max-width: 250px;
-    line-height: 1.5;
-  }
-
   .preview-badge {
-    margin-top: 0.2rem;
     font-size: 0.58rem;
   }
 

@@ -37,6 +37,13 @@ describe('CustomerProfilePage', () => {
     const fixture = TestBed.createComponent(CustomerProfilePage);
     fixture.detectChanges();
 
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-title')?.textContent,
+    ).toContain('My profile');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-description')
+        ?.textContent,
+    ).toContain('Manage your personal information and account security.');
     expect(fixture.nativeElement.textContent).toContain('Customer Example');
     expect(fixture.nativeElement.textContent).toContain('customer@example.com');
     expect(fixture.nativeElement.textContent).toContain('Registration approved');
@@ -46,6 +53,13 @@ describe('CustomerProfilePage', () => {
 
     (fixture.nativeElement.querySelector('.edit-button') as HTMLButtonElement).click();
     fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-title')?.textContent,
+    ).toContain('Edit Customer Profile');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-description')
+        ?.textContent,
+    ).toContain('Update your profile photo, name, and password.');
     expect(fixture.nativeElement.querySelector('app-profile-editor')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[name="currentPassword"]')).toBeTruthy();
   });

@@ -13,23 +13,32 @@ import {
 import { PaginationComponent } from '../shared/pagination.component';
 import { ShopQuotationFilters, ShopQuotationPage } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
 
 @Component({
   selector: 'app-shop-quotations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    RouterLink,
+    CommonFilterComponent,
+  ],
   template: `
     <section class="page shop-quotations-page" aria-labelledby="title">
-      <header class="heading">
-        <div>
-          <span class="eyebrow">SHOP MANAGEMENT</span>
-          <h1 id="title">My Quotations</h1>
-          <p>Track customer responses to quotations submitted by your shop.</p>
-        </div>
-        <a class="requests-link" routerLink="/shop/repair-requests">View repair requests</a>
-      </header>
+      <app-admin-page-header>
+        <h1 adminPageTitle class="admin-page-title" id="title">My Quotations</h1>
+        <p adminPageDescription class="admin-page-description">
+          Track customer responses to quotations submitted by your shop.
+        </p>
+        <a adminPageActions class="requests-link" routerLink="/shop/repair-requests">
+          View repair requests
+        </a>
+      </app-admin-page-header>
       <div class="summary" aria-label="Quotation summary">
         @for (item of summaryItems; track item.key) {
           <article [attr.data-tone]="item.key">
@@ -216,9 +225,6 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
   `,
   styles: `
     .page { width: 100%; max-width: none; margin: 0; color: #18221d; }
-    .heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
-    .heading h1 { margin: 0.35rem 0; color: #141c18; font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 780; letter-spacing: -0.05em; }
-    .heading p { margin: 0; color: #647169; font-size: 0.82rem; }
     .eyebrow { color: #17643b; font-size: 0.68rem; font-weight: 780; letter-spacing: 0.12em; }
     .requests-link { padding: 0.65rem 0.85rem; border: 1px solid #b7ddc1; border-radius: 0.65rem; color: #176b34; font-size: 0.74rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
     .requests-link:hover, .view-details:hover { background: #f1f8f3; }
@@ -290,7 +296,6 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
     }
     @media (max-width: 700px) {
       .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .heading { align-items: flex-start; flex-direction: column; }
       .filters { flex-wrap: wrap; }
       .search-control { flex-basis: 100%; }
       .sort-control { flex: 1; }

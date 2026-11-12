@@ -1,11 +1,10 @@
 <section class="admin-dashboard" aria-labelledby="admin-title">
-  <header class="page-header">
-    <div>
-      <span class="page-kicker">MARKETPLACE OPERATIONS</span>
-      <h1 id="admin-title">{{ pageTitle() }}</h1>
-      <p class="page-intro">{{ pageDescription() }}</p>
-    </div>
-  </header>
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="admin-title">{{ pageTitle() }}</h1>
+    @if (pageDescription()) {
+      <p adminPageDescription class="admin-page-description">{{ pageDescription() }}</p>
+    }
+  </app-admin-page-header>
 
   @if (errorMessage()) {
     <p class="feedback error" role="alert">{{ errorMessage() }}</p>

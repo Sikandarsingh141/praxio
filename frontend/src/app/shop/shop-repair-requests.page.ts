@@ -13,6 +13,7 @@ import {
   FilterValues,
 } from '../shared/common-filter.component';
 import { PaginationComponent } from '../shared/pagination.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 const TABS = [
   { label: 'All requests', value: 'all' },
@@ -26,7 +27,14 @@ const TABS = [
 @Component({
   selector: 'app-shop-repair-requests-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    RouterLink,
+    CommonFilterComponent,
+  ],
   templateUrl: './shop-repair-requests.page.html',
   styleUrl: './shop-repair-requests.page.scss',
 })

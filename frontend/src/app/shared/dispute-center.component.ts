@@ -25,6 +25,7 @@ import {
   ConfirmationDialogConfig,
 } from './confirmation-dialog.component';
 import { PaginationComponent } from './pagination.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 type DisputeConfirmationAction =
   | 'confirmResolution'
@@ -58,6 +59,7 @@ const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
     CommonFilterComponent,
     ConfirmationDialogComponent,
     PaginationComponent,
+    AdminPageHeaderComponent,
   ],
   templateUrl: './dispute-center.component.html',
   styleUrl: './dispute-center.component.scss',

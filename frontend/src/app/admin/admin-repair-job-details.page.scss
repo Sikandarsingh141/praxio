@@ -1,11 +1,7 @@
 .repair-details{width:100%;min-width:0;color:#17211b}
 .back-link{display:inline-block;margin:0 0 .45rem;color:#087c3b;font-size:.68rem;font-weight:750;text-decoration:none}
-.detail-header{display:flex;align-items:center;gap:.75rem;padding:.65rem .85rem;border:1px solid #e3e9e4;border-radius:.75rem;background:#fff;box-shadow:0 2px 8px #14281c08}
 .appliance-icon{display:grid;width:3.1rem;height:3.1rem;flex:0 0 auto;place-items:center;border:1px solid #e7ece8;border-radius:.65rem;background:#f3f6f3;color:#16803c;font-size:1.35rem}
-.identity{min-width:0;flex:1}
-.eyebrow{color:#176b4a;font-size:.58rem;font-weight:800;letter-spacing:.08em}
 h1{margin:.12rem 0;color:#17211b;font-size:clamp(1.2rem,2.4vw,1.55rem);letter-spacing:-.04em}
-.identity>p{overflow:hidden;margin:0;color:#647169;font-size:.66rem;text-overflow:ellipsis;white-space:nowrap}
 .header-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-top:.35rem}
 .status-badge,.header-chip{display:inline-flex;align-items:center;gap:.28rem;padding:.27rem .45rem;border-radius:99px;background:#f0f4f1;color:#46564b;font-size:.58rem;font-weight:650;white-space:nowrap}
 .status-badge{background:#fff0ed;color:#b52b24}
@@ -64,4 +60,4 @@ dd{overflow-wrap:anywhere;margin:0;color:#26372c;font-size:.59rem;line-height:1.
 .state-card button{min-height:2.2rem;padding:.45rem .7rem;border:0;border-radius:.5rem;background:#087c3b;color:#fff;cursor:pointer;font:inherit;font-size:.68rem}
 @media(max-width:850px){.detail-grid{gap:.4rem}.detail-card{padding:.55rem}.history-list li{grid-template-columns:.6rem minmax(6rem,.7fr) minmax(0,1.3fr) minmax(8rem,.9fr);gap:.3rem}}
 @media(max-width:650px){.detail-grid{grid-template-columns:1fr}.lifecycle{overflow-x:auto}.lifecycle ol{min-width:34rem}.history-card{overflow-x:auto}.history-list{min-width:36rem}}
-@media(max-width:440px){.detail-header{align-items:flex-start}.appliance-icon{width:2.6rem;height:2.6rem}.header-meta{gap:.25rem}.detail-card dl>div{grid-template-columns:minmax(6rem,.7fr) minmax(0,1.3fr)}.detail-tabs button{padding:.5rem .55rem}}
+@media(max-width:440px){.appliance-icon{width:2.6rem;height:2.6rem}.header-meta{gap:.25rem}.detail-card dl>div{grid-template-columns:minmax(6rem,.7fr) minmax(0,1.3fr)}.detail-tabs button{padding:.5rem .55rem}}

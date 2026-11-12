@@ -1,17 +1,14 @@
 <section class="repair-monitor" aria-labelledby="monitor-title">
-  <header class="page-heading">
-    <div>
-      <span class="eyebrow">REPAIR OPERATIONS</span>
-      <h1 id="monitor-title">Repair monitoring</h1>
-      <p>Review repair progress, customer-reported issues, and verified feedback.</p>
-    </div>
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="monitor-title">Repair monitoring</h1>
+    <p adminPageDescription class="admin-page-description">Review repair progress, customer-reported issues, and verified feedback.</p>
     @if (view() !== 'reviews') {
-      <button type="button" class="export-button" [disabled]="!jobs().length" (click)="exportRepairs()">
+      <button adminPageActions type="button" class="export-button" [disabled]="!jobs().length" (click)="exportRepairs()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" /></svg>
         Export
       </button>
     }
-  </header>
+  </app-admin-page-header>
 
   @if (exportMessage()) {
     <p class="export-message" role="status">{{ exportMessage() }}</p>

@@ -11,6 +11,7 @@ import {
   FilterConfig,
   FilterValues,
 } from '../shared/common-filter.component';
+import { AdminPageHeaderComponent } from './admin-page-header.component';
 import { AdminDashboardOverview, AdminService } from './admin.service';
 
 type DashboardRange = 'today' | '7d' | '30d' | '90d' | 'month' | 'last-month' | 'year' | 'custom';
@@ -18,7 +19,15 @@ type DashboardRange = 'today' | '7d' | '30d' | '90d' | 'month' | 'last-month' | 
 @Component({
   selector: 'app-admin-overview-page',
   standalone: true,
-  imports: [CommonFilterComponent, DatePipe, DecimalPipe, RouterLink, SlicePipe, TitleCasePipe],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonFilterComponent,
+    DatePipe,
+    DecimalPipe,
+    RouterLink,
+    SlicePipe,
+    TitleCasePipe,
+  ],
   templateUrl: './admin-overview.page.html',
 })
 export class AdminOverviewPage implements OnInit {

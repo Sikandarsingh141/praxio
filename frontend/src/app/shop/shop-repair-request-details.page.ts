@@ -9,6 +9,7 @@ import { ShopRepairRequest } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { ShopRepairRouteComponent } from './shop-repair-route.component';
 import { ShopRepairWorkflowComponent } from './shop-repair-workflow.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 const DECLINE_REASONS = [
   'Service not offered',
@@ -21,7 +22,14 @@ const DECLINE_REASONS = [
 @Component({
   selector: 'app-shop-repair-request-details-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ShopRepairRouteComponent, ShopRepairWorkflowComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    ShopRepairRouteComponent,
+    ShopRepairWorkflowComponent,
+  ],
   templateUrl: './shop-repair-request-details.page.html',
   styleUrl: './shop-repair-request-details.page.scss',
 })

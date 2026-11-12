@@ -1,12 +1,8 @@
 @mixin adminOverviewStyles {
   app-admin-overview-page {
 .overview-page{display:grid;gap:.75rem;color:#17211b}
-.overview-header,.header-tools,.panel-heading,.kpi-top,.metric-list>div,.activity-list li,.shop-list li{display:flex;align-items:center;justify-content:space-between}
-.overview-header{gap:1rem}
-.page-kicker{color:#087c3b;font-size:.67rem;font-weight:750;letter-spacing:.1em}
-h1{margin:.3rem 0;color:#111915;font-size:clamp(1.55rem,2.5vw,2rem);letter-spacing:-.04em}
-.overview-header h1 span{font-size:.75em}
-.overview-header p,.panel-heading p{margin:0;color:#647169;font-size:.72rem;line-height:1.45}
+.header-tools,.panel-heading,.kpi-top,.metric-list>div,.activity-list li,.shop-list li{display:flex;align-items:center;justify-content:space-between}
+.panel-heading p{margin:0;color:#647169;font-size:.72rem;line-height:1.45}
 .header-tools{justify-content:flex-end;gap:.5rem}
 .feedback,.loading-state{margin:0;padding:.75rem;border-radius:.65rem;font-size:.78rem}
 .feedback.error{border:1px solid #f0c4c0;background:#fff7f6;color:#a13830}
@@ -84,7 +80,7 @@ th{color:#536157}td{color:#334139}td code{font-size:.56rem}
 .empty-state,.empty-inline{margin:.8rem 0 0;color:#77867c;font-size:.68rem}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 @media(max-width:1150px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.activity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.category-panel{grid-column:1/-1}.secondary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:760px){.overview-header{align-items:flex-start;flex-direction:column}.header-tools{width:100%;justify-content:flex-start;flex-wrap:wrap}.primary-grid,.activity-grid,.secondary-grid{grid-template-columns:1fr}.category-panel{grid-column:auto}}
+@media(max-width:760px){.header-tools{width:100%;justify-content:flex-start;flex-wrap:wrap}.primary-grid,.activity-grid,.secondary-grid{grid-template-columns:1fr}.category-panel{grid-column:auto}}
 @media(max-width:520px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi-card{min-height:5rem;padding:.55rem}.kpi-top{font-size:.6rem}.kpi-top i{width:1.5rem;height:1.5rem}.repair-overview{grid-template-columns:minmax(0,1fr) 7.5rem}.metric-list>div{font-size:.57rem}.donut{width:5.2rem}.today{white-space:normal}}
   }
 }

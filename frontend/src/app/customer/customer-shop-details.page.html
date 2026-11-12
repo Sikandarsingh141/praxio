@@ -5,29 +5,34 @@
   } @else if (error()) {
     <div class="state-card error" role="alert">{{ error() }}</div>
   } @else if (shop(); as shop) {
-    <header class="shop-hero">
-      <div class="identity">
+    <div class="shop-hero">
+      <app-admin-page-header>
         @if (shop.logoUrl) {
-          <img class="shop-logo" [src]="shop.logoUrl" [alt]="shop.shopName + ' logo'" />
+          <img
+            adminPageLeading
+            class="shop-logo"
+            [src]="shop.logoUrl"
+            [alt]="shop.shopName + ' logo'"
+          />
         } @else {
-          <span class="shop-logo shop-initials" aria-hidden="true">
+          <span adminPageLeading class="shop-logo shop-initials" aria-hidden="true">
             {{ shop.shopName.slice(0, 1).toUpperCase() }}
           </span>
         }
-        <div>
-          <span class="eyebrow">APPROVED FIXROA REPAIR SHOP</span>
-          <h1 id="shop-details-title">{{ shop.shopName }}</h1>
-          <p>{{ shop.businessType }}</p>
-        </div>
-      </div>
-      <a
-        class="primary-button"
-        [routerLink]="['/customer/shops']"
-        [queryParams]="{ shop: shop.id }"
-      >
-        Request repair
-      </a>
-    </header>
+        <h1 adminPageTitle class="admin-page-title" id="shop-details-title">
+          {{ shop.shopName }}
+        </h1>
+        <p adminPageDescription class="admin-page-description">{{ shop.businessType }}</p>
+        <a
+          adminPageActions
+          class="primary-button"
+          [routerLink]="['/customer/shops']"
+          [queryParams]="{ shop: shop.id }"
+        >
+          Request repair
+        </a>
+      </app-admin-page-header>
+    </div>
 
     <div class="details-grid">
       <section class="detail-card business-card">

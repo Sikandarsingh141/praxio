@@ -13,11 +13,13 @@ import { ShopReviewSummary } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { ShopInvoice, ShopInvoicePage } from '../core/auth/auth.models';
 import { PaginationComponent } from '../shared/pagination.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-shop-registration-status-page',
   standalone: true,
   imports: [
+    AdminPageHeaderComponent,
     DatePipe,
     DecimalPipe,
     TitleCasePipe,
@@ -30,22 +32,30 @@ import { PaginationComponent } from '../shared/pagination.component';
   ],
   template: `
     <section class="shop-profile-page" aria-labelledby="shop-profile-title">
-      <header class="profile-heading">
-        <div>
-          @if (editingProfile()) {
-            <button class="profile-back-link" type="button" (click)="editingProfile.set(false)">
-              <span aria-hidden="true">←</span> Business profile <span aria-hidden="true">›</span>
-              Edit profile
-            </button>
-            <h1 id="shop-profile-title">Edit Business Profile</h1>
-            <p>Update your shop details, contact information, and business address.</p>
-          } @else {
-            <span class="page-eyebrow">SHOP PARTNER ACCOUNT</span>
-            <h1 id="shop-profile-title">Business profile</h1>
-            <p>Review your business details, account status, and registered location.</p>
-          }
-        </div>
-      </header>
+      <app-admin-page-header>
+        @if (editingProfile()) {
+          <button adminPageLeading class="profile-back-link" type="button" (click)="editingProfile.set(false)">
+            <span aria-hidden="true">←</span> Business profile <span aria-hidden="true">›</span>
+            Edit profile
+          </button>
+        }
+        @if (editingProfile()) {
+          <h1 adminPageTitle class="admin-page-title" id="shop-profile-title">
+            Edit Business Profile
+          </h1>
+        } @else {
+          <h1 adminPageTitle class="admin-page-title" id="shop-profile-title">Business profile</h1>
+        }
+        @if (editingProfile()) {
+          <p adminPageDescription class="admin-page-description">
+            Update your shop details, contact information, and business address.
+          </p>
+        } @else {
+          <p adminPageDescription class="admin-page-description">
+            Review your business details, account status, and registered location.
+          </p>
+        }
+      </app-admin-page-header>
 
       <div class="profile-content">
         @if (errorMessage()) {

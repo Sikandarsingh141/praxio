@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { ShopReview, ShopReviewSummary } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { PaginationComponent } from '../shared/pagination.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-shop-reviews-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent],
+  imports: [AdminPageHeaderComponent, CommonModule, FormsModule, PaginationComponent],
   templateUrl: './shop-reviews.page.html',
   styleUrl: './shop-reviews.page.scss',
 })

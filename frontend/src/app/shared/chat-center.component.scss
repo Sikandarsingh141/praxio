@@ -8,6 +8,10 @@ app-chat-center {
     color: #17231b;
   }
 
+  .messages-page > app-admin-page-header {
+    margin-bottom: 0;
+  }
+
   .messages-heading {
     display: flex;
     align-items: center;

@@ -8,23 +8,28 @@
     @if (success()) {
       <p class="success-message" role="status">{{ success() }}</p>
     }
-    <header class="request-hero">
-      <span class="appliance-icon" aria-hidden="true">▣</span>
-      <div class="request-hero-copy">
-        <span class="eyebrow">REPAIR REQUEST DETAILS</span>
-        <h1 id="request-details-title">{{ request.appliance }}</h1>
-        <span class="request-id">
+    <div class="request-hero">
+      <app-admin-page-header>
+        <span adminPageLeading class="appliance-icon" aria-hidden="true">▣</span>
+        <h1 adminPageTitle class="admin-page-title" id="request-details-title">
+          {{ request.appliance }}
+        </h1>
+        <span adminPageMeta class="request-id">
           Request ID: <strong>{{ request._id.slice(-8).toUpperCase() }}</strong>
         </span>
-      </div>
-      <span class="status-badge" [attr.data-status]="request.shopResponse.status">
-        {{
-          request.shopResponse.status === 'quotation_submitted'
-            ? 'Quotation submitted'
-            : request.shopResponse.status.replace('_', ' ')
-        }}
-      </span>
-    </header>
+        <span
+          adminPageActions
+          class="status-badge"
+          [attr.data-status]="request.shopResponse.status"
+        >
+          {{
+            request.shopResponse.status === 'quotation_submitted'
+              ? 'Quotation submitted'
+              : request.shopResponse.status.replace('_', ' ')
+          }}
+        </span>
+      </app-admin-page-header>
+    </div>
 
     <ol class="request-progress" aria-label="Repair request progress">
         @for (step of progressSteps; track step; let index = $index) {

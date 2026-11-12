@@ -3,29 +3,44 @@ import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../core/auth/auth.service';
 import { LocationMapComponent } from '../shared/location-map.component';
 import { ProfileEditorComponent } from '../shared/profile-editor.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-customer-profile-page',
   standalone: true,
-  imports: [DatePipe, LocationMapComponent, ProfileEditorComponent, TitleCasePipe],
+  imports: [
+    AdminPageHeaderComponent,
+    DatePipe,
+    LocationMapComponent,
+    ProfileEditorComponent,
+    TitleCasePipe,
+  ],
   template: `
     <section class="customer-profile" aria-labelledby="customer-profile-title">
-      <header class="page-heading">
-        <div>
-          @if (editing()) {
-            <button class="back-link" type="button" (click)="editing.set(false)">
-              <span aria-hidden="true">←</span> My profile <span aria-hidden="true">›</span> Edit
-              profile
-            </button>
-            <h1 id="customer-profile-title">Edit Customer Profile</h1>
-            <p>Update your profile photo, name, and password.</p>
-          } @else {
-            <span class="page-eyebrow">CUSTOMER ACCOUNT</span>
-            <h1 id="customer-profile-title">My profile</h1>
-            <p>Manage your personal information and account security.</p>
-          }
-        </div>
-      </header>
+      <app-admin-page-header>
+        @if (editing()) {
+          <button adminPageLeading class="back-link" type="button" (click)="editing.set(false)">
+            <span aria-hidden="true">←</span> My profile <span aria-hidden="true">›</span> Edit
+            profile
+          </button>
+        }
+        @if (editing()) {
+          <h1 adminPageTitle class="admin-page-title" id="customer-profile-title">
+            Edit Customer Profile
+          </h1>
+        } @else {
+          <h1 adminPageTitle class="admin-page-title" id="customer-profile-title">My profile</h1>
+        }
+        @if (editing()) {
+          <p adminPageDescription class="admin-page-description">
+            Update your profile photo, name, and password.
+          </p>
+        } @else {
+          <p adminPageDescription class="admin-page-description">
+            Manage your personal information and account security.
+          </p>
+        }
+      </app-admin-page-header>
 
       @if (authService.currentUser(); as user) {
         @if (

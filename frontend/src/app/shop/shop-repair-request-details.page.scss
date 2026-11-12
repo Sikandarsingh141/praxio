@@ -18,7 +18,6 @@
   text-decoration: none;
 }
 
-.request-hero,
 .primary-actions,
 .detail-card dl,
 .detail-card dl div,
@@ -29,22 +28,13 @@
 }
 
 .request-hero {
-  align-items: center;
-  justify-content: flex-start;
-  gap: 1rem;
+  display: block;
   min-height: 5.2rem;
   padding: 1rem;
   border: 1px solid #e3ebe3;
   border-radius: 0.9rem;
   background: #fff;
   box-shadow: 0 2px 8px rgb(20 40 28 / 4%);
-}
-
-.request-hero-copy {
-  display: grid;
-  justify-items: start;
-  gap: 0.15rem;
-  flex: 1;
 }
 
 .appliance-icon,
@@ -72,20 +62,6 @@
   font-size: 0.64rem;
   font-weight: 760;
   letter-spacing: 0.12em;
-}
-
-h1 {
-  margin: 0.05rem 0;
-  color: #111915;
-  font-size: clamp(1.45rem, 2.5vw, 1.8rem);
-  font-weight: 780;
-  letter-spacing: -0.045em;
-}
-
-.request-hero p {
-  margin: 0;
-  color: #7c8981;
-  font-size: 0.75rem;
 }
 
 .status-badge {
@@ -575,18 +551,12 @@ button:disabled {
 
 @media (max-width: 540px) {
   .request-hero {
-    align-items: flex-start;
-    gap: 0.65rem;
     padding: 0.8rem;
   }
 
   .appliance-icon {
     width: 2.8rem;
     height: 2.8rem;
-  }
-
-  .request-hero .status-badge {
-    margin-left: auto;
   }
 
   .detail-grid {

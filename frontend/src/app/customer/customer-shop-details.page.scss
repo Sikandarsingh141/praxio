@@ -12,14 +12,9 @@
   text-decoration: none;
 }
 
-.shop-hero,
-.identity {
+.shop-hero {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.shop-hero {
   justify-content: space-between;
   padding: clamp(1.2rem, 3vw, 2rem);
   border: 1px solid #e3ebe3;
@@ -52,14 +47,6 @@
   letter-spacing: 0.13em;
 }
 
-h1 {
-  margin: 0.3rem 0;
-  color: #263d30;
-  font-size: clamp(1.6rem, 4vw, 2.2rem);
-  letter-spacing: -0.045em;
-}
-
-.identity p,
 .business-card > p,
 .location-card > p {
   margin: 0;
@@ -194,8 +181,7 @@ dd a {
 }
 
 @media (max-width: 640px) {
-  .shop-hero,
-  .identity {
+  .shop-hero {
     align-items: flex-start;
   }
 

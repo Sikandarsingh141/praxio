@@ -1,12 +1,10 @@
 <section class="dashboard" aria-labelledby="dashboard-title">
-  <div class="page-heading">
-    <div>
-      <!-- <span class="eyebrow">YOUR REPAIR, MADE EASIER</span> -->
-      <h1 id="dashboard-title">Your dashboard</h1>
-      <p>Everything you need for your next repair, all in one place.</p>
-    </div>
-    <span class="preview-badge">Customer portal</span>
-  </div>
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="dashboard-title">Dashboard</h1>
+    <p adminPageDescription class="admin-page-description">
+      Everything you need for your next repair, all in one place.
+    </p>
+  </app-admin-page-header>
 
   <section class="welcome-banner" aria-labelledby="welcome-title">
     <div class="welcome-copy">
@@ -217,6 +215,24 @@
       }
     </section>
   </div>
+
+  <section class="content-section" aria-labelledby="business-register-title">
+    <div class="section-heading">
+      <div>
+        <span class="section-kicker">FOR REPAIR PROFESSIONALS</span>
+        <h2 id="business-register-title">Register your repair business</h2>
+      </div>
+    </div>
+    <p>Join Fixora to connect with customers and grow your repair business.</p>
+    <div class="welcome-actions">
+      <a class="welcome-button primary" routerLink="/auth/register/shop">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 10h18v10H3zM2 10l2-6h16l2 6M8 20v-6h8v6" />
+        </svg>
+        Register your business
+      </a>
+    </div>
+  </section>
 
   <p class="preview-disclaimer">
     Shop ratings, reviews, hours, and availability are shown only when shops provide those details.

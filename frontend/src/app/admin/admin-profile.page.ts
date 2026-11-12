@@ -2,29 +2,34 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../core/auth/auth.service';
 import { ProfileEditorComponent } from '../shared/profile-editor.component';
+import { AdminPageHeaderComponent } from './admin-page-header.component';
 
 @Component({
   selector: 'app-admin-profile-page',
   standalone: true,
-  imports: [DatePipe, TitleCasePipe, ProfileEditorComponent],
+  imports: [AdminPageHeaderComponent, DatePipe, TitleCasePipe, ProfileEditorComponent],
   template: `
     <section class="admin-profile-page" aria-labelledby="admin-profile-title">
-      <header class="page-heading">
-        <div>
-          @if (editing()) {
-            <button class="back-link" type="button" (click)="editing.set(false)">
-              <span aria-hidden="true">←</span> My profile <span aria-hidden="true">›</span> Edit
-              profile
-            </button>
-            <h1 id="admin-profile-title">Edit Admin Profile</h1>
-            <p>Update your profile photo, name, and password.</p>
-          } @else {
-            <span class="page-eyebrow">ADMINISTRATION</span>
-            <h1 id="admin-profile-title">My profile</h1>
-            <p>Manage your administrator account information and security.</p>
-          }
-        </div>
-      </header>
+      <app-admin-page-header>
+        @if (editing()) {
+          <button adminPageLeading class="back-link" type="button" (click)="editing.set(false)">
+            <span aria-hidden="true">←</span> My profile <span aria-hidden="true">›</span> Edit
+            profile
+          </button>
+        }
+        @if (editing()) {
+          <h1 adminPageTitle class="admin-page-title" id="admin-profile-title">Edit Admin Profile</h1>
+        } @else {
+          <h1 adminPageTitle class="admin-page-title" id="admin-profile-title">My profile</h1>
+        }
+        @if (editing()) {
+          <p adminPageDescription class="admin-page-description">Update your profile photo, name, and password.</p>
+        } @else {
+          <p adminPageDescription class="admin-page-description">
+            Manage your administrator account information and security.
+          </p>
+        }
+      </app-admin-page-header>
 
       @if (authService.currentUser(); as user) {
         <div class="profile-layout">

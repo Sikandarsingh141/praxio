@@ -1,11 +1,10 @@
 <section class="shop-dashboard" aria-labelledby="shop-dashboard-title">
-  <header class="dashboard-header">
-    <div>
-      <span class="page-kicker">FIXROA BUSINESS</span>
-      <h1 id="shop-dashboard-title">Dashboard</h1>
-      <p class="page-intro">A live view of customer requests, quotations, repairs, and reviews.</p>
-    </div>
-    <div class="header-actions">
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="shop-dashboard-title">Dashboard</h1>
+    <p adminPageDescription class="admin-page-description">
+      A live view of customer requests, quotations, repairs, and reviews.
+    </p>
+    <div adminPageActions class="header-actions">
       <app-common-filter
         [config]="dateFilterConfig"
         [appliedFilters]="appliedDateFilters()"
@@ -21,23 +20,10 @@
         {{ dashboardLoading() ? 'Refreshing…' : 'Refresh data' }}
       </button>
     </div>
-  </header>
-
-  <section class="welcome-card" aria-labelledby="welcome-shop-title">
-    <div class="welcome-icon" aria-hidden="true">
-      {{ shopName() ? shopName().slice(0, 1).toUpperCase() : 'P' }}
-    </div>
-    <div>
-      <h2 id="welcome-shop-title">Welcome{{ shopName() ? ', ' + shopName() : '' }}</h2>
-      <p>Your shop activity and performance, based on your saved records.</p>
-    </div>
-    <span class="status-badge">Approved account</span>
-  </section>
-
+  </app-admin-page-header>
   <section class="dashboard-section" aria-labelledby="overview-title">
     <header class="section-heading">
       <div>
-        <span class="section-kicker">BUSINESS OVERVIEW</span>
         <h2 id="overview-title">Performance summary</h2>
         <p>Filter dashboard metrics and activity lists by date.</p>
       </div>

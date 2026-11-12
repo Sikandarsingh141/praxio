@@ -6,11 +6,12 @@ import {
   customerRepairRequestStatusLabel,
   CustomerRepairRequest,
 } from '../customer/customer-portal.models';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
-  imports: [DatePipe, RouterLink],
+  imports: [AdminPageHeaderComponent, DatePipe, RouterLink],
   templateUrl: './dashboard.page.html',
   styleUrl: './dashboard.page.scss',
 })

@@ -54,6 +54,13 @@ describe('CustomerShopFinderPage', () => {
     const page = fixture.componentInstance;
     fixture.detectChanges();
 
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-title')?.textContent,
+    ).toContain('Find Repair Shops');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-description')
+        ?.textContent,
+    ).toContain('Explore approved repair shops near you');
     page.toggleVisibleShops();
 
     expect(page.selectedShops()).toEqual(['shop-1', 'shop-2', 'shop-3', 'shop-4', 'shop-5']);

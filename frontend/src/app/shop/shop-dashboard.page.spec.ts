@@ -114,6 +114,22 @@ describe('ShopDashboardPage', () => {
     });
     fixture.detectChanges();
 
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-title')?.textContent,
+    ).toContain('Dashboard');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-description')
+        ?.textContent,
+    ).toContain('A live view of customer requests');
+    expect(getComputedStyle(fixture.nativeElement).display).toBe('block');
+    const pageHeader = fixture.nativeElement.querySelector('app-admin-page-header') as HTMLElement;
+    expect(getComputedStyle(pageHeader).display).toBe('block');
+    expect(pageHeader.getBoundingClientRect().width).toBeGreaterThan(300);
+    expect(getComputedStyle(pageHeader).gridColumnEnd).toBe('-1');
+    const headerCopy = fixture.nativeElement.querySelector(
+      '.admin-page-header__copy',
+    ) as HTMLElement;
+    expect(headerCopy.getBoundingClientRect().width).toBeGreaterThan(200);
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
     expect(fixture.nativeElement.textContent).toContain('Example Repairs');
     expect(fixture.nativeElement.textContent).toContain('Quotation activity');

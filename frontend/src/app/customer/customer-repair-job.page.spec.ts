@@ -63,7 +63,26 @@ describe('CustomerRepairJobPage', () => {
       createdAt: '2026-11-09T15:00:00.000Z',
       quotations: [],
       shopIds: [],
-      repairJob: { status: 'completed' },
+      acceptedQuotation: {
+        _id: 'quote-id',
+        repairRequestId: requestId,
+        shopId: 'shop-id',
+        amount: 0,
+        currency: 'USD',
+        message: 'Repair approved.',
+        status: 'accepted',
+        createdAt: '2026-11-09T16:00:00.000Z',
+        respondedAt: '2026-11-09T16:30:00.000Z',
+      },
+      repairJob: {
+        status: 'completed',
+        confirmedAt: '2026-11-09T15:30:00.000Z',
+        repairCompletedAt: '2026-11-10T12:00:00.000Z',
+        history: [
+          { action: 'inspection_pending', at: '2026-11-09T15:35:00.000Z' },
+          { action: 'repair_completed', at: '2026-11-10T12:05:00.000Z' },
+        ],
+      },
     } as CustomerRepairRequest;
     const portal = jasmine.createSpyObj<CustomerPortalService>(
       'CustomerPortalService',
@@ -90,8 +109,40 @@ describe('CustomerRepairJobPage', () => {
       fixture.nativeElement.querySelectorAll('.request-progress li'),
     ) as HTMLLIElement[];
     expect(steps).toHaveSize(4);
+    expect(getComputedStyle(fixture.nativeElement.querySelector('.request-progress')).display).toBe(
+      'grid',
+    );
+    expect(fixture.nativeElement.querySelectorAll('.progress-marker svg')).toHaveSize(4);
     expect(steps.every((step) => step.classList.contains('completed'))).toBeTrue();
     expect(fixture.nativeElement.querySelector('[aria-current="step"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.request-progress time')).toHaveSize(4);
+    const requestIdBadge = fixture.nativeElement.querySelector(
+      '.request-header-meta .request-id',
+    ) as HTMLElement;
+    const disputeLink = fixture.nativeElement.querySelector(
+      '.job-header-actions .dispute-link',
+    ) as HTMLElement;
+    expect(disputeLink).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.request-header-meta .dispute-link'),
+    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('.job-header-actions .status-badge')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.request-meta-divider')).toBeNull();
+    expect(parseFloat(getComputedStyle(requestIdBadge).minHeight)).toBeLessThan(
+      parseFloat(getComputedStyle(disputeLink).minHeight),
+    );
+    expect(
+      getComputedStyle(fixture.nativeElement.querySelector('.request-header-meta')).display,
+    ).toBe('flex');
+    expect(
+      getComputedStyle(fixture.nativeElement.querySelector('.job-header-actions')).flexDirection,
+    ).toBe('column');
+    expect(
+      getComputedStyle(fixture.nativeElement.querySelector('.request-summary-card .details dt'))
+        .display,
+    ).toBe('flex');
+    expect(fixture.componentInstance.progressDate(1)).toBe('2026-11-09T15:35:00.000Z');
+    expect(fixture.componentInstance.progressDate(3)).toBe('2026-11-10T12:05:00.000Z');
   });
 
   it('does not imply repair authorization when a quotation is accepted', async () => {
@@ -183,13 +234,18 @@ describe('CustomerRepairJobPage', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(portal.getRepairJob).toHaveBeenCalledWith(request._id);
-    expect(text).toContain('REPAIR REQUEST DETAILS');
+    expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain(
+      'Repair request details',
+    );
+    expect(text).not.toContain('REPAIR REQUEST DETAILS');
     expect(text).toContain('Request ID:');
     expect(text).toContain('12345678');
     expect(text).toContain('Issue / Problem');
     expect(text).toContain('Not cooling');
     expect(text).toContain('Preferred Date');
     expect(text).toContain('Shop visit');
+    expect(text).toContain('Shop Visit');
+    expect(text).toContain('No (At shop)');
     expect(text).toContain('Amit Sharma');
     expect(text).toContain('AS');
     expect(text).toContain('View Quotations');

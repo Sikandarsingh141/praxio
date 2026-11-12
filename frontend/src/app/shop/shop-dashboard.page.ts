@@ -12,11 +12,12 @@ import {
 } from '../shared/common-filter.component';
 import { ShopDashboardOverview } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-shop-dashboard-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, CommonFilterComponent],
+  imports: [AdminPageHeaderComponent, CommonModule, RouterLink, CommonFilterComponent],
   templateUrl: './shop-dashboard.page.html',
   styleUrl: './shop-dashboard.page.scss',
 })

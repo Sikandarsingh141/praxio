@@ -8,16 +8,11 @@
   display: block;
 }
 
-.page-heading,
 .results-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 1rem;
-}
-
-.page-heading {
-  margin-bottom: 1.1rem;
 }
 
 .eyebrow,
@@ -33,20 +28,6 @@ h2,
 h3,
 p {
   margin-top: 0;
-}
-
-h1 {
-  margin-bottom: 0.4rem;
-  color: #141c18;
-  font-size: clamp(1.8rem, 3vw, 2.3rem);
-  font-weight: 780;
-  letter-spacing: -0.05em;
-}
-
-.page-heading p {
-  margin: 0;
-  color: #647169;
-  font-size: 0.84rem;
 }
 
 .secondary-button {

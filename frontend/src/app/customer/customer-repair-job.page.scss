@@ -7,9 +7,10 @@
 
 .detail-breadcrumb {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
-  margin: 0 0 1.65rem;
+  margin: 0 0 0.75rem;
   color: #718078;
   font-size: 0.82rem;
 }
@@ -36,18 +37,9 @@
   font-weight: 650;
 }
 
-.job-header,
 .panel h2,
 .pickup-alert {
   margin-bottom: 1rem;
-}
-
-.job-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0 0 1.1rem;
 }
 
 .eyebrow {
@@ -55,14 +47,6 @@
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.11em;
-}
-
-h1 {
-  margin: 0.55rem 0 0;
-  color: #101923;
-  font-size: clamp(1.8rem, 3.2vw, 2.55rem);
-  font-weight: 760;
-  letter-spacing: -0.045em;
 }
 
 .panel p {
@@ -86,42 +70,17 @@ h1 {
   text-transform: capitalize;
 }
 
+app-admin-page-header .status-badge {
+  align-self: center;
+  margin-top: 0;
+}
+
 .status-dot {
   width: 0.65rem;
   height: 0.65rem;
   border-radius: 50%;
   background: #24a33b;
   box-shadow: 0 0 0 3px rgb(36 163 59 / 12%);
-}
-
-.request-id {
-  display: inline-flex;
-  min-height: 3.6rem;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 1.25rem;
-  padding: 0.65rem 1.1rem;
-  border: 1px solid #a7dfaa;
-  border-radius: 1rem;
-  background: linear-gradient(110deg, #f1fbf1, #eaf7eb);
-  color: #176427;
-  font-size: 1rem;
-}
-
-.request-id svg {
-  width: 1.55rem;
-  height: 1.55rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-
-.request-id strong {
-  color: #176427;
-  font-size: 1.5rem;
-  letter-spacing: 0.01em;
 }
 
 .pickup-alert {
@@ -613,14 +572,6 @@ h1 {
 }
 
 @media (max-width: 480px) {
-  .job-header {
-    align-items: flex-start;
-  }
-
-  .job-header h1 {
-    font-size: 1.75rem;
-  }
-
   .status-badge {
     gap: 0.4rem;
     padding: 0.5rem 0.75rem;

@@ -8,10 +8,6 @@
   color: #17231b;
 }
 
-.profile-heading {
-  margin-bottom: 1.15rem;
-}
-
 .profile-back-link {
   display: inline-flex;
   align-items: center;
@@ -33,27 +29,6 @@
 
 .profile-back-link span:last-child {
   color: #9aa59e;
-}
-
-.page-eyebrow {
-  color: #16803c;
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.11em;
-}
-
-.profile-heading h1 {
-  margin: 0.35rem 0 0;
-  color: #101923;
-  font-size: clamp(1.8rem, 3vw, 2.2rem);
-  font-weight: 760;
-  letter-spacing: -0.04em;
-}
-
-.profile-heading p {
-  margin: 0.4rem 0 0;
-  color: #68766d;
-  font-size: 0.84rem;
 }
 
 .profile-content {
@@ -595,10 +570,6 @@ dd {
 }
 
 @media (max-width: 480px) {
-  .profile-heading p {
-    line-height: 1.45;
-  }
-
   .details-toolbar {
     flex-direction: column-reverse;
     align-items: stretch;

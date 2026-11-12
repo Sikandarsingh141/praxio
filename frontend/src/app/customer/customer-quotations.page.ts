@@ -13,6 +13,7 @@ import {
 import { PaginationComponent } from '../shared/pagination.component';
 import { CustomerQuotation, QuotationListFilters } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 type QuotationStatus = NonNullable<QuotationListFilters['status']>;
 type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'withdrawn';
@@ -20,16 +21,22 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
 @Component({
   selector: 'app-customer-quotations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    RouterLink,
+    CommonFilterComponent,
+  ],
   template: `
     <section class="page customer-quotations-page" aria-labelledby="title">
-      <header class="heading">
-        <div>
-          <span class="eyebrow">YOUR REPAIRS</span>
-          <h1 id="title">My Quotations</h1>
-          <p>Review and compare shop estimates before choosing a repair partner.</p>
-        </div>
-      </header>
+      <app-admin-page-header>
+        <h1 adminPageTitle class="admin-page-title" id="title">My Quotations</h1>
+        <p adminPageDescription class="admin-page-description">
+          Review and compare shop estimates before choosing a repair partner.
+        </p>
+      </app-admin-page-header>
       @if (responseSuccess()) {
         <p class="success-message" role="status" aria-live="polite">{{ responseSuccess() }}</p>
       }
@@ -376,9 +383,6 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
   `,
   styles: `
     .page { max-width: 1320px; margin: 0 auto; color: #18221d; }
-    .heading { margin-bottom: 1.2rem; }
-    .heading h1 { margin: 0.35rem 0; color: #141c18; font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 780; letter-spacing: -0.05em; }
-    .heading p { margin: 0; color: #647169; font-size: 0.88rem; }
     .eyebrow { color: #17643b; font-size: 0.68rem; font-weight: 780; letter-spacing: 0.12em; }
     .summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; margin: 1.25rem 0; }
     .summary article, .card { border: 1px solid #e1e6e3; border-radius: 0.95rem; background: #fff; }

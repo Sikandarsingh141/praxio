@@ -147,8 +147,6 @@
       [class.sidebar-open]="menuOpen()"
       aria-label="Customer navigation"
     >
-      <div class="sidebar-heading">CUSTOMER PORTAL</div>
-
       <nav class="navigation-group" aria-label="Main navigation">
         @for (item of visibleNavigation; track item.label) {
           @if (item.available) {
@@ -222,11 +220,6 @@
     </aside>
 
     <main class="main-content">
-      <div class="breadcrumb" aria-label="Breadcrumb">
-        <!-- <span>Customer portal</span> -->
-        <span aria-hidden="true"></span>
-        <!-- <span aria-current="page">{{ breadcrumbPage }}</span> -->
-      </div>
       <router-outlet />
     </main>
   </div>

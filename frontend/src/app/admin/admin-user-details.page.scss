@@ -1,12 +1,8 @@
 .user-details{width:100%;min-width:0;margin:0 auto;color:#17211b}
 .back-link{display:inline-block;margin:0 0 .8rem;color:#176b34;font-size:.75rem;font-weight:700;text-decoration:none}
 .back-link:hover{text-decoration:underline}
-.profile-header{display:flex;align-items:center;gap:.8rem;padding:.8rem 1rem;border:1px solid #e3e9e4;border-radius:.8rem;background:#fff;box-shadow:0 2px 8px #14281c08}
-.profile-identity{min-width:0;flex:1}
 .profile-image,.profile-placeholder{display:grid;width:3.5rem;height:3.5rem;flex:0 0 auto;place-items:center;border:1px solid #e2eae3;border-radius:50%;background:#e8f5eb;color:#176b34;font-size:1.2rem;font-weight:750;object-fit:cover}
-.page-kicker{color:#496d8d;font-size:.62rem;font-weight:750;letter-spacing:.1em}
 h1{margin:.2rem 0;color:#17211b;font-size:clamp(1.35rem,3vw,1.8rem);letter-spacing:-.04em}
-.profile-header p{margin:0;color:#647169;font-size:.72rem}
 .profile-statuses{display:flex;flex-wrap:wrap;gap:.45rem;margin-left:auto}
 .status-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .55rem;border-radius:999px;background:#fff4e5;color:#8a5a18;font-size:.65rem;font-weight:700;white-space:nowrap}
 .status-badge.active{background:#e5f5e8;color:#176b34}
@@ -49,5 +45,5 @@ dd{overflow-wrap:anywhere;margin:0;color:#26372c;font-size:.7rem}
 .state-message{padding:1rem;border-radius:.7rem;background:#fff;color:#74828b;font-size:.8rem}
 .state-message.error{background:#fff0ef;color:#a63d34}
 @media(max-width:850px){.activity-timeline{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:650px){.profile-header{align-items:flex-start;flex-wrap:wrap}.profile-statuses{width:100%;margin-left:4.3rem}.detail-grid{grid-template-columns:1fr}.activity-timeline{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.profile-statuses{width:100%;margin-left:4.3rem}.detail-grid{grid-template-columns:1fr}.activity-timeline{grid-template-columns:1fr 1fr}}
 @media(max-width:440px){dl>div{grid-template-columns:1fr;gap:.15rem}.profile-tabs button{padding:.6rem .55rem}.activity-timeline{grid-template-columns:1fr}}

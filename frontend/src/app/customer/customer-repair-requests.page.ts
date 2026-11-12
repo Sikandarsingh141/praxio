@@ -16,13 +16,21 @@ import {
   FilterValues,
 } from '../shared/common-filter.component';
 import { PaginationComponent } from '../shared/pagination.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed';
 
 @Component({
   selector: 'app-customer-repair-requests',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, CommonFilterComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    RouterLink,
+    CommonFilterComponent,
+  ],
   templateUrl: './customer-repair-requests.page.html',
   styleUrl: './customer-repair-requests.page.scss',
 })

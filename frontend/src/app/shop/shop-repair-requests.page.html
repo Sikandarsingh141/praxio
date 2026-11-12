@@ -1,17 +1,18 @@
 <section class="requests-page" aria-labelledby="requests-title">
-  <header class="page-heading">
-    <div>
-      <span class="eyebrow">CUSTOMER MANAGEMENT</span>
-      <h1 id="requests-title">
-        {{ completedRepairs() ? 'Completed Repairs' : 'Repair requests' }}
-      </h1>
-      @if (completedRepairs()) {
-        <p>Review repair jobs completed by your shop.</p>
-      } @else {
-        <p>Review requests shared specifically with your shop and respond with a quotation.</p>
-      }
-    </div>
-  </header>
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="requests-title">
+      {{ completedRepairs() ? 'Completed Repairs' : 'Repair requests' }}
+    </h1>
+    @if (completedRepairs()) {
+      <p adminPageDescription class="admin-page-description">
+        Review repair jobs completed by your shop.
+      </p>
+    } @else {
+      <p adminPageDescription class="admin-page-description">
+        Review requests shared specifically with your shop and respond with a quotation.
+      </p>
+    }
+  </app-admin-page-header>
 
   @if (pageData(); as data) {
     @if (!completedRepairs()) {

@@ -1,4 +1,9 @@
-.dashboard-header,
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
 .section-heading,
 .panel-heading {
   display: flex;
@@ -7,28 +12,11 @@
   gap: 1rem;
 }
 
-.dashboard-header {
+.header-actions {
+  display: flex;
   align-items: center;
-}
-
-.page-kicker {
-  color: #47745a;
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-}
-
-h1 {
-  margin: 0.45rem 0;
-  color: #20302b;
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
-  letter-spacing: -0.04em;
-}
-
-.page-intro {
-  margin: 0;
-  color: #76847c;
-  line-height: 1.6;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .refresh-button {
@@ -520,11 +508,6 @@ h1 {
 }
 
 @media (max-width: 560px) {
-  .dashboard-header {
-    align-items: flex-start;
-  }
-
-  .dashboard-header,
   .section-heading {
     flex-direction: column;
   }

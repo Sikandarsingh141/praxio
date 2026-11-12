@@ -1,19 +1,29 @@
 <main class="dispute-page" [attr.aria-busy]="loading()">
   @if (mode() === 'list') {
-    <header class="page-header dispute-list-header">
-      <div>
-        <p class="eyebrow">{{ role() | titlecase }} portal</p>
-        <h1>Dispute management</h1>
-        <p>
+    @if (role() === 'admin') {
+      <app-admin-page-header>
+        <h1 adminPageTitle class="admin-page-title">Dispute management</h1>
+        <p adminPageDescription class="admin-page-description">
           Track post-repair issues, review evidence, and coordinate fair resolutions.
         </p>
-      </div>
-      @if (role() === 'customer') {
-        <a class="button primary raise-dispute-button" routerLink="/customer/repair-requests">
-          <span aria-hidden="true">＋</span> Raise a Dispute
-        </a>
-      }
-    </header>
+      </app-admin-page-header>
+    } @else {
+      <app-admin-page-header>
+        <h1 adminPageTitle class="admin-page-title">Dispute management</h1>
+        <p adminPageDescription class="admin-page-description">
+          Track post-repair issues, review evidence, and coordinate fair resolutions.
+        </p>
+        @if (role() === 'customer') {
+          <a
+            adminPageActions
+            class="button primary raise-dispute-button"
+            routerLink="/customer/repair-requests"
+          >
+            <span aria-hidden="true">＋</span> Raise a Dispute
+          </a>
+        }
+      </app-admin-page-header>
+    }
 
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
@@ -160,18 +170,15 @@
 
   @if (mode() === 'create') {
     <a class="back-link" routerLink="/customer/repair-requests">← My repair requests</a>
-    <header class="page-header">
-      <div>
-        <p class="eyebrow">CUSTOMER SUPPORT</p>
-        <h1>Raise a dispute</h1>
-        @if (repairSummary(); as repair) {
-          <p>
-            {{ repair.appliance }} · {{ repair.brand || '' }} {{ repair.model || '' }} ·
-            {{ repair.status?.replaceAll('_', ' ') | titlecase }}
-          </p>
-        }
-      </div>
-    </header>
+    <app-admin-page-header>
+      <h1 adminPageTitle class="admin-page-title">Raise a dispute</h1>
+      @if (repairSummary(); as repair) {
+        <p adminPageDescription class="admin-page-description">
+          {{ repair.appliance }} · {{ repair.brand || '' }} {{ repair.model || '' }} ·
+          {{ repair.status?.replaceAll('_', ' ') | titlecase }}
+        </p>
+      }
+    </app-admin-page-header>
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
@@ -258,17 +265,30 @@
     @if (loading()) {
       <p class="state-card" role="status">Loading dispute details…</p>
     } @else if (dispute(); as item) {
-      <div class="detail-breadcrumb"><span>Disputes</span><span aria-hidden="true">/</span><strong>Dispute Details</strong></div>
-      <header class="detail-header dispute-detail-heading">
-        <div>
-          <h1>Dispute Details</h1>
-          <p class="dispute-reference">{{ item.reference }}</p>
-        </div>
-        <span class="status detail-status" [attr.data-status]="item.status">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
-          {{ item.status.replaceAll('_', ' ') | titlecase }}
-        </span>
-      </header>
+      @if (role() !== 'admin') {
+        <div class="detail-breadcrumb"><span>Disputes</span><span aria-hidden="true">/</span><strong>Dispute Details</strong></div>
+      }
+      @if (role() === 'admin') {
+        <app-admin-page-header>
+          <h1 adminPageTitle class="admin-page-title">Dispute details</h1>
+          <p adminPageDescription class="admin-page-description dispute-reference">{{ item.reference }}</p>
+          <span adminPageActions class="status detail-status" [attr.data-status]="item.status">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
+            {{ item.status.replaceAll('_', ' ') | titlecase }}
+          </span>
+        </app-admin-page-header>
+      } @else {
+        <app-admin-page-header>
+          <h1 adminPageTitle class="admin-page-title">Dispute details</h1>
+          <p adminPageDescription class="admin-page-description dispute-reference">
+            {{ item.reference }}
+          </p>
+          <span adminPageActions class="status detail-status" [attr.data-status]="item.status">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
+            {{ item.status.replaceAll('_', ' ') | titlecase }}
+          </span>
+        </app-admin-page-header>
+      }
 
       @if (item.repair; as repair) {
         <section class="panel repair-overview">

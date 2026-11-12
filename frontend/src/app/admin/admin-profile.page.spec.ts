@@ -29,6 +29,12 @@ describe('AdminProfilePage', () => {
     const fixture = TestBed.createComponent(AdminProfilePage);
     fixture.detectChanges();
 
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header h1')?.textContent.trim(),
+    ).toBe('My profile');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header p')?.textContent.trim(),
+    ).toContain('Manage your administrator account');
     expect(fixture.nativeElement.textContent).toContain('Admin Example');
     expect(fixture.nativeElement.textContent).toContain('admin@example.com');
     expect(fixture.nativeElement.textContent).toContain('Administrator');
@@ -38,6 +44,9 @@ describe('AdminProfilePage', () => {
 
     (fixture.nativeElement.querySelector('.edit-button') as HTMLButtonElement).click();
     fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header h1')?.textContent.trim(),
+    ).toBe('Edit Admin Profile');
     expect(fixture.nativeElement.querySelector('app-profile-editor')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[name="currentPassword"]')).toBeTruthy();
   });

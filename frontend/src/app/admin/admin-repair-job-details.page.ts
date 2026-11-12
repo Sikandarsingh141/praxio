@@ -2,6 +2,7 @@ import { CurrencyPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { AdminPageHeaderComponent } from './admin-page-header.component';
 import { AdminRepairJob, AdminService } from './admin.service';
 
 type RepairDetailsTab = 'overview' | 'history' | 'documents' | 'notes';
@@ -9,7 +10,7 @@ type RepairDetailsTab = 'overview' | 'history' | 'documents' | 'notes';
 @Component({
   selector: 'app-admin-repair-job-details-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, RouterLink, TitleCasePipe],
+  imports: [AdminPageHeaderComponent, CurrencyPipe, DatePipe, RouterLink, TitleCasePipe],
   templateUrl: './admin-repair-job-details.page.html',
   styleUrl: './admin-repair-job-details.page.scss',
 })

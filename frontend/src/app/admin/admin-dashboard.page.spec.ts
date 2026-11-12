@@ -125,6 +125,9 @@ describe('AdminDashboardPage', () => {
     harness.detectChanges();
 
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain('Shops');
+    expect(
+      harness.routeNativeElement?.querySelector('app-admin-page-header p')?.textContent,
+    ).toContain('Review repair shop registrations');
     expect(harness.routeNativeElement?.textContent).toContain('All shops');
     expect(harness.routeNativeElement?.textContent).toContain('Total shops');
     expect(harness.routeNativeElement?.textContent).toContain('No shops found');
@@ -142,6 +145,9 @@ describe('AdminDashboardPage', () => {
     harness.detectChanges();
 
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain('Customers');
+    expect(
+      harness.routeNativeElement?.querySelector('app-admin-page-header p')?.textContent,
+    ).toContain('Review customer registrations and manage customer account access.');
     expect(harness.routeNativeElement?.textContent).toContain('All customers');
     expect(harness.routeNativeElement?.textContent).toContain('Total customers');
     expect(page.accountTypeFilter()).toBe('customer');

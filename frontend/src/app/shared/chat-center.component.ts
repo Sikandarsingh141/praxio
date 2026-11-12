@@ -27,11 +27,12 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogConfig,
 } from './confirmation-dialog.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-chat-center',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConfirmationDialogComponent],
+  imports: [AdminPageHeaderComponent, CommonModule, FormsModule, ConfirmationDialogComponent],
   templateUrl: './chat-center.component.html',
 })
 export class ChatCenterComponent implements OnInit, OnDestroy {

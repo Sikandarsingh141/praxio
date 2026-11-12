@@ -9,6 +9,16 @@
   color: #263b32;
 }
 
+:host-context(.admin-portal) .dispute-page {
+  width: 100%;
+  padding: 0;
+}
+
+:host-context(.portal) .dispute-page {
+  width: 100%;
+  padding: 0;
+}
+
 .page-header,
 .detail-header,
 .panel-heading {

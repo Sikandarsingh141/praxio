@@ -9,23 +9,20 @@
   @if (errorMessage()) {
     <p class="state-message error" role="alert">{{ errorMessage() }}</p>
   } @else if (!loading() && user(); as profile) {
-    <header class="profile-header">
+    <app-admin-page-header>
       @if (profile.profileImageUrl) {
-        <img class="profile-image" [src]="profile.profileImageUrl" alt="" />
+        <img adminPageLeading class="profile-image" [src]="profile.profileImageUrl" alt="" />
       } @else {
-        <span class="profile-placeholder" aria-hidden="true">
+        <span adminPageLeading class="profile-placeholder" aria-hidden="true">
           {{ (profile.firstName || profile.shop?.shopName || 'U').charAt(0) | uppercase }}
         </span>
       }
-      <div class="profile-identity">
-        <span class="page-kicker">USER PROFILE</span>
-        <h1 id="user-title">{{ profile.shop?.shopName || (profile.firstName || profile.lastName ? profile.firstName + ' ' + profile.lastName : 'Unnamed user') }}</h1>
-        <p>
-          {{ profile.accountType | titlecase }} account · Joined
-          {{ profile.createdAt | date: 'mediumDate' }}
-        </p>
-      </div>
-      <div class="profile-statuses" aria-label="Account statuses">
+      <h1 adminPageTitle class="admin-page-title" id="user-title">{{ profile.shop?.shopName || (profile.firstName || profile.lastName ? profile.firstName + ' ' + profile.lastName : 'Unnamed user') }}</h1>
+      <p adminPageDescription class="admin-page-description">
+        {{ profile.accountType | titlecase }} account · Joined
+        {{ profile.createdAt | date: 'mediumDate' }}
+      </p>
+      <div class="profile-statuses" adminPageActions aria-label="Account statuses">
         <span class="status-badge approval-status" [class.active]="profile.approvalStatus === 'approved'">
           <span aria-hidden="true">{{ profile.approvalStatus === 'approved' ? '✓' : '!' }}</span>
           Approval: {{ profile.approvalStatus | titlecase }}
@@ -35,7 +32,7 @@
           Account: {{ profile.accountStatus ? (profile.accountStatus | titlecase) : '—' }}
         </span>
       </div>
-    </header>
+    </app-admin-page-header>
 
     <nav class="profile-tabs" aria-label="User profile sections">
       <button type="button" [class.selected]="activeSection() === 'overview'" [attr.aria-current]="activeSection() === 'overview' ? 'location' : null" (click)="scrollToSection('overview')"><span aria-hidden="true">⌂</span>Overview</button>

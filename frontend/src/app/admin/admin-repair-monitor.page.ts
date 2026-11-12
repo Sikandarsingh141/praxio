@@ -12,13 +12,22 @@ import {
   AdminService,
 } from './admin.service';
 import { PaginationComponent } from '../shared/pagination.component';
+import { AdminPageHeaderComponent } from './admin-page-header.component';
 
 type MonitorView = 'jobs' | 'completed' | 'reviews';
 
 @Component({
   selector: 'app-admin-repair-monitor-page',
   standalone: true,
-  imports: [CurrencyPipe, DatePipe, PaginationComponent, RouterLink, SlicePipe, TitleCasePipe],
+  imports: [
+    AdminPageHeaderComponent,
+    CurrencyPipe,
+    DatePipe,
+    PaginationComponent,
+    RouterLink,
+    SlicePipe,
+    TitleCasePipe,
+  ],
   templateUrl: './admin-repair-monitor.page.html',
 })
 export class AdminRepairMonitorPage implements OnInit {

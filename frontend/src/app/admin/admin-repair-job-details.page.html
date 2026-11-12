@@ -11,23 +11,21 @@
       }
     </div>
   } @else if (job(); as repair) {
-    <header class="detail-header">
-      <div class="appliance-icon" aria-hidden="true">⚙</div>
-      <div class="identity">
-        <span class="eyebrow">REPAIR MONITORING · Request ID: {{ repair._id.slice(-8).toUpperCase() }}</span>
-        <h1 id="repair-title">{{ repair.appliance }}</h1>
-        <p>{{ repair.description }}</p>
-        <div class="header-meta">
-          <span class="status-badge" [attr.data-status]="repair.repairJob.status">
-            <span aria-hidden="true">●</span> {{ repair.repairJob.status.replaceAll('_', ' ') | titlecase }}
-          </span>
-          <span class="header-chip">▣ Created: {{ repair.createdAt | date: 'MMM d, y' }}</span>
-          @if (repair.serviceType) {
-            <span class="header-chip">⌂ {{ repair.serviceType.replace('_', ' ') | titlecase }}</span>
-          }
-        </div>
+    <app-admin-page-header>
+      <div adminPageLeading class="appliance-icon" aria-hidden="true">⚙</div>
+      <h1 adminPageTitle class="admin-page-title" id="repair-title">{{ repair.appliance }}</h1>
+      <p adminPageDescription class="admin-page-description">{{ repair.description }}</p>
+      <div class="header-meta" adminPageMeta>
+        <span class="status-badge" [attr.data-status]="repair.repairJob.status">
+          <span aria-hidden="true">●</span> {{ repair.repairJob.status.replaceAll('_', ' ') | titlecase }}
+        </span>
+        <span class="header-chip">▣ Created: {{ repair.createdAt | date: 'MMM d, y' }}</span>
+        @if (repair.serviceType) {
+          <span class="header-chip">⌂ {{ repair.serviceType.replace('_', ' ') | titlecase }}</span>
+        }
       </div>
-    </header>
+      <span adminPageActions class="header-chip">Request ID: {{ repair._id.slice(-8).toUpperCase() }}</span>
+    </app-admin-page-header>
 
     <nav class="detail-tabs" aria-label="Repair details sections">
       <button type="button" [class.active]="activeTab() === 'overview'" [attr.aria-pressed]="activeTab() === 'overview'" (click)="setTab('overview')"><span aria-hidden="true">▦</span> Overview</button>

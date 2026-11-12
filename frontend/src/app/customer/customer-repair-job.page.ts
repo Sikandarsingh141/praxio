@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CustomerRepairRequest, RepairReview } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
 import { CustomerRepairWorkflowComponent } from './customer-repair-workflow.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 type RepairRatingKey =
   | 'overallRating'
@@ -18,7 +19,13 @@ type RepairRatingKey =
 @Component({
   selector: 'app-customer-repair-job-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CustomerRepairWorkflowComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    CustomerRepairWorkflowComponent,
+  ],
   templateUrl: './customer-repair-job.page.html',
   styleUrl: './customer-repair-job.page.scss',
 })
@@ -215,6 +222,36 @@ export class CustomerRepairJobPage implements OnInit {
 
   get isRepairComplete(): boolean {
     return this.job()?.repairJob?.status === 'completed';
+  }
+
+  progressDate(index: number): string | undefined {
+    const repair = this.job();
+    const repairJob = repair?.repairJob;
+    const historyAt = (action: string): string | undefined =>
+      repairJob?.history?.find((event) => event.action === action)?.at;
+
+    switch (index) {
+      case 0:
+        return repair?.createdAt;
+      case 1:
+        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
+      case 2:
+        return (
+          repair?.acceptedQuotation?.respondedAt ??
+          repair?.acceptedQuotation?.createdAt ??
+          repair?.quotations[repair.quotations.length - 1]?.createdAt
+        );
+      case 3:
+        return (
+          historyAt('repair_completed') ??
+          repairJob?.repairCompletedAt ??
+          historyAt('ready_for_pickup') ??
+          repairJob?.readyForPickupAt ??
+          repairJob?.completedAt
+        );
+      default:
+        return undefined;
+    }
   }
 
   shopDirectionsUrl(address: string): string | null {

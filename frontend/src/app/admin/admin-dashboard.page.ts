@@ -15,6 +15,7 @@ import {
   FilterValues,
 } from '../shared/common-filter.component';
 import { PaginationComponent } from '../shared/pagination.component';
+import { AdminPageHeaderComponent } from './admin-page-header.component';
 import {
   AdminRegistrationRequest,
   AdminService,
@@ -37,6 +38,7 @@ interface RegistrationConfirmation {
   selector: 'app-admin-dashboard-page',
   standalone: true,
   imports: [
+    AdminPageHeaderComponent,
     CurrencyPipe,
     DatePipe,
     DecimalPipe,

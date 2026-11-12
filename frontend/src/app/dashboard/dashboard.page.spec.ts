@@ -22,12 +22,25 @@ describe('DashboardPage', () => {
     http.expectOne('/api/customer/repair-requests').flush({ data: { requests: [] } });
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('Your dashboard');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-title')?.textContent,
+    ).toContain('Dashboard');
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header .admin-page-description')
+        ?.textContent,
+    ).toContain('Everything you need for your next repair, all in one place.');
+    expect(text).toContain('Dashboard');
     expect(text).toContain('Explore repair services');
     expect(text).toContain('Air conditioning');
     expect(text).toContain('Find a repair expert near you');
     expect(text).toContain('Choose a service to find matching shops');
     expect(text).toContain('No repair requests yet');
+    expect(text).toContain('Register your repair business');
+    expect(
+      fixture.nativeElement
+        .querySelector('a[routerLink="/auth/register/shop"]')
+        ?.getAttribute('href'),
+    ).toBe('/auth/register/shop');
   });
 
   it('shows accurate lifecycle labels and dashboard counts for repairs', () => {

@@ -5,18 +5,22 @@ import { finalize } from 'rxjs';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { AuthService } from '../core/auth/auth.service';
 import { ShopPaymentStatus } from '../core/auth/auth.models';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 @Component({
   selector: 'app-shop-payment-page',
   standalone: true,
-  imports: [RouterLink, TitleCasePipe],
+  imports: [AdminPageHeaderComponent, RouterLink, TitleCasePipe],
   template: `
     <section class="registration-page shop-registration" aria-labelledby="shop-payment-title">
-      <header class="page-intro">
-        <span class="page-eyebrow">SHOP PARTNER ACCOUNT</span>
-        <h1 id="shop-payment-title">Complete your subscription payment</h1>
-        <p>Secure card details are collected directly by Stripe Checkout.</p>
-      </header>
+      <app-admin-page-header>
+        <h1 adminPageTitle class="admin-page-title" id="shop-payment-title">
+          Complete your subscription payment
+        </h1>
+        <p adminPageDescription class="admin-page-description">
+          Secure card details are collected directly by Stripe Checkout.
+        </p>
+      </app-admin-page-header>
 
       <div class="registration-card">
         @if (route.snapshot.queryParamMap.has('cancelled')) {

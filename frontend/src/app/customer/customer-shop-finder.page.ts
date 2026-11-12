@@ -26,6 +26,7 @@ import { CustomerPortalService } from './customer-portal.service';
 import { formatShopAddress } from '../shared/format-shop-address';
 import { PaginationComponent } from '../shared/pagination.component';
 import { ShopResultsMapComponent } from './shop-results-map.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
 const SHOP_SERVICES = [
   'AC Repair',
@@ -41,7 +42,14 @@ const SHOP_SERVICES = [
 @Component({
   selector: 'app-customer-shop-finder',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, RouterLink, ShopResultsMapComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    RouterLink,
+    ShopResultsMapComponent,
+  ],
   templateUrl: './customer-shop-finder.page.html',
   styleUrl: './customer-shop-finder.page.scss',
 })
