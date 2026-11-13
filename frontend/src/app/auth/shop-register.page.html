@@ -140,6 +140,7 @@
                     type="text"
                     formControlName="ownerFirstName"
                     autocomplete="given-name"
+                    placeholder="First name"
                     required
                   />
                 </div>
@@ -159,6 +160,7 @@
                     type="text"
                     formControlName="ownerLastName"
                     autocomplete="family-name"
+                    placeholder="Last name"
                     required
                   />
                 </div>
@@ -178,6 +180,7 @@
                     type="email"
                     formControlName="email"
                     autocomplete="email"
+                    placeholder="you@example.com"
                     required
                   />
                 </div>
@@ -323,6 +326,7 @@
                     [type]="passwordVisible() ? 'text' : 'password'"
                     formControlName="password"
                     autocomplete="new-password"
+                    placeholder="At least 8 characters"
                     required
                   />
                   <button
@@ -363,6 +367,7 @@
                     [type]="confirmPasswordVisible() ? 'text' : 'password'"
                     formControlName="confirmPassword"
                     autocomplete="new-password"
+                    placeholder="Enter your password again"
                     required
                   />
                   <button
