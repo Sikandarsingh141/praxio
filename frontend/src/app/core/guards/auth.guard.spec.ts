@@ -213,7 +213,7 @@ describe('authGuard', () => {
     httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
   });
 
-  it('restricts pending customers to their own profile route', async () => {
+  it('does not gate customer access on a registration approval status', async () => {
     const navigation = router.navigateByUrl('/private');
     await new Promise((resolve) => setTimeout(resolve, 0));
     httpTestingController.expectOne(`${environment.apiBaseUrl}/users/me`).flush({
@@ -223,12 +223,14 @@ describe('authGuard', () => {
           email: 'customer@example.com',
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'customer',
-          accountStatus: 'pending_approval',
+          accountStatus: 'active',
+          accountLifecycleStatus: 'active',
           customerAuthorization: {
             registrationStatus: 'pending',
-            accountStatus: 'pending_approval',
-            destination: '/customer/profile',
-            submittedAt: '2026-01-01T00:00:00.000Z',
+            accountStatus: 'active',
+            accountLifecycleStatus: 'active',
+            destination: '/customer',
+            submittedAt: null,
             reviewedAt: null,
             declineReason: null,
           },
@@ -236,7 +238,7 @@ describe('authGuard', () => {
       },
     });
     await navigation;
-    expect(router.url).toBe('/customer/profile');
+    expect(router.url).toBe('/private');
     httpTestingController.expectNone(`${environment.apiBaseUrl}/users/me`);
   });
 

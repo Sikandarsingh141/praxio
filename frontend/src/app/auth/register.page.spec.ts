@@ -75,7 +75,7 @@ describe('RegisterPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
-      'awaiting Admin approval',
+      'Your account is ready. You can now sign in.',
     );
   });
 });

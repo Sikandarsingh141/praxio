@@ -1,8 +1,4 @@
 <section class="messages-page" [class.mobile-chat-open]="!!selected()">
-  <app-admin-page-header>
-    <h1 adminPageTitle class="admin-page-title">Messages</h1>
-    <p adminPageDescription class="admin-page-description">Repair conversations</p>
-  </app-admin-page-header>
   @if (error()) {
     <p class="chat-error" role="alert">{{ error() }}</p>
   }

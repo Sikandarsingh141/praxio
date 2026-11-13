@@ -88,11 +88,10 @@ export class AdminDashboardPage implements OnInit {
     this.accountTypeFilter() === 'shop'
       ? 'Review repair shop registrations and manage shop account access.'
       : this.accountTypeFilter() === 'customer'
-        ? 'Review customer registrations and manage customer account access.'
-        : 'Search customer and repair shop accounts, review registrations, and manage account access.';
-  readonly filterConfig: FilterConfig = {
-    title: 'User filters',
-    fields: [
+        ? 'Manage customer accounts and access.'
+        : 'Search customer and repair shop accounts, review Shop registrations, and manage account access.';
+  get filterConfig(): FilterConfig {
+    const fields: FilterConfig['fields'] = [
       {
         key: 'accountType',
         label: 'User type',
@@ -126,8 +125,15 @@ export class AdminDashboardPage implements OnInit {
         ],
       },
       { key: 'registrationDate', label: 'Registration date', type: 'date-range' },
-    ],
-  };
+    ];
+    return {
+      title: 'User filters',
+      fields:
+        this.accountTypeFilter() === 'customer'
+          ? fields.filter((field) => field.key !== 'approvalStatus')
+          : fields,
+    };
+  }
 
   ngOnInit(): void {
     this.searchChanges
@@ -193,9 +199,14 @@ export class AdminDashboardPage implements OnInit {
 
   setAccountTypeFilter(accountType: 'all' | 'customer' | 'shop'): void {
     this.accountTypeFilter.set(accountType);
+    if (accountType === 'customer') {
+      this.statusFilter.set('all');
+      this.accountStatusFilter.set('all');
+    }
     this.appliedFilters.update((filters) => ({
       ...filters,
       accountType: accountType === 'all' ? undefined : accountType,
+      ...(accountType === 'customer' ? { approvalStatus: undefined } : {}),
     }));
     this.removeEmptyFilters();
     this.page.set(1);
@@ -297,7 +308,11 @@ export class AdminDashboardPage implements OnInit {
   }
 
   approve(request: AdminRegistrationRequest): void {
-    if (this.activeAction() || request.registrationStatus !== 'pending') {
+    if (
+      this.activeAction() ||
+      request.accountType !== 'shop' ||
+      request.registrationStatus !== 'pending'
+    ) {
       return;
     }
 
@@ -315,7 +330,11 @@ export class AdminDashboardPage implements OnInit {
   }
 
   beginDecline(request: AdminRegistrationRequest): void {
-    if (this.activeAction() || request.registrationStatus !== 'pending') {
+    if (
+      this.activeAction() ||
+      request.accountType !== 'shop' ||
+      request.registrationStatus !== 'pending'
+    ) {
       return;
     }
 

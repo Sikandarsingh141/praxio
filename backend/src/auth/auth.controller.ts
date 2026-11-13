@@ -51,7 +51,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Register a new account' })
   @ApiResponse({
     status: 201,
-    description: 'Customer registration submitted for approval.',
+    description: 'Customer account created and ready to use.',
   })
   async register(
     @Body() input: RegisterDto,

@@ -21,7 +21,7 @@ export interface RegistrationSubmission {
     registrationNumber: string;
     registrationStatus: 'pending';
     submittedAt: Date;
-  };
+  } | null;
 }
 
 @Injectable()
@@ -38,6 +38,15 @@ export class RegistrationService {
   ) {}
 
   async submit(account: RegistrationAccount): Promise<RegistrationSubmission> {
+    if (account.accountType === 'customer') {
+      const user = await this.usersService.createRegistrationAccount({
+        ...account,
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      });
+      return { user, registrationRequest: null };
+    }
+
     const session = await this.connection.startSession();
     let createdUser: UserDocument | undefined;
     let registrationRequest: RegistrationRequestDocument | undefined;
@@ -59,8 +68,7 @@ export class RegistrationService {
               accountType: account.accountType,
               registrationNumber: this.createRegistrationNumber(),
               registrationStatus: 'pending',
-              paymentStatus:
-                account.accountType === 'shop' ? 'unpaid' : 'not_required',
+              paymentStatus: 'unpaid',
               submittedAt: new Date(),
             },
           ],
@@ -77,10 +85,8 @@ export class RegistrationService {
           await this.notificationsService.notifyAdminsOfRegistration(
             admins,
             createdRequest._id,
-            account.accountType,
-            (account.shopDetails?.shopName ??
-              [account.firstName, account.lastName].filter(Boolean).join(' ')) ||
-              'A new customer',
+            'shop',
+            account.shopDetails?.shopName ?? 'A new repair shop',
             session,
           );
         } else {
@@ -98,15 +104,10 @@ export class RegistrationService {
     }
 
     if (adminIds.length > 0) {
-      const accountLabel = account.accountType === 'shop' ? 'Shop' : 'Customer';
-      const applicantName =
-        account.accountType === 'shop'
-          ? account.shopDetails?.shopName
-          : [account.firstName, account.lastName].filter(Boolean).join(' ');
-      const subject = applicantName || 'A new customer';
+      const subject = account.shopDetails?.shopName || 'A new repair shop';
       await this.notificationsService.sendToUsers(
         adminIds.map((id) => new Types.ObjectId(id)),
-        `New ${accountLabel} Registration`,
+        'New Shop Registration',
         `${subject} has submitted a registration request. Please review the application.`,
         'new_registration',
         registrationRequest._id,

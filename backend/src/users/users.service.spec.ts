@@ -92,7 +92,7 @@ describe('UsersService', () => {
       email: 'person@example.com',
       passwordHash: 'bcrypt-hash',
       accountType: 'customer',
-      accountStatus: 'pending_approval',
+      accountStatus: 'active',
       notificationToken: 'firebase-device-token-value-1234567890',
     });
 
@@ -120,6 +120,28 @@ describe('UsersService', () => {
   it('returns no user for an invalid MongoDB ObjectId', async () => {
     await expect(service.findById('not-an-object-id')).resolves.toBeNull();
     expect(model.findById).not.toHaveBeenCalled();
+  });
+
+  it('activates legacy customer accounts that were waiting for approval', async () => {
+    await service.activateLegacyCustomerAccount(
+      '507f1f77bcf86cd799439011',
+    );
+
+    expect(model.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        _id: expect.anything(),
+        accountType: 'customer',
+        accountStatus: { $in: ['pending_approval', 'rejected'] },
+        $or: [
+          { accountLifecycleStatus: 'inactive' },
+          { accountLifecycleStatus: { $exists: false } },
+        ],
+      },
+      {
+        $set: { accountStatus: 'active', accountLifecycleStatus: 'active' },
+      },
+      { new: true, runValidators: true },
+    );
   });
 
   it('selects the password hash only for password-change authentication', async () => {

@@ -28,6 +28,37 @@ independently runnable.
    In Atlas, allow network access only from the required application IPs and
    grant the database user only the privileges it needs.
 
+   To seed 10 local test Shops (7 India locations and 3 US locations), use a
+   development database only. From `backend\`, set a test password and confirm
+   the operation before running the script:
+
+   ```powershell
+   $env:NODE_ENV = 'development'
+   $env:SEED_DEMO_SHOPS_CONFIRM = 'YES'
+   $env:DEMO_SHOP_PASSWORD = '<choose-a-test-password-of-at-least-8-characters>'
+   npm run seed:demo-shops
+   ```
+
+   The script reads `MONGO_URI` from `backend\.env`, refuses to overwrite
+   existing demo accounts, and marks the Shop subscription payment as simulated
+   and approved for marketplace testing. It does not create Stripe charges or
+   invoices. The initial batch uses `demo.shop01@example.test` through
+   `demo.shop10@example.test`.
+
+   To add another 100 Shops, keep the same development-only environment
+   settings and run:
+
+   ```powershell
+   npm run seed:additional-demo-shops
+   ```
+
+   This adds `demo.shop11@example.test` through `demo.shop110@example.test`:
+   60 India locations, 10 US locations outside California, 10 Canada, 10
+   Australia, and 10 California. Both batches share the password supplied
+   above. MongoDB transactions are required. The password must include
+   uppercase and lowercase letters and a number, matching Shop registration
+   rules.
+
    For shop subscription testing, rotate any Stripe key that has been shared,
    set the new test-mode `STRIPE_SECRET_KEY` only in `backend\.env`, then run
    Stripe CLI and set its `whsec_...` signing secret as

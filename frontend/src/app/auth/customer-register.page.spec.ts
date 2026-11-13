@@ -89,13 +89,13 @@ describe('CustomerRegisterPage', () => {
           email: 'customer@example.com',
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'customer',
-          accountStatus: 'pending_approval',
+          accountStatus: 'active',
         },
       },
     });
 
     expect(page.form.invalid).toBe(true);
-    expect(page.successMessage()).toContain('awaiting Admin approval');
+    expect(page.successMessage()).toContain('You can now sign in');
   });
 
   it('submits captured customer coordinates with the registration', () => {
@@ -132,7 +132,7 @@ describe('CustomerRegisterPage', () => {
           email: 'customer@example.com',
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'customer',
-          accountStatus: 'pending_approval',
+          accountStatus: 'active',
         },
       },
     });
@@ -199,7 +199,7 @@ describe('CustomerRegisterPage', () => {
           email: 'customer@example.com',
           createdAt: '2026-01-01T00:00:00.000Z',
           accountType: 'customer',
-          accountStatus: 'pending_approval',
+          accountStatus: 'active',
         },
       },
     });

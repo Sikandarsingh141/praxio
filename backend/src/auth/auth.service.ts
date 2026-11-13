@@ -131,7 +131,7 @@ export class AuthService {
         firstName: input.firstName,
         lastName: input.lastName,
         accountType: 'customer',
-        accountStatus: 'pending_approval',
+        accountStatus: 'active',
       });
       return {
         user: this.toSafeUser(submission.user),
@@ -167,7 +167,7 @@ export class AuthService {
             }
           : {}),
         accountType: 'customer',
-        accountStatus: 'pending_approval',
+        accountStatus: 'active',
         ...(input.notificationToken
           ? { notificationToken: input.notificationToken }
           : {}),
@@ -228,6 +228,11 @@ export class AuthService {
             : {}),
         },
       });
+      if (!submission.registrationRequest) {
+        throw new Error(
+          'Shop registration did not return its registration request',
+        );
+      }
       return {
         user: this.toSafeUser(submission.user),
         registrationRequest: submission.registrationRequest,
@@ -303,14 +308,13 @@ export class AuthService {
       });
     }
 
+    const safeUser = await this.toAuthenticatedUser(user);
     const accessToken = await this.jwtService.signAsync({
       sub: user._id.toString(),
       email: user.email,
       accountType,
-      accountStatus,
+      accountStatus: safeUser.accountStatus,
     });
-
-    const safeUser = await this.toAuthenticatedUser(user);
     return {
       accessToken,
       user: safeUser,
@@ -374,13 +378,17 @@ export class AuthService {
 
   async toAuthenticatedUser(user: UserDocument): Promise<SafeUser> {
     const safeUser = this.toSafeUser(user);
-    if (user.accountType === 'customer') {
+    const accountType = user.accountType ?? 'customer';
+    if (accountType === 'customer') {
+      const customerAuthorization = await this.getCustomerAuthorization(user);
       return {
         ...safeUser,
-        customerAuthorization: await this.getCustomerAuthorization(user),
+        accountStatus: customerAuthorization.accountStatus,
+        accountLifecycleStatus: customerAuthorization.accountLifecycleStatus,
+        customerAuthorization,
       };
     }
-    if (user.accountType !== 'shop') {
+    if (accountType !== 'shop') {
       return safeUser;
     }
 
@@ -393,28 +401,32 @@ export class AuthService {
   async getCustomerAuthorization(
     user: UserDocument,
   ): Promise<CustomerAuthorization> {
-    const request = await this.registrationService.findRequestForUser(
-      user._id.toString(),
-      'customer',
-    );
-    const registrationStatus = request?.registrationStatus ?? 'not_found';
-    const accountStatus = user.accountStatus ?? 'active';
+    const normalizedUser =
+      (user.accountType ?? 'customer') === 'customer' &&
+      (user.accountStatus === 'pending_approval' ||
+        user.accountStatus === 'rejected') &&
+      (!user.accountLifecycleStatus ||
+        user.accountLifecycleStatus === 'inactive')
+        ? ((await this.usersService.activateLegacyCustomerAccount(
+            user._id.toString(),
+          )) ?? user)
+        : user;
+    const accountStatus = normalizedUser.accountStatus ?? 'active';
     const accountLifecycleStatus =
-      user.accountLifecycleStatus ??
+      normalizedUser.accountLifecycleStatus ??
       (accountStatus === 'active' ? 'active' : 'inactive');
-    const approved =
-      accountStatus === 'active' &&
-      accountLifecycleStatus === 'active' &&
-      (registrationStatus === 'approved' || registrationStatus === 'not_found');
 
     return {
-      registrationStatus,
+      registrationStatus: 'not_found',
       accountStatus,
       accountLifecycleStatus,
-      destination: approved ? '/customer' : '/customer/profile',
-      submittedAt: request?.submittedAt ?? null,
-      reviewedAt: request?.reviewedAt ?? null,
-      declineReason: request?.declineReason ?? null,
+      destination:
+        accountStatus === 'active' && accountLifecycleStatus === 'active'
+          ? '/customer'
+          : '/customer/profile',
+      submittedAt: null,
+      reviewedAt: null,
+      declineReason: null,
     };
   }
 

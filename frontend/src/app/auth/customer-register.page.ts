@@ -212,9 +212,7 @@ export class CustomerRegisterPage {
           this.form.reset();
           this.profileImageData.set('');
           this.profileImageName.set('');
-          this.successMessage.set(
-            'Your registration has been submitted and is awaiting Admin approval. Sign-in is unavailable until your account is approved.',
-          );
+          this.successMessage.set('Your customer account is ready. You can now sign in.');
         },
         error: (error: unknown) =>
           this.errorMessage.set(

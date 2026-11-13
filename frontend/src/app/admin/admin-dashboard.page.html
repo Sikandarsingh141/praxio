@@ -70,8 +70,36 @@
 
   <section class="request-panel" [attr.aria-label]="pageTitle() + ' accounts'">
     <div class="panel-toolbar">
-      <div class="status-tabs" aria-label="Filter by registration status">
-        @for (status of ['all', 'pending', 'approved', 'declined', 'suspended']; track status) {
+      <div
+        class="status-tabs"
+        [attr.aria-label]="
+          accountTypeFilter() === 'customer' ? 'Filter by account status' : 'Filter by registration status'
+        "
+      >
+        @if (accountTypeFilter() === 'customer') {
+          <button
+            type="button"
+            [class.selected]="accountStatusFilter() === 'all'"
+            [attr.aria-pressed]="accountStatusFilter() === 'all'"
+            (click)="setAccountStatusFilter('all')"
+          >
+            All customers
+            @if (statistics(); as summary) {
+              <span>{{ summary.totalCustomers }}</span>
+            }
+          </button>
+          @for (status of ['active', 'inactive', 'suspended']; track status) {
+            <button
+              type="button"
+              [class.selected]="accountStatusFilter() === status"
+              [attr.aria-pressed]="accountStatusFilter() === status"
+              (click)="setAccountStatusFilter($any(status))"
+            >
+              {{ status | titlecase }}
+            </button>
+          }
+        } @else {
+          @for (status of ['all', 'pending', 'approved', 'declined', 'suspended']; track status) {
           <button
             type="button"
             [class.selected]="statusFilter() === status"
@@ -102,6 +130,7 @@
               <span>{{ summary.pendingApprovals }}</span>
             }
           </button>
+          }
         }
       </div>
       <span class="request-count">
@@ -149,7 +178,9 @@
         <select [value]="sortBy()" (change)="updateSort($event)">
           <option value="registrationDate">Registration date</option>
           <option value="name">Name</option>
-          <option value="status">Approval status</option>
+          @if (accountTypeFilter() !== 'customer') {
+            <option value="status">Approval status</option>
+          }
         </select>
       </label>
       <button type="button" class="sort-order" (click)="toggleSortOrder()">
@@ -175,10 +206,10 @@
         <p>
           @if (accountTypeFilter() === 'shop') {
             New repair shop registrations will appear here after submission.
-          } @else if (accountTypeFilter() === 'customer') {
-            New customer registrations will appear here after submission.
+          }           @else if (accountTypeFilter() === 'customer') {
+            New customer accounts will appear here after registration.
           } @else {
-            New Customer and Shop registrations will appear here after submission.
+            New customer accounts and Shop registrations will appear here after submission.
           }
         </p>
       </div>
@@ -191,7 +222,9 @@
               <th scope="col">Contact</th>
               <th scope="col">User type</th>
               <th scope="col">Registered</th>
-              <th scope="col">Approval</th>
+              @if (accountTypeFilter() !== 'customer') {
+                <th scope="col">Approval</th>
+              }
               <th scope="col">Account</th>
               <th scope="col">Payment</th>
               <th scope="col">Actions</th>
@@ -242,7 +275,11 @@
                   </span>
                 </td>
                 <td data-label="Registered">{{ request.submittedAt | date: 'mediumDate' }}</td>
+                @if (accountTypeFilter() !== 'customer') {
                 <td data-label="Approval">
+                  @if (request.accountType === 'customer') {
+                    <span class="no-action">Not required</span>
+                  } @else {
                   <span
                     class="status-badge"
                     [class.pending]="request.registrationStatus === 'pending'"
@@ -254,7 +291,9 @@
                   @if (request.declineReason) {
                     <span class="decline-reason">{{ request.declineReason }}</span>
                   }
+                  }
                 </td>
+                }
                 <td data-label="Account">
                   <span
                     class="status-badge"
@@ -294,7 +333,9 @@
                 </td>
                 <td data-label="Actions">
                   <div class="row-actions">
-                    @if (request.registrationStatus === 'pending') {
+                    @if (
+                      request.accountType === 'shop' && request.registrationStatus === 'pending'
+                    ) {
                       <button
                         type="button"
                         class="approve-button"
@@ -341,7 +382,10 @@
                     <details class="action-menu">
                       <summary aria-label="More account actions" title="More actions">⋮</summary>
                       <div class="action-menu-content">
-                        @if (request.registrationStatus === 'pending') {
+                        @if (
+                          request.accountType === 'shop' &&
+                          request.registrationStatus === 'pending'
+                        ) {
                           <button
                             type="button"
                             class="menu-danger"

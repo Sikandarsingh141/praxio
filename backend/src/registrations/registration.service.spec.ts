@@ -69,7 +69,7 @@ describe('RegistrationService', () => {
     service = module.get<RegistrationService>(RegistrationService);
   });
 
-  it('creates a pending account, registration request, and admin notification atomically', async () => {
+  it('creates a customer account immediately without a registration request or Admin notification', async () => {
     const result = await service.submit({
       email: 'person@example.com',
       passwordHash: 'bcrypt-hash',
@@ -82,48 +82,23 @@ describe('RegistrationService', () => {
     });
 
     expect(usersService.createRegistrationAccount).toHaveBeenCalledWith(
-      expect.objectContaining({ accountStatus: 'pending_approval' }),
-      session,
+      expect.objectContaining({
+        accountType: 'customer',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      }),
     );
-    expect(registrationRequestsModel.create).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          userId: createdUser._id,
-          accountType: 'customer',
-          registrationStatus: 'pending',
-        }),
-      ],
-      { session },
-    );
-    expect(
-      notificationsService.notifyAdminsOfRegistration,
-    ).toHaveBeenCalledWith(
-      ['507f1f77bcf86cd799439013'],
-      createdRequest._id,
-      'customer',
-      'Customer Example',
-      session,
-    );
-    expect(notificationsService.sendToUsers).toHaveBeenCalledWith(
-      [new Types.ObjectId('507f1f77bcf86cd799439013')],
-      'New Customer Registration',
-      'Customer Example has submitted a registration request. Please review the application.',
-      'new_registration',
-      createdRequest._id,
-    );
+    expect(registrationRequestsModel.create).not.toHaveBeenCalled();
+    expect(notificationsService.notifyAdminsOfRegistration).not.toHaveBeenCalled();
+    expect(notificationsService.sendToUsers).not.toHaveBeenCalled();
     expect(result).toEqual({
       user: createdUser,
-      registrationRequest: {
-        id: '507f1f77bcf86cd799439012',
-        registrationNumber: createdRequest.registrationNumber,
-        registrationStatus: 'pending',
-        submittedAt: createdRequest.submittedAt,
-      },
+      registrationRequest: null,
     });
-    expect(session.endSession).toHaveBeenCalled();
+    expect(connection.startSession).not.toHaveBeenCalled();
   });
 
-  it('creates a pending registration without Admin notifications when no Admin is active', async () => {
+  it('does not create customer registration approvals when no Admin is active', async () => {
     usersService.findActiveAdminIds.mockResolvedValue([]);
 
     const result = await service.submit({
@@ -134,21 +109,12 @@ describe('RegistrationService', () => {
     });
 
     expect(usersService.createRegistrationAccount).toHaveBeenCalled();
-    expect(registrationRequestsModel.create).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          userId: createdUser._id,
-          accountType: 'customer',
-          registrationStatus: 'pending',
-        }),
-      ],
-      { session },
-    );
+    expect(registrationRequestsModel.create).not.toHaveBeenCalled();
     expect(
       notificationsService.notifyAdminsOfRegistration,
     ).not.toHaveBeenCalled();
-    expect(result.registrationRequest.registrationStatus).toBe('pending');
-    expect(session.endSession).toHaveBeenCalled();
+    expect(result.registrationRequest).toBeNull();
+    expect(connection.startSession).not.toHaveBeenCalled();
   });
 
   it('marks shop registrations as unpaid until Stripe confirms checkout', async () => {

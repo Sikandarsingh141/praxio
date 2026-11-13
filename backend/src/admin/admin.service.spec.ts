@@ -877,6 +877,7 @@ describe('AdminService', () => {
     expect(usersService.findById).toHaveBeenCalledWith(userId.toString());
     expect(registrationRequests.findOne).toHaveBeenCalledWith({
       userId,
+      accountType: 'shop',
     });
   });
 
@@ -980,7 +981,7 @@ describe('AdminService', () => {
     );
   });
 
-  it('rejects account status changes for registrations that are not approved', async () => {
+  it('allows customer account status changes without registration approval', async () => {
     requestQuery.exec.mockResolvedValue({ registrationStatus: 'pending' });
 
     await expect(
@@ -990,9 +991,10 @@ describe('AdminService', () => {
         'suspended',
         'Reason',
       ),
-    ).rejects.toMatchObject({ status: 409 });
-    expect(usersModel.findOneAndUpdate).not.toHaveBeenCalled();
-    expect(auditLogs.create).not.toHaveBeenCalled();
+    ).resolves.toEqual({ accountStatus: 'suspended' });
+    expect(registrationRequests.findOne).not.toHaveBeenCalled();
+    expect(usersModel.findOneAndUpdate).toHaveBeenCalled();
+    expect(auditLogs.create).toHaveBeenCalled();
   });
 
   it('returns not found for missing user profiles', async () => {
@@ -1047,7 +1049,10 @@ describe('AdminService', () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
-  it('approves a new customer registration and activates the account in one transaction', async () => {
+  it('approves a paid Shop registration and activates the account in one transaction', async () => {
+    pendingRequest.accountType = 'shop';
+    pendingRequest.paymentStatus = 'paid';
+    requestQuery.exec.mockResolvedValue(pendingRequest);
     usersService.updateRegistrationAccountStatus.mockResolvedValue(true);
 
     const result = await service.approveRegistration(
@@ -1063,7 +1068,7 @@ describe('AdminService', () => {
     expect(registrationRequests.findOneAndUpdate).toHaveBeenCalledTimes(1);
     expect(usersService.updateRegistrationAccountStatus).toHaveBeenCalledWith(
       pendingRequest.userId.toString(),
-      'customer',
+      'shop',
       'active',
       session,
     );
@@ -1080,6 +1085,28 @@ describe('AdminService', () => {
       ],
       { session },
     );
+    pendingRequest.accountType = 'customer';
+    pendingRequest.paymentStatus = 'not_required';
+  });
+
+  it('does not allow Admin approval or decline for customer accounts', async () => {
+    pendingRequest.accountType = 'customer';
+    pendingRequest.paymentStatus = 'not_required';
+    requestQuery.exec.mockResolvedValue(pendingRequest);
+
+    await expect(
+      service.approveRegistration(
+        pendingRequest._id.toString(),
+        '507f1f77bcf86cd799439013',
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      response: { message: 'Customer accounts do not require registration approval' },
+    });
+
+    expect(registrationRequests.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(usersService.updateRegistrationAccountStatus).not.toHaveBeenCalled();
+    expect(notificationsService.notifyApplicantOfRegistrationDecision).not.toHaveBeenCalled();
   });
 
   it('does not approve an unpaid shop registration', async () => {

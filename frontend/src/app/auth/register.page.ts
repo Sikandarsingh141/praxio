@@ -53,7 +53,7 @@ export class RegisterPage {
         next: () => {
           this.form.reset();
           this.successMessage.set(
-            'Your registration has been submitted and is awaiting Admin approval. Sign-in is unavailable until your account is approved.',
+            'Your account is ready. You can now sign in.',
           );
         },
         error: (error: unknown) =>

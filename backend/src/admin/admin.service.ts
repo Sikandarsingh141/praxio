@@ -924,9 +924,13 @@ export class AdminService {
           shopResponses: { $elemMatch: { status: 'expired' } },
         })
         .exec(),
-      countedStatus(this.repairRequests, {}, {
-        $ifNull: ['$repairJob.status', '$status'],
-      }),
+      countedStatus(
+        this.repairRequests,
+        {},
+        {
+          $ifNull: ['$repairJob.status', '$status'],
+        },
+      ),
       this.repairRequests
         .aggregate<{ _id: string; count: number }>([
           { $unwind: '$shopResponses' },
@@ -1129,10 +1133,7 @@ export class AdminService {
               $expr: {
                 $eq: [
                   {
-                    $ifNull: [
-                      '$repair.repairJob.status',
-                      '$repair.status',
-                    ],
+                    $ifNull: ['$repair.repairJob.status', '$repair.status'],
                   },
                   'completed',
                 ],
@@ -1778,22 +1779,30 @@ export class AdminService {
       {
         $addFields: {
           computedRegistrationStatus: {
-            $ifNull: [
-              '$registrationRequest.registrationStatus',
+            $cond: [
+              { $eq: ['$accountType', 'customer'] },
+              'approved',
               {
-                $switch: {
-                  branches: [
-                    {
-                      case: { $eq: ['$accountStatus', 'pending_approval'] },
-                      then: 'pending',
+                $ifNull: [
+                  '$registrationRequest.registrationStatus',
+                  {
+                    $switch: {
+                      branches: [
+                        {
+                          case: {
+                            $eq: ['$accountStatus', 'pending_approval'],
+                          },
+                          then: 'pending',
+                        },
+                        {
+                          case: { $eq: ['$accountStatus', 'rejected'] },
+                          then: 'declined',
+                        },
+                      ],
+                      default: 'approved',
                     },
-                    {
-                      case: { $eq: ['$accountStatus', 'rejected'] },
-                      then: 'declined',
-                    },
-                  ],
-                  default: 'approved',
-                },
+                  },
+                ],
               },
             ],
           },
@@ -1814,7 +1823,11 @@ export class AdminService {
             ],
           },
           registrationDate: {
-            $ifNull: ['$registrationRequest.submittedAt', '$createdAt'],
+            $cond: [
+              { $eq: ['$accountType', 'customer'] },
+              '$createdAt',
+              { $ifNull: ['$registrationRequest.submittedAt', '$createdAt'] },
+            ],
           },
           displayName: {
             $ifNull: [
@@ -1936,8 +1949,20 @@ export class AdminService {
               $project: {
                 _id: 1,
                 userId: '$_id',
-                registrationRequestId: '$registrationRequest._id',
-                registrationNumber: '$registrationRequest.registrationNumber',
+                registrationRequestId: {
+                  $cond: [
+                    { $eq: ['$accountType', 'shop'] },
+                    '$registrationRequest._id',
+                    null,
+                  ],
+                },
+                registrationNumber: {
+                  $cond: [
+                    { $eq: ['$accountType', 'shop'] },
+                    '$registrationRequest.registrationNumber',
+                    '',
+                  ],
+                },
                 applicantName: mongoUserDisplayName(
                   '$firstName',
                   '$lastName',
@@ -2109,22 +2134,30 @@ export class AdminService {
         {
           $addFields: {
             approvalStatus: {
-              $ifNull: [
-                '$registrationRequest.registrationStatus',
+              $cond: [
+                { $eq: ['$accountType', 'customer'] },
+                'approved',
                 {
-                  $switch: {
-                    branches: [
-                      {
-                        case: { $eq: ['$accountStatus', 'pending_approval'] },
-                        then: 'pending',
+                  $ifNull: [
+                    '$registrationRequest.registrationStatus',
+                    {
+                      $switch: {
+                        branches: [
+                          {
+                            case: {
+                              $eq: ['$accountStatus', 'pending_approval'],
+                            },
+                            then: 'pending',
+                          },
+                          {
+                            case: { $eq: ['$accountStatus', 'rejected'] },
+                            then: 'declined',
+                          },
+                        ],
+                        default: 'approved',
                       },
-                      {
-                        case: { $eq: ['$accountStatus', 'rejected'] },
-                        then: 'declined',
-                      },
-                    ],
-                    default: 'approved',
-                  },
+                    },
+                  ],
                 },
               ],
             },
@@ -2193,9 +2226,12 @@ export class AdminService {
       throw new NotFoundException('User account not found');
     }
 
-    const registration = await this.registrationRequests
-      .findOne({ userId: user._id })
-      .exec();
+    const registration =
+      user.accountType === 'shop'
+        ? await this.registrationRequests
+            .findOne({ userId: user._id, accountType: 'shop' })
+            .exec()
+        : null;
     const shop = user.accountType === 'shop' ? user.shopDetails : undefined;
     const location = shop?.location ?? user.location;
     const requestRecords = await this.repairRequests
@@ -2244,10 +2280,10 @@ export class AdminService {
           )),
       );
     const isActiveRepair = (record: (typeof requestRecords)[number]): boolean =>
-        hasAssignedRepair(record) &&
-        !['completed', 'repair_declined'].includes(
-          record.repairJob?.status ?? '',
-        );
+      hasAssignedRepair(record) &&
+      !['completed', 'repair_declined'].includes(
+        record.repairJob?.status ?? '',
+      );
     const repairActivityStatus = (
       record: (typeof requestRecords)[number],
     ): string => {
@@ -2263,12 +2299,14 @@ export class AdminService {
       return record.status;
     };
     const approvalStatus =
-      registration?.registrationStatus ??
-      (user.accountStatus === 'pending_approval'
-        ? 'pending'
-        : user.accountStatus === 'rejected'
-          ? 'declined'
-          : 'approved');
+      user.accountType === 'customer'
+        ? 'approved'
+        : (registration?.registrationStatus ??
+          (user.accountStatus === 'pending_approval'
+            ? 'pending'
+            : user.accountStatus === 'rejected'
+              ? 'declined'
+              : 'approved'));
 
     return {
       id: user._id.toString(),
@@ -2403,17 +2441,22 @@ export class AdminService {
           );
         }
 
-        const registration = await this.registrationRequests
-          .findOne({ userId: targetUserId })
-          .session(session)
-          .exec();
+        const registration =
+          user.accountType === 'shop'
+            ? await this.registrationRequests
+                .findOne({ userId: targetUserId, accountType: 'shop' })
+                .session(session)
+                .exec()
+            : null;
         approvalStatus =
-          registration?.registrationStatus ??
-          (user.accountStatus === 'pending_approval'
-            ? 'pending'
-            : user.accountStatus === 'rejected'
-              ? 'declined'
-              : 'approved');
+          user.accountType === 'customer'
+            ? 'approved'
+            : (registration?.registrationStatus ??
+              (user.accountStatus === 'pending_approval'
+                ? 'pending'
+                : user.accountStatus === 'rejected'
+                  ? 'declined'
+                  : 'approved'));
         const currentLifecycleStatus =
           user.accountLifecycleStatus ??
           (user.accountStatus === 'active' ? 'active' : 'inactive');
@@ -2646,6 +2689,11 @@ export class AdminService {
         if (request.userId.toString() === adminId) {
           throw new ConflictException(
             'Administrators cannot review their own registration',
+          );
+        }
+        if (request.accountType !== 'shop') {
+          throw new ConflictException(
+            'Customer accounts do not require registration approval',
           );
         }
         if (request.registrationStatus !== 'pending') {

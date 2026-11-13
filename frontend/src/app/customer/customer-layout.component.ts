@@ -46,8 +46,8 @@ export class CustomerLayout implements OnInit, OnDestroy {
     const user = this.authService.currentUser();
     return (
       user?.accountStatus !== 'active' ||
-      user.customerAuthorization?.registrationStatus === 'pending' ||
-      user.customerAuthorization?.registrationStatus === 'declined'
+      user?.accountLifecycleStatus === 'inactive' ||
+      user?.accountLifecycleStatus === 'suspended'
     );
   });
 

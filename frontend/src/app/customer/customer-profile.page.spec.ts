@@ -46,7 +46,8 @@ describe('CustomerProfilePage', () => {
     ).toContain('Manage your personal information and account security.');
     expect(fixture.nativeElement.textContent).toContain('Customer Example');
     expect(fixture.nativeElement.textContent).toContain('customer@example.com');
-    expect(fixture.nativeElement.textContent).toContain('Registration approved');
+    expect(fixture.nativeElement.textContent).not.toContain('Registration status');
+    expect(fixture.nativeElement.textContent).not.toContain('Registration approved');
     expect(
       (fixture.nativeElement.querySelector('.profile-photo img') as HTMLImageElement).src,
     ).toContain('Y3VzdG9tZXI=');

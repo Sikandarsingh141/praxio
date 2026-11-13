@@ -36,19 +36,21 @@ describe('AuthController', () => {
     user: {
       ...safeUser,
       accountType: 'customer',
-      accountStatus: 'pending_approval',
+      accountStatus: 'active',
     },
-    registrationRequest,
+    registrationRequest: null,
   };
   const authService = {
     register: jest.fn().mockResolvedValue(registrationResult),
     registerCustomer: jest.fn().mockResolvedValue(registrationResult),
     registerShop: jest.fn().mockResolvedValue({
       ...registrationResult,
+      registrationRequest,
       checkoutUrl: 'https://checkout.stripe.test/session',
       user: {
         ...registrationResult.user,
         accountType: 'shop',
+        accountStatus: 'pending_approval',
       },
     }),
     retryShopCheckout: jest
@@ -185,8 +187,8 @@ describe('AuthController', () => {
         email: safeUser.email,
       }),
     );
-    expect(response.text).toContain('"accountStatus":"pending_approval"');
-    expect(response.text).toContain('"registrationStatus":"pending"');
+    expect(response.text).toContain('"accountStatus":"active"');
+    expect(response.text).toContain('"registrationRequest":null');
     expect(response.text).not.toContain('password');
   });
 
@@ -223,8 +225,8 @@ describe('AuthController', () => {
       })
       .expect(201);
 
-    expect(response.text).toContain('"accountStatus":"pending_approval"');
-    expect(response.text).toContain('"registrationStatus":"pending"');
+    expect(response.text).toContain('"accountStatus":"active"');
+    expect(response.text).toContain('"registrationRequest":null');
     expect(authService.registerCustomer).toHaveBeenCalledWith(
       expect.objectContaining({
         firstName: 'Customer',

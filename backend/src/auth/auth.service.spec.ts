@@ -28,6 +28,7 @@ describe('AuthService', () => {
     findById: jest.fn(),
     findByIdForAuthentication: jest.fn(),
     updatePasswordHash: jest.fn(),
+    activateLegacyCustomerAccount: jest.fn(),
   };
   const registrationService = {
     submit: jest.fn(),
@@ -50,6 +51,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     user.passwordHash = await bcrypt.hash('a-correct-horse-battery', 4);
+    usersService.activateLegacyCustomerAccount.mockResolvedValue(null);
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -68,15 +70,10 @@ describe('AuthService', () => {
     jest.restoreAllMocks();
   });
 
-  it('registers separate names through Admin approval', async () => {
+  it('registers a customer as active without an Admin approval request', async () => {
     registrationService.submit.mockResolvedValue({
-      user: { ...user, accountStatus: 'pending_approval' },
-      registrationRequest: {
-        id: 'registration-id',
-        registrationNumber: 'PRX-20261108-ABCDEF',
-        registrationStatus: 'pending',
-        submittedAt: now,
-      },
+      user: { ...user, accountStatus: 'active' },
+      registrationRequest: null,
     });
 
     const result = await service.register(
@@ -94,10 +91,11 @@ describe('AuthService', () => {
         lastName: 'Person',
         email: user.email,
         accountType: 'customer',
-        accountStatus: 'pending_approval',
+        accountStatus: 'active',
       }),
     );
-    expect(result.user.accountStatus).toBe('pending_approval');
+    expect(result.user.accountStatus).toBe('active');
+    expect(result.registrationRequest).toBeNull();
   });
 
   it('verifies the current password and stores a hash for the new password', async () => {
@@ -188,19 +186,14 @@ describe('AuthService', () => {
     });
   });
 
-  it('submits a customer for approval with a bcrypt password hash', async () => {
+  it('creates a customer immediately with a bcrypt password hash', async () => {
     let registration: Record<string, unknown> | undefined;
     registrationService.submit.mockImplementation(
       (input: Record<string, unknown>) => {
         registration = input;
         return Promise.resolve({
           user: { ...user, ...input, _id: user._id, createdAt: now },
-          registrationRequest: {
-            id: 'registration-id',
-            registrationNumber: 'PRX-20261108-ABCDEF',
-            registrationStatus: 'pending',
-            submittedAt: now,
-          },
+          registrationRequest: null,
         });
       },
     );
@@ -222,7 +215,7 @@ describe('AuthService', () => {
       firstName: 'Customer',
       lastName: 'Example',
       accountType: 'customer',
-      accountStatus: 'pending_approval',
+      accountStatus: 'active',
       profileImageData: 'data:image/png;base64,YWJj',
       location: { latitude: 28.6139, longitude: 77.209 },
     });
@@ -232,8 +225,8 @@ describe('AuthService', () => {
         registration?.['passwordHash'] as string,
       ),
     ).toBe(true);
-    expect(result.user.accountStatus).toBe('pending_approval');
-    expect(result.registrationRequest.registrationStatus).toBe('pending');
+    expect(result.user.accountStatus).toBe('active');
+    expect(result.registrationRequest).toBeNull();
   });
 
   it('persists shop details with pending approval status', async () => {
@@ -434,7 +427,7 @@ describe('AuthService', () => {
     });
   });
 
-  it('allows pending shops and customers to sign in to their restricted profile', async () => {
+  it('keeps Shop approval gates and activates legacy pending customer accounts', async () => {
     usersService.findByEmailForAuthentication.mockResolvedValue({
       ...user,
       accountType: 'shop',
@@ -467,10 +460,13 @@ describe('AuthService', () => {
       ...user,
       accountType: 'customer',
       accountStatus: 'pending_approval',
+      accountLifecycleStatus: 'inactive',
     });
-    registrationService.findRequestForUser.mockResolvedValue({
-      registrationStatus: 'pending',
-      submittedAt: now,
+    usersService.activateLegacyCustomerAccount.mockResolvedValue({
+      ...user,
+      accountType: 'customer',
+      accountStatus: 'active',
+      accountLifecycleStatus: 'active',
     });
     const customerLogin = await service.login(
       Object.assign(new LoginDto(), {
@@ -478,10 +474,11 @@ describe('AuthService', () => {
         password: 'a-correct-horse-battery',
       }),
     );
-    expect(customerLogin.redirectTo).toBe('/customer/profile');
+    expect(customerLogin.redirectTo).toBe('/customer');
     expect(customerLogin.user.customerAuthorization).toMatchObject({
-      registrationStatus: 'pending',
-      destination: '/customer/profile',
+      registrationStatus: 'not_found',
+      accountStatus: 'active',
+      destination: '/customer',
     });
     expect(jwtService.signAsync).toHaveBeenCalled();
   });
@@ -501,18 +498,12 @@ describe('AuthService', () => {
     });
   });
 
-  it('routes an approved customer to the full Customer Portal', async () => {
+  it('routes an active customer to the full Customer Portal without registration review', async () => {
     usersService.findByEmailForAuthentication.mockResolvedValue({
       ...user,
       accountType: 'customer',
       accountStatus: 'active',
     });
-    registrationService.findRequestForUser.mockResolvedValue({
-      registrationStatus: 'approved',
-      submittedAt: now,
-      reviewedAt: now,
-    });
-
     const result = await service.login(
       Object.assign(new LoginDto(), {
         email: user.email,
@@ -522,9 +513,10 @@ describe('AuthService', () => {
 
     expect(result.redirectTo).toBe('/customer');
     expect(result.user.customerAuthorization).toMatchObject({
-      registrationStatus: 'approved',
+      registrationStatus: 'not_found',
       destination: '/customer',
     });
+    expect(registrationService.findRequestForUser).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -23,10 +23,15 @@
         {{ profile.createdAt | date: 'mediumDate' }}
       </p>
       <div class="profile-statuses" adminPageActions aria-label="Account statuses">
-        <span class="status-badge approval-status" [class.active]="profile.approvalStatus === 'approved'">
-          <span aria-hidden="true">{{ profile.approvalStatus === 'approved' ? '✓' : '!' }}</span>
-          Approval: {{ profile.approvalStatus | titlecase }}
-        </span>
+        @if (profile.accountType === 'shop') {
+          <span
+            class="status-badge approval-status"
+            [class.active]="profile.approvalStatus === 'approved'"
+          >
+            <span aria-hidden="true">{{ profile.approvalStatus === 'approved' ? '✓' : '!' }}</span>
+            Approval: {{ profile.approvalStatus | titlecase }}
+          </span>
+        }
         <span class="status-badge account-status" [class.active]="profile.accountStatus === 'active'" [class.suspended]="profile.accountStatus === 'suspended'">
           <span aria-hidden="true">{{ profile.accountStatus === 'suspended' ? '⊗' : '✓' }}</span>
           Account: {{ profile.accountStatus ? (profile.accountStatus | titlecase) : '—' }}
@@ -117,7 +122,7 @@
         </section>
       }
 
-      @if (profile.registration; as registration) {
+      @if (profile.accountType === 'shop' && profile.registration; as registration) {
         <section class="detail-card" aria-labelledby="registration-title">
           <h2 id="registration-title"><span class="card-icon" aria-hidden="true">▤</span>Registration details</h2>
           <dl>

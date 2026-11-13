@@ -107,6 +107,32 @@ export class UsersService {
     return this.users.findById(id).exec();
   }
 
+  async activateLegacyCustomerAccount(
+    id: string,
+  ): Promise<UserDocument | null> {
+    if (!isObjectIdOrHexString(id)) {
+      return null;
+    }
+
+    return this.users
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(id),
+          accountType: 'customer',
+          accountStatus: { $in: ['pending_approval', 'rejected'] },
+          $or: [
+            { accountLifecycleStatus: 'inactive' },
+            { accountLifecycleStatus: { $exists: false } },
+          ],
+        },
+        {
+          $set: { accountStatus: 'active', accountLifecycleStatus: 'active' },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+  }
+
   async updateProfile(
     id: string,
     updates: {

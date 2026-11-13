@@ -32,15 +32,8 @@ export const authGuard: CanActivateFn = (route) => {
           authorization?.accountLifecycleStatus !== undefined
             ? authorization.accountLifecycleStatus === 'active'
             : authorization?.accountStatus === 'active';
-        const approved =
-          authorization?.registrationStatus === 'approved' &&
-          authorization.accountStatus === 'active' &&
-          accountIsActive;
-        const legacyActive =
-          authorization?.registrationStatus === 'not_found' &&
-          authorization.accountStatus === 'active' &&
-          accountIsActive;
-        const profileOnly = !approved && !legacyActive;
+        const profileOnly =
+          authorization?.accountStatus !== 'active' || !accountIsActive;
         const customerAccess = route.data['customerAccess'];
 
         if (profileOnly && customerAccess === 'portal') {

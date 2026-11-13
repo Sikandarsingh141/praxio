@@ -12,8 +12,8 @@ describe('AdminDashboardPage', () => {
   const pendingRequest = {
     id: 'request-id',
     userId: 'user-id',
-    registrationRequestId: 'request-id',
-    registrationNumber: 'PRX-20260101-ABCDEF',
+    registrationRequestId: null,
+    registrationNumber: null,
     applicantName: 'Customer Example',
     shopName: null,
     businessType: null,
@@ -23,8 +23,8 @@ describe('AdminDashboardPage', () => {
     countryCode: '+1',
     mobileNumber: '5551234567',
     accountType: 'customer',
-    accountStatus: null,
-    registrationStatus: 'pending',
+    accountStatus: 'active',
+    registrationStatus: 'approved',
     paymentStatus: 'not_required',
     subscriptionPlan: null,
     paymentAmountCents: null,
@@ -33,6 +33,21 @@ describe('AdminDashboardPage', () => {
     submittedAt: '2026-01-01T00:00:00.000Z',
     reviewedAt: null,
     declineReason: null,
+  };
+
+  const pendingShopRequest = {
+    ...pendingRequest,
+    id: 'shop-request-id',
+    userId: 'shop-user-id',
+    registrationRequestId: 'shop-request-id',
+    registrationNumber: 'PRX-20260101-ABCDEF',
+    applicantName: 'Shop Owner',
+    shopName: 'Example Repairs',
+    email: 'shop@example.com',
+    accountType: 'shop',
+    accountStatus: 'inactive',
+    registrationStatus: 'pending',
+    paymentStatus: 'paid',
   };
 
   const statisticsResponse = {
@@ -95,9 +110,11 @@ describe('AdminDashboardPage', () => {
     expect(text).toContain('Customer Example');
     expect(text).toContain('customer@example.com');
     expect(text).toContain('Customer');
-    expect(text).toContain('Pending');
-    expect(text).toContain('Accept');
-    expect(text).toContain('Decline');
+    expect(text).toContain('Active');
+    expect(text).toContain('Not required');
+    expect(text).not.toContain('Accept');
+    expect(text).not.toContain('Decline registration');
+    expect(fixture.nativeElement.querySelector('.approve-button')).toBeNull();
     expect(fixture.nativeElement.querySelector('thead')?.textContent).not.toContain('User ID');
     expect(
       (fixture.nativeElement.querySelector('.user-profile-link') as HTMLAnchorElement).getAttribute(
@@ -147,7 +164,7 @@ describe('AdminDashboardPage', () => {
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain('Customers');
     expect(
       harness.routeNativeElement?.querySelector('app-admin-page-header p')?.textContent,
-    ).toContain('Review customer registrations and manage customer account access.');
+    ).toContain('Manage customer accounts and access.');
     expect(harness.routeNativeElement?.textContent).toContain('All customers');
     expect(harness.routeNativeElement?.textContent).toContain('Total customers');
     expect(page.accountTypeFilter()).toBe('customer');
@@ -249,7 +266,7 @@ describe('AdminDashboardPage', () => {
       .expectOne((req) => req.url.endsWith('/admin/users'))
       .flush({
         data: {
-          requests: [pendingRequest],
+          requests: [pendingShopRequest],
           page: 1,
           limit: 10,
           total: 1,
@@ -262,14 +279,14 @@ describe('AdminDashboardPage', () => {
     (fixture.nativeElement.querySelector('.approve-button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[role="alertdialog"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).toContain("Approve Customer Example's registration?");
+    expect(fixture.nativeElement.textContent).toContain("Approve Shop Owner's registration?");
     (fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement).click();
 
     const approval = httpTestingController.expectOne(
-      `${environment.apiBaseUrl}/admin/registration-requests/request-id/approve`,
+      `${environment.apiBaseUrl}/admin/registration-requests/shop-request-id/approve`,
     );
     expect(approval.request.method).toBe('PATCH');
-    approval.flush({ data: { request: { ...pendingRequest, accountStatus: 'active' } } });
+    approval.flush({ data: { request: { ...pendingShopRequest, accountStatus: 'active' } } });
 
     const reload = httpTestingController.expectOne((req) => req.url.endsWith('/admin/users'));
     reload.flush({
@@ -279,7 +296,7 @@ describe('AdminDashboardPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain(
-      'Customer Example approved. They can now sign in.',
+      'Shop Owner approved. They can now sign in.',
     );
   });
 
@@ -290,7 +307,7 @@ describe('AdminDashboardPage', () => {
       .expectOne((req) => req.url.endsWith('/admin/users'))
       .flush({
         data: {
-          requests: [pendingRequest],
+          requests: [pendingShopRequest],
           page: 1,
           limit: 10,
           total: 1,
@@ -309,7 +326,7 @@ describe('AdminDashboardPage', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Enter a reason before continuing.');
     httpTestingController.expectNone(
-      `${environment.apiBaseUrl}/admin/registration-requests/request-id/decline`,
+      `${environment.apiBaseUrl}/admin/registration-requests/shop-request-id/decline`,
     );
 
     const reason = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
@@ -319,7 +336,7 @@ describe('AdminDashboardPage', () => {
     (fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement).click();
 
     const decline = httpTestingController.expectOne(
-      `${environment.apiBaseUrl}/admin/registration-requests/request-id/decline`,
+      `${environment.apiBaseUrl}/admin/registration-requests/shop-request-id/decline`,
     );
     expect(decline.request.method).toBe('PATCH');
     expect(decline.request.body).toEqual({
@@ -328,7 +345,7 @@ describe('AdminDashboardPage', () => {
     decline.flush({
       data: {
         request: {
-          ...pendingRequest,
+          ...pendingShopRequest,
           registrationStatus: 'declined',
           declineReason: 'Registration documents could not be verified.',
         },
@@ -350,8 +367,8 @@ describe('AdminDashboardPage', () => {
       .flush({
         data: {
           requests: [
-            { ...pendingRequest, registrationStatus: 'approved', accountStatus: 'active' },
-            { ...pendingRequest, id: 'declined-id', registrationStatus: 'declined' },
+            { ...pendingShopRequest, registrationStatus: 'approved', accountStatus: 'active' },
+            { ...pendingShopRequest, id: 'declined-id', registrationStatus: 'declined' },
           ],
           page: 1,
           limit: 10,
@@ -384,7 +401,7 @@ describe('AdminDashboardPage', () => {
       .flush({
         data: {
           requests: [
-            { ...pendingRequest, registrationStatus: 'approved', accountStatus: 'active' },
+            { ...pendingShopRequest, registrationStatus: 'approved', accountStatus: 'active' },
           ],
           page: 1,
           limit: 10,
@@ -401,7 +418,7 @@ describe('AdminDashboardPage', () => {
     (fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Enter a reason before continuing.');
-    httpTestingController.expectNone(`${environment.apiBaseUrl}/admin/users/user-id/status`);
+    httpTestingController.expectNone(`${environment.apiBaseUrl}/admin/users/shop-user-id/status`);
 
     const reason = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
     reason.value = 'Repeated policy violations';
@@ -410,7 +427,7 @@ describe('AdminDashboardPage', () => {
     (fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement).click();
 
     const statusChange = httpTestingController.expectOne(
-      `${environment.apiBaseUrl}/admin/users/user-id/status`,
+      `${environment.apiBaseUrl}/admin/users/shop-user-id/status`,
     );
     expect(statusChange.request.method).toBe('PATCH');
     expect(statusChange.request.body).toEqual({
@@ -432,7 +449,7 @@ describe('AdminDashboardPage', () => {
       .flush({
         data: {
           requests: [
-            { ...pendingRequest, registrationStatus: 'approved', accountStatus: 'active' },
+            { ...pendingShopRequest, registrationStatus: 'approved', accountStatus: 'active' },
           ],
           page: 1,
           limit: 10,
@@ -448,7 +465,7 @@ describe('AdminDashboardPage', () => {
     (fixture.nativeElement.querySelector('.confirm-button') as HTMLButtonElement).click();
 
     const update = httpTestingController.expectOne(
-      `${environment.apiBaseUrl}/admin/users/user-id/status`,
+      `${environment.apiBaseUrl}/admin/users/shop-user-id/status`,
     );
     expect(update.request.body).toEqual({ status: 'inactive' });
     update.flush(
@@ -465,7 +482,7 @@ describe('AdminDashboardPage', () => {
     refreshedUsers.flush({
       data: {
         requests: [
-          { ...pendingRequest, registrationStatus: 'approved', accountStatus: 'inactive' },
+          { ...pendingShopRequest, registrationStatus: 'approved', accountStatus: 'inactive' },
         ],
         page: 1,
         limit: 10,
@@ -489,7 +506,7 @@ describe('AdminDashboardPage', () => {
       .expectOne((req) => req.url.endsWith('/admin/users'))
       .flush({
         data: {
-          requests: [pendingRequest],
+          requests: [pendingShopRequest],
           page: 1,
           limit: 10,
           total: 1,
@@ -505,7 +522,7 @@ describe('AdminDashboardPage', () => {
 
     expect(fixture.componentInstance.confirmation()).toBeNull();
     httpTestingController.expectNone(
-      `${environment.apiBaseUrl}/admin/registration-requests/request-id/approve`,
+      `${environment.apiBaseUrl}/admin/registration-requests/shop-request-id/approve`,
     );
   });
 });

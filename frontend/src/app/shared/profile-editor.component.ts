@@ -89,7 +89,6 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
         <form class="password-form" (submit)="changePassword($event)">
           <div class="password-heading">
             <h2>Change password</h2>
-            <p>Choose a new password you do not use elsewhere.</p>
           </div>
           <label>
             Current password
