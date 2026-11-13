@@ -149,7 +149,10 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
                 </div>
                 <div class="customer-copy">
                   <span class="eyebrow"
-                    >REQUEST #{{ quote.repairRequestId.slice(-8).toUpperCase() }}</span
+                    >Request ID:
+                    <strong class="request-reference">{{
+                      quote.repairRequestId.slice(-8).toUpperCase()
+                    }}</strong></span
                   >
                   <h2>{{ quote.customer.displayName || (quote.customer.firstName + ' ' + quote.customer.lastName) }}</h2>
                   <p class="device-name">

@@ -247,7 +247,12 @@
                 @for (repair of data.recentRepairs | slice: 0 : 5; track repair.id) {
                   <tr>
                     <td>
-                      <code>Request ID: {{ repair.id.slice(-8).toUpperCase() }}</code>
+                      <code
+                        >Request ID:
+                        <strong class="request-reference">{{
+                          repair.id.slice(-8).toUpperCase()
+                        }}</strong></code
+                      >
                     </td>
                     <td>
                       <a class="text-link" [routerLink]="['/admin/users', repair.customerId]">{{

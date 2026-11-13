@@ -190,7 +190,9 @@
             <article class="recent-request">
               <span class="request-device-icon" aria-hidden="true">▣</span>
               <div class="recent-request-main">
-                <span class="request-id">REQUEST #{{ request._id.slice(-8).toUpperCase() }}</span>
+                <span class="request-id">
+                  Request ID: <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
+                </span>
                 <h3>{{ request.appliance }}</h3>
                 <p>
                   {{ request.customer?.displayName || (request.customer?.firstName + ' ' + request.customer?.lastName) }} ·

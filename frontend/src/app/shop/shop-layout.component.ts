@@ -111,7 +111,10 @@ export class ShopLayout implements OnInit, OnDestroy {
             id: request._id,
             kind: 'request' as const,
             title: request.appliance,
-            details: `${request.customer.displayName || `${request.customer.firstName} ${request.customer.lastName}`} · Request #${request._id.slice(-8).toUpperCase()}`,
+            details:
+              request.customer.displayName ||
+              `${request.customer.firstName} ${request.customer.lastName}`,
+            requestReference: request._id.slice(-8).toUpperCase(),
             route: ['/shop/repair-requests', request._id],
           })),
           ...quotations.quotations.map((quotation) => ({
@@ -119,6 +122,7 @@ export class ShopLayout implements OnInit, OnDestroy {
             kind: 'quotation' as const,
             title: quotation.repairRequest.appliance,
             details: `${quotation.customer.displayName || `${quotation.customer.firstName} ${quotation.customer.lastName}`} · ${quotation.amount} ${quotation.currency}`,
+            requestReference: quotation.repairRequestId.slice(-8).toUpperCase(),
             route: ['/shop/quotations'],
             queryParams: { quotationId: quotation._id },
           })),
@@ -163,6 +167,7 @@ interface ShopActivitySearchResult {
   kind: 'request' | 'quotation';
   title: string;
   details: string;
+  requestReference?: string;
   route: string[];
   queryParams?: { quotationId: string };
 }

@@ -116,7 +116,9 @@
                   }}{{ request.model ? ' · ' + request.model : '' }}
                 </p>
               }
-              <span class="request-id">Request ID: {{ request._id.slice(-8).toUpperCase() }}</span>
+              <span class="request-id">
+                Request ID: <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
+              </span>
               <span class="request-date">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <rect x="4" y="6" width="16" height="14" rx="2" />

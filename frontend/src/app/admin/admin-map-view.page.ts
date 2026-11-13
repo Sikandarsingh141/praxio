@@ -720,12 +720,15 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     heading.textContent =
       entity.type === 'request' ? (entity.appliance ?? entity.name) : entity.name;
     root.append(heading);
-    const addLine = (label: string, value: string): void => {
+    const addLine = (label: string, value: string, valueClass?: string): void => {
       if (!value) return;
       const line = document.createElement('p');
       const caption = document.createElement('b');
       caption.textContent = `${label}: `;
-      line.append(caption, document.createTextNode(value));
+      const content = document.createElement(valueClass ? 'strong' : 'span');
+      if (valueClass) content.className = valueClass;
+      content.textContent = value;
+      line.append(caption, content);
       root.append(line);
     };
     if (entity.type === 'customer') {
@@ -746,7 +749,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       addLine('Active repairs', String(entity.repairCounts?.active ?? 0));
       addLine('Completed repairs', String(entity.repairCounts?.completed ?? 0));
     } else {
-      addLine('Request ID', this.formatRequestId(entity.id));
+      addLine('Request ID', this.formatRequestId(entity.id), 'request-reference');
       addLine('Customer', entity.customerName ?? '');
       addLine('Customer phone', entity.customerPhone ?? '');
       addLine('Customer email', entity.customerEmail ?? '');
@@ -806,14 +809,17 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     const heading = document.createElement('strong');
     heading.textContent = marker.name || 'Repair request';
     root.append(heading);
-    const addLine = (label: string, value: string): void => {
+    const addLine = (label: string, value: string, valueClass?: string): void => {
       const line = document.createElement('p');
       const caption = document.createElement('b');
       caption.textContent = `${label}: `;
-      line.append(caption, document.createTextNode(value));
+      const content = document.createElement(valueClass ? 'strong' : 'span');
+      if (valueClass) content.className = valueClass;
+      content.textContent = value;
+      line.append(caption, content);
       root.append(line);
     };
-    addLine('Request ID', this.formatRequestId(marker.id));
+    addLine('Request ID', this.formatRequestId(marker.id), 'request-reference');
     addLine('Status', this.statusLabel(marker.status));
     addLine(
       'Location',
@@ -832,7 +838,10 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     const list = document.createElement('ul');
     for (const { entity } of markers.slice(0, 5)) {
       const item = document.createElement('li');
-      item.textContent = `${this.formatRequestId(entity.id)} · ${entity.name || 'Repair request'}`;
+      const requestId = document.createElement('strong');
+      requestId.className = 'request-reference';
+      requestId.textContent = this.formatRequestId(entity.id);
+      item.append(requestId, document.createTextNode(` · ${entity.name || 'Repair request'}`));
       list.append(item);
     }
     root.append(list);

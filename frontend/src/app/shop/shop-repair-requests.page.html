@@ -101,7 +101,9 @@
           <article class="request-card">
             <span class="appliance-icon" aria-hidden="true">▣</span>
             <div class="request-summary">
-                <span class="request-id">Request #{{ request._id.slice(-8).toUpperCase() }}</span>
+                <span class="request-id">
+                  Request ID: <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
+                </span>
                 <h2>{{ request.appliance }}</h2>
                 <p class="customer-name">{{ request.customer.displayName || (request.customer.firstName + ' ' + request.customer.lastName) }}</p>
                 <p class="description">{{ request.description }}</p>

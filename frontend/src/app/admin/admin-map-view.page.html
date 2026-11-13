@@ -93,7 +93,9 @@
                 </span>
                 @if (entity.type === 'request') {
                   <span class="result-subtitle"
-                    >{{ formatRequestId(entity.id) }} · {{ entity.customerName }}</span
+                    >Request ID:
+                    <strong class="request-reference">{{ formatRequestId(entity.id) }}</strong>
+                    · {{ entity.customerName }}</span
                   >
                   <span class="result-location shop-location">
                     <span aria-hidden="true">⌂</span> {{ entity.shopName || 'Shop unassigned' }}

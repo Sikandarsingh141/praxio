@@ -162,6 +162,7 @@ describe('ShopLayout', () => {
           quotations: [
             {
               _id: 'quotation-1',
+              repairRequestId: 'quotation-request-1',
               amount: 125,
               currency: 'USD',
               repairRequest: { appliance: 'Washer' },
@@ -172,7 +173,7 @@ describe('ShopLayout', () => {
       });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Request #REQ-1');
+    expect(fixture.nativeElement.textContent).toContain('Request ID: REQ-1');
     expect(fixture.nativeElement.textContent).toContain('125 USD');
     expect(
       fixture.nativeElement.querySelectorAll('.global-search-results [role="listitem"]'),

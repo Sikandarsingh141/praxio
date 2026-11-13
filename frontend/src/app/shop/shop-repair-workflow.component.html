@@ -25,7 +25,7 @@
         </div>
         <div>
           <dt>Request ID</dt>
-          <dd>#{{ request._id.slice(-8).toUpperCase() }}</dd>
+          <dd><strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong></dd>
         </div>
         @if (acceptedQuotation; as quotation) {
           <div>

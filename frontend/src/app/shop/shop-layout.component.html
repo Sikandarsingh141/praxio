@@ -34,7 +34,12 @@
                   (click)="closeGlobalSearch()"
                 >
                   <strong>{{ result.title }}</strong>
-                  <span>{{ result.details }}</span>
+                  <span>
+                    {{ result.details }}
+                    @if (result.requestReference) {
+                      · Request ID: <strong class="request-reference">{{ result.requestReference }}</strong>
+                    }
+                  </span>
                   <small>{{ result.kind === 'request' ? 'Repair request' : 'Quotation' }}</small>
                 </a>
               }

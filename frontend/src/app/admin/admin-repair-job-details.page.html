@@ -24,7 +24,9 @@
           <span class="header-chip">⌂ {{ repair.serviceType.replace('_', ' ') | titlecase }}</span>
         }
       </div>
-      <span adminPageActions class="header-chip">Request ID: {{ repair._id.slice(-8).toUpperCase() }}</span>
+      <span adminPageActions class="header-chip">
+        Request ID: <strong class="request-reference">{{ repair._id.slice(-8).toUpperCase() }}</strong>
+      </span>
     </app-admin-page-header>
 
     <nav class="detail-tabs" aria-label="Repair details sections">

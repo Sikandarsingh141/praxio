@@ -217,6 +217,9 @@
           <ul class="history-list">
             @for (repair of profile.repairActivity; track repair.id) {
               <li>
+                <span>
+                  Request ID: <strong class="request-reference">{{ repair.id.slice(-8).toUpperCase() }}</strong>
+                </span>
                 <strong>{{ repair.appliance }}</strong>
                 <span>{{ repair.description }}</span>
                 <span>Request status: {{ repair.status | titlecase }}</span>
@@ -249,7 +252,12 @@
                   {{ quotation.amount | currency: quotation.currency }} ·
                   {{ quotation.status | titlecase }}
                 </strong>
-                <span>Repair request {{ quotation.repairRequestId }}</span>
+                <span>
+                  Request ID:
+                  <strong class="request-reference">{{
+                    quotation.repairRequestId.slice(-8).toUpperCase()
+                  }}</strong>
+                </span>
                 <time>Submitted {{ quotation.createdAt | date: 'mediumDate' }}</time>
               </li>
             }

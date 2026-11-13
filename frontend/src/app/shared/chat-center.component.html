@@ -103,7 +103,10 @@
                   conversation.lastMessage || 'No messages yet'
                 }}</span>
                 <span class="request-id-badge">
-                  Request ID: <strong>{{ requestReference(conversation.repairRequest.id) }}</strong>
+                  Request ID:
+                  <strong class="request-reference">{{
+                    requestReference(conversation.repairRequest.id)
+                  }}</strong>
                 </span>
               </span>
               @if (conversation.unreadCount > 0) {
@@ -159,7 +162,10 @@
                 statusLabel(conversation.repairRequest.status)
               }}</span>
               <span class="request-id-badge">
-                Request ID: <strong>{{ requestReference(conversation.repairRequest.id) }}</strong>
+                Request ID:
+                <strong class="request-reference">{{
+                  requestReference(conversation.repairRequest.id)
+                }}</strong>
               </span>
             </div>
           </div>
@@ -655,7 +661,9 @@
                   <small>{{ option.appliance }}</small>
                   <span class="request-id-badge">
                     Request ID:
-                    <strong>{{ requestReference(option.repairRequestId) }}</strong>
+                    <strong class="request-reference">{{
+                      requestReference(option.repairRequestId)
+                    }}</strong>
                   </span>
                 </span>
                 <span class="start-arrow" aria-hidden="true">

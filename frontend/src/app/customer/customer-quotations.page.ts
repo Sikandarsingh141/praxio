@@ -183,7 +183,10 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
                 </div>
                 <div class="shop-copy">
                   <span class="eyebrow"
-                    >REQUEST #{{ quote.repairRequestId.slice(-8).toUpperCase() }}</span
+                    >Request ID:
+                    <strong class="request-reference">{{
+                      quote.repairRequestId.slice(-8).toUpperCase()
+                    }}</strong></span
                   >
                   <h2>{{ quote.shop.shopName }}</h2>
                   <p class="shop-address">

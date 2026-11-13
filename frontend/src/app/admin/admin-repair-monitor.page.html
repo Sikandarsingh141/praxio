@@ -123,7 +123,9 @@
             <div class="repair-main-row">
               <span class="appliance-icon" aria-hidden="true">⚙</span>
               <div class="appliance-info">
-                <span class="request-id">Request ID: {{ job._id.slice(-8).toUpperCase() }}</span>
+                <span class="request-id">
+                  Request ID: <strong class="request-reference">{{ job._id.slice(-8).toUpperCase() }}</strong>
+                </span>
                 <h2>{{ job.appliance }}</h2>
                 <p class="description">{{ job.description }}</p>
               </div>

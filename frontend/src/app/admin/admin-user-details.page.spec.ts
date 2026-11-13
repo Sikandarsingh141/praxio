@@ -120,7 +120,7 @@ describe('AdminUserDetailsPage', () => {
         },
         repairActivity: [
           {
-            id: 'completed-repair',
+            id: '507f1f77bcf86cd799439011',
             appliance: 'Washing machine',
             description: 'Repair completed',
             status: 'completed',
@@ -129,7 +129,17 @@ describe('AdminUserDetailsPage', () => {
             preferredServiceDate: null,
           },
         ],
-        quotationActivity: [],
+        quotationActivity: [
+          {
+            id: 'quotation-id',
+            repairRequestId: '507f1f77bcf86cd799439012',
+            amount: 125,
+            currency: 'CAD',
+            status: 'accepted',
+            createdAt: '2026-01-02T00:00:00.000Z',
+            validUntil: null,
+          },
+        ],
       },
     });
     httpTestingController
@@ -160,6 +170,12 @@ describe('AdminUserDetailsPage', () => {
     expect(harness.routeNativeElement?.textContent).toContain('Administrative activity');
     expect(harness.routeNativeElement?.textContent).toContain('Registration Approved');
     expect(harness.routeNativeElement?.textContent).toContain('Request status: Completed');
+    expect(
+      harness.routeNativeElement?.querySelector('#repair-requests .request-reference')?.textContent,
+    ).toBe('99439011');
+    expect(
+      harness.routeNativeElement?.querySelector('#quotations .request-reference')?.textContent,
+    ).toBe('99439012');
     expect(harness.routeNativeElement?.textContent).not.toContain('Request status: Active');
     expect(harness.routeNativeElement?.textContent).not.toContain('Repair status: Completed');
     expect(harness.routeNativeElement?.querySelector('.repair-status-link')).toBeTruthy();

@@ -15,7 +15,7 @@
           {{ request.appliance }}
         </h1>
         <span adminPageMeta class="request-id">
-          Request ID: <strong>{{ request._id.slice(-8).toUpperCase() }}</strong>
+          Request ID: <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
         </span>
         <span
           adminPageActions
