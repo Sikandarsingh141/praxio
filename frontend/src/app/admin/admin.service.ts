@@ -386,6 +386,8 @@ export interface AdminMapEntity {
   customerPhone?: string;
   shopName?: string;
   shopAddress?: string;
+  shopCity?: string;
+  shopState?: string;
   shopEmail?: string;
   shopPhone?: string;
   shopLocation?: { latitude: number; longitude: number } | null;

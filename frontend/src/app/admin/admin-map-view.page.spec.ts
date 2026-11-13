@@ -123,6 +123,55 @@ describe('AdminMapViewPage', () => {
     fixture.destroy();
   });
 
+  it('zooms in enough to separate nearby request locations', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    fixture.detectChanges();
+    const markers = [
+      {
+        ...makeMarker('request-1'),
+        location: { latitude: 43.65, longitude: -79.38 },
+      },
+      {
+        ...makeMarker('request-2'),
+        location: { latitude: 43.652, longitude: -79.38 },
+      },
+    ];
+    flushMarkers(http, markers);
+    http
+      .expectOne((request) => request.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData([]) });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['map']?.getZoom()).toBe(15);
+    expect(fixture.componentInstance['markerLayer'].getLayers()).toHaveSize(2);
+    fixture.destroy();
+  });
+
+  it('shows customer and shop locations with directional map pins in each request row', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    fixture.detectChanges();
+    const request = {
+      ...makeEntity('request-1', 'request'),
+      location: { latitude: 43.65, longitude: -79.38 },
+      shopName: 'Northstar Repairs',
+      shopAddress: '10 King Street',
+      shopCity: 'Toronto',
+      shopState: 'Ontario',
+    };
+    flushMarkers(http, [makeMarker(request.id)]);
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData([request]) });
+    fixture.detectChanges();
+
+    const route = fixture.nativeElement.querySelector('.result-route') as HTMLElement;
+    expect(route.querySelectorAll('.route-pin')).toHaveSize(2);
+    expect(route.querySelector('.route-direction')?.textContent).toBe('→');
+    expect(route.textContent).toContain('43.6500, -79.3800');
+    expect(route.textContent).toContain('10 King Street, Toronto, Ontario');
+    fixture.destroy();
+  });
+
   it('fetches a marker request not loaded in the list and avoids duplicate list entries', () => {
     const fixture = TestBed.createComponent(AdminMapViewPage);
     fixture.detectChanges();

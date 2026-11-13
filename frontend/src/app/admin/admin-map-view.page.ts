@@ -418,8 +418,27 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     const locationText = [entity.address, entity.city, entity.state].filter(Boolean).join(', ');
     if (locationText) return locationText;
     return entity.location
-      ? `${entity.location.latitude.toFixed(4)}, ${entity.location.longitude.toFixed(4)}`
+      ? this.formatCoordinates(entity.location)
       : 'Location unavailable';
+  }
+
+  customerLocationLabel(entity: AdminMapEntity): string {
+    return entity.location
+      ? this.formatCoordinates(entity.location)
+      : 'Customer location unavailable';
+  }
+
+  shopLocationLabel(entity: AdminMapEntity): string {
+    const address = [entity.shopAddress, entity.shopCity, entity.shopState]
+      .filter((part) => part?.trim())
+      .join(', ');
+    if (address) return address;
+    if (entity.shopLocation) return this.formatCoordinates(entity.shopLocation);
+    return entity.shopName ? 'Shop location unavailable' : 'Shop unassigned';
+  }
+
+  private formatCoordinates(location: { latitude: number; longitude: number }): string {
+    return `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`;
   }
 
   routeDistance(): string {
@@ -622,7 +641,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     } else if (locations.length === 1) {
       this.map.setView(locations[0], 12);
     } else {
-      this.map.fitBounds(L.latLngBounds(locations), { padding: [36, 36], maxZoom: 12 });
+      this.map.fitBounds(L.latLngBounds(locations), { padding: [36, 36], maxZoom: 15 });
     }
   }
 
@@ -861,7 +880,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
               [entity.location.latitude, entity.location.longitude] as L.LatLngExpression,
           ),
         ),
-        { padding: [56, 56], maxZoom: 15 },
+        { padding: [56, 56], maxZoom: 18 },
       );
     });
     root.append(zoomButton);

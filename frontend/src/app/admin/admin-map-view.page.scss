@@ -297,13 +297,52 @@
       font-size: 0.61rem;
     }
 
-    .result-location > span {
-      color: #3279c2;
-      font-size: 0.55rem;
+    .result-route {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 0.35rem;
+      color: #52665a;
+      font-size: 0.61rem;
     }
 
-    .shop-location > span {
+    .route-endpoint {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .route-endpoint > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .route-pin {
+      width: 0.9rem;
+      height: 0.9rem;
+      flex: 0 0 auto;
+      fill: currentColor;
+    }
+
+    .route-pin circle {
+      fill: #fff;
+    }
+
+    .customer-endpoint .route-pin {
+      color: #347bc0;
+    }
+
+    .shop-endpoint .route-pin {
       color: #168043;
+    }
+
+    .route-direction {
+      color: #94a097;
+      font-size: 0.85rem;
+      line-height: 1;
     }
 
     .result-arrow {

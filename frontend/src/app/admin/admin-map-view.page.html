@@ -97,17 +97,34 @@
                     <strong class="request-reference">{{ formatRequestId(entity.id) }}</strong>
                     · {{ entity.customerName }}</span
                   >
-                  <span class="result-location shop-location">
-                    <span aria-hidden="true">⌂</span> {{ entity.shopName || 'Shop unassigned' }}
-                    @if (entity.shopName) {
-                      ·
-                      {{
-                        entity.shopAddress ||
-                          (entity.shopLocation
-                            ? entity.shopLocation.latitude + ', ' + entity.shopLocation.longitude
-                            : 'Shop location unavailable')
-                      }}
-                    }
+                  <span class="result-route" aria-label="Customer to shop location">
+                    <span
+                      class="route-endpoint customer-endpoint"
+                      [attr.aria-label]="'Customer location: ' + customerLocationLabel(entity)"
+                      [attr.title]="'Customer: ' + customerLocationLabel(entity)"
+                    >
+                      <svg class="route-pin" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z"
+                        />
+                        <circle cx="12" cy="10" r="2.5" />
+                      </svg>
+                      <span>{{ customerLocationLabel(entity) }}</span>
+                    </span>
+                    <span class="route-direction" aria-hidden="true">→</span>
+                    <span
+                      class="route-endpoint shop-endpoint"
+                      [attr.aria-label]="'Shop location: ' + shopLocationLabel(entity)"
+                      [attr.title]="'Shop: ' + shopLocationLabel(entity)"
+                    >
+                      <svg class="route-pin" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z"
+                        />
+                        <circle cx="12" cy="10" r="2.5" />
+                      </svg>
+                      <span>{{ shopLocationLabel(entity) }}</span>
+                    </span>
                   </span>
                   <span class="result-meta">
                     {{ entity.serviceType || entity.appliance }} ·

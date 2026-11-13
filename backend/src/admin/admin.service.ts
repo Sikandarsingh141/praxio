@@ -178,6 +178,8 @@ export interface AdminMapEntity {
   customerPhone?: string;
   shopName?: string;
   shopAddress?: string;
+  shopCity?: string;
+  shopState?: string;
   shopEmail?: string;
   shopPhone?: string;
   shopLocation?: { latitude: number; longitude: number } | null;
@@ -2905,6 +2907,8 @@ export class AdminService {
             customerPhone: String(record['customerPhone'] ?? '').trim(),
             shopName: String(record['shopName'] ?? ''),
             shopAddress: String(record['shopAddress'] ?? ''),
+            shopCity: String(record['shopCity'] ?? ''),
+            shopState: String(record['shopState'] ?? ''),
             shopEmail: String(record['shopEmail'] ?? ''),
             shopPhone: String(record['shopPhone'] ?? '').trim(),
             shopLocation: validShopLocation
