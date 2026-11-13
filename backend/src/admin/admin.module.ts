@@ -10,6 +10,7 @@ import { User, UserSchema } from '../users/schemas/user.schema';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminController } from './admin.controller';
+import { AdminMapController } from './admin-map.controller';
 import { AdminRoleGuard } from './admin-role.guard';
 import { AdminService } from './admin.service';
 import {
@@ -20,6 +21,7 @@ import {
   RepairRequest,
   RepairRequestSchema,
 } from '../customer/repair-request.schema';
+import { CustomerPortalService } from '../customer/customer-portal.service';
 import {
   AdminAuditLog,
   AdminAuditLogSchema,
@@ -47,7 +49,12 @@ import {
       },
     ]),
   ],
-  controllers: [AdminController],
-  providers: [JwtAuthGuard, AdminRoleGuard, AdminService],
+  controllers: [AdminController, AdminMapController],
+  providers: [
+    JwtAuthGuard,
+    AdminRoleGuard,
+    AdminService,
+    CustomerPortalService,
+  ],
 })
 export class AdminModule {}

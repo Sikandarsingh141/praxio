@@ -355,7 +355,9 @@ describe('AdminService', () => {
 
   it('includes request-level completed repairs in the all-status monitor', async () => {
     repairRequestsModel.aggregate.mockReturnValue({
-      exec: jest.fn().mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
+      exec: jest
+        .fn()
+        .mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
     });
 
     await service.getRepairJobMonitor({ status: 'all' });
@@ -383,7 +385,9 @@ describe('AdminService', () => {
     'accepts the %s repair status filter',
     async (status) => {
       repairRequestsModel.aggregate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
+        exec: jest
+          .fn()
+          .mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
       });
 
       await service.getRepairJobMonitor({ status });
@@ -501,6 +505,178 @@ describe('AdminService', () => {
 
     expect(usersModel.aggregate.mock.calls[0][0][0]).toEqual({
       $match: { accountType: 'shop' },
+    });
+  });
+
+  it('keeps customer locations when filtering shops by approval in the all map view', async () => {
+    await service.getUsers({
+      page: 1,
+      limit: 20,
+      accountType: 'all',
+      approvalStatus: 'pending',
+      includeCustomersWithApprovalStatus: true,
+    });
+
+    expect(usersModel.aggregate.mock.calls[0][0]).toContainEqual({
+      $match: {
+        $or: [
+          { accountType: 'customer' },
+          { computedRegistrationStatus: 'pending' },
+        ],
+      },
+    });
+  });
+
+  it('filters Active Repairs using the map statistics status definition', async () => {
+    usersModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+    repairRequestsModel.aggregate.mockImplementation(
+      (pipeline: Array<Record<string, unknown>>) => ({
+        exec: jest
+          .fn()
+          .mockResolvedValue(
+            pipeline.some((stage) => '$facet' in stage)
+              ? [{ entities: [], metadata: [{ total: 0 }] }]
+              : [],
+          ),
+      }),
+    );
+
+    await service.getMapData({ type: 'requests', status: 'active' });
+
+    const requestPipeline = repairRequestsModel.aggregate.mock.calls.find(
+      ([pipeline]) =>
+        (pipeline as Array<Record<string, unknown>>).some(
+          (stage) => '$facet' in stage,
+        ),
+    )?.[0] as Array<Record<string, unknown>>;
+    expect(requestPipeline).toContainEqual({
+      $match: {
+        mapStatus: {
+          $nin: [
+            'pending',
+            'completed',
+            'repair_declined',
+            'disputed',
+            'cancelled',
+          ],
+        },
+      },
+    });
+  });
+
+  it('returns all filtered valid request markers without list pagination', async () => {
+    const requestId = new Types.ObjectId('507f1f77bcf86cd799439015');
+    const requestPipeline = [
+      {
+        _id: requestId,
+        appliance: 'Phone',
+        mapStatus: 'pending',
+        customerLatitude: 30.7,
+        customerLongitude: 76.7,
+      },
+      {
+        _id: new Types.ObjectId('507f1f77bcf86cd799439016'),
+        appliance: 'Laptop',
+        mapStatus: 'pending',
+        customerLocation: { latitude: 43.65, longitude: -79.38 },
+      },
+      {
+        _id: new Types.ObjectId('507f1f77bcf86cd799439017'),
+        appliance: 'No coordinates',
+        mapStatus: 'pending',
+        customerLatitude: 91,
+        customerLongitude: 0,
+      },
+    ];
+    repairRequestsModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(requestPipeline),
+    });
+
+    const result = await service.getMapData({
+      type: 'requests',
+      mapOnly: true,
+      page: 1,
+      limit: 20,
+      status: 'pending',
+    });
+
+    expect(result.markers).toEqual([
+      {
+        id: requestId.toString(),
+        type: 'request',
+        name: 'Phone',
+        status: 'pending',
+        location: { latitude: 30.7, longitude: 76.7 },
+      },
+      {
+        id: '507f1f77bcf86cd799439016',
+        type: 'request',
+        name: 'Laptop',
+        status: 'pending',
+        location: { latitude: 43.65, longitude: -79.38 },
+      },
+    ]);
+    expect(result.entities).toEqual([]);
+    expect(usersModel.aggregate).not.toHaveBeenCalled();
+    const pipeline = repairRequestsModel.aggregate.mock.calls[0][0];
+    expect(pipeline).toContainEqual({ $match: { mapStatus: 'pending' } });
+    expect(
+      pipeline.some(
+        (stage) => '$facet' in stage || '$skip' in stage || '$limit' in stage,
+      ),
+    ).toBe(false);
+  });
+
+  it('matches a displayed eight-character request ID during map search', async () => {
+    usersModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+    repairRequestsModel.aggregate.mockImplementation(
+      (pipeline: Array<Record<string, unknown>>) => ({
+        exec: jest
+          .fn()
+          .mockResolvedValue(
+            pipeline.some((stage) => '$facet' in stage)
+              ? [{ entities: [], metadata: [{ total: 0 }] }]
+              : [],
+          ),
+      }),
+    );
+
+    await service.getMapData({
+      type: 'requests',
+      page: 1,
+      limit: 20,
+      search: '666E727C',
+    });
+
+    const requestPipeline = repairRequestsModel.aggregate.mock.calls.find(
+      ([pipeline]) =>
+        (pipeline as Array<Record<string, unknown>>).some(
+          (stage) => '$facet' in stage,
+        ),
+    )?.[0] as Array<Record<string, unknown>>;
+    const searchConditions = requestPipeline
+      .filter(
+        (stage) =>
+          '$match' in stage &&
+          typeof stage['$match'] === 'object' &&
+          stage['$match'] !== null &&
+          '$or' in stage['$match'],
+      )
+      .flatMap((stage) => {
+        const match = stage['$match'] as {
+          $or: Array<Record<string, unknown>>;
+        };
+        return match.$or;
+      });
+    expect(requestPipeline).toContainEqual({
+      $addFields: { mapRequestIdText: { $toString: '$_id' } },
+    });
+    expect(searchConditions).toContainEqual({
+      mapRequestIdText: { $regex: '666E727C$', $options: 'i' },
     });
   });
 
@@ -1101,12 +1277,16 @@ describe('AdminService', () => {
       ),
     ).rejects.toMatchObject({
       status: 409,
-      response: { message: 'Customer accounts do not require registration approval' },
+      response: {
+        message: 'Customer accounts do not require registration approval',
+      },
     });
 
     expect(registrationRequests.findOneAndUpdate).not.toHaveBeenCalled();
     expect(usersService.updateRegistrationAccountStatus).not.toHaveBeenCalled();
-    expect(notificationsService.notifyApplicantOfRegistrationDecision).not.toHaveBeenCalled();
+    expect(
+      notificationsService.notifyApplicantOfRegistrationDecision,
+    ).not.toHaveBeenCalled();
   });
 
   it('does not approve an unpaid shop registration', async () => {

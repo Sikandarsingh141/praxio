@@ -43,12 +43,6 @@ import { AdminPageHeaderComponent } from './admin-page-header.component';
             </div>
             <h2>{{ displayName(user) || 'Admin' }}</h2>
             <span class="account-role">Administrator</span>
-            <span
-              class="status-badge"
-              [class.status-active]="user.accountLifecycleStatus === 'active'"
-            >
-              {{ user.accountLifecycleStatus || user.accountStatus || 'active' | titlecase }}
-            </span>
             <div class="summary-divider"></div>
             <div class="summary-item">
               <span class="summary-icon" aria-hidden="true">✉</span>

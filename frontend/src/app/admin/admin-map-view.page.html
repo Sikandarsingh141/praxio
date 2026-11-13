@@ -1,0 +1,205 @@
+<section class="admin-map-page" aria-labelledby="map-page-title">
+  <section class="map-toolbar" aria-label="Map search and filters">
+    <label class="search-filter">
+      <span class="sr-only">Search repair requests by ID, customer, shop, or location</span>
+      <span aria-hidden="true">⌕</span>
+      <input
+        #searchInput
+        type="search"
+        [value]="searchText()"
+        placeholder="Search request ID, customer, shop, or location..."
+        (input)="updateSearch(searchInput.value)"
+      />
+    </label>
+    <app-common-filter
+      [config]="filterConfig"
+      [appliedFilters]="appliedFilters()"
+      (filtersChange)="applyFilters($event)"
+    />
+  </section>
+
+  <div class="mobile-view-switch" role="tablist" aria-label="Map and results">
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="listView() === 'list'"
+      [class.active]="listView() === 'list'"
+      (click)="setListView('list')"
+    >
+      Results
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="listView() === 'map'"
+      [class.active]="listView() === 'map'"
+      (click)="setListView('map')"
+    >
+      Map
+    </button>
+  </div>
+
+  <section class="map-workspace" aria-label="Marketplace map and results">
+    <aside class="results-panel" [class.mobile-hidden]="listView() === 'map'">
+      <div class="results-heading">
+        <div>
+          <h2>Repair requests</h2>
+          <p>
+            @if (loading()) {
+              Loading repair requests…
+            } @else {
+              {{ visibleCount | number }} shown · {{ data()?.total ?? 0 | number }} matching
+              requests
+            }
+          </p>
+        </div>
+        <span class="result-count">{{ visibleCount | number }}</span>
+      </div>
+
+      @if (error()) {
+        <div class="inline-error" role="alert">
+          <span>{{ error() }}</span>
+          <button type="button" (click)="retry()">Try again</button>
+        </div>
+      } @else if (loading() && !entities().length) {
+        <div class="loading-state" role="status">
+          <span class="loading-spinner" aria-hidden="true"></span>
+          Loading repair request data…
+        </div>
+      } @else if (!entities().length) {
+        <div class="empty-state">
+          <span aria-hidden="true">⌖</span>
+          <strong>No matching repair requests</strong>
+          <p>Try adjusting your search or filters.</p>
+        </div>
+      } @else {
+        <div class="results-list" aria-label="Map results" (scroll)="onResultsScroll($event)">
+          @for (entity of visibleEntities; track entity.type + entity.id) {
+            <button
+              [class.selected]="selectedEntity()?.id === entity.id"
+              [class]="'result-card ' + markerColor(entity)"
+              [attr.data-request-id]="entity.id"
+              type="button"
+              (click)="focusEntity(entity, entity.type === 'request')"
+            >
+              <span class="result-marker" aria-hidden="true">{{
+                entity.type === 'request' ? '⚒' : entity.type === 'shop' ? '⌂' : '♙'
+              }}</span>
+              <span class="result-copy">
+                <span class="result-title">
+                  {{
+                    entity.type === 'request' ? entity.appliance || 'Repair request' : entity.name
+                  }}
+                </span>
+                @if (entity.type === 'request') {
+                  <span class="result-subtitle"
+                    >{{ formatRequestId(entity.id) }} · {{ entity.customerName }}</span
+                  >
+                  <span class="result-location shop-location">
+                    <span aria-hidden="true">⌂</span> {{ entity.shopName || 'Shop unassigned' }}
+                    @if (entity.shopName) {
+                      ·
+                      {{
+                        entity.shopAddress ||
+                          (entity.shopLocation
+                            ? entity.shopLocation.latitude + ', ' + entity.shopLocation.longitude
+                            : 'Shop location unavailable')
+                      }}
+                    }
+                  </span>
+                  <span class="result-meta">
+                    {{ entity.serviceType || entity.appliance }} ·
+                    {{ entity.createdAt | date: 'mediumDate' }} ·
+                    {{ statusLabel(entity.status) | titlecase }}
+                  </span>
+                }
+              </span>
+              <span class="result-arrow" aria-hidden="true">›</span>
+            </button>
+          }
+          @if (hasMore) {
+            <button class="load-more" type="button" [disabled]="loadingMore()" (click)="loadMore()">
+              {{ loadingMore() ? 'Loading…' : 'Load 20 more requests' }}
+            </button>
+          }
+          @if (loadMoreError()) {
+            <div class="inline-error" role="alert">
+              <span>{{ loadMoreError() }}</span>
+              <button type="button" (click)="retryLoadMore()">Retry</button>
+            </div>
+          }
+        </div>
+      }
+    </aside>
+
+    <div class="map-column" [class.mobile-hidden]="listView() === 'list'">
+      <div #mapShell class="map-shell">
+        <div
+          #mapElement
+          class="map-canvas"
+          aria-label="Interactive map of repair request locations"
+        ></div>
+        <div class="map-style-control" role="group" aria-label="Map style">
+          <button
+            type="button"
+            [class.active]="mapStyle() === 'street'"
+            (click)="setMapStyle('street')"
+          >
+            Map
+          </button>
+          <button
+            type="button"
+            [class.active]="mapStyle() === 'satellite'"
+            (click)="setMapStyle('satellite')"
+          >
+            Satellite
+          </button>
+        </div>
+        <button
+          class="fullscreen-control"
+          type="button"
+          [attr.aria-label]="fullscreen() ? 'Exit full screen map' : 'Expand map to full screen'"
+          (click)="toggleFullscreen()"
+        >
+          {{ fullscreen() ? '↙' : '⛶' }}
+        </button>
+        <div class="zoom-control" aria-label="Map zoom controls">
+          <button type="button" aria-label="Zoom in" (click)="zoomIn()">+</button>
+          <button type="button" aria-label="Zoom out" (click)="zoomOut()">−</button>
+        </div>
+        @if (mapLoading()) {
+          <div class="map-loading" role="status">Updating map…</div>
+        }
+        @if (mapError()) {
+          <div class="map-error" role="alert">
+            <span>{{ mapError() }}</span>
+            <button type="button" (click)="retryMapError()">Retry</button>
+          </div>
+        }
+        @if (routeLoading()) {
+          <div class="route-summary" role="status">Finding a driving route…</div>
+        } @else if (route()) {
+          <div class="route-summary">
+            <div>
+              <strong>Driving route</strong>
+              <span>{{ routeDistance() }} · {{ routeDuration() }}</span>
+            </div>
+            <button type="button" aria-label="Clear route" (click)="clearRoute()">×</button>
+          </div>
+        } @else if (routeError()) {
+          <div class="route-summary route-error" role="alert">
+            <span>{{ routeError() }}</span>
+            <button type="button" aria-label="Dismiss route message" (click)="clearRoute()">
+              ×
+            </button>
+          </div>
+        }
+        <div class="map-attribution">
+          <span>Showing saved request locations</span>
+          <span class="attribution-divider"></span>
+          <span>{{ mapEntities().length | number }} locations</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</section>

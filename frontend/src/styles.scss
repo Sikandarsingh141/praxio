@@ -1,5 +1,6 @@
 @use './app/admin/admin-repair-monitor.page' as repairMonitor;
 @use './app/admin/admin-overview.page' as adminOverview;
+@use './app/admin/admin-map-view.page' as adminMapView;
 @use './app/admin/admin-design-system' as adminDesignSystem;
 @use './app/shop/shop-design-system' as shopDesignSystem;
 @use './app/auth/customer-registration.global' as customerRegistration;
@@ -8,6 +9,7 @@
 
 @include repairMonitor.repairMonitorStyles;
 @include adminOverview.adminOverviewStyles;
+@include adminMapView.adminMapViewStyles;
 @include adminDesignSystem.adminDesignSystemStyles;
 @include shopDesignSystem.shopPortalLayoutStyles;
 @include customerRegistration.customerRegistrationStyles;

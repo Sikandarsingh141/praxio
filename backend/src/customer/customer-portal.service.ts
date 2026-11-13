@@ -3703,6 +3703,7 @@ export class CustomerPortalService {
         );
         return this.getGoogleDirectionsRoute(apiKey, origin, destination);
       }
+
       this.logger.error(
         `Google Routes API request failed (HTTP ${response.status}, ${providerStatus}): ${providerMessage}`,
       );
@@ -3760,6 +3761,38 @@ export class CustomerPortalService {
       description: fastest.route.description?.trim() || 'Fastest driving route',
       path: decodeGooglePolyline(fastest.route.polyline!.encodedPolyline!),
     };
+  }
+
+  async getAdminRepairRoute(
+    requestId: string,
+  ): Promise<ShopRepairRouteResult> {
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair request was not found');
+    }
+    const request = await this.repairRequests
+      .findById(requestId)
+      .select('shopIds acceptedQuotationId repairJob.acceptedQuotationId')
+      .lean()
+      .exec();
+    if (!request) {
+      throw new NotFoundException('Repair request was not found');
+    }
+    const quotationId =
+      request.repairJob?.acceptedQuotationId ?? request.acceptedQuotationId;
+    if (!quotationId) {
+      throw new BadRequestException(
+        'This repair request has no assigned repair shop.',
+      );
+    }
+    const quotation = await this.quotations
+      .findById(quotationId)
+      .select('shopId')
+      .lean()
+      .exec();
+    if (!quotation?.shopId) {
+      throw new NotFoundException('Assigned repair shop was not found');
+    }
+    return this.getShopRepairRoute(quotation.shopId.toString(), requestId);
   }
 
   private async getGoogleDirectionsRoute(

@@ -250,6 +250,11 @@ export const routes: Routes = [
       { path: 'users/:id', component: AdminUserDetailsPage },
       { path: 'users', component: AdminDashboardPage },
       {
+        path: 'map',
+        loadComponent: () =>
+          import('./admin/admin-map-view.page').then((module) => module.AdminMapViewPage),
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./admin/admin-profile.page').then((module) => module.AdminProfilePage),

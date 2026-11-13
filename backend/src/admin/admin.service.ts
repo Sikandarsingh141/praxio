@@ -28,6 +28,14 @@ import {
 } from '../customer/repair-request.schema';
 import { ShopSubscriptionInvoice } from '../payments/schemas/shop-subscription-invoice.schema';
 
+const NON_ACTIVE_MAP_REPAIR_STATUSES = [
+  'pending',
+  'completed',
+  'repair_declined',
+  'disputed',
+  'cancelled',
+];
+
 export interface ShopApplication {
   id: string;
   ownerFirstName: string;
@@ -85,6 +93,8 @@ export interface AdminRegistrationRequest {
   declineReason: string | null;
   latitude: number | null;
   longitude: number | null;
+  city: string;
+  state: string;
 }
 
 export interface RegistrationRequestPage {
@@ -147,6 +157,61 @@ export interface AdminUserStatistics {
   activeUsers: number;
   inactiveUsers: number;
   suspendedUsers: number;
+}
+
+export interface AdminMapEntity {
+  id: string;
+  type: 'customer' | 'shop' | 'request';
+  name: string;
+  location: { latitude: number; longitude: number } | null;
+  address: string;
+  city: string;
+  state: string;
+  email: string;
+  phone: string;
+  status: string;
+  accountStatus?: string | null;
+  approvalStatus?: string;
+  ownerName?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  shopName?: string;
+  shopAddress?: string;
+  shopEmail?: string;
+  shopPhone?: string;
+  shopLocation?: { latitude: number; longitude: number } | null;
+  appliance?: string;
+  serviceType?: string;
+  description?: string;
+  createdAt?: Date;
+  quotationAmount?: number | null;
+  quotationCurrency?: string | null;
+  repairCounts?: { total: number; active: number; completed: number };
+}
+
+export interface AdminMapData {
+  counts: {
+    customers: number;
+    shops: number;
+    requests: number;
+    active: number;
+    completed: number;
+    disputed: number;
+  };
+  entities: AdminMapEntity[];
+  markers?: AdminMapMarker[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface AdminMapMarker {
+  id: string;
+  type: 'request';
+  name: string;
+  status: string;
+  location: { latitude: number; longitude: number };
 }
 
 export interface AdminUserActivity {
@@ -530,10 +595,10 @@ export class AdminService {
                 $project: {
                   _id: 1,
                   appliance: 1,
+                  serviceType: 1,
                   description: 1,
                   brand: 1,
                   model: 1,
-                  serviceType: 1,
                   preferredServiceDate: 1,
                   photos: 1,
                   createdAt: 1,
@@ -1742,11 +1807,16 @@ export class AdminService {
     toDate?: string;
     sortBy?: string;
     sortOrder?: string;
+    city?: string;
+    state?: string;
+    includeCustomersWithApprovalStatus?: boolean;
   }): Promise<RegistrationRequestPage> {
     const page = Math.max(1, options.page);
-    const allowedLimits = [5, 10, 25, 50, 100];
+    const allowedLimits = [5, 10, 20, 25, 50, 100];
     if (!allowedLimits.includes(options.limit)) {
-      throw new BadRequestException('Page size must be 5, 10, 25, 50, or 100');
+      throw new BadRequestException(
+        'Page size must be 5, 10, 20, 25, 50, or 100',
+      );
     }
     const limit = options.limit;
     const match: Record<string, unknown> = {
@@ -1844,7 +1914,16 @@ export class AdminService {
         throw new BadRequestException('Invalid registration status filter');
       }
       pipeline.push({
-        $match: { computedRegistrationStatus: approvalStatus },
+        $match:
+          options.includeCustomersWithApprovalStatus &&
+          options.accountType === 'all'
+            ? {
+                $or: [
+                  { accountType: 'customer' },
+                  { computedRegistrationStatus: approvalStatus },
+                ],
+              }
+            : { computedRegistrationStatus: approvalStatus },
       });
     }
     if (options.accountStatus && options.accountStatus !== 'all') {
@@ -1857,6 +1936,28 @@ export class AdminService {
         $match: { computedAccountStatus: options.accountStatus },
       });
     }
+    const locationConditions: Record<string, unknown>[] = [];
+    for (const [field, value] of [
+      ['shopDetails.city', options.city],
+      ['shopDetails.state', options.state],
+    ] as const) {
+      const locationSearch = value?.trim();
+      if (locationSearch) {
+        locationConditions.push({
+          [field]: {
+            $regex: locationSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+            $options: 'i',
+          },
+        });
+      }
+    }
+    if (locationConditions.length) {
+      pipeline.push({
+        $match: {
+          $and: [{ accountType: 'shop' }, ...locationConditions],
+        },
+      });
+    }
     const search = options.search?.trim();
     if (search) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -1865,6 +1966,9 @@ export class AdminService {
         { firstName: { $regex: escapedSearch, $options: 'i' } },
         { lastName: { $regex: escapedSearch, $options: 'i' } },
         { 'shopDetails.shopName': { $regex: escapedSearch, $options: 'i' } },
+        { 'shopDetails.address': { $regex: escapedSearch, $options: 'i' } },
+        { 'shopDetails.city': { $regex: escapedSearch, $options: 'i' } },
+        { 'shopDetails.state': { $regex: escapedSearch, $options: 'i' } },
         { email: { $regex: escapedSearch, $options: 'i' } },
         { countryCode: { $regex: escapedSearch, $options: 'i' } },
         { mobileNumber: { $regex: escapedSearch, $options: 'i' } },
@@ -2028,6 +2132,8 @@ export class AdminService {
                   },
                 },
                 services: { $ifNull: ['$shopDetails.services', []] },
+                city: { $ifNull: ['$shopDetails.city', ''] },
+                state: { $ifNull: ['$shopDetails.state', ''] },
                 email: 1,
                 countryCode: 1,
                 mobileNumber: 1,
@@ -2105,6 +2211,740 @@ export class AdminService {
       total,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async getMapData(options: {
+    type?: string;
+    mapOnly?: boolean;
+    page?: number;
+    limit?: number;
+    search?: string;
+    city?: string;
+    state?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+    approvalStatus?: string;
+  }): Promise<AdminMapData> {
+    const type = options.type ?? 'all';
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 20;
+    if (!['all', 'customers', 'shops', 'requests'].includes(type)) {
+      throw new BadRequestException('Invalid map entity filter');
+    }
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      ![10, 20, 25, 50, 100].includes(limit)
+    ) {
+      throw new BadRequestException('Invalid map pagination');
+    }
+    if (
+      options.status &&
+      options.status !== 'all' &&
+      ![
+        'active',
+        'pending',
+        ...REPAIR_JOB_STATUSES,
+        ...LEGACY_REPAIR_JOB_STATUSES,
+        'cancelled',
+      ].includes(options.status)
+    ) {
+      throw new BadRequestException('Invalid repair status filter');
+    }
+    if (
+      options.approvalStatus &&
+      !['all', 'pending', 'approved', 'declined'].includes(
+        options.approvalStatus,
+      )
+    ) {
+      throw new BadRequestException('Invalid shop approval filter');
+    }
+
+    const start = options.from
+      ? this.parseDashboardDate(options.from, 'start')
+      : undefined;
+    const end = options.to
+      ? this.parseDashboardDate(options.to, 'end')
+      : undefined;
+    if (start && end && start.getTime() > end.getTime()) {
+      throw new BadRequestException('Start date must be before end date');
+    }
+    if (
+      start &&
+      end &&
+      end.getTime() - start.getTime() > 366 * 24 * 60 * 60 * 1000
+    ) {
+      throw new BadRequestException('Map date range cannot exceed 366 days');
+    }
+    const userDateMatch: Record<string, Date> = {
+      ...(start ? { $gte: start } : {}),
+      ...(end ? { $lte: end } : {}),
+    };
+    const requestMatch: Record<string, unknown> = {
+      ...(Object.keys(userDateMatch).length
+        ? { createdAt: userDateMatch }
+        : {}),
+    };
+
+    const counts = {
+      customers: 0,
+      shops: 0,
+      requests: 0,
+      active: 0,
+      completed: 0,
+      disputed: 0,
+    };
+    if (!options.mapOnly) {
+      const [userGroups, requestGroups] = await Promise.all([
+        this.users
+          .aggregate<{ _id: string; count: number }>([
+            {
+              $match: {
+                accountType: { $in: ['customer', 'shop'] },
+                ...(Object.keys(userDateMatch).length
+                  ? { createdAt: userDateMatch }
+                  : {}),
+              },
+            },
+            { $group: { _id: '$accountType', count: { $sum: 1 } } },
+          ])
+          .exec(),
+        this.repairRequests
+          .aggregate<{ _id: string; count: number }>([
+            { $match: requestMatch },
+            {
+              $addFields: {
+                mapStatus: {
+                  $ifNull: [
+                    '$repairJob.status',
+                    {
+                      $cond: [
+                        { $eq: ['$status', 'open'] },
+                        'pending',
+                        '$status',
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+            { $group: { _id: '$mapStatus', count: { $sum: 1 } } },
+          ])
+          .exec(),
+      ]);
+      const userCounts = new Map(
+        userGroups.map((group) => [group._id, group.count]),
+      );
+      const requestCounts = new Map(
+        requestGroups.map((group) => [group._id, group.count]),
+      );
+      Object.assign(counts, {
+        customers: userCounts.get('customer') ?? 0,
+        shops: userCounts.get('shop') ?? 0,
+        requests: [...requestCounts.values()].reduce(
+          (total, count) => total + count,
+          0,
+        ),
+        active: [...requestCounts.entries()]
+          .filter(
+            ([status]) => !NON_ACTIVE_MAP_REPAIR_STATUSES.includes(status),
+          )
+          .reduce((total, [, count]) => total + count, 0),
+        completed: requestCounts.get('completed') ?? 0,
+        disputed: requestCounts.get('disputed') ?? 0,
+      });
+    }
+    const entities: AdminMapEntity[] = [];
+    let total = 0;
+
+    const showUserMarkers = type !== 'requests';
+    const showRequestMarkers = type === 'all' || type === 'requests';
+
+    if (showUserMarkers) {
+      const usersPage = await this.getUsers({
+        page,
+        limit,
+        accountType:
+          type === 'customers' ? 'customer' : type === 'shops' ? 'shop' : 'all',
+        accountStatus: 'all',
+        approvalStatus: options.approvalStatus ?? 'all',
+        includeCustomersWithApprovalStatus: type === 'all',
+        search: options.search,
+        fromDate: options.from,
+        toDate: options.to,
+        city: type === 'customers' ? undefined : options.city,
+        state: type === 'customers' ? undefined : options.state,
+      });
+      total += usersPage.total;
+      const pageUsers = usersPage.requests;
+      const ids = pageUsers.map((user) => new Types.ObjectId(user.userId));
+      const stats = ids.length
+        ? await this.repairRequests
+            .aggregate<{
+              customers: Array<{
+                _id: Types.ObjectId;
+                total: number;
+                active: number;
+                completed: number;
+              }>;
+              shops: Array<{
+                _id: Types.ObjectId;
+                total: number;
+                active: number;
+                completed: number;
+              }>;
+            }>([
+              {
+                $match: {
+                  $or: [
+                    { customerId: { $in: ids } },
+                    { shopIds: { $in: ids } },
+                  ],
+                },
+              },
+              {
+                $addFields: {
+                  mapStatus: {
+                    $ifNull: [
+                      '$repairJob.status',
+                      {
+                        $cond: [
+                          { $eq: ['$status', 'open'] },
+                          'pending',
+                          '$status',
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                $facet: {
+                  customers: [
+                    { $match: { customerId: { $in: ids } } },
+                    {
+                      $group: {
+                        _id: '$customerId',
+                        total: { $sum: 1 },
+                        active: {
+                          $sum: {
+                            $cond: [
+                              {
+                                $not: [
+                                  {
+                                    $in: [
+                                      '$mapStatus',
+                                      [
+                                        'pending',
+                                        'completed',
+                                        'repair_declined',
+                                        'disputed',
+                                        'cancelled',
+                                      ],
+                                    ],
+                                  },
+                                ],
+                              },
+                              1,
+                              0,
+                            ],
+                          },
+                        },
+                        completed: {
+                          $sum: {
+                            $cond: [{ $eq: ['$mapStatus', 'completed'] }, 1, 0],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                  shops: [
+                    { $unwind: '$shopIds' },
+                    { $match: { shopIds: { $in: ids } } },
+                    {
+                      $group: {
+                        _id: '$shopIds',
+                        total: { $sum: 1 },
+                        active: {
+                          $sum: {
+                            $cond: [
+                              {
+                                $not: [
+                                  {
+                                    $in: [
+                                      '$mapStatus',
+                                      [
+                                        'pending',
+                                        'completed',
+                                        'repair_declined',
+                                        'disputed',
+                                        'cancelled',
+                                      ],
+                                    ],
+                                  },
+                                ],
+                              },
+                              1,
+                              0,
+                            ],
+                          },
+                        },
+                        completed: {
+                          $sum: {
+                            $cond: [{ $eq: ['$mapStatus', 'completed'] }, 1, 0],
+                          },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            ])
+            .exec()
+        : [];
+      const statsById = new Map<string, AdminMapEntity['repairCounts']>();
+      for (const [kind, records] of [
+        ['customer', stats[0]?.customers ?? []],
+        ['shop', stats[0]?.shops ?? []],
+      ] as const) {
+        records.forEach((record) => {
+          statsById.set(`${kind}:${record._id.toString()}`, {
+            total: record.total,
+            active: record.active,
+            completed: record.completed,
+          });
+        });
+      }
+      entities.push(
+        ...pageUsers.map((user): AdminMapEntity => {
+          const isShop = user.accountType === 'shop';
+          const location =
+            user.latitude !== null &&
+            user.longitude !== null &&
+            Number.isFinite(user.latitude) &&
+            Number.isFinite(user.longitude) &&
+            Math.abs(user.latitude) <= 90 &&
+            Math.abs(user.longitude) <= 180
+              ? { latitude: user.latitude, longitude: user.longitude }
+              : null;
+          return {
+            id: user.userId,
+            type: isShop ? 'shop' : 'customer',
+            name: isShop
+              ? (user.shopName ?? user.applicantName)
+              : user.applicantName,
+            ownerName: user.applicantName,
+            location,
+            address: user.businessAddress ?? '',
+            city: user.city,
+            state: user.state,
+            email: user.email,
+            phone: `${user.countryCode} ${user.mobileNumber}`.trim(),
+            status: user.registrationStatus,
+            accountStatus: user.accountStatus,
+            approvalStatus: user.registrationStatus,
+            repairCounts: statsById.get(
+              `${isShop ? 'shop' : 'customer'}:${user.userId}`,
+            ) ?? { total: 0, active: 0, completed: 0 },
+          };
+        }),
+      );
+    }
+
+    if (showRequestMarkers) {
+      const requestPipeline: PipelineStage[] = [
+        { $match: requestMatch },
+        {
+          $addFields: {
+            assignedQuotationId: {
+              $ifNull: [
+                '$repairJob.acceptedQuotationId',
+                '$acceptedQuotationId',
+              ],
+            },
+            mapStatus: {
+              $ifNull: [
+                '$repairJob.status',
+                {
+                  $cond: [{ $eq: ['$status', 'open'] }, 'pending', '$status'],
+                },
+              ],
+            },
+          },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'customerId',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  firstName: 1,
+                  lastName: 1,
+                  fullName: 1,
+                  email: 1,
+                  countryCode: 1,
+                  mobileNumber: 1,
+                  location: 1,
+                },
+              },
+            ],
+            as: 'mapCustomer',
+          },
+        },
+        { $unwind: { path: '$mapCustomer', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'repair_quotations',
+            localField: 'assignedQuotationId',
+            foreignField: '_id',
+            pipeline: [{ $project: { shopId: 1, amount: 1, currency: 1 } }],
+            as: 'mapQuotation',
+          },
+        },
+        {
+          $unwind: { path: '$mapQuotation', preserveNullAndEmptyArrays: true },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'mapQuotation.shopId',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  firstName: 1,
+                  lastName: 1,
+                  fullName: 1,
+                  email: 1,
+                  countryCode: 1,
+                  mobileNumber: 1,
+                  shopDetails: 1,
+                },
+              },
+            ],
+            as: 'mapShop',
+          },
+        },
+        { $unwind: { path: '$mapShop', preserveNullAndEmptyArrays: true } },
+      ];
+      const status = options.status?.trim();
+      if (status && status !== 'all') {
+        if (
+          ![
+            'active',
+            'pending',
+            ...REPAIR_JOB_STATUSES,
+            ...LEGACY_REPAIR_JOB_STATUSES,
+            'cancelled',
+          ].includes(status)
+        ) {
+          throw new BadRequestException('Invalid repair status filter');
+        }
+        requestPipeline.push(
+          status === 'active'
+            ? {
+                $match: {
+                  mapStatus: { $nin: NON_ACTIVE_MAP_REPAIR_STATUSES },
+                },
+              }
+            : { $match: { mapStatus: status } },
+        );
+      }
+      const locationMatch: Record<string, unknown>[] = [];
+      for (const [field, value] of [
+        ['mapShop.shopDetails.city', options.city],
+        ['mapShop.shopDetails.state', options.state],
+      ] as const) {
+        if (value?.trim()) {
+          locationMatch.push({
+            [field]: {
+              $regex: value.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+              $options: 'i',
+            },
+          });
+        }
+      }
+      if (locationMatch.length) {
+        requestPipeline.push({ $match: { $and: locationMatch } });
+      }
+      const search = options.search?.trim();
+      if (search) {
+        const expression = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const requestCode = search.replace(/^#/, '');
+        const conditions: Record<string, unknown>[] = [
+          { appliance: { $regex: expression, $options: 'i' } },
+          { description: { $regex: expression, $options: 'i' } },
+          { 'mapCustomer.firstName': { $regex: expression, $options: 'i' } },
+          { 'mapCustomer.lastName': { $regex: expression, $options: 'i' } },
+          { 'mapCustomer.fullName': { $regex: expression, $options: 'i' } },
+          { 'mapCustomer.email': { $regex: expression, $options: 'i' } },
+          {
+            'mapShop.shopDetails.shopName': {
+              $regex: expression,
+              $options: 'i',
+            },
+          },
+          {
+            'mapShop.shopDetails.address': {
+              $regex: expression,
+              $options: 'i',
+            },
+          },
+          { 'mapShop.shopDetails.city': { $regex: expression, $options: 'i' } },
+          {
+            'mapShop.shopDetails.state': { $regex: expression, $options: 'i' },
+          },
+        ];
+        if (isObjectIdOrHexString(requestCode)) {
+          conditions.push({ _id: new Types.ObjectId(requestCode) });
+        }
+        if (/^[0-9a-f]{8}$/i.test(requestCode)) {
+          const requestCodePattern = requestCode.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            '\\$&',
+          );
+          requestPipeline.push({
+            $addFields: { mapRequestIdText: { $toString: '$_id' } },
+          });
+          conditions.push({
+            mapRequestIdText: {
+              $regex: `${requestCodePattern}$`,
+              $options: 'i',
+            },
+          });
+        }
+        requestPipeline.push({ $match: { $or: conditions } });
+      }
+      if (options.mapOnly) {
+        requestPipeline.push(
+          { $sort: { createdAt: -1, _id: -1 } },
+          {
+            $project: {
+              _id: 1,
+              appliance: 1,
+              mapStatus: 1,
+              customerLatitude: 1,
+              customerLongitude: 1,
+              customerLocation: '$mapCustomer.location',
+            },
+          },
+        );
+        const records = await this.repairRequests
+          .aggregate<Record<string, unknown>>(requestPipeline)
+          .exec();
+        const markers = records.flatMap((record): AdminMapMarker[] => {
+          const requestLatitude = record['customerLatitude'];
+          const requestLongitude = record['customerLongitude'];
+          const customerLocation = record['customerLocation'] as
+            { latitude?: number; longitude?: number } | null | undefined;
+          const hasRequestLocation =
+            typeof requestLatitude === 'number' &&
+            Number.isFinite(requestLatitude) &&
+            Math.abs(requestLatitude) <= 90 &&
+            typeof requestLongitude === 'number' &&
+            Number.isFinite(requestLongitude) &&
+            Math.abs(requestLongitude) <= 180;
+          const latitude = hasRequestLocation
+            ? requestLatitude
+            : customerLocation?.latitude;
+          const longitude = hasRequestLocation
+            ? requestLongitude
+            : customerLocation?.longitude;
+          if (
+            typeof latitude !== 'number' ||
+            !Number.isFinite(latitude) ||
+            Math.abs(latitude) > 90 ||
+            typeof longitude !== 'number' ||
+            !Number.isFinite(longitude) ||
+            Math.abs(longitude) > 180
+          ) {
+            return [];
+          }
+          return [
+            {
+              id: String(record['_id']),
+              type: 'request',
+              name: String(record['appliance'] ?? 'Repair request'),
+              status: String(record['mapStatus'] ?? 'pending'),
+              location: { latitude, longitude },
+            },
+          ];
+        });
+        return {
+          counts,
+          entities: [],
+          markers,
+          page: 1,
+          limit: markers.length,
+          total: markers.length,
+        };
+      }
+      requestPipeline.push(
+        { $sort: { createdAt: -1, _id: -1 } },
+        {
+          $facet: {
+            entities: [
+              { $skip: (page - 1) * limit },
+              { $limit: limit },
+              {
+                $project: {
+                  _id: 1,
+                  appliance: 1,
+                  serviceType: 1,
+                  description: 1,
+                  createdAt: 1,
+                  mapStatus: 1,
+                  customerLatitude: 1,
+                  customerLongitude: 1,
+                  customerLocation: '$mapCustomer.location',
+                  customerName: mongoUserDisplayName(
+                    '$mapCustomer.firstName',
+                    '$mapCustomer.lastName',
+                    '$mapCustomer.fullName',
+                    'Customer',
+                  ),
+                  customerEmail: '$mapCustomer.email',
+                  customerPhone: {
+                    $concat: [
+                      { $ifNull: ['$mapCustomer.countryCode', ''] },
+                      ' ',
+                      { $ifNull: ['$mapCustomer.mobileNumber', ''] },
+                    ],
+                  },
+                  shopName: '$mapShop.shopDetails.shopName',
+                  shopAddress: '$mapShop.shopDetails.address',
+                  shopEmail: '$mapShop.email',
+                  shopPhone: {
+                    $concat: [
+                      { $ifNull: ['$mapShop.countryCode', ''] },
+                      ' ',
+                      { $ifNull: ['$mapShop.mobileNumber', ''] },
+                    ],
+                  },
+                  shopCity: '$mapShop.shopDetails.city',
+                  shopState: '$mapShop.shopDetails.state',
+                  shopLocation: '$mapShop.shopDetails.location',
+                  quotationAmount: '$mapQuotation.amount',
+                  quotationCurrency: '$mapQuotation.currency',
+                },
+              },
+            ],
+            metadata: [{ $count: 'total' }],
+          },
+        },
+      );
+      const [result] = await this.repairRequests
+        .aggregate<{
+          entities: Array<Record<string, unknown>>;
+          metadata: Array<{ total: number }>;
+        }>(requestPipeline)
+        .exec();
+      const requestEntities = result?.entities ?? [];
+      const requestTotal = result?.metadata[0]?.total ?? 0;
+      if (type === 'requests' || (type === 'all' && !showUserMarkers)) {
+        total = requestTotal;
+      } else {
+        total += requestTotal;
+      }
+      entities.push(
+        ...requestEntities.map((record): AdminMapEntity => {
+          const requestLatitude = record['customerLatitude'];
+          const requestLongitude = record['customerLongitude'];
+          const customerLocation = record['customerLocation'] as
+            { latitude?: number; longitude?: number } | null | undefined;
+          const hasRequestLocation =
+            typeof requestLatitude === 'number' &&
+            Number.isFinite(requestLatitude) &&
+            Math.abs(requestLatitude) <= 90 &&
+            typeof requestLongitude === 'number' &&
+            Number.isFinite(requestLongitude) &&
+            Math.abs(requestLongitude) <= 180;
+          const customerLatitude = hasRequestLocation
+            ? requestLatitude
+            : customerLocation?.latitude;
+          const customerLongitude = hasRequestLocation
+            ? requestLongitude
+            : customerLocation?.longitude;
+          const shopLocation = record['shopLocation'] as
+            { latitude?: number; longitude?: number } | null | undefined;
+          const validLocation =
+            typeof customerLatitude === 'number' &&
+            Number.isFinite(customerLatitude) &&
+            Math.abs(customerLatitude) <= 90 &&
+            typeof customerLongitude === 'number' &&
+            Number.isFinite(customerLongitude) &&
+            Math.abs(customerLongitude) <= 180;
+          const validShopLocation =
+            typeof shopLocation?.latitude === 'number' &&
+            Number.isFinite(shopLocation.latitude) &&
+            Math.abs(shopLocation.latitude) <= 90 &&
+            typeof shopLocation.longitude === 'number' &&
+            Number.isFinite(shopLocation.longitude) &&
+            Math.abs(shopLocation.longitude) <= 180;
+          return {
+            id: String(record['_id']),
+            type: 'request',
+            name: String(record['appliance'] ?? 'Repair request'),
+            location: validLocation
+              ? {
+                  latitude: customerLatitude!,
+                  longitude: customerLongitude!,
+                }
+              : null,
+            address: '',
+            city: '',
+            state: '',
+            email: String(record['customerEmail'] ?? ''),
+            phone: String(record['customerPhone'] ?? '').trim(),
+            status: String(record['mapStatus'] ?? 'pending'),
+            customerName: String(record['customerName'] ?? 'Customer'),
+            customerEmail: String(record['customerEmail'] ?? ''),
+            customerPhone: String(record['customerPhone'] ?? '').trim(),
+            shopName: String(record['shopName'] ?? ''),
+            shopAddress: String(record['shopAddress'] ?? ''),
+            shopEmail: String(record['shopEmail'] ?? ''),
+            shopPhone: String(record['shopPhone'] ?? '').trim(),
+            shopLocation: validShopLocation
+              ? {
+                  latitude: shopLocation!.latitude!,
+                  longitude: shopLocation!.longitude!,
+                }
+              : null,
+            appliance: String(record['appliance'] ?? ''),
+            serviceType: String(record['serviceType'] ?? ''),
+            description: String(record['description'] ?? ''),
+            createdAt: record['createdAt'] as Date,
+            quotationAmount:
+              typeof record['quotationAmount'] === 'number'
+                ? record['quotationAmount']
+                : null,
+            quotationCurrency:
+              typeof record['quotationCurrency'] === 'string'
+                ? record['quotationCurrency']
+                : null,
+          };
+        }),
+      );
+    }
+    return { counts, entities, page, limit, total };
+  }
+
+  async getMapRequest(requestId: string): Promise<AdminMapEntity> {
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair request not found');
+    }
+    const result = await this.getMapData({
+      type: 'requests',
+      page: 1,
+      limit: 20,
+      search: requestId,
+    });
+    const request = result.entities.find((entity) => entity.id === requestId);
+    if (!request) throw new NotFoundException('Repair request not found');
+    return request;
   }
 
   async getUserStatistics(): Promise<AdminUserStatistics> {
@@ -3031,6 +3871,8 @@ export class AdminService {
         typeof value['latitude'] === 'number' ? value['latitude'] : null,
       longitude:
         typeof value['longitude'] === 'number' ? value['longitude'] : null,
+      city: typeof value['city'] === 'string' ? value['city'] : '',
+      state: typeof value['state'] === 'string' ? value['state'] : '',
     };
   }
 

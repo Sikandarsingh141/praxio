@@ -54,6 +54,8 @@ export interface AdminRegistrationRequest {
   declineReason: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  city?: string;
+  state?: string;
 }
 
 export interface RegistrationRequestPage {
@@ -363,9 +365,144 @@ export interface AdminMonitorPage<T> {
   reviews?: T[];
 }
 
+export type AdminMapType = 'all' | 'customers' | 'shops' | 'requests';
+
+export interface AdminMapEntity {
+  id: string;
+  type: 'customer' | 'shop' | 'request';
+  name: string;
+  location: { latitude: number; longitude: number } | null;
+  address: string;
+  city: string;
+  state: string;
+  email: string;
+  phone: string;
+  status: string;
+  accountStatus?: string | null;
+  approvalStatus?: string;
+  ownerName?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  shopName?: string;
+  shopAddress?: string;
+  shopEmail?: string;
+  shopPhone?: string;
+  shopLocation?: { latitude: number; longitude: number } | null;
+  appliance?: string;
+  serviceType?: string;
+  description?: string;
+  createdAt?: string;
+  quotationAmount?: number | null;
+  quotationCurrency?: string | null;
+  repairCounts?: { total: number; active: number; completed: number };
+}
+
+export interface AdminMapData {
+  counts: {
+    customers: number;
+    shops: number;
+    requests: number;
+    active: number;
+    completed: number;
+    disputed: number;
+  };
+  entities: AdminMapEntity[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface AdminMapMarker {
+  id: string;
+  type: 'request';
+  name: string;
+  status: string;
+  location: { latitude: number; longitude: number };
+}
+
+export interface AdminMapRoute {
+  distanceMeters: number;
+  durationSeconds: number;
+  description: string;
+  path: Array<{ latitude: number; longitude: number }>;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   constructor(private readonly http: HttpClient) {}
+
+  getMapData(options: {
+    type: AdminMapType;
+    page: number;
+    limit: number;
+    search?: string;
+    city?: string;
+    state?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+    approvalStatus?: string;
+  }): Observable<AdminMapData> {
+    let params = new HttpParams()
+      .set('type', options.type)
+      .set('page', options.page)
+      .set('limit', options.limit);
+    for (const key of [
+      'search',
+      'city',
+      'state',
+      'from',
+      'to',
+      'status',
+      'approvalStatus',
+    ] as const) {
+      const value = options[key]?.trim();
+      if (value) params = params.set(key, value);
+    }
+    return this.http
+      .get<ApiEnvelope<AdminMapData>>(`${environment.apiBaseUrl}/admin/map`, {
+        params,
+      })
+      .pipe(map((response) => response.data));
+  }
+
+  getMapMarkers(options: {
+    search?: string;
+    city?: string;
+    state?: string;
+    from?: string;
+    to?: string;
+    status?: string;
+  }): Observable<AdminMapMarker[]> {
+    let params = new HttpParams();
+    for (const key of ['search', 'city', 'state', 'from', 'to', 'status'] as const) {
+      const value = options[key]?.trim();
+      if (value) params = params.set(key, value);
+    }
+    return this.http
+      .get<ApiEnvelope<{ markers: AdminMapMarker[] }>>(
+        `${environment.apiBaseUrl}/admin/map/markers`,
+        { params },
+      )
+      .pipe(map((response) => response.data.markers));
+  }
+
+  getMapRequest(requestId: string): Observable<AdminMapEntity> {
+    return this.http
+      .get<ApiEnvelope<AdminMapEntity>>(
+        `${environment.apiBaseUrl}/admin/map/repair-requests/${encodeURIComponent(requestId)}`,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  getMapRoute(requestId: string): Observable<AdminMapRoute> {
+    return this.http
+      .get<ApiEnvelope<{ route: AdminMapRoute }>>(
+        `${environment.apiBaseUrl}/admin/map/repair-requests/${encodeURIComponent(requestId)}/route`,
+      )
+      .pipe(map((response) => response.data.route));
+  }
 
   getDashboardOverview(
     from: string,
