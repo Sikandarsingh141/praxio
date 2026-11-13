@@ -382,6 +382,7 @@
         [disabled]="loading()"
         ariaLabel="User list pages"
         (pageChange)="goToPage($event)"
+        (pageSizeChange)="changePageSize($event)"
       />
     }
   </section>

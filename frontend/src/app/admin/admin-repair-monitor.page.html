@@ -225,6 +225,7 @@
       [disabled]="loading()"
       ariaLabel="Repair monitoring pages"
       (pageChange)="goToPage($event)"
+      (pageSizeChange)="changePageSize($event)"
     />
   }
 </section>

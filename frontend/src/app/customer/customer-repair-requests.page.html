@@ -291,9 +291,10 @@
     <app-pagination
       [total]="visibleRequests().length"
       [page]="page()"
-      [pageSize]="pageSize"
+      [pageSize]="pageSize()"
       ariaLabel="Repair request pages"
       (pageChange)="goToPage($event)"
+      (pageSizeChange)="changePageSize($event)"
     />
   }
 

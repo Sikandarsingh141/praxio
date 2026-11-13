@@ -5,12 +5,12 @@ import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { ShopReviewsPage } from './shop-reviews.page';
 
 describe('ShopReviewsPage pagination', () => {
-  it('shows five reviews per page and resets paging when a filter changes', async () => {
+  it('shows ten reviews per page and resets paging when a filter changes', async () => {
     const summary: ShopReviewSummary = {
       averageRating: 4.5,
       reviewCount: 6,
       distribution: [],
-      reviews: Array.from({ length: 6 }, (_, index) => ({
+      reviews: Array.from({ length: 11 }, (_, index) => ({
         repairRequestId: `repair-${index}`,
         customerName: `Customer ${index}`,
         overallRating: 5,
@@ -22,7 +22,7 @@ describe('ShopReviewsPage pagination', () => {
         reviewText: '',
         wouldRecommend: true,
         verifiedAt: '2026-03-01T00:00:00.000Z',
-        createdAt: `2026-03-0${index + 1}T00:00:00.000Z`,
+        createdAt: new Date(Date.UTC(2026, 2, index + 1)).toISOString(),
       })),
     };
     const requests = jasmine.createSpyObj<ShopRepairRequestsService>('ShopRepairRequestsService', [
@@ -36,7 +36,7 @@ describe('ShopReviewsPage pagination', () => {
 
     const fixture = TestBed.createComponent(ShopReviewsPage);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.review-card').length).toBe(5);
+    expect(fixture.nativeElement.querySelectorAll('.review-card').length).toBe(10);
     expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
 
     fixture.componentInstance.goToPage(2);

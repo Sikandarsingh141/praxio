@@ -48,7 +48,7 @@ export class AdminRepairMonitorPage implements OnInit {
   readonly jobs = signal<AdminRepairJob[]>([]);
   readonly reviews = signal<AdminRepairReview[]>([]);
   readonly page = signal(1);
-  readonly pageSize = 5;
+  pageSize = 10;
   readonly total = signal(0);
   readonly loading = signal(true);
   readonly error = signal('');
@@ -157,6 +157,13 @@ export class AdminRepairMonitorPage implements OnInit {
   goToPage(page: number): void {
     if (page < 1 || page > this.totalPages() || page === this.page()) return;
     this.page.set(page);
+    this.load();
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize) return;
+    this.pageSize = size;
+    this.page.set(1);
     this.load();
   }
 

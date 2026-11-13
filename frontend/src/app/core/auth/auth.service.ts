@@ -96,8 +96,8 @@ export class AuthService {
       .pipe(map((response) => response.data.payment));
   }
 
-  getMyShopInvoices(page = 1): Observable<ShopInvoicePage> {
-    const params = new HttpParams().set('page', page);
+  getMyShopInvoices(page = 1, limit = 10): Observable<ShopInvoicePage> {
+    const params = new HttpParams().set('page', page).set('limit', limit);
     return this.http
       .get<ApiEnvelope<ShopInvoicePage>>(`${environment.apiBaseUrl}/payments/invoices`, {
         params,

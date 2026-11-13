@@ -52,7 +52,7 @@ export interface ShopInvoicePage {
   };
 }
 
-const SHOP_INVOICE_PAGE_SIZE = 5;
+const DEFAULT_SHOP_INVOICE_PAGE_SIZE = 10;
 
 @Injectable()
 export class StripePaymentsService {
@@ -229,9 +229,13 @@ export class StripePaymentsService {
   async getShopInvoices(
     userId: string,
     page: number,
+    limit = DEFAULT_SHOP_INVOICE_PAGE_SIZE,
   ): Promise<ShopInvoicePage> {
     if (!Number.isInteger(page) || page < 1) {
       throw new BadRequestException('Invoice page must be a positive integer.');
+    }
+    if (![5, 10, 25, 100].includes(limit)) {
+      throw new BadRequestException('Invoice page size must be 5, 10, 25, or 100.');
     }
 
     const userObjectId = this.toObjectId(userId);
@@ -252,8 +256,8 @@ export class StripePaymentsService {
       this.subscriptionInvoices
         .find(filter)
         .sort({ generatedAt: -1, _id: -1 })
-        .skip((page - 1) * SHOP_INVOICE_PAGE_SIZE)
-        .limit(SHOP_INVOICE_PAGE_SIZE)
+        .skip((page - 1) * limit)
+        .limit(limit)
         .exec(),
       this.subscriptionInvoices.countDocuments(filter).exec(),
     ]);
@@ -302,7 +306,7 @@ export class StripePaymentsService {
         ],
         pagination: {
           page: 1,
-          limit: SHOP_INVOICE_PAGE_SIZE,
+          limit,
           total: 1,
           totalPages: 1,
         },
@@ -314,9 +318,9 @@ export class StripePaymentsService {
         invoices: [],
         pagination: {
           page,
-          limit: SHOP_INVOICE_PAGE_SIZE,
+          limit,
           total,
-          totalPages: Math.ceil(total / SHOP_INVOICE_PAGE_SIZE),
+          totalPages: Math.ceil(total / limit),
         },
       };
     }
@@ -355,9 +359,9 @@ export class StripePaymentsService {
       invoices,
       pagination: {
         page,
-        limit: SHOP_INVOICE_PAGE_SIZE,
+        limit,
         total,
-        totalPages: Math.ceil(total / SHOP_INVOICE_PAGE_SIZE),
+        totalPages: Math.ceil(total / limit),
       },
     };
   }

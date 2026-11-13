@@ -136,19 +136,19 @@ describe('CustomerRepairRequestsPage editing', () => {
     ]);
   });
 
-  it('shows five requests per page and resets paging when the status filter changes', () => {
-    const requests = Array.from({ length: 6 }, (_, index) => ({
+  it('shows ten requests per page and resets paging when the status filter changes', () => {
+    const requests = Array.from({ length: 11 }, (_, index) => ({
       ...request,
       _id: `request-${index}`,
       appliance: `Request ${index}`,
-      ...(index === 5 ? { repairJob: { status: 'completed' as const } } : {}),
+      ...(index === 10 ? { repairJob: { status: 'completed' as const } } : {}),
     }));
     portal.getRepairRequests.and.returnValue(of(requests));
     const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
     fixture.detectChanges();
     const page = fixture.componentInstance;
 
-    expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(5);
+    expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(10);
     expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
 
     page.goToPage(2);
@@ -160,7 +160,7 @@ describe('CustomerRepairRequestsPage editing', () => {
     fixture.detectChanges();
     expect(page.page()).toBe(1);
     expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(1);
-    expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
   });
 
   it('renders request photos in the customer request list', () => {

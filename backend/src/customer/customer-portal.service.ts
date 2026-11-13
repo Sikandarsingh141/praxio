@@ -649,13 +649,37 @@ export class CustomerPortalService {
       );
     }
 
+    const existing = await this.repairRequests
+      .findOne({
+        _id: new Types.ObjectId(requestId),
+        customerId: customer._id,
+      })
+      .select('shopResponses')
+      .lean()
+      .exec();
+    if (!existing) {
+      throw new NotFoundException('Repair request was not found.');
+    }
+    const existingResponses = new Map(
+      (existing.shopResponses ?? []).map((response) => [
+        response.shopId.toString(),
+        response,
+      ]),
+    );
+    const newlyAddedShopIds = shopIds.filter(
+      (id) => !existingResponses.has(id),
+    );
+
     const update: Record<string, unknown> = {
       $set: {
         shopIds: shopIds.map((id) => new Types.ObjectId(id)),
-        shopResponses: shopIds.map((id) => ({
-          shopId: new Types.ObjectId(id),
-          status: 'new',
-        })),
+        shopResponses: shopIds.map(
+          (id) =>
+            existingResponses.get(id) ?? {
+              shopId: new Types.ObjectId(id),
+              status: 'new',
+            },
+        ),
         appliance: input.appliance.trim(),
         description: input.description.trim(),
         serviceType: input.serviceType,
@@ -715,17 +739,19 @@ export class CustomerPortalService {
       );
     }
 
-    await this.notifications.notifyUsers(
-      shopIds.map((id) => new Types.ObjectId(id)),
-      {
-        title: 'Repair Request Updated',
-        message: `${formatUserName(customer) || 'A customer'} updated a ${input.appliance.trim()} repair request. Please review the latest details.`,
-        type: 'new_repair_request',
-        relatedEntityId: updated._id,
-        relatedEntityType: 'repair_request',
-        link: `/shop/repair-requests/${updated._id.toString()}`,
-      },
-    );
+    if (newlyAddedShopIds.length) {
+      await this.notifications.notifyUsers(
+        newlyAddedShopIds.map((id) => new Types.ObjectId(id)),
+        {
+          title: 'Repair Request Updated',
+          message: `${formatUserName(customer) || 'A customer'} updated a ${input.appliance.trim()} repair request. Please review the latest details.`,
+          type: 'new_repair_request',
+          relatedEntityId: updated._id,
+          relatedEntityType: 'repair_request',
+          link: `/shop/repair-requests/${updated._id.toString()}`,
+        },
+      );
+    }
 
     const safeRequest = updated.toObject();
     safeRequest.photos = [];
@@ -794,9 +820,22 @@ export class CustomerPortalService {
     const requestFilter: Record<string, unknown> = {
       customerId: customer._id,
     };
-    if (filters.status) requestFilter.status = filters.status;
+    const requestConditions: Record<string, unknown>[] = [];
+    if (filters.status === 'completed') {
+      requestConditions.push({
+        $or: [{ status: 'completed' }, { 'repairJob.status': 'completed' }],
+      });
+    } else if (filters.status === 'open') {
+      requestFilter.status = 'open';
+      requestConditions.push({ 'repairJob.status': { $ne: 'completed' } });
+    } else if (filters.status) {
+      requestFilter.status = filters.status;
+    }
     if (filters.repairStatus) {
       requestFilter['repairJob.status'] = filters.repairStatus;
+    }
+    if (requestConditions.length) {
+      requestFilter.$and = requestConditions;
     }
     if (filters.appliance?.trim()) {
       requestFilter.appliance = {
@@ -1573,8 +1612,15 @@ export class CustomerPortalService {
         .lean()
         .exec();
     }
+    const accessibleRequests = rawRequests.filter((request) => {
+      if (!request.acceptedQuotationId) return true;
+      const response = request.shopResponses?.find(
+        (item) => item.shopId.toString() === shop._id.toString(),
+      );
+      return response?.status === 'customer_accepted';
+    });
     const customerIds = [
-      ...new Set(rawRequests.map((request) => request.customerId)),
+      ...new Set(accessibleRequests.map((request) => request.customerId)),
     ];
     const customers = await this.users
       .find({ _id: { $in: customerIds } })
@@ -1584,7 +1630,7 @@ export class CustomerPortalService {
     const customerMap = new Map(
       customers.map((customer) => [customer._id.toString(), customer]),
     );
-    const matching = rawRequests.filter((request) => {
+    const matching = accessibleRequests.filter((request) => {
       const response = request.shopResponses?.find(
         (item) => item.shopId.toString() === shop._id.toString(),
       );
@@ -1667,7 +1713,7 @@ export class CustomerPortalService {
           ),
         };
       });
-    const statuses = rawRequests.map(
+    const statuses = accessibleRequests.map(
       (request) =>
         request.shopResponses?.find(
           (item) => item.shopId.toString() === shop._id.toString(),
@@ -1679,7 +1725,7 @@ export class CustomerPortalService {
       limit,
       total: matching.length,
       summary: {
-        total: rawRequests.length,
+        total: accessibleRequests.length,
         new: statuses.filter((status) => status === 'new').length,
         pending: statuses.filter((status) => status === 'pending').length,
         accepted: statuses.filter((status) =>
@@ -3392,6 +3438,7 @@ export class CustomerPortalService {
         },
         {
           $set: {
+            status: 'completed',
             'repairJob.status': 'completed',
             'repairJob.completedAt': now,
             'repairJob.reviewId': review._id,

@@ -75,7 +75,7 @@ export class AdminDashboardPage implements OnInit {
   readonly page = signal(1);
   readonly total = signal(0);
   readonly totalPages = signal(0);
-  readonly pageSize = signal(5);
+  readonly pageSize = signal(10);
   readonly confirmation = signal<RegistrationConfirmation | null>(null);
   readonly appliedFilters = signal<FilterValues>({});
   readonly pageTitle = () =>
@@ -286,6 +286,13 @@ export class AdminDashboardPage implements OnInit {
       return;
     }
     this.page.set(page);
+    this.loadRequests();
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    this.pageSize.set(size);
+    this.page.set(1);
     this.loadRequests();
   }
 

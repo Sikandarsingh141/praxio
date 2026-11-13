@@ -164,15 +164,15 @@ describe('StripePaymentsService', () => {
           invoicePdfUrl: 'https://invoice.stripe.test/invoice.pdf',
         },
       ],
-      pagination: { page: 2, limit: 5, total: 7, totalPages: 2 },
+      pagination: { page: 2, limit: 10, total: 7, totalPages: 1 },
     });
 
     expect(subscriptionInvoices.find).toHaveBeenCalledWith({
       registrationRequestId: registrationRequest._id,
       userId: new Types.ObjectId(userId),
     });
-    expect(invoiceListQuery.skip).toHaveBeenCalledWith(5);
-    expect(invoiceListQuery.limit).toHaveBeenCalledWith(5);
+    expect(invoiceListQuery.skip).toHaveBeenCalledWith(10);
+    expect(invoiceListQuery.limit).toHaveBeenCalledWith(10);
     expect(mockStripeClient.invoices.retrieve).toHaveBeenCalledWith(
       'in_test_invoice',
     );
@@ -199,7 +199,7 @@ describe('StripePaymentsService', () => {
           invoicePdfUrl: 'https://invoice.stripe.test/invoice.pdf',
         },
       ],
-      pagination: { page: 1, limit: 5, total: 1, totalPages: 1 },
+      pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
     });
     expect(mockStripeClient.invoices.retrieve).toHaveBeenCalledWith(
       'in_checkout_invoice',

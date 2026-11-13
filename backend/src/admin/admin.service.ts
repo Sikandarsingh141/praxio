@@ -2656,6 +2656,7 @@ export class AdminService {
         applicantId = request.userId;
         applicantType = request.accountType;
         if (
+          decision === 'approved' &&
           request.accountType === 'shop' &&
           request.paymentStatus !== 'paid'
         ) {

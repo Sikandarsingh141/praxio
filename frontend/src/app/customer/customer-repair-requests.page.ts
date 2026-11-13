@@ -46,7 +46,7 @@ export class CustomerRepairRequestsPage implements OnInit {
   ];
   readonly sortOrder = signal<'newest' | 'oldest'>('newest');
   readonly page = signal(1);
-  readonly pageSize = 5;
+  readonly pageSize = signal(10);
   readonly visibleRequests = computed(() => {
     const filtered = this.requests().filter((request) => {
       switch (this.selectedStatus()) {
@@ -70,8 +70,8 @@ export class CustomerRepairRequestsPage implements OnInit {
     );
   });
   readonly pagedRequests = computed(() => {
-    const start = (this.page() - 1) * this.pageSize;
-    return this.visibleRequests().slice(start, start + this.pageSize);
+    const start = (this.page() - 1) * this.pageSize();
+    return this.visibleRequests().slice(start, start + this.pageSize());
   });
   readonly loading = signal(true);
   readonly error = signal('');
@@ -165,7 +165,7 @@ export class CustomerRepairRequestsPage implements OnInit {
       .subscribe({
         next: (requests) => {
           this.requests.set(requests);
-          const pageCount = Math.max(1, Math.ceil(this.visibleRequests().length / this.pageSize));
+          const pageCount = Math.max(1, Math.ceil(this.visibleRequests().length / this.pageSize()));
           this.page.set(Math.min(this.page(), pageCount));
           this.loading.set(false);
         },
@@ -215,9 +215,15 @@ export class CustomerRepairRequestsPage implements OnInit {
   }
 
   goToPage(page: number): void {
-    const pageCount = Math.ceil(this.visibleRequests().length / this.pageSize);
+    const pageCount = Math.ceil(this.visibleRequests().length / this.pageSize());
     if (page < 1 || page > pageCount || page === this.page()) return;
     this.page.set(page);
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    this.pageSize.set(size);
+    this.page.set(1);
   }
 
   requestStatusLabel(request: CustomerRepairRequest): string {

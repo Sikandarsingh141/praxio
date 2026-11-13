@@ -178,6 +178,7 @@ export class DisputeCenterComponent implements OnInit {
   }
 
   page = 1;
+  pageSize = 10;
 
   private createFilterConfig(role: DisputeRole): FilterConfig {
     return {
@@ -308,6 +309,13 @@ export class DisputeCenterComponent implements OnInit {
     this.loadList();
   }
 
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize) return;
+    this.pageSize = size;
+    this.page = 1;
+    this.loadList();
+  }
+
   loadList(): void {
     if (this.fromDate && this.toDate && this.fromDate > this.toDate) {
       this.error.set('The start date must not be later than the end date.');
@@ -326,7 +334,7 @@ export class DisputeCenterComponent implements OnInit {
         to: this.toDate,
         sort: this.sortOrder,
         page: this.page,
-        limit: 5,
+        limit: this.pageSize,
       })
       .subscribe({
         next: (result) => {

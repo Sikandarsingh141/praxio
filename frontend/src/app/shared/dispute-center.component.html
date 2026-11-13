@@ -155,10 +155,11 @@
       <app-pagination
         [total]="list()?.pagination?.total ?? 0"
         [page]="list()?.pagination?.page ?? 1"
-        [pageSize]="5"
+        [pageSize]="pageSize"
         [disabled]="loading()"
         ariaLabel="Dispute pages"
         (pageChange)="goToPage($event)"
+        (pageSizeChange)="changePageSize($event)"
       />
     } @else {
       <div class="state-card">

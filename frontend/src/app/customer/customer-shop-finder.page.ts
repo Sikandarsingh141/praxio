@@ -59,10 +59,10 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   readonly services = SHOP_SERVICES;
   readonly shops = signal<ShopSearchResult[]>([]);
   readonly page = signal(1);
-  readonly pageSize = 5;
+  readonly pageSize = signal(10);
   readonly visibleShops = computed(() => {
-    const start = (this.page() - 1) * this.pageSize;
-    return this.shops().slice(start, start + this.pageSize);
+    const start = (this.page() - 1) * this.pageSize();
+    return this.shops().slice(start, start + this.pageSize());
   });
   readonly shopDirectory = signal<ShopSearchResult[]>([]);
   readonly suggestions = signal<AddressSuggestion[]>([]);
@@ -349,10 +349,8 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
 
   allVisibleShopsSelected(): boolean {
     const selectableShops = this.visibleShops();
-    return (
-      selectableShops.length > 0 &&
-      selectableShops.every((shop) => this.selectedShops().includes(shop.id))
-    );
+    const selectedVisible = selectableShops.filter((shop) => this.selectedShops().includes(shop.id));
+    return selectableShops.length > 0 && selectedVisible.length >= Math.min(5, selectableShops.length);
   }
 
   toggleVisibleShops(): void {
@@ -369,19 +367,21 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
       const retained = selected.filter((shopId) => !selectableIds.includes(shopId));
       const additions = selectableIds.filter((id) => !retained.includes(id));
       const next = [...retained, ...additions.slice(0, Math.max(0, 5 - retained.length))];
-      if (next.length < retained.length + additions.length) {
-        this.requestError.set('You can select up to 5 shops. Clear a selected shop to add another.');
-      } else {
-        this.requestError.set('');
-      }
+      this.requestError.set('');
       return next;
     });
   }
 
   goToPage(page: number): void {
-    const pageCount = Math.ceil(this.shops().length / this.pageSize);
+    const pageCount = Math.ceil(this.shops().length / this.pageSize());
     if (page < 1 || page > pageCount || page === this.page()) return;
     this.page.set(page);
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    this.pageSize.set(size);
+    this.page.set(1);
   }
 
   onPhotoSelection(event: Event): void {

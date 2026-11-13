@@ -40,7 +40,7 @@ describe('AuthService', () => {
     let result: unknown;
     service.getMyShopInvoices(2).subscribe((invoices) => (result = invoices));
     const request = httpTestingController.expectOne(
-      `${environment.apiBaseUrl}/payments/invoices?page=2`,
+      `${environment.apiBaseUrl}/payments/invoices?page=2&limit=10`,
     );
     expect(request.request.method).toBe('GET');
     const page = {

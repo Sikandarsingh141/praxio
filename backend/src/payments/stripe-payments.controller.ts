@@ -73,6 +73,7 @@ export class StripePaymentsController {
   async getInvoices(
     @Req() request: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit = 10,
   ): Promise<{ data: ShopInvoicePage }> {
     const userId = request.auth?.userId;
     if (!userId) {
@@ -80,7 +81,7 @@ export class StripePaymentsController {
     }
 
     return {
-      data: await this.stripePaymentsService.getShopInvoices(userId, page),
+      data: await this.stripePaymentsService.getShopInvoices(userId, page, limit),
     };
   }
 

@@ -312,10 +312,11 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
         <app-pagination
           [total]="total()"
           [page]="page()"
-          [pageSize]="limit"
+          [pageSize]="limit()"
           [disabled]="loading()"
           ariaLabel="Customer quotations pages"
           (pageChange)="changePage($event)"
+          (pageSizeChange)="changePageSize($event)"
         />
       }
 
@@ -500,7 +501,7 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly page = signal(1);
-  readonly limit = 5;
+  readonly limit = signal(10);
   readonly total = signal(0);
   readonly compareQuotes = signal<CustomerQuotation[]>([]);
   readonly response = signal<{ quote: CustomerQuotation; status: 'accepted' | 'declined' } | null>(
@@ -565,7 +566,7 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
         ...this.extraFilters,
         sort: this.sort,
         page: this.page(),
-        limit: this.limit,
+        limit: this.limit(),
       })
       .subscribe({
         next: (result) => {
@@ -638,6 +639,12 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
   }
   changePage(page: number): void {
     this.page.set(page);
+    this.load();
+  }
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.limit()) return;
+    this.limit.set(size);
+    this.page.set(1);
     this.load();
   }
   clearCompare(): void {

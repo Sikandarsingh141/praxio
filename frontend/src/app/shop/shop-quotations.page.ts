@@ -215,10 +215,11 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
         <app-pagination
           [total]="total()"
           [page]="page()"
-          [pageSize]="limit"
+          [pageSize]="limit()"
           [disabled]="loading()"
           ariaLabel="Shop quotations pages"
           (pageChange)="changePage($event)"
+          (pageSizeChange)="changePageSize($event)"
         />
       }
     </section>
@@ -350,7 +351,7 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly page = signal(1);
-  readonly limit = 5;
+  readonly limit = signal(10);
   readonly total = signal(0);
   readonly appliedFilters = signal<FilterValues>({});
   readonly filterConfig: FilterConfig = {
@@ -416,7 +417,7 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
         ...this.extraFilters,
         sort: this.sort,
         page: this.page(),
-        limit: this.limit,
+        limit: this.limit(),
       })
       .subscribe({
         next: (result) => {
@@ -472,6 +473,12 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
   }
   changePage(page: number): void {
     this.page.set(page);
+    this.load();
+  }
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.limit()) return;
+    this.limit.set(size);
+    this.page.set(1);
     this.load();
   }
 

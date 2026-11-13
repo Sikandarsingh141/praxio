@@ -213,9 +213,10 @@
           <app-pagination
             [total]="shops().length"
             [page]="page()"
-            [pageSize]="pageSize"
+            [pageSize]="pageSize()"
             ariaLabel="Repair shop results pages"
             (pageChange)="goToPage($event)"
+            (pageSizeChange)="changePageSize($event)"
           />
         } @else {
           <div class="empty-state">

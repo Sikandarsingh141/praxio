@@ -22,7 +22,7 @@ export class ShopReviewsPage implements OnInit {
   readonly ratingFilter = signal('all');
   readonly sortOrder = signal<'newest' | 'oldest'>('newest');
   readonly page = signal(1);
-  readonly pageSize = 5;
+  readonly pageSize = signal(10);
   readonly filteredReviews = computed(() => {
     const data = this.summary();
     if (!data) return [];
@@ -45,8 +45,8 @@ export class ShopReviewsPage implements OnInit {
       });
   });
   readonly pagedReviews = computed(() => {
-    const start = (this.page() - 1) * this.pageSize;
-    return this.filteredReviews().slice(start, start + this.pageSize);
+    const start = (this.page() - 1) * this.pageSize();
+    return this.filteredReviews().slice(start, start + this.pageSize());
   });
 
   constructor(private readonly requests: ShopRepairRequestsService) {}
@@ -87,9 +87,15 @@ export class ShopReviewsPage implements OnInit {
   }
 
   goToPage(page: number): void {
-    const pageCount = Math.ceil(this.filteredReviews().length / this.pageSize);
+    const pageCount = Math.ceil(this.filteredReviews().length / this.pageSize());
     if (page < 1 || page > pageCount || page === this.page()) return;
     this.page.set(page);
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    this.pageSize.set(size);
+    this.page.set(1);
   }
 
   distributionPercent(count: number): number {

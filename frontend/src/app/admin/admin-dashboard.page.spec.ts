@@ -78,7 +78,7 @@ describe('AdminDashboardPage', () => {
     );
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('status')).toBe('all');
-    expect(request.request.params.get('limit')).toBe('5');
+    expect(request.request.params.get('limit')).toBe('10');
     request.flush({
       data: {
         requests: [pendingRequest],
@@ -115,7 +115,7 @@ describe('AdminDashboardPage', () => {
         request.url === `${environment.apiBaseUrl}/admin/users` &&
         request.params.get('accountType') === 'shop',
     );
-    expect(shopsRequest.request.params.get('limit')).toBe('5');
+    expect(shopsRequest.request.params.get('limit')).toBe('10');
     shopsRequest.flush({
       data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 },
     });
@@ -138,7 +138,7 @@ describe('AdminDashboardPage', () => {
         request.url === `${environment.apiBaseUrl}/admin/users` &&
         request.params.get('accountType') === 'customer',
     );
-    expect(customersRequest.request.params.get('limit')).toBe('5');
+    expect(customersRequest.request.params.get('limit')).toBe('10');
     customersRequest.flush({
       data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 },
     });

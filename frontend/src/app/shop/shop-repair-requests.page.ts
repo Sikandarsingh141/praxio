@@ -44,6 +44,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   readonly searchText = signal('');
   readonly sort = signal<'newest' | 'oldest'>('newest');
   readonly page = signal(1);
+  readonly pageSize = signal(10);
   readonly pageData = signal<ShopRepairRequestPage | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
@@ -132,7 +133,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
           to: this.toDate || undefined,
           sort: this.sort(),
           page: this.page(),
-          limit: 5,
+          limit: this.pageSize(),
         },
         { silent },
       )
@@ -213,6 +214,13 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
       return;
     }
     this.page.set(page);
+    this.load();
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    this.pageSize.set(size);
+    this.page.set(1);
     this.load();
   }
 

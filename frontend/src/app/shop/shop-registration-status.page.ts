@@ -494,6 +494,7 @@ import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
                             [disabled]="invoiceLoading()"
                             ariaLabel="Invoice history pages"
                             (pageChange)="loadInvoices($event)"
+                            (pageSizeChange)="changeInvoicePageSize($event)"
                           />
                         }
                       }
@@ -530,6 +531,7 @@ export class ShopRegistrationStatusPage implements OnInit {
   readonly invoices = signal<ShopInvoice[]>([]);
   readonly invoicePagination = signal<ShopInvoicePage['pagination'] | null>(null);
   readonly invoicePage = signal(1);
+  readonly invoicePageSize = signal(10);
   readonly invoiceLoading = signal(true);
   readonly invoiceError = signal('');
 
@@ -563,7 +565,7 @@ export class ShopRegistrationStatusPage implements OnInit {
     this.invoices.set([]);
     this.invoicePagination.set(null);
     this.authService
-      .getMyShopInvoices(page)
+      .getMyShopInvoices(page, this.invoicePageSize())
       .pipe(finalize(() => this.invoiceLoading.set(false)))
       .subscribe({
         next: (result) => {
@@ -575,6 +577,12 @@ export class ShopRegistrationStatusPage implements OnInit {
             getAuthErrorMessage(error, 'Invoice history could not be loaded. Please try again.'),
           ),
       });
+  }
+
+  changeInvoicePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.invoicePageSize()) return;
+    this.invoicePageSize.set(size);
+    this.loadInvoices(1);
   }
 
   formatAmount(amountCents: number, currency: string): string {

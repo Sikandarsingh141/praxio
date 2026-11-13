@@ -154,10 +154,11 @@
       <app-pagination
         [total]="pageData()!.total"
         [page]="pageData()!.page"
-        [pageSize]="pageData()!.limit"
+      [pageSize]="pageSize()"
         [disabled]="loading()"
         ariaLabel="Repair request pages"
         (pageChange)="goToPage($event)"
+      (pageSizeChange)="changePageSize($event)"
       />
     } @else {
       <div class="state empty">
