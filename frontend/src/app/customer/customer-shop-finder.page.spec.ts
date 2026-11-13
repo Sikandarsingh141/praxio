@@ -1,3 +1,4 @@
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, provideRouter, Router, convertToParamMap } from '@angular/router';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { of } from 'rxjs';
@@ -5,6 +6,7 @@ import { ShopSearchResult } from './customer-portal.models';
 import { formatShopAddress } from '../shared/format-shop-address';
 import { CustomerPortalService } from './customer-portal.service';
 import { CustomerShopFinderPage } from './customer-shop-finder.page';
+import { ShopResultsMapComponent } from './shop-results-map.component';
 
 describe('CustomerShopFinderPage', () => {
   it('selects up to five visible shops at once', () => {
@@ -174,6 +176,45 @@ describe('CustomerShopFinderPage', () => {
       'Request a Repair',
     );
     expect(fixture.nativeElement.querySelector('.shop-map')).toBeTruthy();
+  });
+
+  it('focuses the map on a shop when its result card is clicked', () => {
+    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
+      'searchShops',
+      'createRepairRequest',
+    ]);
+    const shop = {
+      ...makeShop('shop-1', 'Amit Shop'),
+      location: { latitude: 28.6139, longitude: 77.209 },
+    };
+    portal.searchShops.and.returnValue(of([shop]));
+    portal.createRepairRequest.and.returnValue(of('created-request-id'));
+
+    TestBed.configureTestingModule({
+      imports: [CustomerShopFinderPage],
+      providers: [
+        { provide: CustomerPortalService, useValue: portal },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+        provideRouter([]),
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CustomerShopFinderPage);
+    fixture.detectChanges();
+    const map = fixture.debugElement.query(By.directive(ShopResultsMapComponent))
+      .componentInstance as ShopResultsMapComponent;
+    spyOn(map, 'focusShop');
+
+    (fixture.nativeElement.querySelector('.shop-card') as HTMLElement).click();
+
+    expect(map.focusShop).toHaveBeenCalledWith(shop.id);
+    expect(fixture.nativeElement.querySelector('.shop-view')?.textContent).toContain(
+      'Show on map',
+    );
+    fixture.destroy();
   });
 
   it('opens the repair form without navigating away from the shop finder', () => {

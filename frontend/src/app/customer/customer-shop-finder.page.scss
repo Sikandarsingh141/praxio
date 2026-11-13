@@ -268,9 +268,37 @@ p {
   min-width: 0;
   padding: 0.7rem;
   border-radius: 0.8rem;
+  cursor: pointer;
   transition:
     border-color 120ms ease,
     background-color 120ms ease;
+}
+
+.shop-card:hover {
+  border-color: #9dc9a8;
+}
+
+.shop-view {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #dce8df;
+  border-radius: 0.65rem;
+  background: #fff;
+  color: #17643b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.shop-view:hover {
+  border-color: #8ebc99;
+  background: #f5fbf6;
 }
 
 .shop-card.selected {

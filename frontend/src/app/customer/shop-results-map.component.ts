@@ -247,6 +247,11 @@ import { ShopSearchResult } from './customer-portal.models';
       font-weight: 750;
     }
 
+    :host ::ng-deep .shop-marker-cluster.focused {
+      box-shadow: 0 0 0 8px rgb(8 124 59 / 24%), 0 2px 9px rgb(20 40 28 / 35%);
+      transform: scale(1.12);
+    }
+
     @media (max-width: 900px) {
       .map-shell,
       .shop-map {
@@ -277,6 +282,8 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
   private mapResizeObserver?: ResizeObserver;
   private locationMarkers = L.layerGroup();
   private shopMarkers = L.layerGroup();
+  private focusedShopId: string | null = null;
+  private openFocusedShopPopup = false;
 
   get locatedShopCount(): number {
     return this.shops.filter((shop) => this.hasValidLocation(shop)).length;
@@ -308,6 +315,10 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
   ngOnChanges(): void {
     if (!this.map) {
       return;
+    }
+    if (this.focusedShopId && !this.shops.some((shop) => shop.id === this.focusedShopId)) {
+      this.focusedShopId = null;
+      this.openFocusedShopPopup = false;
     }
     if (this.center) {
       this.map.setView([this.center.latitude, this.center.longitude], 12);
@@ -377,6 +388,26 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
     this.map?.zoomOut();
   }
 
+  focusShop(shopId: string): void {
+    const shop = this.shops.find((candidate) => candidate.id === shopId);
+    if (!this.map || !shop || !this.hasValidLocation(shop)) {
+      return;
+    }
+
+    this.focusedShopId = shopId;
+    this.openFocusedShopPopup = true;
+    this.map.flyTo(
+      [shop.location.latitude, shop.location.longitude],
+      Math.max(15, this.map.getZoom()),
+      { duration: 0.7 },
+    );
+    this.mapElement?.nativeElement.scrollIntoView?.({
+      behavior: 'smooth',
+      block: 'nearest',
+    });
+    this.renderShopMarkers();
+  }
+
   private updateMarkers(): void {
     if (!this.map) {
       return;
@@ -426,26 +457,37 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
     const clusters = clusterProjectedShops(
       visible.map(({ shop, point }) => ({ shop, x: point.x, y: point.y })),
     );
+    let focusedMarker: L.Marker | undefined;
     clusters.forEach((cluster) => {
       const location = this.map!.containerPointToLatLng([cluster.x, cluster.y]);
+      const focusedShop = cluster.shops.find(
+        (shop) => shop.id === this.focusedShopId,
+      );
       const marker = L.marker(location, {
         icon: L.divIcon({
           className: '',
-          html: `<span class="shop-marker-cluster">${cluster.shops.length}</span>`,
+          html: `<span class="shop-marker-cluster${focusedShop ? ' focused' : ''}">${cluster.shops.length}</span>`,
           iconSize: [46, 46],
           iconAnchor: [23, 23],
         }),
       });
-      if (cluster.shops.length === 1) {
-        const shop = cluster.shops[0];
+      if (focusedShop || cluster.shops.length === 1) {
+        const shop = focusedShop ?? cluster.shops[0];
         marker.bindPopup(
           `<strong>${this.escapeHtml(shop.shopName)}</strong><br>${this.escapeHtml(shop.city)}`,
         );
+        if (focusedShop && this.openFocusedShopPopup) {
+          focusedMarker = marker;
+        }
       } else {
         marker.bindPopup(`${cluster.shops.length} repair shops`);
       }
       this.shopMarkers.addLayer(marker);
     });
+    if (focusedMarker) {
+      focusedMarker.openPopup();
+      this.openFocusedShopPopup = false;
+    }
   }
 
   private hasValidLocation(

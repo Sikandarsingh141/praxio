@@ -55,6 +55,7 @@ const SHOP_SERVICES = [
 })
 export class CustomerShopFinderPage implements OnInit, OnDestroy {
   @ViewChild('requestPanel') private requestPanel?: ElementRef<HTMLElement>;
+  @ViewChild(ShopResultsMapComponent) private shopResultsMap?: ShopResultsMapComponent;
 
   readonly services = SHOP_SERVICES;
   readonly shops = signal<ShopSearchResult[]>([]);
@@ -449,5 +450,9 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
 
   addressFor(shop: ShopSearchResult): string {
     return formatShopAddress(shop);
+  }
+
+  focusShopOnMap(shop: ShopSearchResult): void {
+    this.shopResultsMap?.focusShop(shop.id);
   }
 }

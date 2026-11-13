@@ -156,7 +156,11 @@
         @if (shops().length) {
           <div class="shop-grid">
             @for (shop of visibleShops(); track shop.id) {
-              <article class="shop-card" [class.selected]="selectedShops().includes(shop.id)">
+              <article
+                class="shop-card"
+                [class.selected]="selectedShops().includes(shop.id)"
+                (click)="focusShopOnMap(shop)"
+              >
                 <div class="shop-heading">
                   <label class="select-shop" [attr.aria-label]="'Select ' + shop.shopName">
                     <input
@@ -175,14 +179,18 @@
                   }
                   <div class="shop-title">
                     <h3>
-                      <a [routerLink]="['/customer/shops', shop.id]">{{ shop.shopName }}</a>
+                      <a
+                        [routerLink]="['/customer/shops', shop.id]"
+                        (click)="$event.stopPropagation()"
+                        >{{ shop.shopName }}</a
+                      >
                     </h3>
                     <span>{{ shop.businessType }}</span>
                   </div>
-                  <a class="shop-view" [routerLink]="['/customer/shops', shop.id]">
-                    View shop
-                    <span aria-hidden="true">›</span>
-                  </a>
+                  <button class="shop-view" type="button">
+                    Show on map
+                    <span aria-hidden="true">⌖</span>
+                  </button>
                 </div>
 
                 <div class="shop-meta">

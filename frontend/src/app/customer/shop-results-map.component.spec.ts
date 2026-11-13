@@ -79,6 +79,26 @@ describe('ShopResultsMapComponent', () => {
     expect(marker?.textContent?.trim()).toBe('1');
     fixture.destroy();
   });
+
+  it('zooms to the selected shop coordinates', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.componentInstance.shops = [
+      { ...makeShop('shop-1'), location: { latitude: 28.6139, longitude: 77.209 } },
+    ];
+    fixture.detectChanges();
+
+    const map = fixture.componentInstance['map'];
+    const flyTo = spyOn(map!, 'flyTo');
+    fixture.componentInstance.focusShop('shop-1');
+
+    expect(flyTo).toHaveBeenCalledWith(
+      [28.6139, 77.209],
+      15,
+      { duration: 0.7 },
+    );
+    fixture.destroy();
+  });
 });
 
 function makeShop(id: string): ShopSearchResult {
