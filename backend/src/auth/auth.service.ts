@@ -26,6 +26,10 @@ import {
   ShopPaymentStatus,
   StripePaymentsService,
 } from '../payments/stripe-payments.service';
+import {
+  SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+  SHOP_SUBSCRIPTION_CURRENCY,
+} from '../payments/shop-subscription.constants';
 
 export interface SafeUser {
   id: string;
@@ -529,8 +533,8 @@ export class AuthService {
         .join(', '),
       services: shopDetails.services,
       subscriptionPlan: 'Fixroa Shop monthly subscription',
-      subscriptionAmountCents: 2900,
-      subscriptionCurrency: 'usd',
+      subscriptionAmountCents: SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+      subscriptionCurrency: SHOP_SUBSCRIPTION_CURRENCY,
       paymentStatus: authorization.paymentStatus,
       registrationStatus: authorization.registrationStatus,
       accountLifecycleStatus: authorization.accountLifecycleStatus,

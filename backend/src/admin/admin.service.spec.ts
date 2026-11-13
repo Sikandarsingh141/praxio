@@ -805,7 +805,7 @@ describe('AdminService', () => {
     expect(overview.recentActivities).toEqual([]);
   });
 
-  it('calculates subscription finances and includes paid invoices without webhook events', async () => {
+  it('includes unpaid shop registrations in receivables and paid invoices in revenue', async () => {
     const emptyResult = () => ({ exec: jest.fn().mockResolvedValue([]) });
     const emptyCount = () => ({ exec: jest.fn().mockResolvedValue(0) });
     const queryResult = (value: unknown[]) => ({
@@ -912,27 +912,40 @@ describe('AdminService', () => {
         },
       ]),
     );
-    registrationRequests.find.mockReturnValue(
-      queryResult([
-        {
-          _id: registrationRequestId,
-          userId,
-          paymentAmountCents: 2900,
-          paymentRefundedAmountCents: 400,
-          paymentCurrency: 'usd',
-          paidAt: new Date('2026-03-02T00:00:00.000Z'),
-          stripeCheckoutInvoiceId: checkoutInvoiceId,
-        },
-        {
-          _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
-          userId,
-          paymentAmountCents: 2900,
-          paymentRefundedAmountCents: 400,
-          paymentCurrency: 'usd',
-          paidAt: new Date('2026-03-03T00:00:00.000Z'),
-        },
-      ]),
-    );
+    registrationRequests.find
+      .mockReturnValueOnce(
+        queryResult([
+          {
+            _id: registrationRequestId,
+            userId,
+            paymentAmountCents: 2900,
+            paymentRefundedAmountCents: 400,
+            paymentCurrency: 'usd',
+            paidAt: new Date('2026-03-02T00:00:00.000Z'),
+            stripeCheckoutInvoiceId: checkoutInvoiceId,
+          },
+          {
+            _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+            userId,
+            paymentAmountCents: 2900,
+            paymentRefundedAmountCents: 400,
+            paymentCurrency: 'usd',
+            paidAt: new Date('2026-03-03T00:00:00.000Z'),
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        queryResult([
+          {
+            _id: new Types.ObjectId('507f1f77bcf86cd799439014'),
+            userId,
+            paymentStatus: 'unpaid',
+            paymentAmountCents: undefined,
+            paymentCurrency: undefined,
+            submittedAt: new Date('2026-03-04T00:00:00.000Z'),
+          },
+        ]),
+      );
     usersModel.find.mockReturnValue(
       queryResult([{ _id: userId, shopDetails: { shopName: 'Amit Shop' } }]),
     );
@@ -945,7 +958,7 @@ describe('AdminService', () => {
     expect(overview.subscriptionFinancials.currencyTotals).toEqual([
       {
         currency: 'USD',
-        accountReceivableCents: 1900,
+        accountReceivableCents: 4800,
         overdueAmountCents: 1900,
         subscriptionRevenueCents: 7800,
       },

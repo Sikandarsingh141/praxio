@@ -27,6 +27,10 @@ import {
   RepairRequest,
 } from '../customer/repair-request.schema';
 import { ShopSubscriptionInvoice } from '../payments/schemas/shop-subscription-invoice.schema';
+import {
+  SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+  SHOP_SUBSCRIPTION_CURRENCY,
+} from '../payments/shop-subscription.constants';
 
 const NON_ACTIVE_MAP_REPAIR_STATUSES = [
   'pending',
@@ -1505,7 +1509,7 @@ export class AdminService {
     const todayStart = new Date(
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
     );
-    const [invoices, legacyPayments] = await Promise.all([
+    const [invoices, legacyPayments, unpaidRegistrations] = await Promise.all([
       this.subscriptionInvoices
         .find({
           $or: [
@@ -1531,6 +1535,16 @@ export class AdminService {
         )
         .lean()
         .exec(),
+      this.registrationRequests
+        .find({
+          accountType: 'shop',
+          registrationStatus: { $ne: 'declined' },
+          paymentStatus: 'unpaid',
+          submittedAt: currentPeriod,
+        })
+        .select('_id userId paymentAmountCents paymentCurrency submittedAt')
+        .lean()
+        .exec(),
     ]);
 
     const users = await this.users
@@ -1538,10 +1552,9 @@ export class AdminService {
         _id: {
           $in: [
             ...new Map(
-              [...invoices, ...legacyPayments].map((record) => [
-                String(record.userId),
-                record.userId,
-              ]),
+              [...invoices, ...legacyPayments, ...unpaidRegistrations].map(
+                (record) => [String(record.userId), record.userId],
+              ),
             ).values(),
           ],
         },
@@ -1604,6 +1617,9 @@ export class AdminService {
     };
     const persistedInvoiceIds = new Set(
       invoices.map((invoice) => invoice.stripeInvoiceId),
+    );
+    const persistedInvoiceRegistrationIds = new Set(
+      invoices.map((invoice) => String(invoice.registrationRequestId)),
     );
     const initialSubscriptionRegistrationIds = new Set(
       invoices
@@ -1738,6 +1754,19 @@ export class AdminService {
         currency,
         status: 'paid',
       });
+    }
+
+    for (const registration of unpaidRegistrations) {
+      if (persistedInvoiceRegistrationIds.has(String(registration._id))) {
+        continue;
+      }
+      const total = getTotals(
+        registration.paymentCurrency ?? SHOP_SUBSCRIPTION_CURRENCY,
+      );
+      total.accountReceivableCents += Math.max(
+        0,
+        registration.paymentAmountCents ?? SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+      );
     }
 
     return {
@@ -2160,7 +2189,11 @@ export class AdminService {
                   $ifNull: [
                     '$registrationRequest.paymentAmountCents',
                     {
-                      $cond: [{ $eq: ['$accountType', 'shop'] }, 2900, null],
+                      $cond: [
+                        { $eq: ['$accountType', 'shop'] },
+                        SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+                        null,
+                      ],
                     },
                   ],
                 },
@@ -2168,7 +2201,11 @@ export class AdminService {
                   $ifNull: [
                     '$registrationRequest.paymentCurrency',
                     {
-                      $cond: [{ $eq: ['$accountType', 'shop'] }, 'usd', null],
+                      $cond: [
+                        { $eq: ['$accountType', 'shop'] },
+                        SHOP_SUBSCRIPTION_CURRENCY,
+                        null,
+                      ],
                     },
                   ],
                 },

@@ -11,9 +11,10 @@ import Stripe from 'stripe';
 import { Model, Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { ShopSubscriptionInvoice } from './schemas/shop-subscription-invoice.schema';
-
-const SHOP_SUBSCRIPTION_AMOUNT_CENTS = 2900;
-const SHOP_SUBSCRIPTION_CURRENCY = 'usd';
+import {
+  SHOP_SUBSCRIPTION_AMOUNT_CENTS,
+  SHOP_SUBSCRIPTION_CURRENCY,
+} from './shop-subscription.constants';
 
 export interface ShopPaymentStatus {
   registrationStatus: 'pending' | 'approved' | 'declined' | 'not_found';

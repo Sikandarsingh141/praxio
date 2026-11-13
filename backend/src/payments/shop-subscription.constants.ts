@@ -1,0 +1,2 @@
+export const SHOP_SUBSCRIPTION_AMOUNT_CENTS = 2900;
+export const SHOP_SUBSCRIPTION_CURRENCY = 'usd';
