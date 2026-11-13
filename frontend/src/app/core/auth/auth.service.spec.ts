@@ -169,16 +169,31 @@ describe('AuthService', () => {
     });
   });
 
-  it('updates only the shop name and address', () => {
+  it('updates the shop profile and synchronizes owner contact details', () => {
     const update = {
+      ownerFirstName: 'Alex',
+      ownerLastName: 'Repair',
+      countryCode: '+1',
+      mobileNumber: '5551234567',
       shopName: 'Updated Repairs',
+      businessType: 'Electronics Repair Shop',
+      description: 'Repair services',
+      yearsOfExperience: 5,
       address: 'Main Road',
+      street: 'Main Road',
+      area: '',
       city: 'Pune',
       state: 'Maharashtra',
+      country: 'India',
       postalCode: '411001',
       landmark: '',
+      services: ['AC Repair'],
       location: null,
     };
+    service.login(user.email, 'password').subscribe();
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}/auth/login`)
+      .flush({ data: { user } });
     let updatedProfile: unknown;
     service.updateMyShopBusinessDetails(update).subscribe((profile) => (updatedProfile = profile));
     const request = httpTestingController.expectOne(
@@ -188,14 +203,24 @@ describe('AuthService', () => {
     expect(request.request.body).toEqual(update);
     const profile = {
       shopName: 'Updated Repairs',
-      ownerFirstName: 'Shop',
-      ownerLastName: 'Owner',
+      ownerFirstName: 'Alex',
+      ownerLastName: 'Repair',
+      countryCode: '+1',
+      mobileNumber: '5551234567',
       email: user.email,
     };
     request.flush({ data: { profile } });
 
     expect(updatedProfile).toEqual(profile);
     expect(service.shopName()).toBe('Updated Repairs');
+    expect(service.currentUser()).toEqual(
+      jasmine.objectContaining({
+        firstName: 'Alex',
+        lastName: 'Repair',
+        countryCode: '+1',
+        mobileNumber: '5551234567',
+      }),
+    );
   });
 
   it('clears local auth state when the logout request fails', () => {

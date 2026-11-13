@@ -48,6 +48,15 @@ describe('ProfileEditorComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Your name has been updated.');
   });
 
+  it('can hide the separate name form when names are edited with business details', () => {
+    const fixture = TestBed.createComponent(ProfileEditorComponent);
+    fixture.componentRef.setInput('showNameForm', false);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.name-form')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.profile-photo-row')).not.toBeNull();
+  });
+
   it('prevents selecting unsupported profile image formats', () => {
     const fixture = TestBed.createComponent(ProfileEditorComponent);
     fixture.detectChanges();

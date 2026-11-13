@@ -46,44 +46,46 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
         </div>
       </div>
 
-      <form class="name-form" (submit)="saveName($event)">
-        <div class="name-controls">
-          <label for="profile-first-name">
-            First Name
-            <input
-              id="profile-first-name"
-              name="firstName"
-              type="text"
-              maxlength="50"
-              autocomplete="given-name"
-              [value]="firstName()"
-              [disabled]="savingName()"
-              (input)="setFirstName($event)"
-              required
-            />
-          </label>
-          <label for="profile-last-name">
-            Last Name
-            <input
-              id="profile-last-name"
-              name="lastName"
-              type="text"
-              maxlength="50"
-              autocomplete="family-name"
-              [value]="lastName()"
-              [disabled]="savingName()"
-              (input)="setLastName($event)"
-              required
-            />
-          </label>
-          <button
-            type="submit"
-            [disabled]="savingName() || !firstName().trim() || !lastName().trim()"
-          >
-            {{ savingName() ? 'Saving…' : 'Save name' }}
-          </button>
-        </div>
-      </form>
+      @if (showNameForm) {
+        <form class="name-form" (submit)="saveName($event)">
+          <div class="name-controls">
+            <label for="profile-first-name">
+              First Name
+              <input
+                id="profile-first-name"
+                name="firstName"
+                type="text"
+                maxlength="50"
+                autocomplete="given-name"
+                [value]="firstName()"
+                [disabled]="savingName()"
+                (input)="setFirstName($event)"
+                required
+              />
+            </label>
+            <label for="profile-last-name">
+              Last Name
+              <input
+                id="profile-last-name"
+                name="lastName"
+                type="text"
+                maxlength="50"
+                autocomplete="family-name"
+                [value]="lastName()"
+                [disabled]="savingName()"
+                (input)="setLastName($event)"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              [disabled]="savingName() || !firstName().trim() || !lastName().trim()"
+            >
+              {{ savingName() ? 'Saving…' : 'Save name' }}
+            </button>
+          </div>
+        </form>
+      }
 
       @if (allowPasswordChange) {
         <form class="password-form" (submit)="changePassword($event)">
@@ -452,6 +454,7 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 })
 export class ProfileEditorComponent implements OnInit {
   @Input() allowPasswordChange = false;
+  @Input() showNameForm = true;
   readonly authService = inject(AuthService);
   readonly firstName = signal('');
   readonly lastName = signal('');

@@ -548,7 +548,7 @@ describe('AuthController', () => {
     expect(authService.getShopProfile).toHaveBeenCalledWith(safeUser.id);
   });
 
-  it('updates only the authenticated shop name and address and rejects other profile fields', async () => {
+  it('updates the editable shop profile and rejects login email changes', async () => {
     const jwtService = app.get(JwtService);
     const token = await jwtService.signAsync({
       sub: safeUser.id,
@@ -556,12 +556,23 @@ describe('AuthController', () => {
       accountType: 'shop',
     });
     const businessDetailsUpdate = {
+      ownerFirstName: 'Alex',
+      ownerLastName: 'Repair',
+      countryCode: '+1',
+      mobileNumber: '5551234567',
       shopName: 'Updated Repairs',
+      businessType: 'Electronics Repair Shop',
+      description: 'Repair services',
+      yearsOfExperience: 5,
       address: 'Main Road',
+      street: 'Main Road',
+      area: '',
       city: 'Pune',
       state: 'Maharashtra',
+      country: 'India',
       postalCode: '411001',
       landmark: '',
+      services: ['AC Repair', 'Laptop Repair'],
       location: { latitude: 18.52, longitude: 73.85 },
     };
 
@@ -589,8 +600,7 @@ describe('AuthController', () => {
       .set('Cookie', `access_token=${token}`)
       .send({
         ...businessDetailsUpdate,
-        firstName: 'Other',
-        lastName: 'Profile',
+        email: 'new@example.com',
       })
       .expect(400);
   });

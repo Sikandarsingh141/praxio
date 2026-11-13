@@ -33,7 +33,7 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
       }
 
       @if (editing()) {
-        <form [formGroup]="form" (ngSubmit)="saveAddress()">
+        <form [formGroup]="form" (ngSubmit)="saveProfile()">
           <div class="form-grid">
             <h2 id="business-details-title" class="form-section-heading wide">
               <span aria-hidden="true">▤</span> Company Information
@@ -46,50 +46,57 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
               }
             </label>
             <label>
-              First Name
-              <input
-                [value]="profile.ownerFirstName"
-                readonly
-                aria-label="First name (read only)"
-              />
+              Owner First Name <span class="required" aria-hidden="true">*</span>
+              <input formControlName="ownerFirstName" maxlength="50" autocomplete="given-name" />
+              @if (form.controls.ownerFirstName.touched && form.controls.ownerFirstName.invalid) {
+                <small class="field-error">Enter the owner's first name.</small>
+              }
             </label>
             <label>
-              Last Name
-              <input
-                [value]="profile.ownerLastName"
-                readonly
-                aria-label="Last name (read only)"
-              />
+              Owner Last Name <span class="required" aria-hidden="true">*</span>
+              <input formControlName="ownerLastName" maxlength="50" autocomplete="family-name" />
+              @if (form.controls.ownerLastName.touched && form.controls.ownerLastName.invalid) {
+                <small class="field-error">Enter the owner's last name.</small>
+              }
             </label>
             <label>
               Email Address
               <input [value]="profile.email" readonly aria-label="Email address (read only)" />
             </label>
             <label>
-              Phone Number
-              <input
-                [value]="profile.countryCode + ' ' + profile.mobileNumber"
-                readonly
-                aria-label="Phone number (read only)"
-              />
+              Country Code <span class="required" aria-hidden="true">*</span>
+              <input formControlName="countryCode" maxlength="5" placeholder="+1" />
+              @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
+                <small class="field-error">Enter a country calling code, such as +1.</small>
+              }
             </label>
             <label>
-              Business Type
+              Phone Number <span class="required" aria-hidden="true">*</span>
               <input
-                [value]="profile.businessType"
-                readonly
-                aria-label="Business type (read only)"
+                type="tel"
+                formControlName="mobileNumber"
+                maxlength="10"
+                autocomplete="tel-national"
               />
+              @if (form.controls.mobileNumber.touched && form.controls.mobileNumber.invalid) {
+                <small class="field-error">Enter exactly 10 phone digits.</small>
+              }
             </label>
             <label>
-              Experience
-              <input
-                [value]="
-                  profile.yearsOfExperience + (profile.yearsOfExperience === 1 ? ' year' : ' years')
-                "
-                readonly
-                aria-label="Experience (read only)"
-              />
+              Business Type <span class="required" aria-hidden="true">*</span>
+              <input formControlName="businessType" maxlength="120" />
+              @if (form.controls.businessType.touched && form.controls.businessType.invalid) {
+                <small class="field-error">Enter a business type.</small>
+              }
+            </label>
+            <label>
+              Years of Experience <span class="required" aria-hidden="true">*</span>
+              <input type="number" formControlName="yearsOfExperience" min="0" max="100" step="1" />
+              @if (
+                form.controls.yearsOfExperience.touched && form.controls.yearsOfExperience.invalid
+              ) {
+                <small class="field-error">Enter a number from 0 to 100.</small>
+              }
             </label>
             <h2 class="form-section-heading wide">
               <span aria-hidden="true">⌖</span> Business Address Information
@@ -138,18 +145,27 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
             </label>
             <label class="wide">
               Address
-              <textarea formControlName="address" rows="2" maxlength="200"></textarea>
+              <textarea
+                formControlName="address"
+                rows="2"
+                maxlength="200"
+                (input)="clearSelectedLocation()"
+              ></textarea>
               @if (form.controls.address.touched && form.controls.address.invalid) {
                 <small class="field-error">Enter an address.</small>
               }
             </label>
             <label>
               Country
-              <input
-                [value]="profile.country || 'Not provided'"
-                readonly
-                aria-label="Country (read only)"
-              />
+              <input formControlName="country" maxlength="100" />
+            </label>
+            <label>
+              Street
+              <input formControlName="street" maxlength="200" />
+            </label>
+            <label>
+              Area
+              <input formControlName="area" maxlength="100" />
             </label>
             <label>
               State <span class="required" aria-hidden="true">*</span>
@@ -175,6 +191,25 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
             <label>
               Landmark
               <input formControlName="landmark" maxlength="150" />
+            </label>
+            <label class="wide">
+              Business Description <span class="required" aria-hidden="true">*</span>
+              <textarea formControlName="description" rows="3" maxlength="1000"></textarea>
+              @if (form.controls.description.touched && form.controls.description.invalid) {
+                <small class="field-error">Enter a description (up to 1,000 characters).</small>
+              }
+            </label>
+            <label class="wide">
+              Services <span class="required" aria-hidden="true">*</span>
+              <textarea
+                formControlName="servicesText"
+                rows="3"
+                maxlength="2000"
+                placeholder="Separate services with commas or new lines"
+              ></textarea>
+              @if (form.controls.servicesText.touched && form.controls.servicesText.invalid) {
+                <small class="field-error">Enter at least one service.</small>
+              }
             </label>
           </div>
 
@@ -468,14 +503,45 @@ export class ShopProfileEditorComponent implements OnInit {
   readonly searchingAddress = signal(false);
   readonly addressSearchError = signal('');
   readonly form = this.formBuilder.group({
+    ownerFirstName: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(50),
+    ]),
+    ownerLastName: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(50),
+    ]),
+    countryCode: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.pattern(/^\+\d{1,4}$/),
+    ]),
+    mobileNumber: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.pattern(/^\d{10}$/),
+    ]),
     shopName: this.formBuilder.nonNullable.control('', [
       Validators.required,
       Validators.maxLength(120),
+    ]),
+    businessType: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(120),
+    ]),
+    description: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(1000),
+    ]),
+    yearsOfExperience: this.formBuilder.nonNullable.control(0, [
+      Validators.required,
+      Validators.min(0),
+      Validators.max(100),
     ]),
     address: this.formBuilder.nonNullable.control('', [
       Validators.required,
       Validators.maxLength(200),
     ]),
+    street: this.formBuilder.nonNullable.control('', Validators.maxLength(200)),
+    area: this.formBuilder.nonNullable.control('', Validators.maxLength(100)),
     city: this.formBuilder.nonNullable.control('', [
       Validators.required,
       Validators.maxLength(100),
@@ -484,11 +550,16 @@ export class ShopProfileEditorComponent implements OnInit {
       Validators.required,
       Validators.maxLength(100),
     ]),
+    country: this.formBuilder.nonNullable.control('', Validators.maxLength(100)),
     postalCode: this.formBuilder.nonNullable.control('', [
       Validators.required,
       Validators.pattern(/^[\p{L}\d -]{3,12}$/u),
     ]),
     landmark: this.formBuilder.nonNullable.control('', Validators.maxLength(150)),
+    servicesText: this.formBuilder.nonNullable.control('', [
+      Validators.required,
+      Validators.maxLength(2000),
+    ]),
     location: this.formBuilder.control<{ latitude: number; longitude: number } | null>(null),
   });
 
@@ -532,12 +603,23 @@ export class ShopProfileEditorComponent implements OnInit {
     this.addressSuggestions.set([]);
     this.addressSuggestionsVisible.set(false);
     this.form.patchValue({
+      ownerFirstName: this.profile.ownerFirstName,
+      ownerLastName: this.profile.ownerLastName,
+      countryCode: this.profile.countryCode,
+      mobileNumber: this.profile.mobileNumber,
       shopName: this.profile.shopName,
+      businessType: this.profile.businessType,
+      description: this.profile.description,
+      yearsOfExperience: this.profile.yearsOfExperience,
       address: this.profile.address,
+      street: this.profile.street ?? '',
+      area: this.profile.area ?? '',
       city: this.profile.city,
       state: this.profile.state,
+      country: this.profile.country ?? '',
       postalCode: this.profile.postalCode,
       landmark: this.profile.landmark,
+      servicesText: this.profile.services.join(', '),
       location: this.profile.location ?? null,
     });
     this.form.markAsPristine();
@@ -570,12 +652,19 @@ export class ShopProfileEditorComponent implements OnInit {
       address: suggestion.label,
       city: suggestion.city ?? this.form.controls.city.value,
       state: suggestion.state ?? this.form.controls.state.value,
+      country: suggestion.country ?? this.form.controls.country.value,
       postalCode: suggestion.postalCode ?? this.form.controls.postalCode.value,
+      street: suggestion.street ?? this.form.controls.street.value,
+      area: suggestion.area ?? this.form.controls.area.value,
       location: { latitude: suggestion.latitude, longitude: suggestion.longitude },
     });
   }
 
-  saveAddress(): void {
+  clearSelectedLocation(): void {
+    this.form.controls.location.setValue(null);
+  }
+
+  saveProfile(): void {
     this.errorMessage.set('');
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -583,19 +672,52 @@ export class ShopProfileEditorComponent implements OnInit {
     }
 
     const values = this.form.getRawValue();
-    const update: ShopBusinessDetailsUpdate = values;
+    const services = [
+      ...new Set(
+        values.servicesText
+          .split(/[,\n]/)
+          .map((service) => service.trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (!services.length) {
+      this.form.controls.servicesText.setErrors({ required: true });
+      this.form.controls.servicesText.markAsTouched();
+      return;
+    }
+
+    const update: ShopBusinessDetailsUpdate = {
+      ownerFirstName: values.ownerFirstName.trim(),
+      ownerLastName: values.ownerLastName.trim(),
+      countryCode: values.countryCode.trim(),
+      mobileNumber: values.mobileNumber.trim(),
+      shopName: values.shopName.trim(),
+      businessType: values.businessType.trim(),
+      description: values.description.trim(),
+      yearsOfExperience: values.yearsOfExperience,
+      address: values.address.trim(),
+      street: values.street.trim(),
+      area: values.area.trim(),
+      city: values.city.trim(),
+      state: values.state.trim(),
+      country: values.country.trim(),
+      postalCode: values.postalCode.trim(),
+      landmark: values.landmark.trim(),
+      services,
+      location: values.location,
+    };
     this.saving.set(true);
     this.authService.updateMyShopBusinessDetails(update).subscribe({
       next: (profile) => {
         this.profileUpdated.emit(profile);
         this.saving.set(false);
         this.editing.set(false);
-        this.successMessage.set('Your shop name and address have been updated.');
+        this.successMessage.set('Your business profile has been updated.');
       },
       error: (error: unknown) => {
         this.saving.set(false);
         this.errorMessage.set(
-          getAuthErrorMessage(error, 'Unable to update your shop name and address.'),
+          getAuthErrorMessage(error, 'Unable to update your business profile.'),
         );
       },
     });

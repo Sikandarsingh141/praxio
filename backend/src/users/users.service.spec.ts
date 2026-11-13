@@ -123,9 +123,7 @@ describe('UsersService', () => {
   });
 
   it('activates legacy customer accounts that were waiting for approval', async () => {
-    await service.activateLegacyCustomerAccount(
-      '507f1f77bcf86cd799439011',
-    );
+    await service.activateLegacyCustomerAccount('507f1f77bcf86cd799439011');
 
     expect(model.findOneAndUpdate).toHaveBeenCalledWith(
       {
@@ -200,14 +198,25 @@ describe('UsersService', () => {
     );
   });
 
-  it('updates only shop name and address fields for shop accounts', async () => {
+  it('updates the editable shop and owner profile fields for shop accounts', async () => {
     const updates = {
+      ownerFirstName: '  Alex  ',
+      ownerLastName: '  Repair  ',
+      countryCode: ' +91 ',
+      mobileNumber: '9876543210',
       shopName: '  Updated Repairs  ',
+      businessType: '  Electronics Repair Shop  ',
+      description: '  Repair services  ',
+      yearsOfExperience: 5,
       address: '  Main Road  ',
+      street: 'Main Road',
+      area: 'Central',
       city: 'Pune',
       state: 'Maharashtra',
+      country: 'India',
       postalCode: '411001',
       landmark: '',
+      services: ['AC Repair', ' Laptop Repair '],
       location: { latitude: 18.52, longitude: 73.85 },
     };
     await service.updateShopBusinessDetails(
@@ -219,12 +228,23 @@ describe('UsersService', () => {
       { _id: '507f1f77bcf86cd799439011', accountType: 'shop' },
       {
         $set: {
+          firstName: 'Alex',
+          lastName: 'Repair',
+          countryCode: '+91',
+          mobileNumber: '9876543210',
           'shopDetails.shopName': 'Updated Repairs',
+          'shopDetails.businessType': 'Electronics Repair Shop',
+          'shopDetails.description': 'Repair services',
+          'shopDetails.yearsOfExperience': 5,
           'shopDetails.address': 'Main Road',
+          'shopDetails.street': 'Main Road',
+          'shopDetails.area': 'Central',
           'shopDetails.city': 'Pune',
           'shopDetails.state': 'Maharashtra',
+          'shopDetails.country': 'India',
           'shopDetails.postalCode': '411001',
           'shopDetails.landmark': '',
+          'shopDetails.services': ['AC Repair', 'Laptop Repair'],
           'shopDetails.location': { latitude: 18.52, longitude: 73.85 },
         },
       },

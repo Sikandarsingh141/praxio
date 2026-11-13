@@ -39,8 +39,11 @@ describe('ShopProfileEditorComponent', () => {
     label: '10 Main Road, Pune, Maharashtra 411001',
     latitude: 18.52,
     longitude: 73.85,
+    street: 'Main Road',
+    area: 'Central',
     city: 'Pune',
     state: 'Maharashtra',
+    country: 'India',
     postalCode: '411001',
   };
   const updatedProfile = { ...profile, shopName: 'Updated Repairs' };
@@ -59,13 +62,14 @@ describe('ShopProfileEditorComponent', () => {
     }).compileComponents();
   });
 
-  it('lets the shop search and save only the business address', fakeAsync(() => {
+  it('lets the shop edit all profile fields while keeping login email read-only', fakeAsync(() => {
     const fixture = TestBed.createComponent(ShopProfileEditorComponent);
     fixture.componentRef.setInput('profile', profile);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Company Information');
     expect(fixture.nativeElement.textContent).toContain('Business Address Information');
+    expect(fixture.nativeElement.querySelectorAll('input[readonly]')).toHaveSize(1);
     expect(
       (
         fixture.nativeElement.querySelector(
@@ -82,27 +86,45 @@ describe('ShopProfileEditorComponent', () => {
     (fixture.nativeElement.querySelector('.address-suggestion') as HTMLButtonElement).click();
     fixture.detectChanges();
     fixture.componentInstance.form.patchValue({
+      ownerFirstName: 'Alex',
+      ownerLastName: 'Repair',
+      countryCode: '+91',
+      mobileNumber: '9876543210',
       shopName: 'Updated Repairs',
+      businessType: 'Laptop Repair',
+      description: 'Computer and laptop repairs',
+      yearsOfExperience: 7,
+      country: 'India',
       landmark: 'Near the park',
+      servicesText: 'AC Repair, Laptop Repair',
     });
     const updated = jasmine.createSpy('profileUpdated');
     fixture.componentInstance.profileUpdated.subscribe(updated);
-    fixture.componentInstance.saveAddress();
+    fixture.componentInstance.saveProfile();
     fixture.detectChanges();
 
     expect(authService.updateMyShopBusinessDetails).toHaveBeenCalledWith({
+      ownerFirstName: 'Alex',
+      ownerLastName: 'Repair',
+      countryCode: '+91',
+      mobileNumber: '9876543210',
       shopName: 'Updated Repairs',
+      businessType: 'Laptop Repair',
+      description: 'Computer and laptop repairs',
+      yearsOfExperience: 7,
       address: suggestion.label,
+      street: 'Main Road',
+      area: 'Central',
       city: 'Pune',
       state: 'Maharashtra',
+      country: 'India',
       postalCode: '411001',
       landmark: 'Near the park',
+      services: ['AC Repair', 'Laptop Repair'],
       location: { latitude: 18.52, longitude: 73.85 },
     });
     expect(updated).toHaveBeenCalledWith(updatedProfile);
-    expect(fixture.nativeElement.textContent).toContain(
-      'Your shop name and address have been updated.',
-    );
+    expect(fixture.nativeElement.textContent).toContain('Your business profile has been updated.');
     expect(fixture.nativeElement.querySelector('input[formControlName="fullName"]')).toBeNull();
   }));
 });

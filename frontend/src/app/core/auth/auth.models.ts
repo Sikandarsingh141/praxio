@@ -70,12 +70,23 @@ export interface ShopProfile {
 }
 
 export interface ShopBusinessDetailsUpdate {
+  ownerFirstName: string;
+  ownerLastName: string;
+  countryCode: string;
+  mobileNumber: string;
   shopName: string;
+  businessType: string;
+  description: string;
+  yearsOfExperience: number;
   address: string;
+  street: string;
+  area: string;
   city: string;
   state: string;
+  country: string;
   postalCode: string;
   landmark: string;
+  services: string[];
   location: { latitude: number; longitude: number } | null;
 }
 

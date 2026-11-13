@@ -507,7 +507,7 @@ import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
           @if (editingProfile()) {
             <section class="editing-panel" aria-label="Edit account profile">
-              <app-profile-editor />
+              <app-profile-editor [showNameForm]="false" />
             </section>
           }
         } @else if (loading()) {

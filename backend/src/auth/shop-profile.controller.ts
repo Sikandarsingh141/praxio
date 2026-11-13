@@ -53,7 +53,7 @@ export class ShopProfileController {
   }
 
   @Patch('my-profile/business-details')
-  @ApiOperation({ summary: 'Update the authenticated shop name and address' })
+  @ApiOperation({ summary: 'Update the authenticated shop business profile' })
   async updateMyBusinessDetails(
     @Req() request: AuthenticatedRequest,
     @Body() input: UpdateShopBusinessDetailsDto,

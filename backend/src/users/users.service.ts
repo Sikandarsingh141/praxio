@@ -182,12 +182,23 @@ export class UsersService {
   async updateShopBusinessDetails(
     id: string,
     updates: {
+      ownerFirstName: string;
+      ownerLastName: string;
+      countryCode: string;
+      mobileNumber: string;
       shopName: string;
+      businessType: string;
+      description: string;
+      yearsOfExperience: number;
       address: string;
+      street?: string;
+      area?: string;
       city: string;
       state: string;
+      country?: string;
       postalCode: string;
       landmark?: string;
+      services: string[];
       location?: { latitude: number; longitude: number } | null;
     },
   ): Promise<UserDocument> {
@@ -195,13 +206,30 @@ export class UsersService {
       throw new NotFoundException('Shop account was not found');
     }
 
-    const { location, ...address } = updates;
-    const set: Record<string, unknown> = Object.fromEntries(
-      Object.entries(address).map(([key, value]) => [
-        `shopDetails.${key}`,
-        typeof value === 'string' ? value.trim() : value,
-      ]),
-    );
+    const {
+      ownerFirstName,
+      ownerLastName,
+      countryCode,
+      mobileNumber,
+      services,
+      location,
+      ...businessDetails
+    } = updates;
+    const set: Record<string, unknown> = {
+      firstName: ownerFirstName.trim(),
+      lastName: ownerLastName.trim(),
+      countryCode: countryCode.trim(),
+      mobileNumber: mobileNumber.trim(),
+      ...Object.fromEntries(
+        Object.entries(businessDetails).map(([key, value]) => [
+          `shopDetails.${key}`,
+          typeof value === 'string' ? value.trim() : value,
+        ]),
+      ),
+      'shopDetails.services': [
+        ...new Set(services.map((service) => service.trim())),
+      ],
+    };
     const update: {
       $set: Record<string, unknown>;
       $unset?: Record<string, ''>;

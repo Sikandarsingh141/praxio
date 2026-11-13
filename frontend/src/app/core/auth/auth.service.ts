@@ -122,7 +122,20 @@ export class AuthService {
       )
       .pipe(
         map((response) => response.data.profile),
-        tap((profile) => this.shopNameState.set(profile.shopName)),
+        tap((profile) => {
+          this.shopNameState.set(profile.shopName);
+          this.userState.update((user) =>
+            user
+              ? {
+                  ...user,
+                  firstName: profile.ownerFirstName,
+                  lastName: profile.ownerLastName,
+                  countryCode: profile.countryCode,
+                  mobileNumber: profile.mobileNumber,
+                }
+              : user,
+          );
+        }),
       );
   }
 
