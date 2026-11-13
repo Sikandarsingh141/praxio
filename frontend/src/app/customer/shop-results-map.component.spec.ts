@@ -59,6 +59,26 @@ describe('ShopResultsMapComponent', () => {
     expect(getComputedStyle(shell).zIndex).toBe('0');
     fixture.destroy();
   });
+
+  it('enables mouse-wheel zoom on the map', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['map']?.scrollWheelZoom.enabled()).toBeTrue();
+    fixture.destroy();
+  });
+
+  it('shows a one-count marker instead of a dot for a single shop location', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.componentInstance.shops = [makeShop('shop-1')];
+    fixture.detectChanges();
+
+    const marker = fixture.nativeElement.querySelector('.shop-marker-cluster') as HTMLElement | null;
+    expect(marker?.textContent?.trim()).toBe('1');
+    fixture.destroy();
+  });
 });
 
 function makeShop(id: string): ShopSearchResult {

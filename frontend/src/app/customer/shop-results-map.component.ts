@@ -290,7 +290,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
     }
     const startingPoint = this.center ?? { latitude: 20.5937, longitude: 78.9629 };
     this.map = L.map(this.mapElement.nativeElement, {
-      scrollWheelZoom: false,
+      scrollWheelZoom: true,
       zoomControl: false,
     }).setView([startingPoint.latitude, startingPoint.longitude], this.center ? 11 : 5);
     this.streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -428,21 +428,6 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
     );
     clusters.forEach((cluster) => {
       const location = this.map!.containerPointToLatLng([cluster.x, cluster.y]);
-      if (cluster.shops.length === 1) {
-        const shop = cluster.shops[0];
-        const marker = L.circleMarker(location, {
-          radius: 8,
-          color: '#fff',
-          weight: 3,
-          fillColor: '#315d4b',
-          fillOpacity: 1,
-        }).bindPopup(
-          `<strong>${this.escapeHtml(shop.shopName)}</strong><br>${this.escapeHtml(shop.city)}`,
-        );
-        this.shopMarkers.addLayer(marker);
-        return;
-      }
-
       const marker = L.marker(location, {
         icon: L.divIcon({
           className: '',
@@ -450,7 +435,15 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
           iconSize: [46, 46],
           iconAnchor: [23, 23],
         }),
-      }).bindPopup(`${cluster.shops.length} repair shops`);
+      });
+      if (cluster.shops.length === 1) {
+        const shop = cluster.shops[0];
+        marker.bindPopup(
+          `<strong>${this.escapeHtml(shop.shopName)}</strong><br>${this.escapeHtml(shop.city)}`,
+        );
+      } else {
+        marker.bindPopup(`${cluster.shops.length} repair shops`);
+      }
       this.shopMarkers.addLayer(marker);
     });
   }
