@@ -97,6 +97,21 @@ export class CustomerPortalController {
     };
   }
 
+  @Patch('repair-requests/:id/cancel')
+  @ApiOperation({
+    summary: 'Cancel an open repair request before a shop submits a quotation',
+  })
+  async cancelRepairRequest(
+    @Req() request: AuthenticatedCustomerRequest,
+    @Param('id') id: string,
+  ) {
+    return {
+      data: {
+        request: await this.portal.cancelRepairRequest(this.userId(request), id),
+      },
+    };
+  }
+
   @Patch('repair-requests/:id')
   @ApiOperation({
     summary:

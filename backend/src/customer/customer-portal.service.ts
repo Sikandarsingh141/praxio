@@ -732,6 +732,59 @@ export class CustomerPortalService {
     return safeRequest;
   }
 
+  async cancelRepairRequest(customerId: string, requestId: string): Promise<unknown> {
+    const customer = await this.requireActiveCustomer(customerId);
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair request was not found.');
+    }
+
+    const request = await this.repairRequests
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(requestId),
+          customerId: customer._id,
+          status: 'open',
+          repairJob: { $exists: false },
+          acceptedQuotationId: { $exists: false },
+          shopResponses: {
+            $not: {
+              $elemMatch: {
+                status: {
+                  $in: [
+                    'quotation_submitted',
+                    'customer_accepted',
+                    'customer_rejected',
+                  ],
+                },
+              },
+            },
+          },
+        },
+        { $set: { status: 'cancelled' } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!request) {
+      throw new ConflictException(
+        'Only open repair requests without a submitted quotation can be cancelled.',
+      );
+    }
+
+    await this.notifications.notifyUsers(
+      request.shopIds.map((shopId) => new Types.ObjectId(shopId)),
+      {
+        title: 'Repair Request Cancelled',
+        message: `${formatUserName(customer) || 'A customer'} cancelled the ${request.appliance} repair request.`,
+        type: 'repair_request_cancelled',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: '/shop/repair-requests',
+      },
+    );
+
+    return request;
+  }
+
   async getMyRepairRequests(
     customerId: string,
     filters: CustomerRepairRequestListQueryDto = new CustomerRepairRequestListQueryDto(),

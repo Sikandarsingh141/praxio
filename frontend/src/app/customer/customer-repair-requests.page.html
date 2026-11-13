@@ -134,6 +134,16 @@
                   Edit request
                 </button>
               }
+              @if (canCancelRequest(request)) {
+                <button
+                  type="button"
+                  class="cancel-request-button"
+                  [disabled]="cancellingRequestId() === request._id"
+                  (click)="openCancel(request)"
+                >
+                  Cancel request
+                </button>
+              }
             </div>
           </div>
           <section class="quotation-section" aria-label="Shop quotations">
@@ -157,13 +167,6 @@
                   }
                 }
               </div>
-              <app-pagination
-                [total]="visibleRequests().length"
-                [page]="page()"
-                [pageSize]="pageSize"
-                ariaLabel="Repair request pages"
-                (pageChange)="goToPage($event)"
-              />
             }
             @if (request.quotations.length) {
               @for (quote of request.quotations; track quote._id) {
@@ -285,6 +288,13 @@
         </article>
       }
     </div>
+    <app-pagination
+      [total]="visibleRequests().length"
+      [page]="page()"
+      [pageSize]="pageSize"
+      ariaLabel="Repair request pages"
+      (pageChange)="goToPage($event)"
+    />
   }
 
   @if (editRequest(); as request) {
@@ -434,6 +444,58 @@
             </button>
             <button type="button" class="save-edit" [disabled]="savingEdit()" (click)="saveEdit()">
               {{ savingEdit() ? 'Saving…' : 'Save changes' }}
+            </button>
+          </footer>
+        </section>
+      </div>
+    </div>
+  }
+
+  @if (cancelRequest(); as request) {
+    <div class="customer-request-edit">
+      <div class="edit-backdrop" (click)="closeCancel()" role="presentation">
+        <section
+          class="edit-dialog cancel-request-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-request-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="edit-dialog-header">
+            <div>
+              <span class="eyebrow">CANCEL REPAIR REQUEST</span>
+              <h2 id="cancel-request-title">Cancel this request?</h2>
+              <p>{{ request.appliance }} will be removed from the shops’ active request lists.</p>
+            </div>
+            <button
+              type="button"
+              class="edit-close"
+              aria-label="Close cancellation dialog"
+              [disabled]="cancellingRequestId() === request._id"
+              (click)="closeCancel()"
+            >
+              ×
+            </button>
+          </header>
+          @if (cancelError()) {
+            <p class="action-error" role="alert">{{ cancelError() }}</p>
+          }
+          <footer class="edit-actions">
+            <button
+              type="button"
+              class="cancel-edit"
+              [disabled]="cancellingRequestId() === request._id"
+              (click)="closeCancel()"
+            >
+              Keep request
+            </button>
+            <button
+              type="button"
+              class="save-edit"
+              [disabled]="cancellingRequestId() === request._id"
+              (click)="confirmCancel()"
+            >
+              {{ cancellingRequestId() === request._id ? 'Cancelling…' : 'Confirm cancellation' }}
             </button>
           </footer>
         </section>

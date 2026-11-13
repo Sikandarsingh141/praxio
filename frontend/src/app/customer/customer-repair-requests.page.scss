@@ -245,6 +245,28 @@
   font-size: 0.7rem;
   font-weight: 700;
 }
+
+.cancel-request-button {
+  margin-top: 0.45rem;
+  border: 1px solid #ead0cd;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  background: #fff;
+  color: #a3312c;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cancel-request-button:hover:not(:disabled) {
+  background: #fff5f4;
+}
+
+.cancel-request-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
 .quotation-section {
   align-self: stretch;
   flex: 1;

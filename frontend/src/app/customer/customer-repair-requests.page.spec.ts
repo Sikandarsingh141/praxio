@@ -50,6 +50,25 @@ describe('CustomerRepairRequestsPage editing', () => {
     expect(page.canEditRequest({ ...request, repairJob: { status: 'confirmed' } })).toBeFalse();
   });
 
+  it('offers cancellation only while no shop has submitted a quotation or received a decision', () => {
+    const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
+    const page = fixture.componentInstance;
+
+    expect(page.canCancelRequest(request)).toBeTrue();
+    expect(
+      page.canCancelRequest({
+        ...request,
+        shops: [{ id: 'shop-id', name: 'Repair Shop', responseStatus: 'quotation_submitted' }],
+      }),
+    ).toBeFalse();
+    expect(
+      page.canCancelRequest({
+        ...request,
+        shops: [{ id: 'shop-id', name: 'Repair Shop', responseStatus: 'customer_rejected' }],
+      }),
+    ).toBeFalse();
+  });
+
   it('shows the request lifecycle status instead of marking every repair job active', () => {
     const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
     const page = fixture.componentInstance;

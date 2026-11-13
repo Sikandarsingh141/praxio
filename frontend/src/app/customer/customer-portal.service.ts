@@ -145,6 +145,15 @@ export class CustomerPortalService {
       .pipe(map((response) => response.data.requests));
   }
 
+  cancelRepairRequest(id: string): Observable<void> {
+    return this.http
+      .patch<ApiEnvelope<unknown>>(
+        `${this.baseUrl}/repair-requests/${encodeURIComponent(id)}/cancel`,
+        {},
+      )
+      .pipe(map(() => undefined));
+  }
+
   getQuotations(filters: QuotationListFilters): Observable<QuotationListResult<CustomerQuotation>> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {

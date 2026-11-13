@@ -48,6 +48,7 @@ export class ShopRepairRouteComponent
   private map?: L.Map;
   private routeLine?: L.Polyline;
   private requestSequence = 0;
+  private lastDirectionsKey: string | null = null;
   private viewReady = false;
 
   constructor(private readonly requestsService: ShopRepairRequestsService) {}
@@ -59,11 +60,22 @@ export class ShopRepairRouteComponent
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (
-      changes['shopLocation'] ||
-      changes['customerLocation'] ||
-      changes['requestId']
-    ) {
+    const requestChanged =
+      !!changes['requestId'] &&
+      changes['requestId'].previousValue !== changes['requestId'].currentValue;
+    const shopLocationChanged =
+      !!changes['shopLocation'] &&
+      !this.sameCoordinates(
+        changes['shopLocation'].previousValue,
+        changes['shopLocation'].currentValue,
+      );
+    const customerLocationChanged =
+      !!changes['customerLocation'] &&
+      !this.sameCoordinates(
+        changes['customerLocation'].previousValue,
+        changes['customerLocation'].currentValue,
+      );
+    if (requestChanged || shopLocationChanged || customerLocationChanged) {
       this.requestSequence += 1;
       this.directionsLoading.set(false);
       this.route.set(null);
@@ -72,6 +84,19 @@ export class ShopRepairRouteComponent
       this.initializeMap();
       this.loadDirections();
     }
+  }
+
+  private sameCoordinates(
+    left: Coordinates | null | undefined,
+    right: Coordinates | null | undefined,
+  ): boolean {
+    return (
+      left === right ||
+      (!!left &&
+        !!right &&
+        left.latitude === right.latitude &&
+        left.longitude === right.longitude)
+    );
   }
 
   ngOnDestroy(): void {
@@ -145,6 +170,13 @@ export class ShopRepairRouteComponent
     ) {
       return;
     }
+    const key = JSON.stringify({
+      requestId: this.requestId,
+      shop: this.shopLocation,
+      customer: this.customerLocation,
+    });
+    if (this.lastDirectionsKey === key) return;
+    this.lastDirectionsKey = key;
     const sequence = ++this.requestSequence;
     this.directionsLoading.set(true);
     this.directionsError.set('');

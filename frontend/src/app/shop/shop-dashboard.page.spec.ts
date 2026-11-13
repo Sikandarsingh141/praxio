@@ -131,11 +131,11 @@ describe('ShopDashboardPage', () => {
     ) as HTMLElement;
     expect(headerCopy.getBoundingClientRect().width).toBeGreaterThan(200);
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
-    expect(fixture.nativeElement.textContent).toContain('Example Repairs');
+    expect(fixture.nativeElement.textContent).toContain('Performance summary');
     expect(fixture.nativeElement.textContent).toContain('Quotation activity');
     expect(fixture.nativeElement.textContent).toContain('Repair revenue');
     expect(fixture.nativeElement.querySelectorAll('.metric-card')).toHaveSize(6);
-    expect(fixture.nativeElement.querySelector('.welcome-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.dashboard-columns')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.pipeline-grid')).toBeTruthy();
     const pipelineGrid = fixture.nativeElement.querySelector('.pipeline-grid') as HTMLElement;
     const completedPipelineRow = Array.from(pipelineGrid.children).find((row) =>

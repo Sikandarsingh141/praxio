@@ -78,6 +78,9 @@ export class CustomerRepairRequestsPage implements OnInit {
   readonly actionError = signal('');
   readonly updating = signal<string | null>(null);
   readonly editRequest = signal<CustomerRepairRequest | null>(null);
+  readonly cancelRequest = signal<CustomerRepairRequest | null>(null);
+  readonly cancellingRequestId = signal<string | null>(null);
+  readonly cancelError = signal('');
   readonly editableShops = signal<Array<{ id: string; shopName: string }>>([]);
   readonly selectedEditShops = signal<string[]>([]);
   readonly editAppliance = signal('');
@@ -232,6 +235,51 @@ export class CustomerRepairRequestsPage implements OnInit {
         ),
       )
     );
+  }
+
+  canCancelRequest(request: CustomerRepairRequest): boolean {
+    return (
+      request.status === 'open' &&
+      !request.repairJob &&
+      request.quotations.length === 0 &&
+      !request.shops?.some((shop) =>
+        ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
+          shop.responseStatus ?? '',
+        ),
+      )
+    );
+  }
+
+  openCancel(request: CustomerRepairRequest): void {
+    this.cancelError.set('');
+    this.cancelRequest.set(request);
+  }
+
+  closeCancel(): void {
+    if (this.cancellingRequestId()) return;
+    this.cancelRequest.set(null);
+    this.cancelError.set('');
+  }
+
+  confirmCancel(): void {
+    const request = this.cancelRequest();
+    if (!request || this.cancellingRequestId()) return;
+    this.cancellingRequestId.set(request._id);
+    this.cancelError.set('');
+    this.portal.cancelRepairRequest(request._id).subscribe({
+      next: () => {
+        this.cancellingRequestId.set(null);
+        this.cancelRequest.set(null);
+        this.actionMessage.set('Your repair request was cancelled.');
+        this.loadRequests();
+      },
+      error: (error: HttpErrorResponse) => {
+        this.cancelError.set(
+          error.error?.message || 'Your repair request could not be cancelled.',
+        );
+        this.cancellingRequestId.set(null);
+      },
+    });
   }
 
   openEdit(request: CustomerRepairRequest): void {

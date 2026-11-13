@@ -1,0 +1,27 @@
+{
+  "runDate": "2026-11-13",
+  "browser": "Playwright headed Chromium",
+  "accounts": {
+    "admin": { "signInAttempts": 1, "successful": 1 },
+    "shop": { "signInAttempts": 3, "successful": 3 },
+    "customer": { "signInAttempts": 1, "successful": 1 }
+  },
+  "portalNavigationsAttempted": 32,
+  "portalRouteAssertionsPassed": 32,
+  "accountBackedPlaywrightTests": 5,
+  "apiHttpFailures": 0,
+  "pageErrors": 0,
+  "consoleErrors": 0,
+  "nonLoginWritesForwarded": 0,
+  "readStatusGuardCheck": {
+    "request": "PATCH /api/chat/conversations/{id}/read",
+    "interceptedBeforeBackend": true,
+    "guardStatus": 403,
+    "resultingUiAlert": "Read status could not be updated.",
+    "classification": "Expected consequence of read-only QA guard; not a confirmed product defect"
+  },
+  "limitations": [
+    "Page navigation and login were exercised; route assertions verify URL access, not every business action on each page.",
+    "Mutation workflows were not tested because the connected database is remote and has not been confirmed as isolated test data."
+  ]
+}

@@ -6,6 +6,7 @@ export const NOTIFICATION_TYPES = [
   'registration_approved',
   'registration_declined',
   'new_repair_request',
+  'repair_request_cancelled',
   'new_repair_quotation',
   'repair_request_declined',
   'customer_accepted_quotation',
