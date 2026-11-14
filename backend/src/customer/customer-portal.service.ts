@@ -1752,6 +1752,16 @@ export class CustomerPortalService {
     if (!request) {
       throw new NotFoundException('Repair request was not found');
     }
+    if (request.acceptedQuotationId) {
+      const acceptedQuotation = await this.quotations
+        .findOne({ _id: request.acceptedQuotationId, shopId: shop._id })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!acceptedQuotation) {
+        throw new NotFoundException('Repair request was not found');
+      }
+    }
     let shopResponse = request.shopResponses?.find(
       (response) => response.shopId.toString() === shop._id.toString(),
     );
@@ -1868,6 +1878,7 @@ export class CustomerPortalService {
           _id: requestId,
           shopIds: shop._id,
           status: 'open',
+          acceptedQuotationId: { $exists: false },
           shopResponses: {
             $elemMatch: {
               shopId: shop._id,
@@ -1975,6 +1986,7 @@ export class CustomerPortalService {
           _id: request._id,
           shopIds: shop._id,
           status: 'open',
+          acceptedQuotationId: { $exists: false },
           shopResponses: {
             $elemMatch: {
               shopId: shop._id,

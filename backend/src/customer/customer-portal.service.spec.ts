@@ -311,6 +311,55 @@ describe('CustomerPortalService', () => {
     expect(filter.createdAt.$lte).toBeInstanceOf(Date);
   });
 
+  it('includes legacy completed repair jobs in the completed filter', async () => {
+    const customerId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    repairRequestModel.find.mockReturnValue(createQuery([]));
+
+    await service.getMyRepairRequests(customerId.toString(), {
+      status: 'completed',
+    });
+
+    const filter = repairRequestModel.find.mock.calls[0]?.[0];
+    expect(filter).toMatchObject({
+      customerId,
+      $and: [
+        {
+          $or: [{ status: 'completed' }, { 'repairJob.status': 'completed' }],
+        },
+      ],
+    });
+  });
+
+  it('excludes completed repair jobs from the open filter', async () => {
+    const customerId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    repairRequestModel.find.mockReturnValue(createQuery([]));
+
+    await service.getMyRepairRequests(customerId.toString(), {
+      status: 'open',
+    });
+
+    const filter = repairRequestModel.find.mock.calls[0]?.[0];
+    expect(filter).toMatchObject({
+      customerId,
+      status: 'open',
+      $and: [{ 'repairJob.status': { $ne: 'completed' } }],
+    });
+  });
+
   it('includes the authenticated customer request photos in their request list', async () => {
     const customerId = new Types.ObjectId();
     const requestId = new Types.ObjectId();
@@ -440,9 +489,14 @@ describe('CustomerPortalService', () => {
     expect(repairRequestModel.find).not.toHaveBeenCalled();
   });
 
-  it('updates an open customer request atomically and notifies selected shops', async () => {
+  it('updates an open customer request atomically and notifies only newly added shops', async () => {
     const customerId = new Types.ObjectId();
     const requestId = new Types.ObjectId();
+    const existingResponse = {
+      shopId: nearShopId,
+      status: 'pending',
+      respondedAt: new Date('2026-10-01T00:00:00.000Z'),
+    };
     const updatedRequest = {
       _id: requestId,
       toObject: () => ({ _id: requestId, photos: [{ data: 'private' }] }),
@@ -456,6 +510,9 @@ describe('CustomerPortalService', () => {
       }),
     );
     quotationModel.exists.mockResolvedValue(false);
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({ shopResponses: [existingResponse] }),
+    );
     repairRequestModel.findOneAndUpdate.mockReturnValue(
       createQuery(updatedRequest),
     );
@@ -465,7 +522,7 @@ describe('CustomerPortalService', () => {
         customerId.toString(),
         requestId.toString(),
         {
-          shopIds: [nearShopId.toString()],
+          shopIds: [nearShopId.toString(), farShopId.toString()],
           appliance: 'Refrigerator',
           description: 'Not cooling',
           brand: 'Brand',
@@ -477,6 +534,11 @@ describe('CustomerPortalService', () => {
       ),
     ).resolves.toMatchObject({ _id: requestId, photos: [] });
 
+    const [, update] = repairRequestModel.findOneAndUpdate.mock.calls[0] ?? [];
+    expect(update.$set.shopResponses).toEqual([
+      existingResponse,
+      { shopId: farShopId, status: 'new' },
+    ]);
     expect(repairRequestModel.findOneAndUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         _id: requestId,
@@ -497,7 +559,7 @@ describe('CustomerPortalService', () => {
       { new: true, runValidators: true },
     );
     expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
-      [nearShopId],
+      [farShopId],
       expect.objectContaining({
         title: 'Repair Request Updated',
         type: 'new_repair_request',
@@ -1007,6 +1069,9 @@ describe('CustomerPortalService', () => {
     quotationModel.find.mockReturnValue(
       createQuery([{ _id: thisShopQuotationId, status: 'pending' }]),
     );
+    quotationModel.findOne.mockReturnValue(
+      createQuery({ _id: acceptedQuotationId, shopId }),
+    );
 
     const result = await service.getShopRepairRequest(
       shopId.toString(),
@@ -1014,6 +1079,42 @@ describe('CustomerPortalService', () => {
     );
 
     expect(result).not.toHaveProperty('repairJob');
+  });
+
+  it('does not expose a request whose accepted quotation belongs to another shop', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const acceptedQuotationId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: shopId,
+        accountType: 'shop',
+        accountStatus: 'active',
+        shopDetails: { shopName: 'Losing Shop' },
+      }),
+    );
+    registrationModel.findOne.mockReturnValue(
+      createQuery({ registrationStatus: 'approved', paymentStatus: 'paid' }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        shopResponses: [{ shopId, status: 'quotation_submitted' }],
+        acceptedQuotationId,
+      }),
+    );
+    quotationModel.findOne.mockReturnValue(createQuery(null));
+
+    await expect(
+      service.getShopRepairRequest(shopId.toString(), requestId.toString()),
+    ).rejects.toMatchObject({ status: 404 });
+
+    expect(quotationModel.findOne).toHaveBeenCalledWith({
+      _id: acceptedQuotationId,
+      shopId,
+    });
   });
 
   it('submits a quotation without requiring MongoDB replica-set transactions', async () => {

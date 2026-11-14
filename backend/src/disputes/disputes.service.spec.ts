@@ -357,4 +357,210 @@ describe('DisputesService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
   });
+
+  it('keeps a pending resolution decidable when a participant sends a message', async () => {
+    const dispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1',
+      customerId,
+      shopId,
+      status: 'AWAITING_CUSTOMER_RESPONSE',
+      statusHistory: [],
+      messages: [],
+      internalNotes: [],
+      attachments: [],
+      reworkProgress: [],
+      reworkCompletions: [],
+      reinspections: [],
+      verificationHistory: [],
+      additionalCharges: [],
+      resolution: {
+        state: 'proposed',
+        type: 'repair_again',
+        documents: [],
+        completionDocuments: [],
+      },
+    };
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(dispute),
+    });
+    let recordedUpdate: UpdateQuery<Dispute> | undefined;
+    disputes.findOneAndUpdate.mockImplementation(
+      (_filter: unknown, update: UpdateQuery<Dispute>) => {
+        recordedUpdate = update;
+        return { exec: jest.fn().mockResolvedValue(dispute) };
+      },
+    );
+
+    await service.sendMessage(
+      { userId: customerId.toString(), role: 'customer' },
+      dispute._id.toString(),
+      { message: 'I still need to review this proposal.' },
+    );
+
+    expect(recordedUpdate?.$set?.status).toBeUndefined();
+    expect(recordedUpdate?.$push?.statusHistory).toBeUndefined();
+  });
+
+  it('reopens a proposed resolution when the customer reports it unresolved', async () => {
+    const dispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1',
+      customerId,
+      shopId,
+      status: 'AWAITING_CUSTOMER_RESPONSE',
+      statusHistory: [],
+      messages: [],
+      internalNotes: [],
+      attachments: [],
+      reworkProgress: [],
+      reworkCompletions: [],
+      reinspections: [],
+      verificationHistory: [],
+      additionalCharges: [],
+      resolution: {
+        state: 'proposed',
+        type: 'repair_again',
+        documents: [],
+        completionDocuments: [],
+        customerAcceptedAt: new Date(),
+        shopAcceptedAt: new Date(),
+      },
+    };
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(dispute),
+    });
+    let recordedUpdate: UpdateQuery<Dispute> | undefined;
+    disputes.findOneAndUpdate.mockImplementation(
+      (_filter: unknown, update: UpdateQuery<Dispute>) => {
+        recordedUpdate = update;
+        return { exec: jest.fn().mockResolvedValue(dispute) };
+      },
+    );
+
+    await service.reportUnresolved(
+      { userId: customerId.toString(), role: 'customer' },
+      dispute._id.toString(),
+      { notes: 'The device is still broken.' },
+    );
+
+    expect(recordedUpdate?.$set).toMatchObject({
+      status: 'REOPENED',
+      'resolution.state': 'draft',
+    });
+  });
+
+  it('accepts customer confirmation for a completion recorded in the same update', async () => {
+    const dispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1',
+      customerId,
+      shopId,
+      status: 'CUSTOMER_VERIFICATION_PENDING',
+      statusHistory: [
+        {
+          from: 'REPAIR_IN_PROGRESS',
+          to: 'CUSTOMER_VERIFICATION_PENDING',
+          actorId: shopId,
+          actorRole: 'shop',
+          at: new Date('2026-10-02T00:00:00.005Z'),
+        },
+      ],
+      messages: [],
+      internalNotes: [],
+      attachments: [],
+      reworkProgress: [],
+      reworkCompletions: [
+        {
+          workPerformed: 'Replaced the motor',
+          testingResults: 'Passed',
+          tested: true,
+          attachments: [],
+          completedBy: shopId,
+          completedAt: new Date('2026-10-02T00:00:00.000Z'),
+        },
+      ],
+      reinspections: [],
+      verificationHistory: [],
+      additionalCharges: [],
+      resolution: {
+        state: 'draft',
+        type: 'repair_again',
+        documents: [],
+        completionDocuments: [],
+      },
+    };
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(dispute),
+    });
+    let recordedUpdate: UpdateQuery<Dispute> | undefined;
+    disputes.findOneAndUpdate.mockImplementation(
+      (_filter: unknown, update: UpdateQuery<Dispute>) => {
+        recordedUpdate = update;
+        return { exec: jest.fn().mockResolvedValue(dispute) };
+      },
+    );
+
+    await service.confirmResolution(
+      { userId: customerId.toString(), role: 'customer' },
+      dispute._id.toString(),
+      { message: 'Looks fixed.' },
+    );
+
+    expect(recordedUpdate?.$set).toMatchObject({ status: 'CUSTOMER_CONFIRMED' });
+  });
+
+  it('rejects customer confirmation backed by a stale rework completion', async () => {
+    const dispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1',
+      customerId,
+      shopId,
+      status: 'AWAITING_CUSTOMER_RESPONSE',
+      statusHistory: [
+        {
+          from: 'AWAITING_SHOP_RESPONSE',
+          to: 'AWAITING_CUSTOMER_RESPONSE',
+          actorId: shopId,
+          actorRole: 'shop',
+          at: new Date('2026-10-02T00:00:00.000Z'),
+        },
+      ],
+      messages: [],
+      internalNotes: [],
+      attachments: [],
+      reworkProgress: [],
+      reworkCompletions: [
+        {
+          workPerformed: 'Replaced the motor',
+          testingResults: 'Passed',
+          tested: true,
+          attachments: [],
+          completedBy: shopId,
+          completedAt: new Date('2026-10-01T00:00:00.000Z'),
+        },
+      ],
+      reinspections: [],
+      verificationHistory: [],
+      additionalCharges: [],
+      resolution: {
+        state: 'proposed',
+        type: 'repair_again',
+        documents: [],
+        completionDocuments: [],
+      },
+    };
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(dispute),
+    });
+
+    await expect(
+      service.confirmResolution(
+        { userId: customerId.toString(), role: 'customer' },
+        dispute._id.toString(),
+        { message: 'Looks fixed.' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
+  });
 });

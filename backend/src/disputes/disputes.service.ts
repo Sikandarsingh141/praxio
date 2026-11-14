@@ -74,6 +74,7 @@ const ACTIVE_STATUSES: DisputeStatus[] = [
 const MAX_DISPUTE_MESSAGES = 200;
 const MAX_DISPUTE_HISTORY = 500;
 const MAX_ATTACHMENT_DATA_LENGTH = 10_000_000;
+const COMPLETION_STATUS_TOLERANCE_MS = 5_000;
 const DISPUTE_EVIDENCE_BUCKET = 'disputeEvidence';
 
 const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
@@ -101,7 +102,15 @@ const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
   REPAIR_IN_PROGRESS: ['CUSTOMER_VERIFICATION_PENDING', 'CLOSED'],
   CUSTOMER_VERIFICATION_PENDING: ['CUSTOMER_CONFIRMED', 'REOPENED', 'CLOSED'],
   CUSTOMER_CONFIRMED: ['REOPENED', 'CLOSED'],
-  REOPENED: ['REINSPECTION_IN_PROGRESS', 'REJECTED', 'CLOSED'],
+  REOPENED: [
+    'UNDER_REVIEW',
+    'AWAITING_SHOP_RESPONSE',
+    'AWAITING_CUSTOMER_RESPONSE',
+    'RESOLUTION_PROPOSED',
+    'REINSPECTION_IN_PROGRESS',
+    'REJECTED',
+    'CLOSED',
+  ],
   CLOSED: [],
   // Keep old transitions available only to preserve existing records.
   UNDER_REVIEW: [
@@ -116,6 +125,7 @@ const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
     'AWAITING_SHOP_RESPONSE',
     'RESOLUTION_PROPOSED',
     'RESOLVED',
+    'REOPENED',
     'CLOSED',
   ],
   AWAITING_SHOP_RESPONSE: [
@@ -724,7 +734,8 @@ export class DisputesService {
     const dispute = await this.findAccessible(actor, id);
     const latestCharge = dispute.additionalCharges?.at(-1);
     const newWorkflow =
-      dispute.status === 'AWAITING_CUSTOMER_RESPONSE' &&
+      (dispute.status === 'AWAITING_CUSTOMER_RESPONSE' ||
+        dispute.status === 'REOPENED') &&
       (!latestCharge || latestCharge.status === 'accepted');
     if (
       dispute.status !== 'REINSPECTION_IN_PROGRESS' &&
@@ -866,6 +877,21 @@ export class DisputesService {
         'This dispute is not awaiting customer verification.',
       );
     }
+    const latestStatusChange =
+      dispute.statusHistory?.[dispute.statusHistory.length - 1];
+    const latestCompletion =
+      dispute.reworkCompletions?.[dispute.reworkCompletions.length - 1];
+    if (
+      !latestCompletion ||
+      (latestStatusChange &&
+        latestCompletion.completedAt.getTime() +
+          COMPLETION_STATUS_TOLERANCE_MS <
+          latestStatusChange.at.getTime())
+    ) {
+      throw new BadRequestException(
+        'This dispute is not awaiting customer verification.',
+      );
+    }
     const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
     this.assertAttachmentCapacity(dispute, attachments);
     const updated = await this.atomicUpdate(
@@ -937,6 +963,9 @@ export class DisputesService {
         $unset: {
           'resolution.customerAcceptedAt': 1,
           'resolution.shopAcceptedAt': 1,
+        },
+        $set: {
+          'resolution.state': 'draft',
         },
       },
       'REOPENED',
@@ -1098,7 +1127,11 @@ export class DisputesService {
     if (!Types.ObjectId.isValid(fileId)) {
       throw new NotFoundException('Attachment not found.');
     }
-    const attachment = this.findAttachmentReference(dispute, fileId);
+    const attachment = this.findAttachmentReference(
+      dispute,
+      fileId,
+      actor.role,
+    );
     if (!attachment?.fileId) {
       throw new NotFoundException('Attachment not found.');
     }
@@ -1131,10 +1164,12 @@ export class DisputesService {
       actor.role === 'admin',
       message.attachments,
     );
+    const hasProposedResolution = dispute.resolution?.state === 'proposed';
     const isLegacyResponse =
-      (actor.role === 'customer' &&
+      !hasProposedResolution &&
+      ((actor.role === 'customer' &&
         dispute.status === 'AWAITING_CUSTOMER_RESPONSE') ||
-      (actor.role === 'shop' && dispute.status === 'AWAITING_SHOP_RESPONSE');
+        (actor.role === 'shop' && dispute.status === 'AWAITING_SHOP_RESPONSE'));
     const nextStatus = isLegacyResponse ? 'UNDER_REVIEW' : undefined;
 
     const updated = await this.atomicUpdate(
@@ -2055,11 +2090,14 @@ export class DisputesService {
   private findAttachmentReference(
     dispute: Dispute,
     fileId: string,
+    role: 'customer' | 'shop' | 'admin',
   ): DisputeAttachment | undefined {
     const attachments = [
       ...dispute.attachments,
       ...dispute.messages.flatMap((message) => message.attachments),
-      ...dispute.internalNotes.flatMap((note) => note.attachments),
+      ...(role === 'admin'
+        ? dispute.internalNotes.flatMap((note) => note.attachments)
+        : []),
       ...(dispute.shopResponse?.attachments ?? []),
       ...(dispute.resolution?.documents ?? []),
       ...(dispute.resolution?.completionDocuments ?? []),

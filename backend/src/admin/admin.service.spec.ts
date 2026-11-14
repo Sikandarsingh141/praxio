@@ -1324,6 +1324,46 @@ describe('AdminService', () => {
     pendingRequest.paymentStatus = 'not_required';
   });
 
+  it('declines an unpaid shop registration and rejects the account', async () => {
+    pendingRequest.accountType = 'shop';
+    pendingRequest.paymentStatus = 'unpaid';
+    requestQuery.exec.mockResolvedValue(pendingRequest);
+    usersService.updateRegistrationAccountStatus.mockResolvedValue(true);
+    updateQuery.exec.mockResolvedValue({
+      ...pendingRequest,
+      registrationStatus: 'declined',
+    });
+
+    await expect(
+      service.declineRegistration(
+        pendingRequest._id.toString(),
+        '507f1f77bcf86cd799439013',
+        { reason: 'Registration payment was not completed.' },
+      ),
+    ).resolves.toBeDefined();
+
+    expect(registrationRequests.findOneAndUpdate).toHaveBeenCalledTimes(1);
+    expect(usersService.updateRegistrationAccountStatus).toHaveBeenCalledWith(
+      pendingRequest.userId.toString(),
+      'shop',
+      'rejected',
+      session,
+    );
+    expect(
+      notificationsService.notifyApplicantOfRegistrationDecision,
+    ).toHaveBeenCalledWith(
+      pendingRequest.userId,
+      pendingRequest._id,
+      'shop',
+      'declined',
+      'Registration payment was not completed.',
+      session,
+    );
+
+    pendingRequest.accountType = 'customer';
+    pendingRequest.paymentStatus = 'not_required';
+  });
+
   it('sends an approval notification to a paid shop owner within the review transaction', async () => {
     pendingRequest.accountType = 'shop';
     pendingRequest.paymentStatus = 'paid';
