@@ -236,11 +236,16 @@ describe('CustomerPortalService', () => {
         accountStatus: 'active',
       }),
     );
+    const shopImageData = 'data:image/png;base64,AA==';
     userModel.find.mockReturnValue(
       createQuery([
         {
           _id: shopId,
-          shopDetails: { shopName: 'Nearby Repair', address: 'Main Road' },
+          shopDetails: {
+            shopName: 'Nearby Repair',
+            address: 'Main Road',
+            shopImageData,
+          },
         },
       ]),
     );
@@ -282,6 +287,7 @@ describe('CustomerPortalService', () => {
           shop: {
             rating: 4.5,
             reviewCount: 2,
+            logoUrl: shopImageData,
           },
           repairRequest: {
             status: 'completed',
@@ -394,9 +400,13 @@ describe('CustomerPortalService', () => {
         accountStatus: 'active',
       }),
     );
+    const shopImageData = 'data:image/png;base64,AA==';
     userModel.find.mockReturnValue(
       createQuery([
-        { _id: shopId, shopDetails: { shopName: 'Nearby Repair' } },
+        {
+          _id: shopId,
+          shopDetails: { shopName: 'Nearby Repair', shopImageData },
+        },
       ]),
     );
     repairRequestModel.find.mockReturnValue(
@@ -417,8 +427,17 @@ describe('CustomerPortalService', () => {
     expect(result[0]).toMatchObject({
       _id: requestId,
       photos,
-      shops: [{ id: shopId.toString(), name: 'Nearby Repair' }],
+      shops: [
+        {
+          id: shopId.toString(),
+          name: 'Nearby Repair',
+          logoUrl: shopImageData,
+        },
+      ],
     });
+    expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
+      expect.stringContaining('shopDetails.shopImageData'),
+    );
     expect(repairRequestModel.find).toHaveBeenCalledWith({
       customerId,
     });
@@ -447,9 +466,13 @@ describe('CustomerPortalService', () => {
         photos,
       }),
     );
+    const shopImageData = 'data:image/png;base64,AA==';
     userModel.find.mockReturnValue(
       createQuery([
-        { _id: shopId, shopDetails: { shopName: 'Nearby Repair' } },
+        {
+          _id: shopId,
+          shopDetails: { shopName: 'Nearby Repair', shopImageData },
+        },
       ]),
     );
     quotationModel.find.mockReturnValue(
@@ -477,6 +500,7 @@ describe('CustomerPortalService', () => {
         {
           id: shopId.toString(),
           name: 'Nearby Repair',
+          logoUrl: shopImageData,
           responseStatus: 'new',
         },
       ],

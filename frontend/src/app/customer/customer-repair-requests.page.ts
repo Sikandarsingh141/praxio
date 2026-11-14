@@ -446,4 +446,12 @@ export class CustomerRepairRequestsPage implements OnInit {
   shopName(request: CustomerRepairRequest, shopId: string): string {
     return request.shops?.find((shop) => shop.id === shopId)?.name ?? 'Repair shop';
   }
+
+  shopLogo(request: CustomerRepairRequest, shopId: string): string | null {
+    return request.shops?.find((shop) => shop.id === shopId)?.logoUrl ?? null;
+  }
+
+  shopInitial(request: CustomerRepairRequest, shopId: string): string {
+    return this.shopName(request, shopId).trim().charAt(0).toLocaleUpperCase() || 'S';
+  }
 }

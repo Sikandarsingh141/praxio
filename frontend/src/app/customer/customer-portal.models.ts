@@ -119,10 +119,23 @@ export interface CustomerRepairRequest {
   createdAt: string;
   photos?: Array<{ mimeType: string; data: string }>;
   quotations: RepairQuotation[];
-  shops?: Array<{ id: string; name: string; responseStatus?: string; declineReason?: string }>;
+  shops?: Array<{
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    responseStatus?: string;
+    declineReason?: string;
+  }>;
   repairJob?: RepairWorkflowJob;
   acceptedQuotation?: RepairQuotation | null;
-  shop?: { id: string; name: string; address: string; phone: string | null; email: string } | null;
+  shop?: {
+    id: string;
+    name: string;
+    logoUrl?: string | null;
+    address: string;
+    phone: string | null;
+    email: string;
+  } | null;
   review?: RepairReview | null;
 }
 

@@ -117,7 +117,8 @@
                 </p>
               }
               <span class="request-id">
-                Request ID: <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
+                Request ID:
+                <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
               </span>
               <span class="request-date">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -155,6 +156,13 @@
                 @for (shop of request.shops; track shop.id) {
                   @if (shop.responseStatus === 'declined') {
                     <p class="shop-response declined">
+                      <span class="shop-thumb" aria-hidden="true">
+                        @if (shop.logoUrl) {
+                          <img [src]="shop.logoUrl" alt="" loading="lazy" />
+                        } @else {
+                          {{ shop.name.trim().charAt(0).toLocaleUpperCase() || 'S' }}
+                        }
+                      </span>
                       <strong>{{ shop.name }}</strong>
                       <span class="response-badge">Declined</span>
                       @if (shop.declineReason) {
@@ -163,6 +171,13 @@
                     </p>
                   } @else if (shop.responseStatus === 'new' || shop.responseStatus === 'pending') {
                     <p class="shop-response">
+                      <span class="shop-thumb" aria-hidden="true">
+                        @if (shop.logoUrl) {
+                          <img [src]="shop.logoUrl" alt="" loading="lazy" />
+                        } @else {
+                          {{ shop.name.trim().charAt(0).toLocaleUpperCase() || 'S' }}
+                        }
+                      </span>
                       <strong>{{ shop.name }}</strong>
                       <span class="response-badge pending">Awaiting response</span>
                     </p>
@@ -174,6 +189,13 @@
               @for (quote of request.quotations; track quote._id) {
                 <article class="quote-card">
                   <div class="quote-heading">
+                    <span class="shop-thumb" aria-hidden="true">
+                      @if (shopLogo(request, quote.shopId); as logoUrl) {
+                        <img [src]="logoUrl" alt="" loading="lazy" />
+                      } @else {
+                        {{ shopInitial(request, quote.shopId) }}
+                      }
+                    </span>
                     <strong>{{ shopName(request, quote.shopId) }}</strong>
                     <span class="response-badge" [attr.data-status]="quote.status">
                       {{ quote.status | titlecase }}

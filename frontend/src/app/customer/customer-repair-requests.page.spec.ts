@@ -181,6 +181,48 @@ describe('CustomerRepairRequestsPage editing', () => {
     expect(image.alt).toBe('Repair photo 1 for Refrigerator');
   });
 
+  it('renders shop images for shop responses and quotations', () => {
+    const logoUrl = 'data:image/png;base64,shop';
+    portal.getRepairRequests.and.returnValue(
+      of([
+        {
+          ...request,
+          shops: [
+            {
+              id: 'shop-id',
+              name: 'Repair Shop',
+              logoUrl,
+              responseStatus: 'new',
+            },
+          ],
+          quotations: [
+            {
+              _id: 'quote-id',
+              repairRequestId: 'request-id',
+              shopId: 'shop-id',
+              amount: 1250,
+              currency: 'INR',
+              message: 'We can fix it.',
+              status: 'sent',
+              createdAt: '2026-11-02T00:00:00.000Z',
+            },
+          ],
+        },
+      ]),
+    );
+    const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
+    fixture.detectChanges();
+
+    const responseImage = fixture.nativeElement.querySelector(
+      '.shop-response .shop-thumb img',
+    ) as HTMLImageElement;
+    const quoteImage = fixture.nativeElement.querySelector(
+      '.quote-heading .shop-thumb img',
+    ) as HTMLImageElement;
+    expect(responseImage.src).toContain(logoUrl);
+    expect(quoteImage.src).toContain(logoUrl);
+  });
+
   it('shows a detail-page action for requests without an active repair job', () => {
     const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
     fixture.detectChanges();

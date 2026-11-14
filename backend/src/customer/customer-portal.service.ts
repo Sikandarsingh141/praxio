@@ -975,13 +975,16 @@ export class CustomerPortalService {
     ];
     const shopRecords = await this.users
       .find({ _id: { $in: shopIds } })
-      .select('shopDetails.shopName')
+      .select('shopDetails.shopName shopDetails.shopImageData')
       .lean()
       .exec();
-    const shopNames = new Map(
+    const shopDirectory = new Map(
       shopRecords.map((shop) => [
         shop._id.toString(),
-        shop.shopDetails?.shopName ?? 'Repair shop',
+        {
+          name: shop.shopDetails?.shopName ?? 'Repair shop',
+          logoUrl: shopImageUrl(shop.shopDetails?.shopImageData),
+        },
       ]),
     );
     return Promise.all(
@@ -991,9 +994,11 @@ export class CustomerPortalService {
           const response = request.shopResponses?.find(
             (item) => item.shopId.toString() === id.toString(),
           );
+          const shop = shopDirectory.get(id.toString());
           return {
             id: id.toString(),
-            name: shopNames.get(id.toString()) ?? 'Repair shop',
+            name: shop?.name ?? 'Repair shop',
+            logoUrl: shop?.logoUrl ?? null,
             responseStatus: response?.status,
             declineReason: response?.declineReason,
           };
@@ -1042,7 +1047,7 @@ export class CustomerPortalService {
       ? await this.users
           .find({ _id: { $in: shopIds } })
           .select(
-            'shopDetails.shopName shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.postalCode shopDetails.country shopDetails.location',
+            'shopDetails.shopName shopDetails.shopImageData shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.postalCode shopDetails.country shopDetails.location',
           )
           .lean()
           .exec()
@@ -1064,7 +1069,7 @@ export class CustomerPortalService {
           location: shop?.shopDetails?.location ?? null,
           rating: rating?.rating ?? null,
           reviewCount: rating?.reviewCount ?? 0,
-          logoUrl: null,
+          logoUrl: shopImageUrl(shop?.shopDetails?.shopImageData),
         },
       };
     });
@@ -2469,14 +2474,17 @@ export class CustomerPortalService {
     const assignedShops = shopIds.length
       ? await this.users
           .find({ _id: { $in: shopIds } })
-          .select('shopDetails.shopName')
+          .select('shopDetails.shopName shopDetails.shopImageData')
           .lean()
           .exec()
       : [];
-    const shopNameMap = new Map(
+    const shopDirectory = new Map(
       assignedShops.map((assignedShop) => [
         assignedShop._id.toString(),
-        assignedShop.shopDetails?.shopName ?? 'Repair shop',
+        {
+          name: assignedShop.shopDetails?.shopName ?? 'Repair shop',
+          logoUrl: shopImageUrl(assignedShop.shopDetails?.shopImageData),
+        },
       ]),
     );
     return {
@@ -2496,9 +2504,11 @@ export class CustomerPortalService {
         const response = request.shopResponses?.find(
           (item) => item.shopId.toString() === shopId.toString(),
         );
+        const assignedShop = shopDirectory.get(shopId.toString());
         return {
           id: shopId.toString(),
-          name: shopNameMap.get(shopId.toString()) ?? 'Repair shop',
+          name: assignedShop?.name ?? 'Repair shop',
+          logoUrl: assignedShop?.logoUrl ?? null,
           responseStatus: response?.status,
           declineReason: response?.declineReason,
         };
@@ -2509,6 +2519,7 @@ export class CustomerPortalService {
         ? {
             id: shop._id.toString(),
             name: shop.shopDetails?.shopName ?? 'Repair shop',
+            logoUrl: shopImageUrl(shop.shopDetails?.shopImageData),
             address: formatShopAddress(shop.shopDetails),
             phone:
               shop.countryCode && shop.mobileNumber

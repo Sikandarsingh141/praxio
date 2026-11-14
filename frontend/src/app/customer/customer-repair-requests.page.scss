@@ -291,6 +291,24 @@
   color: #25332b;
   font-size: 0.75rem;
 }
+.shop-thumb {
+  display: grid;
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eaf7ec;
+  color: #17643b;
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+.shop-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .shop-response strong,
 .quote-heading strong {
   font-weight: 700;
