@@ -2,15 +2,18 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
+  EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   HostListener,
+  Output,
   ViewChild,
   signal,
 } from '@angular/core';
 import * as L from 'leaflet';
 import { ShopSearchResult } from './customer-portal.models';
+import { formatShopAddress } from '../shared/format-shop-address';
 
 @Component({
   selector: 'app-shop-results-map',
@@ -230,26 +233,158 @@ import { ShopSearchResult } from './customer-portal.models';
     }
 
     .repair-shop-key {
-      background: #315d4b;
+      background: #2563eb;
     }
 
-    :host ::ng-deep .shop-marker-cluster {
-      display: grid;
-      width: 46px;
-      height: 46px;
-      place-items: center;
+    :host ::ng-deep .shop-marker-dot {
+      display: block;
+      width: 15px;
+      height: 15px;
       border: 3px solid #fff;
       border-radius: 50%;
-      background: #087c3b;
-      box-shadow: 0 2px 9px rgb(20 40 28 / 35%), 0 0 0 5px rgb(8 124 59 / 14%);
-      color: #fff;
-      font-size: 0.95rem;
+      background: #2563eb;
+      box-shadow: 0 1px 5px rgb(20 40 28 / 45%);
+    }
+
+    :host ::ng-deep .shop-marker-dot.focused {
+      box-shadow: 0 0 0 6px rgb(37 99 235 / 22%), 0 1px 5px rgb(20 40 28 / 45%);
+    }
+
+    :host ::ng-deep .leaflet-control-scale-line {
+      border-color: #526357;
+      background: rgb(255 255 255 / 90%);
+      color: #26372c;
+      font-size: 0.65rem;
+    }
+
+    :host ::ng-deep .shop-map-popup {
+      width: min(340px, calc(100vw - 5rem));
+      color: #26372c;
+      font-family: inherit;
+    }
+
+    :host ::ng-deep .shop-map-popup-heading {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+    }
+
+    :host ::ng-deep .shop-map-popup-photo {
+      width: 5rem;
+      height: 4.25rem;
+      flex: 0 0 auto;
+      border-radius: 0.6rem;
+      background: #edf4ef;
+      object-fit: cover;
+    }
+
+    :host ::ng-deep .shop-map-popup-photo-placeholder {
+      display: grid;
+      width: 5rem;
+      height: 4.25rem;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 0.6rem;
+      background: #edf4ef;
+      color: #52705c;
+      font-size: 1.6rem;
       font-weight: 750;
     }
 
-    :host ::ng-deep .shop-marker-cluster.focused {
-      box-shadow: 0 0 0 8px rgb(8 124 59 / 24%), 0 2px 9px rgb(20 40 28 / 35%);
-      transform: scale(1.12);
+    :host ::ng-deep .shop-map-popup-title {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0 0 0.2rem;
+      color: #17271d;
+      font-size: 0.88rem;
+      line-height: 1.25;
+    }
+
+    :host ::ng-deep .shop-map-popup-verified {
+      display: inline-grid;
+      width: 1rem;
+      height: 1rem;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: #078137;
+      color: #fff;
+      font-size: 0.68rem;
+    }
+
+    :host ::ng-deep .shop-map-popup-category,
+    :host ::ng-deep .shop-map-popup-address {
+      margin: 0.2rem 0 0;
+      color: #647169;
+      font-size: 0.7rem;
+      line-height: 1.4;
+    }
+
+    :host ::ng-deep .shop-map-popup-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.8rem;
+      margin-top: 0.55rem;
+      color: #34443a;
+      font-size: 0.7rem;
+      font-weight: 650;
+    }
+
+    :host ::ng-deep .shop-map-popup-rating {
+      color: #e6a400;
+    }
+
+    :host ::ng-deep .shop-map-popup-rating span {
+      color: #34443a;
+      font-weight: 500;
+    }
+
+    :host ::ng-deep .shop-map-popup-services {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.6rem;
+    }
+
+    :host ::ng-deep .shop-map-popup-service {
+      padding: 0.25rem 0.45rem;
+      border-radius: 99px;
+      background: #eaf5ed;
+      color: #315d4b;
+      font-size: 0.62rem;
+      font-weight: 650;
+    }
+
+    :host ::ng-deep .shop-map-popup-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem;
+      margin-top: 0.7rem;
+    }
+
+    :host ::ng-deep .shop-map-popup-action {
+      display: inline-flex;
+      min-height: 2rem;
+      align-items: center;
+      justify-content: center;
+      padding: 0.35rem 0.4rem;
+      border: 1px solid #cfe0d2;
+      border-radius: 0.5rem;
+      background: #fff;
+      color: #315d4b;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.64rem;
+      font-weight: 700;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    :host ::ng-deep .shop-map-popup-action.primary {
+      border-color: #087c3b;
+      background: #087c3b;
+      color: #fff;
     }
 
     @media (max-width: 900px) {
@@ -270,6 +405,8 @@ import { ShopSearchResult } from './customer-portal.models';
 export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() shops: ShopSearchResult[] = [];
   @Input() center: { latitude: number; longitude: number } | null = null;
+  @Output() readonly requestRepair = new EventEmitter<ShopSearchResult>();
+  @Output() readonly viewDetails = new EventEmitter<string>();
   @ViewChild('mapShell') private mapShell?: ElementRef<HTMLDivElement>;
   @ViewChild('mapElement') private mapElement?: ElementRef<HTMLDivElement>;
 
@@ -284,6 +421,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
   private shopMarkers = L.layerGroup();
   private focusedShopId: string | null = null;
   private openFocusedShopPopup = false;
+  private lastCollisionSelection: { groupKey: string; shopId: string } | null = null;
 
   get locatedShopCount(): number {
     return this.shops.filter((shop) => this.hasValidLocation(shop)).length;
@@ -304,6 +442,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(this.map);
+    L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(this.map);
     this.locationMarkers.addTo(this.map);
     this.shopMarkers.addTo(this.map);
     this.map.on('zoomend moveend', this.refreshShopMarkers);
@@ -421,7 +560,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
         weight: 3,
         fillColor: '#087c3b',
         fillOpacity: 1,
-      }).bindPopup('Your selected location');
+      }).bindPopup('Your location');
       this.locationMarkers.addLayer(current);
       bounds.push([this.center.latitude, this.center.longitude]);
     }
@@ -432,7 +571,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
       bounds.push([shop.location.latitude, shop.location.longitude]);
     });
     if (bounds.length > 1) {
-      this.map.fitBounds(L.latLngBounds(bounds), { padding: [24, 24], maxZoom: 13 });
+      this.map.fitBounds(L.latLngBounds(bounds), { padding: [24, 24], maxZoom: 15 });
     } else if (bounds.length === 1) {
       this.map.setView(bounds[0], this.center ? 12 : 10);
     }
@@ -448,47 +587,163 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
       .filter((shop) => this.hasValidLocation(shop))
       .map((shop) => ({
         shop,
-        point: this.map!.latLngToContainerPoint([
-          shop.location!.latitude,
-          shop.location!.longitude,
-        ]),
+        point: this.map!.latLngToContainerPoint([shop.location!.latitude, shop.location!.longitude]),
       }))
-      .filter(({ point }) => this.map!.getBounds().contains(this.map!.containerPointToLatLng(point)));
-    const clusters = clusterProjectedShops(
-      visible.map(({ shop, point }) => ({ shop, x: point.x, y: point.y })),
-    );
-    let focusedMarker: L.Marker | undefined;
-    clusters.forEach((cluster) => {
-      const location = this.map!.containerPointToLatLng([cluster.x, cluster.y]);
-      const focusedShop = cluster.shops.find(
-        (shop) => shop.id === this.focusedShopId,
+      .filter(({ shop }) =>
+        this.map!.getBounds().contains([shop.location!.latitude, shop.location!.longitude]),
       );
+    const entries: Array<{
+      shop: ShopSearchResult & { location: { latitude: number; longitude: number } };
+      marker: L.Marker;
+      point: L.Point;
+      locationKey: string;
+    }> = [];
+    let focusedMarker: L.Marker | undefined;
+    visible.forEach(({ shop, point }) => {
+      const location: L.LatLngExpression = [shop.location!.latitude, shop.location!.longitude];
+      const focusedShop = shop.id === this.focusedShopId;
       const marker = L.marker(location, {
+        riseOnHover: true,
+        riseOffset: 250,
         icon: L.divIcon({
-          className: '',
-          html: `<span class="shop-marker-cluster${focusedShop ? ' focused' : ''}">${cluster.shops.length}</span>`,
-          iconSize: [46, 46],
-          iconAnchor: [23, 23],
+          className: 'shop-map-marker-icon',
+          html: `<span class="shop-marker-dot${focusedShop ? ' focused' : ''}"></span>`,
+          iconSize: [21, 21],
+          iconAnchor: [10.5, 10.5],
         }),
       });
-      if (focusedShop || cluster.shops.length === 1) {
-        const shop = focusedShop ?? cluster.shops[0];
-        marker.bindPopup(
-          `<strong>${this.escapeHtml(shop.shopName)}</strong><br>${this.escapeHtml(shop.city)}`,
-        );
-        if (focusedShop && this.openFocusedShopPopup) {
-          focusedMarker = marker;
+      marker.bindPopup(this.shopPopupContent(shop), { autoPan: true, maxWidth: 360 });
+      marker.on('popupopen', (event) => {
+        const popupElement = event.popup.getElement();
+        const button = popupElement?.querySelector<HTMLButtonElement>('[data-request-shop]');
+        if (button) {
+          button.onclick = () => {
+            this.map?.closePopup();
+            this.requestRepair.emit(shop);
+          };
         }
-      } else {
-        marker.bindPopup(`${cluster.shops.length} repair shops`);
-      }
+        const detailsLink = popupElement?.querySelector<HTMLAnchorElement>('[data-shop-details]');
+        if (detailsLink) {
+          detailsLink.onclick = (clickEvent) => {
+            clickEvent.preventDefault();
+            this.viewDetails.emit(shop.id);
+          };
+        }
+      });
+      if (focusedShop && this.openFocusedShopPopup) focusedMarker = marker;
       this.shopMarkers.addLayer(marker);
+      entries.push({
+        shop,
+        marker,
+        point,
+        locationKey: `${shop.location!.latitude},${shop.location!.longitude}`,
+      });
     });
+
+    entries.forEach((entry) => {
+      entry.marker.on('click', () => {
+        const collisions = entries.filter(
+          (other) => other.point.distanceTo(entry.point) < 21,
+        );
+        if (collisions.length < 2) {
+          this.lastCollisionSelection = null;
+          return;
+        }
+
+        const hasDifferentLocations = collisions.some(
+          (other) => other.locationKey !== entry.locationKey,
+        );
+        if (hasDifferentLocations && this.map!.getZoom() < 18) {
+          this.focusedShopId = entry.shop.id;
+          this.openFocusedShopPopup = true;
+          this.lastCollisionSelection = null;
+          this.map!.setView(
+            [entry.shop.location.latitude, entry.shop.location.longitude],
+            Math.min(this.map!.getZoom() + 2, 18),
+            { animate: true },
+          );
+          return;
+        }
+
+        const groupKey = collisions.map((item) => item.shop.id).sort().join('|');
+        const previousIndex =
+          this.lastCollisionSelection?.groupKey === groupKey
+            ? collisions.findIndex(
+                (item) => item.shop.id === this.lastCollisionSelection?.shopId,
+              )
+            : -1;
+        const selected = collisions[(previousIndex + 1) % collisions.length];
+        this.lastCollisionSelection = { groupKey, shopId: selected.shop.id };
+        if (selected !== entry) {
+          this.map!.closePopup();
+          selected.marker.openPopup();
+        }
+      });
+    });
+
     if (focusedMarker) {
       focusedMarker.openPopup();
       this.openFocusedShopPopup = false;
     }
   }
+
+  private shopPopupContent(shop: ShopSearchResult): string {
+      const photo = this.safePhotoUrl(shop.logoUrl);
+      const photoMarkup = photo
+        ? `<img class="shop-map-popup-photo" src="${this.escapeHtml(photo)}" alt="${this.escapeHtml(shop.shopName)} shop photo">`
+        : `<span class="shop-map-popup-photo-placeholder" aria-hidden="true">${this.escapeHtml(shop.shopName.slice(0, 1).toLocaleUpperCase() || 'S')}</span>`;
+      const rating =
+        shop.rating === null
+          ? 'No reviews yet'
+          : `<span class="shop-map-popup-rating">★ <span>${shop.rating.toFixed(1)} (${shop.reviewCount} ${shop.reviewCount === 1 ? 'review' : 'reviews'})</span></span>`;
+      const address = formatShopAddress(shop) || 'Address unavailable';
+      const distance =
+        shop.distanceKm === null ? 'Distance unavailable' : `${shop.distanceKm.toFixed(1)} km`;
+      const services = shop.services
+        .slice(0, 6)
+        .map((service) => `<span class="shop-map-popup-service">${this.escapeHtml(service)}</span>`)
+        .join('');
+      const destination = `${shop.location!.latitude},${shop.location!.longitude}`;
+
+      return `
+        <div class="shop-map-popup">
+          <div class="shop-map-popup-heading">
+            ${photoMarkup}
+            <div>
+              <h2 class="shop-map-popup-title">
+                ${this.escapeHtml(shop.shopName)}
+                <span class="shop-map-popup-verified" role="img" aria-label="Verified shop">✓</span>
+              </h2>
+              <p class="shop-map-popup-category">${this.escapeHtml(shop.businessType)}</p>
+              <div class="shop-map-popup-meta">
+                <span>${rating}</span>
+                <span aria-label="Distance from your location">${this.escapeHtml(distance)}</span>
+              </div>
+            </div>
+          </div>
+          <p class="shop-map-popup-address">${this.escapeHtml(address)}</p>
+          ${services ? `<div class="shop-map-popup-services" aria-label="Available repair services">${services}</div>` : ''}
+          <div class="shop-map-popup-actions">
+            <a class="shop-map-popup-action primary" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}" target="_blank" rel="noopener noreferrer">Get Directions</a>
+            <a class="shop-map-popup-action" href="/customer/shops/${encodeURIComponent(shop.id)}" data-shop-details>View Details</a>
+            <button class="shop-map-popup-action" type="button" data-request-shop>Request a Repair</button>
+          </div>
+        </div>
+      `;
+    }
+
+  private safePhotoUrl(value: string | null): string | null {
+      if (!value) return null;
+      if (/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) {
+        return value;
+      }
+      try {
+        const url = new URL(value, document.baseURI);
+        return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+      } catch {
+        return null;
+      }
+    }
 
   private hasValidLocation(
     shop: ShopSearchResult,
@@ -521,66 +776,3 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
   }
 }
 
-export interface ProjectedShop {
-  shop: ShopSearchResult;
-  x: number;
-  y: number;
-}
-
-export interface ShopMarkerCluster {
-  shops: ShopSearchResult[];
-  x: number;
-  y: number;
-}
-
-export function clusterProjectedShops(
-  points: ProjectedShop[],
-  radius = 56,
-): ShopMarkerCluster[] {
-  const clusters: Array<ShopMarkerCluster & { anchorX: number; anchorY: number }> = [];
-  const clustersByCell = new Map<string, typeof clusters>();
-
-  points.forEach((point) => {
-    const cellX = Math.floor(point.x / radius);
-    const cellY = Math.floor(point.y / radius);
-    let closest: (typeof clusters)[number] | undefined;
-    let closestDistance = radius * radius;
-
-    for (let x = cellX - 1; x <= cellX + 1; x += 1) {
-      for (let y = cellY - 1; y <= cellY + 1; y += 1) {
-        for (const candidate of clustersByCell.get(`${x}:${y}`) ?? []) {
-          const dx = candidate.anchorX - point.x;
-          const dy = candidate.anchorY - point.y;
-          const distance = dx * dx + dy * dy;
-          if (distance <= closestDistance) {
-            closest = candidate;
-            closestDistance = distance;
-          }
-        }
-      }
-    }
-
-    if (closest) {
-      const count = closest.shops.length;
-      closest.x = (closest.x * count + point.x) / (count + 1);
-      closest.y = (closest.y * count + point.y) / (count + 1);
-      closest.shops.push(point.shop);
-      return;
-    }
-
-    const cluster = {
-      shops: [point.shop],
-      x: point.x,
-      y: point.y,
-      anchorX: point.x,
-      anchorY: point.y,
-    };
-    clusters.push(cluster);
-    const key = `${cellX}:${cellY}`;
-    const cellClusters = clustersByCell.get(key) ?? [];
-    cellClusters.push(cluster);
-    clustersByCell.set(key, cellClusters);
-  });
-
-  return clusters.map(({ shops, x, y }) => ({ shops, x, y }));
-}

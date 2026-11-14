@@ -477,4 +477,16 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   focusShopOnMap(shop: ShopSearchResult): void {
     this.shopResultsMap?.focusShop(shop.id);
   }
+
+  requestRepairForShop(shop: ShopSearchResult): void {
+    this.addShop(shop);
+    if (!this.selectedShops().includes(shop.id)) {
+      return;
+    }
+    this.openRepairRequestForm();
+  }
+
+  viewShopDetails(shopId: string): void {
+    void this.router.navigate(['/customer/shops', shopId]);
+  }
 }

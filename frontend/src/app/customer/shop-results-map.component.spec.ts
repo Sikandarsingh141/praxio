@@ -1,21 +1,7 @@
 import { TestBed } from '@angular/core/testing';
+import * as L from 'leaflet';
 import { ShopSearchResult } from './customer-portal.models';
-import { clusterProjectedShops, ShopResultsMapComponent } from './shop-results-map.component';
-
-describe('clusterProjectedShops', () => {
-  it('displays the exact number of shops in each nearby cluster', () => {
-    const points = [
-      { shop: makeShop('shop-1'), x: 10, y: 10 },
-      { shop: makeShop('shop-2'), x: 25, y: 20 },
-      { shop: makeShop('shop-3'), x: 160, y: 100 },
-    ];
-
-    const clusters = clusterProjectedShops(points);
-
-    expect(clusters.map((cluster) => cluster.shops.length).sort()).toEqual([1, 2]);
-    expect(clusters.reduce((total, cluster) => total + cluster.shops.length, 0)).toBe(3);
-  });
-});
+import { ShopResultsMapComponent } from './shop-results-map.component';
 
 describe('ShopResultsMapComponent', () => {
   it('lets the map canvas fill its grid row beside the shop list', () => {
@@ -69,14 +55,128 @@ describe('ShopResultsMapComponent', () => {
     fixture.destroy();
   });
 
-  it('shows a one-count marker instead of a dot for a single shop location', () => {
+  it('shows an individual blue dot and detailed actions for a single shop', () => {
     TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
     const fixture = TestBed.createComponent(ShopResultsMapComponent);
-    fixture.componentInstance.shops = [makeShop('shop-1')];
+    const shop = {
+      ...makeShop('shop-1'),
+      shopName: 'Aarav <script>alert(1)</script>',
+      businessType: 'Electronics Repair Shop',
+      services: ['Mobile Repair', 'Computer Repair'],
+      rating: 4.8,
+      reviewCount: 276,
+      distanceKm: 2.4,
+      logoUrl:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/rNcAAAAASUVORK5CYII=',
+      address: '14 Residency Road',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      postalCode: '560025',
+    };
+    fixture.componentInstance.shops = [shop];
     fixture.detectChanges();
 
-    const marker = fixture.nativeElement.querySelector('.shop-marker-cluster') as HTMLElement | null;
-    expect(marker?.textContent?.trim()).toBe('1');
+    expect(fixture.nativeElement.querySelector('.shop-marker-dot')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.shop-marker-cluster')).toBeNull();
+    const marker = fixture.componentInstance['shopMarkers'].getLayers()[0] as L.Marker;
+    const popup = marker.getPopup()?.getContent() as string;
+    expect(popup).toContain(
+      '<img class="shop-map-popup-photo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/rNcAAAAASUVORK5CYII="',
+    );
+    expect(popup).toContain('Aarav &lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(popup).toContain('4.8 (276 reviews)');
+    expect(popup).toContain('14 Residency Road, Bengaluru, Karnataka, 560025');
+    expect(popup).toContain('Mobile Repair');
+    expect(popup).toContain('Get Directions');
+    expect(popup).toContain('View Details');
+    expect(popup).toContain('Request a Repair');
+    fixture.destroy();
+  });
+
+  it('renders one popup-enabled dot per shop at its geographic coordinates', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.componentInstance.shops = [
+      makeShop('shop-1'),
+      makeShop('shop-2'),
+      makeShop('shop-3'),
+    ];
+    fixture.detectChanges();
+
+    const markers = fixture.componentInstance['shopMarkers'].getLayers() as L.Marker[];
+    expect(markers.length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.shop-marker-dot').length).toBe(3);
+    expect(fixture.nativeElement.querySelector('.shop-marker-cluster')).toBeNull();
+    expect(markers.map((marker) => marker.getPopup()?.getContent())).toEqual(
+      jasmine.arrayContaining([
+        jasmine.stringMatching(/shop-1/),
+        jasmine.stringMatching(/shop-2/),
+        jasmine.stringMatching(/shop-3/),
+      ]),
+    );
+    expect(
+      markers.every((marker) => marker.getLatLng().equals(L.latLng(27.1767, 78.0081))),
+    ).toBeTrue();
+    fixture.destroy();
+  });
+
+  it('cycles through shops that share the exact same map coordinates', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.componentInstance.shops = [makeShop('shop-1'), makeShop('shop-2')];
+    fixture.detectChanges();
+
+    const markers = fixture.componentInstance['shopMarkers'].getLayers() as L.Marker[];
+    const openNextPopup = spyOn(markers[0], 'openPopup').and.callThrough();
+    markers[1].fire('click');
+    markers[1].fire('click');
+
+    expect(openNextPopup).toHaveBeenCalled();
+    expect(markers[0].getPopup()?.getContent()).toContain('shop-1');
+    fixture.destroy();
+  });
+
+  it('zooms in when different nearby locations collide at the current zoom', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.componentInstance.shops = [
+      makeShop('shop-1'),
+      {
+        ...makeShop('shop-2'),
+        location: { latitude: 27.17671, longitude: 78.00811 },
+      },
+    ];
+    fixture.detectChanges();
+
+    const map = fixture.componentInstance['map']!;
+    const setView = spyOn(map, 'setView').and.callThrough();
+    const marker = fixture.componentInstance['shopMarkers'].getLayers()[0] as L.Marker;
+    marker.fire('click');
+
+    expect(setView).toHaveBeenCalledWith(
+      [27.1767, 78.0081],
+      Math.min(map.getZoom() + 2, 18),
+      { animate: true },
+    );
+    fixture.destroy();
+  });
+
+  it('emits the shop when the popup Request a Repair action is selected', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    const shop = makeShop('shop-1');
+    fixture.componentInstance.shops = [shop];
+    let requestedShop: ShopSearchResult | undefined;
+    fixture.componentInstance.requestRepair.subscribe((value) => (requestedShop = value));
+    fixture.detectChanges();
+
+    const marker = fixture.componentInstance['shopMarkers'].getLayers()[0] as L.Marker;
+    marker.openPopup();
+    const button = document.querySelector<HTMLButtonElement>('[data-request-shop]');
+    expect(button).not.toBeNull();
+    button?.click();
+
+    expect(requestedShop).toBe(shop);
     fixture.destroy();
   });
 

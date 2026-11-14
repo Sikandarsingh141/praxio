@@ -311,7 +311,12 @@
           </div>
         }
       </div>
-      <app-shop-results-map class="map" [shops]="shops()" [center]="mapCenter()" />
+      <app-shop-results-map
+        class="map"
+        [shops]="shops()"
+        [center]="mapCenter()"
+        (requestRepair)="requestRepairForShop($event)"
+      />
     </div>
   }
 
