@@ -261,6 +261,13 @@ p {
   gap: 0.6rem;
 }
 
+.shop-load-more-hint {
+  margin: 0.65rem 0;
+  color: #64736a;
+  font-size: 0.72rem;
+  text-align: center;
+}
+
 .shop-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

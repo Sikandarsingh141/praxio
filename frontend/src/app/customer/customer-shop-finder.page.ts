@@ -24,7 +24,6 @@ import {
 import { AddressSuggestion, ShopSearchResult } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
 import { formatShopAddress } from '../shared/format-shop-address';
-import { PaginationComponent } from '../shared/pagination.component';
 import { ShopResultsMapComponent } from './shop-results-map.component';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 
@@ -46,7 +45,6 @@ const SHOP_SERVICES = [
     AdminPageHeaderComponent,
     CommonModule,
     FormsModule,
-    PaginationComponent,
     RouterLink,
     ShopResultsMapComponent,
   ],
@@ -55,16 +53,14 @@ const SHOP_SERVICES = [
 })
 export class CustomerShopFinderPage implements OnInit, OnDestroy {
   @ViewChild('requestPanel') private requestPanel?: ElementRef<HTMLElement>;
+  @ViewChild('shopResults') private shopResultsElement?: ElementRef<HTMLElement>;
   @ViewChild(ShopResultsMapComponent) private shopResultsMap?: ShopResultsMapComponent;
 
   readonly services = SHOP_SERVICES;
   readonly shops = signal<ShopSearchResult[]>([]);
-  readonly page = signal(1);
-  readonly pageSize = signal(10);
-  readonly visibleShops = computed(() => {
-    const start = (this.page() - 1) * this.pageSize();
-    return this.shops().slice(start, start + this.pageSize());
-  });
+  readonly visibleLimit = signal(10);
+  readonly visibleShops = computed(() => this.shops().slice(0, this.visibleLimit()));
+  readonly hasMoreShops = computed(() => this.visibleLimit() < this.shops().length);
   readonly shopDirectory = signal<ShopSearchResult[]>([]);
   readonly suggestions = signal<AddressSuggestion[]>([]);
   readonly selectedShops = signal<string[]>([]);
@@ -259,7 +255,10 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
 
   search(): void {
     const version = ++this.searchVersion;
-    this.page.set(1);
+    this.visibleLimit.set(10);
+    if (this.shopResultsElement) {
+      this.shopResultsElement.nativeElement.scrollTop = 0;
+    }
     this.loading.set(true);
     this.error.set('');
     const latitude = this.latitude();
@@ -373,16 +372,12 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
     });
   }
 
-  goToPage(page: number): void {
-    const pageCount = Math.ceil(this.shops().length / this.pageSize());
-    if (page < 1 || page > pageCount || page === this.page()) return;
-    this.page.set(page);
-  }
-
-  changePageSize(size: number): void {
-    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
-    this.pageSize.set(size);
-    this.page.set(1);
+  onShopResultsScroll(event: Event): void {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement) || !this.hasMoreShops()) return;
+    if (target.scrollHeight - target.scrollTop - target.clientHeight < 120) {
+      this.visibleLimit.update((limit) => Math.min(limit + 10, this.shops().length));
+    }
   }
 
   onPhotoSelection(event: Event): void {

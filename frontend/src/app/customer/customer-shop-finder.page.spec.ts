@@ -90,6 +90,66 @@ describe('CustomerShopFinderPage', () => {
     expect(page.selectedShops()).toEqual(['shop-2', 'shop-3', 'shop-4', 'shop-5', 'shop-6']);
   });
 
+  it('reveals more shop results when scrolling instead of showing pagination', () => {
+    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
+      'searchShops',
+      'createRepairRequest',
+    ]);
+    portal.searchShops.and.returnValue(
+      of(Array.from({ length: 24 }, (_, index) => makeShop(`shop-${index + 1}`, `Shop ${index + 1}`))),
+    );
+    portal.createRepairRequest.and.returnValue(of('created-request-id'));
+
+    TestBed.configureTestingModule({
+      imports: [CustomerShopFinderPage],
+      providers: [
+        { provide: CustomerPortalService, useValue: portal },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+        provideRouter([]),
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CustomerShopFinderPage);
+    fixture.detectChanges();
+    const page = fixture.componentInstance;
+    const results = fixture.nativeElement.querySelector('.shop-results') as HTMLElement;
+    const scrollTo = (scrollTop: number, scrollHeight: number): void => {
+      Object.defineProperties(results, {
+        scrollTop: { configurable: true, value: scrollTop },
+        scrollHeight: { configurable: true, value: scrollHeight },
+        clientHeight: { configurable: true, value: 440 },
+      });
+      results.dispatchEvent(new Event('scroll'));
+      fixture.detectChanges();
+    };
+
+    expect(page.visibleShops()).toHaveSize(10);
+    expect(fixture.nativeElement.querySelectorAll('.shop-card')).toHaveSize(10);
+    expect(fixture.nativeElement.querySelector('app-pagination')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.results-heading h2').textContent).toContain(
+      '24 shops found',
+    );
+    expect(fixture.nativeElement.querySelector('.shop-load-more-hint')?.textContent).toContain(
+      'Scroll to load more shops',
+    );
+
+    scrollTo(200, 2000);
+    expect(page.visibleShops()).toHaveSize(10);
+
+    scrollTo(1450, 2000);
+    expect(page.visibleShops()).toHaveSize(20);
+    expect(fixture.nativeElement.querySelectorAll('.shop-card')).toHaveSize(20);
+
+    scrollTo(2500, 3000);
+    expect(page.visibleShops()).toHaveSize(24);
+    expect(fixture.nativeElement.querySelectorAll('.shop-card')).toHaveSize(24);
+    expect(fixture.nativeElement.querySelector('.shop-load-more-hint')).toBeNull();
+    fixture.destroy();
+  });
+
   it('searches for shops in the request form and adds and removes them', fakeAsync(() => {
     const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
       'searchShops',

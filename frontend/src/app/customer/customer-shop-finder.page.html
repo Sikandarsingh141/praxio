@@ -152,7 +152,7 @@
 
   @if (!loading() && !error()) {
     <div class="results-layout">
-      <div class="shop-results">
+      <div #shopResults class="shop-results" (scroll)="onShopResultsScroll($event)">
         @if (shops().length) {
           <div class="shop-grid">
             @for (shop of visibleShops(); track shop.id) {
@@ -218,14 +218,9 @@
               </article>
             }
           </div>
-          <app-pagination
-            [total]="shops().length"
-            [page]="page()"
-            [pageSize]="pageSize()"
-            ariaLabel="Repair shop results pages"
-            (pageChange)="goToPage($event)"
-            (pageSizeChange)="changePageSize($event)"
-          />
+          @if (hasMoreShops()) {
+            <p class="shop-load-more-hint" role="status">Scroll to load more shops</p>
+          }
         } @else {
           <div class="empty-state">
             <span aria-hidden="true">⌖</span>
