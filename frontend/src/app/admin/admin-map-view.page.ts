@@ -1,4 +1,4 @@
-import { DatePipe, DecimalPipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import {
   AfterViewInit,
   Component,
@@ -57,7 +57,7 @@ interface MapCluster {
 @Component({
   selector: 'app-admin-map-view-page',
   standalone: true,
-  imports: [CommonFilterComponent, DatePipe, DecimalPipe, AdminMapEntityCardComponent],
+  imports: [CommonFilterComponent, DecimalPipe, AdminMapEntityCardComponent],
   templateUrl: './admin-map-view.page.html',
 })
 export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
