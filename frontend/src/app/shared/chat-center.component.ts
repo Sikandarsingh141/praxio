@@ -59,6 +59,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   readonly query = signal('');
   readonly draft = signal('');
   readonly loading = signal(true);
+  readonly searchingConversations = signal(false);
   readonly sending = signal(false);
   readonly loadingOlder = signal(false);
   readonly loadingNewer = signal(false);
@@ -68,6 +69,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   readonly hasMoreConversations = signal(false);
   readonly totalConversations = signal(0);
   readonly conversationPage = signal(1);
+  private conversationSearchSequence = 0;
   readonly showNewConversation = signal(false);
   readonly typing = signal(false);
   readonly error = signal('');
@@ -229,12 +231,15 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     this.revokePendingFilePreviews();
   }
 
-  loadLists(): void {
+  loadLists(searchRequest = false): void {
+    const requestSequence = ++this.conversationSearchSequence;
     this.loading.set(true);
+    this.searchingConversations.set(searchRequest);
     this.error.set('');
     this.conversationPage.set(1);
     this.chat.listConversations(this.filter(), this.query()).subscribe({
       next: ({ conversations: items, hasMore, total }) => {
+        if (requestSequence !== this.conversationSearchSequence) return;
         this.conversations.set(items);
         this.hasMoreConversations.set(hasMore);
         this.totalConversations.set(total);
@@ -243,6 +248,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
         const current = this.selected();
         const selected = requested ?? items.find((item) => item.id === current?.id) ?? items[0];
         this.loading.set(false);
+        this.searchingConversations.set(false);
         if (selected) this.openConversation(selected);
         else {
           this.selected.set(null);
@@ -250,7 +256,9 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {
+        if (requestSequence !== this.conversationSearchSequence) return;
         this.loading.set(false);
+        this.searchingConversations.set(false);
         this.error.set('Conversations could not be loaded. Please try again.');
       },
     });
@@ -281,7 +289,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
 
   search(event: Event): void {
     this.query.set((event.target as HTMLInputElement).value);
-    this.loadLists();
+    this.loadLists(true);
   }
 
   openConversation(conversation: ChatConversation): void {

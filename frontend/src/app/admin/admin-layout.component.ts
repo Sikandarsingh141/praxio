@@ -15,6 +15,7 @@ export class AdminLayout {
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   readonly signingOut = signal(false);
+  readonly searchingAdmin = signal(false);
   readonly accountMenuOpen = signal(false);
 
   toggleAccountMenu(): void {
@@ -42,9 +43,12 @@ export class AdminLayout {
     if (!(form instanceof HTMLFormElement)) return;
     const search = new FormData(form).get('search');
     const query = typeof search === 'string' ? search.trim() : '';
-    void this.router.navigate(['/admin/users'], {
-      queryParams: { search: query || null },
-    });
+    this.searchingAdmin.set(true);
+    void this.router
+      .navigate(['/admin/users'], {
+        queryParams: { search: query || null },
+      })
+      .finally(() => this.searchingAdmin.set(false));
   }
 
   getUserInitial(): string {

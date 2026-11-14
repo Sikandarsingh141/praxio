@@ -35,9 +35,9 @@ export interface MapCoordinates {
           loading="lazy"
           referrerpolicy="no-referrer"
         ></iframe>
-        <p class="coordinates">
+        <!-- <p class="coordinates">
           Latitude: {{ location?.latitude }} · Longitude: {{ location?.longitude }}
-        </p>
+        </p> -->
         <a class="map-link" [href]="googleMapsUrl()" target="_blank" rel="noopener noreferrer">
           Open in Google Maps
         </a>

@@ -63,10 +63,13 @@
 
   @if (view() !== 'reviews') {
     <div class="filter-row">
-      <label class="repair-search">
+      <label class="repair-search inline-search-field">
         <span class="visually-hidden">Search repairs</span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
         <input type="search" [value]="searchText()" (input)="updateSearch($any($event.target).value)" [placeholder]="view() === 'completed' ? 'Search completed repairs by ID, customer, shop, or device...' : 'Search by repair ID, customer, shop, or device...'" />
+        @if (searchLoading()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching repairs"></span>
+        }
       </label>
       @if (view() === 'jobs') {
         <label class="toolbar-select">

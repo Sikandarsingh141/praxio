@@ -434,18 +434,21 @@ export interface AdminMapRoute {
 export class AdminService {
   constructor(private readonly http: HttpClient) {}
 
-  getMapData(options: {
-    type: AdminMapType;
-    page: number;
-    limit: number;
-    search?: string;
-    city?: string;
-    state?: string;
-    from?: string;
-    to?: string;
-    status?: string;
-    approvalStatus?: string;
-  }): Observable<AdminMapData> {
+  getMapData(
+    options: {
+      type: AdminMapType;
+      page: number;
+      limit: number;
+      search?: string;
+      city?: string;
+      state?: string;
+      from?: string;
+      to?: string;
+      status?: string;
+      approvalStatus?: string;
+    },
+    requestOptions: { silent?: boolean } = {},
+  ): Observable<AdminMapData> {
     let params = new HttpParams()
       .set('type', options.type)
       .set('page', options.page)
@@ -465,18 +468,22 @@ export class AdminService {
     return this.http
       .get<ApiEnvelope<AdminMapData>>(`${environment.apiBaseUrl}/admin/map`, {
         params,
+        context: new HttpContext().set(SKIP_GLOBAL_LOADER, requestOptions.silent ?? false),
       })
       .pipe(map((response) => response.data));
   }
 
-  getMapMarkers(options: {
-    search?: string;
-    city?: string;
-    state?: string;
-    from?: string;
-    to?: string;
-    status?: string;
-  }): Observable<AdminMapMarker[]> {
+  getMapMarkers(
+    options: {
+      search?: string;
+      city?: string;
+      state?: string;
+      from?: string;
+      to?: string;
+      status?: string;
+    },
+    requestOptions: { silent?: boolean } = {},
+  ): Observable<AdminMapMarker[]> {
     let params = new HttpParams();
     for (const key of ['search', 'city', 'state', 'from', 'to', 'status'] as const) {
       const value = options[key]?.trim();
@@ -485,7 +492,10 @@ export class AdminService {
     return this.http
       .get<ApiEnvelope<{ markers: AdminMapMarker[] }>>(
         `${environment.apiBaseUrl}/admin/map/markers`,
-        { params },
+        {
+          params,
+          context: new HttpContext().set(SKIP_GLOBAL_LOADER, requestOptions.silent ?? false),
+        },
       )
       .pipe(map((response) => response.data.markers));
   }
@@ -542,6 +552,7 @@ export class AdminService {
     search?: string,
     from?: string,
     to?: string,
+    requestOptions: { silent?: boolean } = {},
   ): Observable<AdminMonitorPage<AdminRepairJob>> {
     let params = new HttpParams().set('status', status).set('page', page).set('limit', limit);
     if (requestId) {
@@ -559,7 +570,10 @@ export class AdminService {
     return this.http
       .get<ApiEnvelope<AdminMonitorPage<AdminRepairJob>>>(
         `${environment.apiBaseUrl}/admin/repair-jobs`,
-        { params },
+        {
+          params,
+          context: new HttpContext().set(SKIP_GLOBAL_LOADER, requestOptions.silent ?? false),
+        },
       )
       .pipe(map((response) => response.data));
   }
@@ -589,6 +603,7 @@ export class AdminService {
     toDate?: string;
     sortBy?: string;
     sortOrder?: string;
+    silent?: boolean;
   }): Observable<RegistrationRequestPage> {
     let params = new HttpParams()
       .set('page', options.page)
@@ -618,6 +633,7 @@ export class AdminService {
     return this.http
       .get<ApiEnvelope<RegistrationRequestPage>>(`${environment.apiBaseUrl}/admin/users`, {
         params,
+        context: new HttpContext().set(SKIP_GLOBAL_LOADER, options.silent ?? false),
       })
       .pipe(map((response) => response.data));
   }

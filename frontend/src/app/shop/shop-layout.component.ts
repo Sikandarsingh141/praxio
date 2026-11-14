@@ -101,8 +101,14 @@ export class ShopLayout implements OnInit, OnDestroy {
     this.searchError.set('');
     this.searchResults.set(null);
     forkJoin({
-      requests: this.shopRequests.list({ search: query, page: 1, limit: 5 }),
-      quotations: this.shopRequests.listQuotations({ search: query, page: 1, limit: 5 }),
+      requests: this.shopRequests.list(
+        { search: query, page: 1, limit: 5 },
+        { silent: true },
+      ),
+      quotations: this.shopRequests.listQuotations(
+        { search: query, page: 1, limit: 5 },
+        { silent: true },
+      ),
     }).subscribe({
       next: ({ requests, quotations }) => {
         if (requestId !== this.searchRequestId) return;

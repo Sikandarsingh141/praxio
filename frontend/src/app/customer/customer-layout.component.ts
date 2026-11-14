@@ -40,6 +40,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
   readonly menuOpen = signal(false);
   readonly accountMenuOpen = signal(false);
   readonly signingOut = signal(false);
+  readonly searchingShops = signal(false);
   shopSearchQuery = '';
   readonly mobileSearchOpen = signal(false);
   readonly profileOnly = computed(() => {
@@ -117,9 +118,12 @@ export class CustomerLayout implements OnInit, OnDestroy {
 
   submitShopSearch(): void {
     const query = this.shopSearchQuery.trim();
-    void this.router.navigate(['/customer/shops'], {
-      queryParams: query ? { query } : {},
-    });
+    this.searchingShops.set(true);
+    void this.router
+      .navigate(['/customer/shops'], {
+        queryParams: query ? { query } : {},
+      })
+      .finally(() => this.searchingShops.set(false));
     this.mobileSearchOpen.set(false);
     this.closeMenu();
   }

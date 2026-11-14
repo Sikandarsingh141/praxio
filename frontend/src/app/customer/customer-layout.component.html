@@ -32,14 +32,19 @@
           <circle cx="10.8" cy="10.8" r="6.3" />
           <path d="m16 16 4 4" />
         </svg>
-        <input
-          type="search"
-          aria-label="Search repair shops"
-          placeholder="Search repair shops"
-          [value]="shopSearchQuery"
-          (input)="updateShopSearchQuery($event)"
-          name="shopSearchQuery"
-        />
+        <span class="inline-search-input">
+          <input
+            type="search"
+            aria-label="Search repair shops"
+            placeholder="Search repair shops"
+            [value]="shopSearchQuery"
+            (input)="updateShopSearchQuery($event)"
+            name="shopSearchQuery"
+          />
+          @if (searchingShops()) {
+            <span class="inline-search-spinner" role="status" aria-label="Searching shops"></span>
+          }
+        </span>
         <button type="submit" aria-label="Search shops">Search</button>
       </form>
 
@@ -60,14 +65,19 @@
           class="mobile-search-form"
           (submit)="$event.preventDefault(); submitShopSearch()"
         >
-          <input
-            type="search"
-            aria-label="Search repair shops"
-            placeholder="Search shops by name, service or city"
-            [value]="shopSearchQuery"
-            (input)="updateShopSearchQuery($event)"
-            name="mobileShopSearchQuery"
-          />
+          <span class="inline-search-input">
+            <input
+              type="search"
+              aria-label="Search repair shops"
+              placeholder="Search shops by name, service or city"
+              [value]="shopSearchQuery"
+              (input)="updateShopSearchQuery($event)"
+              name="mobileShopSearchQuery"
+            />
+            @if (searchingShops()) {
+              <span class="inline-search-spinner" role="status" aria-label="Searching shops"></span>
+            }
+          </span>
           <button type="submit">Search</button>
         </form>
       }

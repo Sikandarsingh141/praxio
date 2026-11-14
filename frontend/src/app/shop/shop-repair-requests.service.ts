@@ -29,7 +29,10 @@ export class ShopRepairRequestsService {
 
   constructor(private readonly http: HttpClient) {}
 
-  listQuotations(filters: ShopQuotationFilters): Observable<ShopQuotationPage> {
+  listQuotations(
+    filters: ShopQuotationFilters,
+    options: { silent?: boolean } = {},
+  ): Observable<ShopQuotationPage> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
@@ -37,7 +40,10 @@ export class ShopRepairRequestsService {
       }
     });
     return this.http
-      .get<ApiEnvelope<ShopQuotationPage>>(this.quotationsUrl, { params })
+      .get<ApiEnvelope<ShopQuotationPage>>(this.quotationsUrl, {
+        params,
+        context: new HttpContext().set(SKIP_GLOBAL_LOADER, options.silent ?? false),
+      })
       .pipe(map((response) => response.data));
   }
 

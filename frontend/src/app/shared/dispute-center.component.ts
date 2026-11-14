@@ -68,6 +68,7 @@ export class DisputeCenterComponent implements OnInit {
   readonly role = signal<DisputeRole>('customer');
   readonly mode = signal<'list' | 'detail' | 'create'>('list');
   readonly loading = signal(true);
+  readonly searchLoading = signal(false);
   readonly saving = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
@@ -233,9 +234,9 @@ export class DisputeCenterComponent implements OnInit {
     this.loadList();
   }
 
-  applyListControls(): void {
+  applyListControls(searchRequest = false): void {
     this.page = 1;
-    this.loadList();
+    this.loadList(searchRequest);
   }
 
   setStatusFilter(value: string): void {
@@ -316,14 +317,17 @@ export class DisputeCenterComponent implements OnInit {
     this.loadList();
   }
 
-  loadList(): void {
+  loadList(searchRequest = false): void {
+    searchRequest = searchRequest || Boolean(this.search.trim());
     if (this.fromDate && this.toDate && this.fromDate > this.toDate) {
       this.error.set('The start date must not be later than the end date.');
       this.loading.set(false);
+      this.searchLoading.set(false);
       return;
     }
     this.error.set('');
     this.loading.set(true);
+    this.searchLoading.set(searchRequest);
     this.disputes
       .list(this.role(), {
         search: this.search.trim() || undefined,
@@ -335,13 +339,17 @@ export class DisputeCenterComponent implements OnInit {
         sort: this.sortOrder,
         page: this.page,
         limit: this.pageSize,
-      })
+      }, { silent: searchRequest })
       .subscribe({
         next: (result) => {
           this.list.set(result);
           this.loading.set(false);
+          this.searchLoading.set(false);
         },
-        error: (error: HttpErrorResponse) => this.fail(error, 'Disputes could not be loaded.'),
+        error: (error: HttpErrorResponse) => {
+          this.searchLoading.set(false);
+          this.fail(error, 'Disputes could not be loaded.');
+        },
       });
   }
 

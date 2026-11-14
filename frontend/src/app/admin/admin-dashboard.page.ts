@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CurrencyPipe, DatePipe, DecimalPipe, TitleCasePipe, UpperCasePipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
+import { debounceTime, finalize, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import {
@@ -57,6 +57,7 @@ export class AdminDashboardPage implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly searchChanges = new Subject<string>();
+  private requestSequence = 0;
   readonly requests = signal<AdminRegistrationRequest[]>([]);
   readonly statistics = signal<AdminUserStatistics | null>(null);
   readonly statisticsLoading = signal(true);
@@ -68,6 +69,7 @@ export class AdminDashboardPage implements OnInit {
   readonly accountTypeFilter = signal<'all' | 'customer' | 'shop'>('all');
   readonly accountStatusFilter = signal<AccountStatus>('all');
   readonly searchText = signal('');
+  readonly searchLoading = signal(false);
   readonly fromDate = signal('');
   readonly toDate = signal('');
   readonly sortBy = signal<'name' | 'registrationDate' | 'status'>('registrationDate');
@@ -137,11 +139,11 @@ export class AdminDashboardPage implements OnInit {
 
   ngOnInit(): void {
     this.searchChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe((value) => {
         this.searchText.set(value);
         this.page.set(1);
-        this.loadRequests();
+        this.loadRequests(true, true);
       });
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const accountType = params.get('accountType');
@@ -153,12 +155,13 @@ export class AdminDashboardPage implements OnInit {
         accountType === 'customer' || accountType === 'shop' ? { accountType } : {},
       );
       this.page.set(1);
-      this.loadRequests();
+      this.loadRequests(true, Boolean(this.searchText()));
     });
     this.loadStatistics();
   }
 
   updateSearch(value: string): void {
+    this.searchLoading.set(true);
     this.searchChanges.next(value.trim());
   }
 
@@ -289,6 +292,7 @@ export class AdminDashboardPage implements OnInit {
   }
 
   search(value: string): void {
+    this.searchLoading.set(true);
     this.searchChanges.next(value.trim());
   }
 
@@ -433,8 +437,11 @@ export class AdminDashboardPage implements OnInit {
     );
   }
 
-  private loadRequests(clearError = true): void {
+  private loadRequests(clearError = true, searchRequest = false): void {
+    const hasSearch = searchRequest || Boolean(this.searchText().trim());
+    const requestSequence = ++this.requestSequence;
     this.loading.set(true);
+    this.searchLoading.set(hasSearch);
     if (clearError) {
       this.errorMessage.set('');
     }
@@ -450,19 +457,29 @@ export class AdminDashboardPage implements OnInit {
         toDate: this.toDate(),
         sortBy: this.sortBy(),
         sortOrder: this.sortOrder(),
+        silent: hasSearch,
       })
-      .pipe(finalize(() => this.loading.set(false)))
+      .pipe(
+        finalize(() => {
+          if (requestSequence !== this.requestSequence) return;
+          this.loading.set(false);
+          this.searchLoading.set(false);
+        }),
+      )
       .subscribe({
         next: (result: RegistrationRequestPage) => {
+          if (requestSequence !== this.requestSequence) return;
           this.requests.set(result.requests);
           this.total.set(result.total);
           this.totalPages.set(result.totalPages);
           this.page.set(result.page);
         },
-        error: (error: unknown) =>
+        error: (error: unknown) => {
+          if (requestSequence !== this.requestSequence) return;
           this.errorMessage.set(
             getAuthErrorMessage(error, 'Unable to load registration requests.'),
-          ),
+          );
+        },
       });
   }
 

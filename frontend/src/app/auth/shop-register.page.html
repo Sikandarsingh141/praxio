@@ -523,6 +523,13 @@
                         : null
                     "
                   />
+                  @if (addressSuggestionsLoading()) {
+                    <span
+                      class="inline-search-spinner"
+                      role="status"
+                      aria-label="Searching addresses"
+                    ></span>
+                  }
                   @if (addressSuggestionsVisible()) {
                     <div
                       id="shop-address-suggestions"
@@ -692,10 +699,10 @@
                 @if (
                   form.controls.latitude.value !== null && form.controls.longitude.value !== null
                 ) {
-                  <span class="input-hint">
+                  <!-- <span class="input-hint">
                     Latitude: {{ form.controls.latitude.value }} · Longitude:
                     {{ form.controls.longitude.value }}
-                  </span>
+                  </span> -->
                 }
                 @if (locationMessage()) {
                   <span class="input-hint" role="status">{{ locationMessage() }}</span>

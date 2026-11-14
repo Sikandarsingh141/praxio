@@ -1,6 +1,6 @@
 <section class="admin-map-page" aria-labelledby="map-page-title">
   <section class="map-toolbar" aria-label="Map search and filters">
-    <label class="search-filter">
+    <label class="search-filter inline-search-field">
       <span class="sr-only">Search repair requests by ID, customer, shop, or location</span>
       <span aria-hidden="true">⌕</span>
       <input
@@ -10,6 +10,9 @@
         placeholder="Search request ID, customer, shop, or location..."
         (input)="updateSearch(searchInput.value)"
       />
+      @if (searchLoading()) {
+        <span class="inline-search-spinner" role="status" aria-label="Searching repair requests"></span>
+      }
     </label>
     <app-common-filter
       [config]="filterConfig"

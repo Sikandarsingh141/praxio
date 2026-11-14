@@ -1371,6 +1371,48 @@
   }
 }
 
+.inline-search-input,
+.inline-search-field {
+  position: relative;
+  min-width: 0;
+}
+
+.inline-search-input {
+  display: flex;
+  flex: 1 1 auto;
+}
+
+.inline-search-input > input {
+  width: 100%;
+  min-width: 0;
+  padding-right: 2.4rem;
+}
+
+.inline-search-field > input {
+  padding-right: 2.4rem;
+}
+
+.inline-search-spinner {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 0.75rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 2px solid #d5e5d8;
+  border-top-color: #087c3b;
+  border-radius: 50%;
+  animation: inline-search-spin 0.7s linear infinite;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+@keyframes inline-search-spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
 .shop-finder {
   .results-actions {
     display: flex;

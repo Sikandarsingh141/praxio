@@ -101,7 +101,7 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
             <h2 class="form-section-heading wide">
               <span aria-hidden="true">⌖</span> Business Address Information
             </h2>
-            <label class="wide address-search">
+            <label class="wide address-search inline-search-field">
               Search address
               <input
                 type="search"
@@ -114,6 +114,13 @@ import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap 
                 aria-controls="shop-profile-address-suggestions"
                 [attr.aria-expanded]="addressSuggestionsVisible()"
               />
+              @if (searchingAddress()) {
+                <span
+                  class="inline-search-spinner"
+                  role="status"
+                  aria-label="Searching addresses"
+                ></span>
+              }
               @if (addressSuggestionsVisible()) {
                 <div
                   id="shop-profile-address-suggestions"

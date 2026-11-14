@@ -33,17 +33,17 @@ describe('CustomerShopFinderPage', () => {
     fixture.detectChanges();
 
     expect(portal.searchShops).toHaveBeenCalledWith(jasmine.any(Object));
-    expect(fixture.nativeElement.querySelector('.location-search-spinner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.inline-search-spinner')).toBeNull();
 
     page.onAddressInput('Pune');
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.location-search-spinner')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.inline-search-spinner')).not.toBeNull();
 
     tick(350);
     expect(portal.suggestAddresses).toHaveBeenCalledWith('Pune', true);
     suggestions.next([]);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.location-search-spinner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.inline-search-spinner')).toBeNull();
     fixture.destroy();
   }));
 

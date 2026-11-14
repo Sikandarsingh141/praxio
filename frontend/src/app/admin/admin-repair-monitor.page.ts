@@ -2,7 +2,7 @@ import { CurrencyPipe, DatePipe, SlicePipe, TitleCasePipe } from '@angular/commo
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { debounceTime, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
 import {
@@ -35,9 +35,11 @@ export class AdminRepairMonitorPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly searchChanges = new Subject<string>();
+  private requestSequence = 0;
   readonly view = signal<MonitorView>('jobs');
   readonly status = signal('all');
   readonly searchText = signal('');
+  readonly searchLoading = signal(false);
   readonly dateRange = signal<'30d' | '90d' | 'month'>('30d');
   readonly fromDate = signal(this.daysAgo(29));
   readonly toDate = signal(this.today());
@@ -54,10 +56,10 @@ export class AdminRepairMonitorPage implements OnInit {
   readonly error = signal('');
   ngOnInit(): void {
     this.searchChanges
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.page.set(1);
-        this.load();
+        this.load(true);
       });
     this.requestId.set(this.route.snapshot.queryParamMap.get('requestId') ?? '');
     const status = this.route.snapshot.queryParamMap.get('status');
@@ -102,6 +104,7 @@ export class AdminRepairMonitorPage implements OnInit {
 
   updateSearch(value: string): void {
     this.searchText.set(value);
+    this.searchLoading.set(value.trim() !== '');
     this.searchChanges.next(value.trim());
   }
 
@@ -189,8 +192,11 @@ export class AdminRepairMonitorPage implements OnInit {
     });
   }
 
-  private load(): void {
+  private load(searchRequest = false): void {
+    const hasSearch = searchRequest || Boolean(this.searchText().trim());
+    const requestSequence = ++this.requestSequence;
     this.loading.set(true);
+    this.searchLoading.set(hasSearch);
     this.error.set('');
     if (this.view() !== 'reviews') {
       const completedView = this.view() === 'completed';
@@ -203,24 +209,35 @@ export class AdminRepairMonitorPage implements OnInit {
           this.searchText(),
           completedView ? undefined : this.fromDate(),
           completedView ? undefined : this.toDate(),
+          { silent: hasSearch },
         )
         .subscribe({
           next: (result) => {
+            if (requestSequence !== this.requestSequence) return;
             this.jobs.set(result.jobs ?? []);
             this.total.set(result.total);
             this.loading.set(false);
+            this.searchLoading.set(false);
           },
-          error: (error: HttpErrorResponse) => this.handleError(error),
+          error: (error: HttpErrorResponse) => {
+            if (requestSequence !== this.requestSequence) return;
+            this.handleError(error);
+            this.searchLoading.set(false);
+          },
         });
       return;
     }
     this.adminService.getRepairReviews(this.page(), this.pageSize).subscribe({
       next: (result) => {
+        if (requestSequence !== this.requestSequence) return;
         this.reviews.set(result.reviews ?? []);
         this.total.set(result.total);
         this.loading.set(false);
       },
-      error: (error: HttpErrorResponse) => this.handleError(error),
+      error: (error: HttpErrorResponse) => {
+        if (requestSequence !== this.requestSequence) return;
+        this.handleError(error);
+      },
     });
   }
 

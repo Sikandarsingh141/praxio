@@ -77,6 +77,18 @@
   font-size: 0.74rem;
 }
 
+.search-placeholder > .inline-search-input {
+  flex: 1 1 auto;
+}
+
+.mobile-search-form > .inline-search-input {
+  flex: 1 1 auto;
+}
+
+.mobile-search-form input {
+  width: 100%;
+}
+
 .search-placeholder input::placeholder {
   color: #98a39c;
 }

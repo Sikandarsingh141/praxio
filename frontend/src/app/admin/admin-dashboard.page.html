@@ -158,13 +158,18 @@
           }}</span
         >
         <div>
-          <input
-            #searchInput
-            type="search"
-            [value]="searchText()"
-            (input)="updateSearch(searchInput.value)"
-            placeholder="Search by name, email, phone, or user ID..."
-          />
+          <span class="inline-search-input">
+            <input
+              #searchInput
+              type="search"
+              [value]="searchText()"
+              (input)="updateSearch(searchInput.value)"
+              placeholder="Search by name, email, phone, or user ID..."
+            />
+            @if (searchLoading()) {
+              <span class="inline-search-spinner" role="status" aria-label="Searching users"></span>
+            }
+          </span>
           <button type="button" (click)="search(searchInput.value)">Search</button>
         </div>
       </label>

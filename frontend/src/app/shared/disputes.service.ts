@@ -1,8 +1,9 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { ApiEnvelope } from '../core/auth/auth.models';
+import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 import {
   DisputeAttachment,
   DisputeListFilters,
@@ -19,7 +20,11 @@ export class DisputesService {
 
   constructor(private readonly http: HttpClient) {}
 
-  list(role: DisputeRole, filters: DisputeListFilters = {}): Observable<DisputeListResult> {
+  list(
+    role: DisputeRole,
+    filters: DisputeListFilters = {},
+    options: { silent?: boolean } = {},
+  ): Observable<DisputeListResult> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
@@ -27,7 +32,10 @@ export class DisputesService {
       }
     });
     return this.http
-      .get<ApiEnvelope<DisputeListResult>>(`${this.baseUrl}/${role}/disputes`, { params })
+      .get<ApiEnvelope<DisputeListResult>>(`${this.baseUrl}/${role}/disputes`, {
+        params,
+        context: new HttpContext().set(SKIP_GLOBAL_LOADER, options.silent ?? false),
+      })
       .pipe(map((response) => response.data));
   }
 

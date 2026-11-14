@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../environments/environment';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
@@ -20,22 +21,28 @@ describe('ShopRepairRequestsService', () => {
 
   it('passes repair-status and other filters to the shop request API', () => {
     service
-      .list({
-        status: 'all',
-        appliance: 'Refrigerator',
-        repairStatus: 'in_progress',
-        from: '2026-10-01',
-        to: '2026-10-31',
-        sort: 'newest',
-        page: 2,
-        limit: 10,
-      })
+      .list(
+        {
+          status: 'all',
+          search: 'Microwave',
+          appliance: 'Refrigerator',
+          repairStatus: 'in_progress',
+          from: '2026-10-01',
+          to: '2026-10-31',
+          sort: 'newest',
+          page: 2,
+          limit: 10,
+        },
+        { silent: true },
+      )
       .subscribe((result) => expect(result.total).toBe(0));
 
     const request = http.expectOne(
       (candidate) => candidate.url === `${environment.apiBaseUrl}/shop/repair-requests`,
     );
     expect(request.request.params.get('repairStatus')).toBe('in_progress');
+    expect(request.request.params.get('search')).toBe('Microwave');
+    expect(request.request.context.get(SKIP_GLOBAL_LOADER)).toBeTrue();
     expect(request.request.params.get('appliance')).toBe('Refrigerator');
     expect(request.request.params.get('from')).toBe('2026-10-01');
     expect(request.request.params.get('to')).toBe('2026-10-31');

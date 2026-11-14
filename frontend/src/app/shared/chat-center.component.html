@@ -40,7 +40,7 @@
         </button>
       </div>
 
-      <label class="conversation-search">
+      <label class="conversation-search inline-search-field">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="10.8" cy="10.8" r="6.8" />
           <path d="m16 16 4.5 4.5" />
@@ -51,6 +51,9 @@
           [value]="query()"
           (input)="search($event)"
         />
+        @if (searchingConversations()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching conversations"></span>
+        }
       </label>
 
       <div class="conversation-list">
@@ -214,14 +217,19 @@
         @if (showMessageSearch()) {
           <section class="message-search-panel" aria-label="Search messages">
             <form (ngSubmit)="searchMessages()">
-              <input
-                type="search"
-                name="messageSearch"
-                maxlength="100"
-                placeholder="Search messages in this conversation"
-                [ngModel]="messageSearchQuery()"
-                (ngModelChange)="messageSearchQuery.set($event)"
-              />
+              <span class="inline-search-input">
+                <input
+                  type="search"
+                  name="messageSearch"
+                  maxlength="100"
+                  placeholder="Search messages in this conversation"
+                  [ngModel]="messageSearchQuery()"
+                  (ngModelChange)="messageSearchQuery.set($event)"
+                />
+                @if (searchingMessages()) {
+                  <span class="inline-search-spinner" role="status" aria-label="Searching messages"></span>
+                }
+              </span>
               <button
                 type="submit"
                 [disabled]="!messageSearchQuery().trim() || searchingMessages()"

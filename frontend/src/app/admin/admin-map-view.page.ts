@@ -17,7 +17,6 @@ import * as L from 'leaflet';
 import {
   catchError,
   debounceTime,
-  distinctUntilChanged,
   from,
   map,
   mergeMap,
@@ -86,6 +85,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   readonly loading = signal(true);
   readonly loadingMore = signal(false);
   readonly mapLoading = signal(false);
+  readonly searchLoading = signal(false);
   readonly error = signal('');
   readonly loadMoreError = signal('');
   readonly mapError = signal('');
@@ -164,8 +164,8 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.searchChanges
-      .pipe(debounceTime(250), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadData(true));
+      .pipe(debounceTime(250), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadData(true, 1, true));
     this.loadData(true);
   }
 
@@ -213,6 +213,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
 
   updateSearch(value: string): void {
     this.searchText.set(value);
+    this.searchLoading.set(value.trim() !== '');
     this.searchChanges.next(value.trim());
   }
 
@@ -561,8 +562,14 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     return minutes < 1 ? 'Less than 1 min' : `${minutes} min`;
   }
 
-  private loadData(reset: boolean, requestedPage = reset ? 1 : this.page() + 1): void {
+  private loadData(
+    reset: boolean,
+    requestedPage = reset ? 1 : this.page() + 1,
+    searchRequest = false,
+  ): void {
+    const hasSearch = searchRequest || Boolean(this.searchText().trim());
     if (reset) {
+      this.searchLoading.set(hasSearch);
       this.page.set(1);
       this.visibleLimit.set(20);
       this.loading.set(true);
@@ -575,7 +582,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       this.lastSelectedMarker = undefined;
       this.selectedEntity.set(null);
       this.selectedEntityId = null;
-      this.loadMarkers();
+      this.loadMarkers(hasSearch);
       this.clearRoute();
     } else {
       this.loadingMore.set(true);
@@ -583,17 +590,20 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     }
     const sequence = ++this.requestSequence;
     this.adminService
-      .getMapData({
-        type: 'requests',
-        page: requestedPage,
-        limit: 20,
-        search: this.searchText(),
-        city: this.city(),
-        state: this.state(),
-        from: this.fromDate(),
-        to: this.toDate(),
-        status: this.status(),
-      })
+      .getMapData(
+        {
+          type: 'requests',
+          page: requestedPage,
+          limit: 20,
+          search: this.searchText(),
+          city: this.city(),
+          state: this.state(),
+          from: this.fromDate(),
+          to: this.toDate(),
+          status: this.status(),
+        },
+        { silent: hasSearch },
+      )
       .subscribe({
         next: (data) => {
           if (sequence !== this.requestSequence) return;
@@ -618,6 +628,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
           else this.visibleLimit.update((limit) => limit + 20);
           this.loading.set(false);
           this.loadingMore.set(false);
+          if (hasSearch) this.searchLoading.set(false);
         },
         error: (error: HttpErrorResponse) => {
           if (sequence !== this.requestSequence) return;
@@ -628,25 +639,29 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
           }
           this.loading.set(false);
           this.loadingMore.set(false);
+          if (hasSearch) this.searchLoading.set(false);
         },
       });
   }
 
-  private loadMarkers(): void {
+  private loadMarkers(silent = false): void {
     const sequence = ++this.markerSequence;
     this.mapEntities.set([]);
     this.mapLoading.set(true);
     this.mapError.set('');
     this.renderMarkers();
     this.adminService
-      .getMapMarkers({
-        search: this.searchText(),
-        city: this.city(),
-        state: this.state(),
-        from: this.fromDate(),
-        to: this.toDate(),
-        status: this.status(),
-      })
+      .getMapMarkers(
+        {
+          search: this.searchText(),
+          city: this.city(),
+          state: this.state(),
+          from: this.fromDate(),
+          to: this.toDate(),
+          status: this.status(),
+        },
+        { silent },
+      )
       .subscribe({
         next: (markers) => {
           if (sequence !== this.markerSequence) return;

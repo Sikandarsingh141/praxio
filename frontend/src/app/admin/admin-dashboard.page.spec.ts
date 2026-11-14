@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { environment } from '../../environments/environment';
+import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 import { AdminDashboardPage } from './admin-dashboard.page';
 
 describe('AdminDashboardPage', () => {
@@ -103,6 +104,7 @@ describe('AdminDashboardPage', () => {
         totalPages: 1,
       },
     });
+
     flushStatistics();
     fixture.detectChanges();
 
@@ -122,6 +124,35 @@ describe('AdminDashboardPage', () => {
       ),
     ).toBe('/admin/users/user-id');
   });
+
+  it('shows an inline spinner for a user search and skips the global loader', fakeAsync(() => {
+    const fixture = TestBed.createComponent(AdminDashboardPage);
+    fixture.detectChanges();
+    httpTestingController.expectOne((req) => req.url.endsWith('/admin/users')).flush({
+      data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 },
+    });
+    flushStatistics();
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('.search-field input') as HTMLInputElement;
+    input.value = 'Customer';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.inline-search-spinner')).not.toBeNull();
+
+    tick(300);
+    fixture.detectChanges();
+    const request = httpTestingController.expectOne(
+      (req) => req.url.endsWith('/admin/users') && req.params.get('search') === 'Customer',
+    );
+    expect(request.request.context.get(SKIP_GLOBAL_LOADER)).toBeTrue();
+    request.flush({
+      data: { requests: [], page: 1, limit: 10, total: 0, totalPages: 0 },
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.inline-search-spinner')).toBeNull();
+    fixture.destroy();
+  }));
 
   it('shows dedicated Shops and Customers views from their Admin navigation routes', async () => {
     const harness = await RouterTestingHarness.create();

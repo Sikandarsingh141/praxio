@@ -47,6 +47,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   readonly pageSize = signal(10);
   readonly pageData = signal<ShopRepairRequestPage | null>(null);
   readonly loading = signal(true);
+  readonly searchLoading = signal(false);
   readonly error = signal('');
   readonly completedRepairs = signal(false);
   readonly appliedFilters = signal<FilterValues>({});
@@ -85,6 +86,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   private readonly destroyed = new Subject<void>();
   private readonly realtimeSubscription: Subscription;
   private activeLoads = 0;
+  private requestSequence = 0;
 
   constructor(
     private readonly requestsService: ShopRepairRequestsService,
@@ -113,11 +115,14 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
     this.realtimeSubscription.unsubscribe();
   }
 
-  load(silent = false): void {
+  load(silent = false, searchRequest = false): void {
     if (silent && this.activeLoads > 0) return;
+    searchRequest = searchRequest || Boolean(this.searchText().trim());
+    const requestSequence = ++this.requestSequence;
     if (!silent || !this.pageData()) {
       this.loading.set(true);
     }
+    this.searchLoading.set(searchRequest);
     if (!silent) {
       this.error.set('');
     }
@@ -135,17 +140,21 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
           page: this.page(),
           limit: this.pageSize(),
         },
-        { silent },
+        { silent: silent || searchRequest },
       )
       .pipe(finalize(() => (this.activeLoads -= 1)))
       .subscribe({
         next: (data) => {
+          if (requestSequence !== this.requestSequence) return;
           this.pageData.set(data);
           this.loading.set(false);
+          this.searchLoading.set(false);
         },
         error: (error: HttpErrorResponse) => {
+          if (requestSequence !== this.requestSequence) return;
           this.error.set(error.error?.message || 'Repair requests could not be loaded.');
           this.loading.set(false);
+          this.searchLoading.set(false);
         },
       });
   }
@@ -158,8 +167,9 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
 
   updateSearch(value: string): void {
     this.searchText.set(value);
+    this.searchLoading.set(true);
     this.page.set(1);
-    this.load();
+    this.load(false, true);
   }
 
   applyFilters(filters: FilterValues): void {

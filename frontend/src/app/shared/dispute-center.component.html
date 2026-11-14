@@ -58,8 +58,8 @@
       </div>
     }
 
-    <form class="dispute-list-controls" (ngSubmit)="applyListControls()">
-      <label class="dispute-search">
+    <form class="dispute-list-controls" (ngSubmit)="applyListControls(true)">
+      <label class="dispute-search inline-search-field">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg>
         <span class="visually-hidden">Search disputes</span>
         <input
@@ -68,6 +68,9 @@
           [(ngModel)]="search"
           placeholder="Search by dispute ID, title, or customer..."
         />
+        @if (searchLoading()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching disputes"></span>
+        }
       </label>
       <label class="control-select">
         <span class="visually-hidden">Filter by dispute status</span>

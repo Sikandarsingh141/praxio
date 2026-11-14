@@ -55,6 +55,10 @@
   background: #f9fbf9;
 }
 
+.global-search > .inline-search-input {
+  flex: 1 1 auto;
+}
+
 .global-search input {
   width: 100%;
   min-width: 0;

@@ -43,7 +43,7 @@
 
   <section class="list-panel">
     <div class="filter-row">
-      <label class="search-control">
+      <label class="search-control inline-search-field">
         <span class="visually-hidden">Search repair requests</span>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="10.8" cy="10.8" r="6.8" />
@@ -55,6 +55,9 @@
           (ngModelChange)="updateSearch($event)"
           placeholder="Search ID, customer, appliance…"
         />
+        @if (searchLoading()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching repair requests"></span>
+        }
       </label>
       <label class="sort-control">
         <span>Sort</span>

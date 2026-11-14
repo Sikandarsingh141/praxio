@@ -9,11 +9,16 @@
         <circle cx="10.8" cy="10.8" r="6.3" />
         <path d="m16 16 4 4" />
       </svg>
-      <input
-        name="search"
-        aria-label="Search administration"
-        placeholder="Search users, shops, repair requests, quotations..."
-      />
+      <span class="inline-search-input">
+        <input
+          name="search"
+          aria-label="Search administration"
+          placeholder="Search users, shops, repair requests, quotations..."
+        />
+        @if (searchingAdmin()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching administration"></span>
+        }
+      </span>
       <kbd>Ctrl + K</kbd>
     </form>
     <div class="admin-account">

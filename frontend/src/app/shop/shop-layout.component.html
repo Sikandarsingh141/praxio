@@ -10,13 +10,18 @@
       (submit)="$event.preventDefault(); searchShopActivity()"
     >
       <label class="visually-hidden" for="shop-global-search">Search shop activity</label>
-      <input
-        id="shop-global-search"
-        type="search"
-        placeholder="Search repair requests, quotations, or customers..."
-        [value]="searchQuery()"
-        (input)="updateSearchQuery($event)"
-      />
+      <span class="inline-search-input">
+        <input
+          id="shop-global-search"
+          type="search"
+          placeholder="Search repair requests, quotations, or customers..."
+          [value]="searchQuery()"
+          (input)="updateSearchQuery($event)"
+        />
+        @if (searchLoading()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching shop activity"></span>
+        }
+      </span>
       <button type="submit" [disabled]="searchLoading()">Search</button>
       @if (searchResults() !== null || searchLoading() || searchError()) {
         <div class="global-search-results">
