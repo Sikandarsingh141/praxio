@@ -15,6 +15,13 @@ import * as L from 'leaflet';
 import { ShopSearchResult } from './customer-portal.models';
 import { formatShopAddress } from '../shared/format-shop-address';
 
+const MARKER_SPREAD_RADIUS_PX = 24;
+
+type LocatedShop = ShopSearchResult & {
+  location: { latitude: number; longitude: number };
+};
+type VisibleShop = { shop: LocatedShop; point: L.Point };
+
 @Component({
   selector: 'app-shop-results-map',
   standalone: true,
@@ -44,7 +51,9 @@ import { formatShopAddress } from '../shared/format-shop-address';
       <button
         class="map-fullscreen-control"
         type="button"
-        [attr.aria-label]="fullscreenActive() ? 'Exit full screen map' : 'Expand map to full screen'"
+        [attr.aria-label]="
+          fullscreenActive() ? 'Exit full screen map' : 'Expand map to full screen'
+        "
         [attr.aria-pressed]="fullscreenActive()"
         (click)="toggleFullscreen()"
       >
@@ -247,7 +256,9 @@ import { formatShopAddress } from '../shared/format-shop-address';
     }
 
     :host ::ng-deep .shop-marker-dot.focused {
-      box-shadow: 0 0 0 6px rgb(37 99 235 / 22%), 0 1px 5px rgb(20 40 28 / 45%);
+      box-shadow:
+        0 0 0 6px rgb(37 99 235 / 22%),
+        0 1px 5px rgb(20 40 28 / 45%);
     }
 
     :host ::ng-deep .leaflet-control-scale-line {
@@ -421,7 +432,6 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
   private shopMarkers = L.layerGroup();
   private focusedShopId: string | null = null;
   private openFocusedShopPopup = false;
-  private lastCollisionSelection: { groupKey: string; shopId: string } | null = null;
 
   get locatedShopCount(): number {
     return this.shops.filter((shop) => this.hasValidLocation(shop)).length;
@@ -443,8 +453,8 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
       maxZoom: 19,
     }).addTo(this.map);
     L.control.scale({ position: 'bottomright', metric: true, imperial: false }).addTo(this.map);
-    this.locationMarkers.addTo(this.map);
     this.shopMarkers.addTo(this.map);
+    this.locationMarkers.addTo(this.map);
     this.map.on('zoomend moveend', this.refreshShopMarkers);
     this.mapResizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
     this.mapResizeObserver.observe(this.mapElement.nativeElement);
@@ -587,97 +597,32 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
       .filter((shop) => this.hasValidLocation(shop))
       .map((shop) => ({
         shop,
-        point: this.map!.latLngToContainerPoint([shop.location!.latitude, shop.location!.longitude]),
+        point: this.map!.latLngToContainerPoint([
+          shop.location!.latitude,
+          shop.location!.longitude,
+        ]),
       }))
       .filter(({ shop }) =>
         this.map!.getBounds().contains([shop.location!.latitude, shop.location!.longitude]),
       );
-    const entries: Array<{
-      shop: ShopSearchResult & { location: { latitude: number; longitude: number } };
-      marker: L.Marker;
-      point: L.Point;
-      locationKey: string;
-    }> = [];
     let focusedMarker: L.Marker | undefined;
-    visible.forEach(({ shop, point }) => {
-      const location: L.LatLngExpression = [shop.location!.latitude, shop.location!.longitude];
-      const focusedShop = shop.id === this.focusedShopId;
-      const marker = L.marker(location, {
-        riseOnHover: true,
-        riseOffset: 250,
-        icon: L.divIcon({
-          className: 'shop-map-marker-icon',
-          html: `<span class="shop-marker-dot${focusedShop ? ' focused' : ''}"></span>`,
-          iconSize: [21, 21],
-          iconAnchor: [10.5, 10.5],
-        }),
-      });
-      marker.bindPopup(this.shopPopupContent(shop), { autoPan: true, maxWidth: 360 });
-      marker.on('popupopen', (event) => {
-        const popupElement = event.popup.getElement();
-        const button = popupElement?.querySelector<HTMLButtonElement>('[data-request-shop]');
-        if (button) {
-          button.onclick = () => {
-            this.map?.closePopup();
-            this.requestRepair.emit(shop);
-          };
-        }
-        const detailsLink = popupElement?.querySelector<HTMLAnchorElement>('[data-shop-details]');
-        if (detailsLink) {
-          detailsLink.onclick = (clickEvent) => {
-            clickEvent.preventDefault();
-            this.viewDetails.emit(shop.id);
-          };
-        }
-      });
-      if (focusedShop && this.openFocusedShopPopup) focusedMarker = marker;
-      this.shopMarkers.addLayer(marker);
-      entries.push({
-        shop,
-        marker,
-        point,
-        locationKey: `${shop.location!.latitude},${shop.location!.longitude}`,
-      });
-    });
 
-    entries.forEach((entry) => {
-      entry.marker.on('click', () => {
-        const collisions = entries.filter(
-          (other) => other.point.distanceTo(entry.point) < 21,
-        );
-        if (collisions.length < 2) {
-          this.lastCollisionSelection = null;
-          return;
-        }
-
-        const hasDifferentLocations = collisions.some(
-          (other) => other.locationKey !== entry.locationKey,
-        );
-        if (hasDifferentLocations && this.map!.getZoom() < 18) {
-          this.focusedShopId = entry.shop.id;
-          this.openFocusedShopPopup = true;
-          this.lastCollisionSelection = null;
-          this.map!.setView(
-            [entry.shop.location.latitude, entry.shop.location.longitude],
-            Math.min(this.map!.getZoom() + 2, 18),
-            { animate: true },
-          );
-          return;
-        }
-
-        const groupKey = collisions.map((item) => item.shop.id).sort().join('|');
-        const previousIndex =
-          this.lastCollisionSelection?.groupKey === groupKey
-            ? collisions.findIndex(
-                (item) => item.shop.id === this.lastCollisionSelection?.shopId,
-              )
-            : -1;
-        const selected = collisions[(previousIndex + 1) % collisions.length];
-        this.lastCollisionSelection = { groupKey, shopId: selected.shop.id };
-        if (selected !== entry) {
-          this.map!.closePopup();
-          selected.marker.openPopup();
-        }
+    this.groupVisibleShops(visible).forEach((group) => {
+      const focusedIndex = group.findIndex(({ shop }) => shop.id === this.focusedShopId);
+      const offsets =
+        group.length === 1
+          ? [L.point(0, 0)]
+          : this.spreadOffsets(focusedIndex >= 0 ? group.length - 1 : group.length);
+      let offsetIndex = 0;
+      group.forEach(({ shop, point }, index) => {
+        const offset = focusedIndex === index ? L.point(0, 0) : offsets[offsetIndex++];
+        const location: L.LatLngExpression =
+          offset.x === 0 && offset.y === 0
+            ? [shop.location.latitude, shop.location.longitude]
+            : this.map!.containerPointToLatLng(point.add(offset));
+        const marker = this.createShopMarker(shop, location);
+        if (shop.id === this.focusedShopId && this.openFocusedShopPopup) focusedMarker = marker;
+        this.shopMarkers.addLayer(marker);
       });
     });
 
@@ -687,25 +632,96 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
     }
   }
 
-  private shopPopupContent(shop: ShopSearchResult): string {
-      const photo = this.safePhotoUrl(shop.logoUrl);
-      const photoMarkup = photo
-        ? `<img class="shop-map-popup-photo" src="${this.escapeHtml(photo)}" alt="${this.escapeHtml(shop.shopName)} shop photo">`
-        : `<span class="shop-map-popup-photo-placeholder" aria-hidden="true">${this.escapeHtml(shop.shopName.slice(0, 1).toLocaleUpperCase() || 'S')}</span>`;
-      const rating =
-        shop.rating === null
-          ? 'No reviews yet'
-          : `<span class="shop-map-popup-rating">★ <span>${shop.rating.toFixed(1)} (${shop.reviewCount} ${shop.reviewCount === 1 ? 'review' : 'reviews'})</span></span>`;
-      const address = formatShopAddress(shop) || 'Address unavailable';
-      const distance =
-        shop.distanceKm === null ? 'Distance unavailable' : `${shop.distanceKm.toFixed(1)} km`;
-      const services = shop.services
-        .slice(0, 6)
-        .map((service) => `<span class="shop-map-popup-service">${this.escapeHtml(service)}</span>`)
-        .join('');
-      const destination = `${shop.location!.latitude},${shop.location!.longitude}`;
+  private groupVisibleShops(visible: VisibleShop[]): VisibleShop[][] {
+    const remaining = [...visible];
+    const groups: VisibleShop[][] = [];
+    while (remaining.length > 0) {
+      const seed = remaining.shift()!;
+      const group = [seed];
+      for (let index = remaining.length - 1; index >= 0; index -= 1) {
+        if (remaining[index].point.distanceTo(seed.point) < MARKER_SPREAD_RADIUS_PX) {
+          group.push(remaining.splice(index, 1)[0]);
+        }
+      }
+      groups.push(group);
+    }
+    return groups;
+  }
 
-      return `
+  private spreadOffsets(count: number): L.Point[] {
+    if (count <= 0) {
+      return [];
+    }
+    const offsets: L.Point[] = [];
+    let remaining = count;
+    let ring = 0;
+    while (remaining > 0) {
+      const radius = 18 + ring * 20;
+      const capacity = Math.max(1, Math.floor((2 * Math.PI * radius) / 22));
+      const slots = Math.min(remaining, capacity);
+      const startAngle = ring % 2 === 0 ? 0 : Math.PI / slots;
+      for (let slot = 0; slot < slots; slot += 1) {
+        const angle = startAngle + (slot * 2 * Math.PI) / slots;
+        offsets.push(L.point(Math.cos(angle) * radius, Math.sin(angle) * radius));
+      }
+      remaining -= slots;
+      ring += 1;
+    }
+    return offsets;
+  }
+
+  private createShopMarker(shop: LocatedShop, location: L.LatLngExpression): L.Marker {
+    const focusedShop = shop.id === this.focusedShopId;
+    const marker = L.marker(location, {
+      riseOnHover: true,
+      riseOffset: 250,
+      icon: L.divIcon({
+        className: 'shop-map-marker-icon',
+        html: `<span class="shop-marker-dot${focusedShop ? ' focused' : ''}"></span>`,
+        iconSize: [21, 21],
+        iconAnchor: [10.5, 10.5],
+      }),
+    });
+    marker.bindPopup(this.shopPopupContent(shop), { autoPan: true, maxWidth: 360 });
+    marker.on('popupopen', (event) => {
+      const popupElement = event.popup.getElement();
+      const button = popupElement?.querySelector<HTMLButtonElement>('[data-request-shop]');
+      if (button) {
+        button.onclick = () => {
+          this.map?.closePopup();
+          this.requestRepair.emit(shop);
+        };
+      }
+      const detailsLink = popupElement?.querySelector<HTMLAnchorElement>('[data-shop-details]');
+      if (detailsLink) {
+        detailsLink.onclick = (clickEvent) => {
+          clickEvent.preventDefault();
+          this.viewDetails.emit(shop.id);
+        };
+      }
+    });
+    return marker;
+  }
+
+  private shopPopupContent(shop: ShopSearchResult): string {
+    const photo = this.safePhotoUrl(shop.logoUrl);
+    const photoMarkup = photo
+      ? `<img class="shop-map-popup-photo" src="${this.escapeHtml(photo)}" alt="${this.escapeHtml(shop.shopName)} shop photo">`
+      : `<span class="shop-map-popup-photo-placeholder" aria-hidden="true">${this.escapeHtml(shop.shopName.slice(0, 1).toLocaleUpperCase() || 'S')}</span>`;
+    const rating =
+      shop.rating === null
+        ? 'No reviews yet'
+        : `<span class="shop-map-popup-rating">★ <span>${shop.rating.toFixed(1)} (${shop.reviewCount} ${shop.reviewCount === 1 ? 'review' : 'reviews'})</span></span>`;
+    const address = formatShopAddress(shop) || 'Address unavailable';
+    const distance =
+      shop.distanceKm === null ? 'Distance unavailable' : `${shop.distanceKm.toFixed(1)} km`;
+    const services = shop.services
+      .slice(0, 6)
+      .map((service) => `<span class="shop-map-popup-service">${this.escapeHtml(service)}</span>`)
+      .join('');
+    const destination = `${shop.location!.latitude},${shop.location!.longitude}`;
+
+    return `
         <div class="shop-map-popup">
           <div class="shop-map-popup-heading">
             ${photoMarkup}
@@ -730,24 +746,22 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
           </div>
         </div>
       `;
-    }
+  }
 
   private safePhotoUrl(value: string | null): string | null {
-      if (!value) return null;
-      if (/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) {
-        return value;
-      }
-      try {
-        const url = new URL(value, document.baseURI);
-        return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
-      } catch {
-        return null;
-      }
+    if (!value) return null;
+    if (/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) {
+      return value;
     }
+    try {
+      const url = new URL(value, document.baseURI);
+      return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+    } catch {
+      return null;
+    }
+  }
 
-  private hasValidLocation(
-    shop: ShopSearchResult,
-  ): shop is ShopSearchResult & {
+  private hasValidLocation(shop: ShopSearchResult): shop is ShopSearchResult & {
     location: { latitude: number; longitude: number };
   } {
     const location = shop.location;
@@ -775,4 +789,3 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
     });
   }
 }
-

@@ -93,20 +93,21 @@ describe('ShopResultsMapComponent', () => {
     fixture.destroy();
   });
 
-  it('renders one popup-enabled dot per shop at its geographic coordinates', () => {
+  it('renders a separate dot for every shop, even at the same coordinates', () => {
     TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
     const fixture = TestBed.createComponent(ShopResultsMapComponent);
-    fixture.componentInstance.shops = [
-      makeShop('shop-1'),
-      makeShop('shop-2'),
-      makeShop('shop-3'),
-    ];
+    fixture.componentInstance.shops = [makeShop('shop-1'), makeShop('shop-2'), makeShop('shop-3')];
     fixture.detectChanges();
 
     const markers = fixture.componentInstance['shopMarkers'].getLayers() as L.Marker[];
     expect(markers.length).toBe(3);
     expect(fixture.nativeElement.querySelectorAll('.shop-marker-dot').length).toBe(3);
     expect(fixture.nativeElement.querySelector('.shop-marker-cluster')).toBeNull();
+    const locations = markers.map((marker) => {
+      const latLng = marker.getLatLng();
+      return `${latLng.lat},${latLng.lng}`;
+    });
+    expect(new Set(locations).size).toBe(3);
     expect(markers.map((marker) => marker.getPopup()?.getContent())).toEqual(
       jasmine.arrayContaining([
         jasmine.stringMatching(/shop-1/),
@@ -114,29 +115,40 @@ describe('ShopResultsMapComponent', () => {
         jasmine.stringMatching(/shop-3/),
       ]),
     );
-    expect(
-      markers.every((marker) => marker.getLatLng().equals(L.latLng(27.1767, 78.0081))),
-    ).toBeTrue();
     fixture.destroy();
   });
 
-  it('cycles through shops that share the exact same map coordinates', () => {
+  it('keeps the user location marker visible alongside shop dots', () => {
+    TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
+    const fixture = TestBed.createComponent(ShopResultsMapComponent);
+    fixture.componentInstance.shops = [makeShop('shop-1')];
+    fixture.componentInstance.center = { latitude: 27.1767, longitude: 78.0081 };
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['locationMarkers'].getLayers().length).toBe(1);
+    expect(fixture.componentInstance['shopMarkers'].getLayers().length).toBe(1);
+    expect(fixture.nativeElement.querySelector('.shop-marker-dot')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('opens the matching shop popup when a spread dot is clicked', () => {
     TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
     const fixture = TestBed.createComponent(ShopResultsMapComponent);
     fixture.componentInstance.shops = [makeShop('shop-1'), makeShop('shop-2')];
     fixture.detectChanges();
 
     const markers = fixture.componentInstance['shopMarkers'].getLayers() as L.Marker[];
-    const openNextPopup = spyOn(markers[0], 'openPopup').and.callThrough();
-    markers[1].fire('click');
+    expect(markers.length).toBe(2);
+    expect(markers[0].getLatLng().equals(markers[1].getLatLng())).toBeFalse();
+
     markers[1].fire('click');
 
-    expect(openNextPopup).toHaveBeenCalled();
-    expect(markers[0].getPopup()?.getContent()).toContain('shop-1');
+    expect(markers[1].getPopup()?.isOpen()).toBeTrue();
+    expect(markers[1].getPopup()?.getContent()).toContain('shop-2');
     fixture.destroy();
   });
 
-  it('zooms in when different nearby locations collide at the current zoom', () => {
+  it('spreads shops with nearby locations into distinct markers', () => {
     TestBed.configureTestingModule({ imports: [ShopResultsMapComponent] });
     const fixture = TestBed.createComponent(ShopResultsMapComponent);
     fixture.componentInstance.shops = [
@@ -148,15 +160,12 @@ describe('ShopResultsMapComponent', () => {
     ];
     fixture.detectChanges();
 
-    const map = fixture.componentInstance['map']!;
-    const setView = spyOn(map, 'setView').and.callThrough();
-    const marker = fixture.componentInstance['shopMarkers'].getLayers()[0] as L.Marker;
-    marker.fire('click');
-
-    expect(setView).toHaveBeenCalledWith(
-      [27.1767, 78.0081],
-      Math.min(map.getZoom() + 2, 18),
-      { animate: true },
+    const markers = fixture.componentInstance['shopMarkers'].getLayers() as L.Marker[];
+    expect(markers.length).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('.shop-marker-dot').length).toBe(2);
+    expect(markers[0].getLatLng().equals(markers[1].getLatLng())).toBeFalse();
+    expect(markers.map((marker) => marker.getPopup()?.getContent())).toEqual(
+      jasmine.arrayContaining([jasmine.stringMatching(/shop-1/), jasmine.stringMatching(/shop-2/)]),
     );
     fixture.destroy();
   });
@@ -192,11 +201,7 @@ describe('ShopResultsMapComponent', () => {
     const flyTo = spyOn(map!, 'flyTo');
     fixture.componentInstance.focusShop('shop-1');
 
-    expect(flyTo).toHaveBeenCalledWith(
-      [28.6139, 77.209],
-      15,
-      { duration: 0.7 },
-    );
+    expect(flyTo).toHaveBeenCalledWith([28.6139, 77.209], 15, { duration: 0.7 });
     fixture.destroy();
   });
 });
