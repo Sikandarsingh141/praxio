@@ -14,8 +14,7 @@ import {
 import * as L from 'leaflet';
 import { ShopSearchResult } from './customer-portal.models';
 import { formatShopAddress } from '../shared/format-shop-address';
-
-const MARKER_SPREAD_RADIUS_PX = 24;
+import { groupMarkerPoints, markerSpreadOffsets } from '../shared/map-marker-layout';
 
 type LocatedShop = ShopSearchResult & {
   location: { latitude: number; longitude: number };
@@ -612,7 +611,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
       const offsets =
         group.length === 1
           ? [L.point(0, 0)]
-          : this.spreadOffsets(focusedIndex >= 0 ? group.length - 1 : group.length);
+          : markerSpreadOffsets(focusedIndex >= 0 ? group.length - 1 : group.length);
       let offsetIndex = 0;
       group.forEach(({ shop, point }, index) => {
         const offset = focusedIndex === index ? L.point(0, 0) : offsets[offsetIndex++];
@@ -633,41 +632,7 @@ export class ShopResultsMapComponent implements AfterViewInit, OnChanges, OnDest
   }
 
   private groupVisibleShops(visible: VisibleShop[]): VisibleShop[][] {
-    const remaining = [...visible];
-    const groups: VisibleShop[][] = [];
-    while (remaining.length > 0) {
-      const seed = remaining.shift()!;
-      const group = [seed];
-      for (let index = remaining.length - 1; index >= 0; index -= 1) {
-        if (remaining[index].point.distanceTo(seed.point) < MARKER_SPREAD_RADIUS_PX) {
-          group.push(remaining.splice(index, 1)[0]);
-        }
-      }
-      groups.push(group);
-    }
-    return groups;
-  }
-
-  private spreadOffsets(count: number): L.Point[] {
-    if (count <= 0) {
-      return [];
-    }
-    const offsets: L.Point[] = [];
-    let remaining = count;
-    let ring = 0;
-    while (remaining > 0) {
-      const radius = 18 + ring * 20;
-      const capacity = Math.max(1, Math.floor((2 * Math.PI * radius) / 22));
-      const slots = Math.min(remaining, capacity);
-      const startAngle = ring % 2 === 0 ? 0 : Math.PI / slots;
-      for (let slot = 0; slot < slots; slot += 1) {
-        const angle = startAngle + (slot * 2 * Math.PI) / slots;
-        offsets.push(L.point(Math.cos(angle) * radius, Math.sin(angle) * radius));
-      }
-      remaining -= slots;
-      ring += 1;
-    }
-    return offsets;
+    return groupMarkerPoints(visible);
   }
 
   private createShopMarker(shop: LocatedShop, location: L.LatLngExpression): L.Marker {

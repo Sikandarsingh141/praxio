@@ -14,15 +14,7 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import * as L from 'leaflet';
-import {
-  catchError,
-  debounceTime,
-  from,
-  map,
-  mergeMap,
-  of,
-  Subject,
-} from 'rxjs';
+import { catchError, debounceTime, from, map, mergeMap, of, Subject } from 'rxjs';
 import {
   CommonFilterComponent,
   FilterConfig,
@@ -37,19 +29,25 @@ import {
   AdminMapRoute,
   AdminService,
 } from './admin.service';
+import {
+  groupMarkerPoints,
+  markerSpreadOffsets,
+  spiderfyOffsets,
+} from '../shared/map-marker-layout';
+
+const CLUSTER_MAX_ZOOM = 15;
+const CLUSTER_RADIUS_PX = 56;
 
 interface ProjectedMapEntity {
   entity: AdminMapMarker;
-  x: number;
-  y: number;
+  point: L.Point;
 }
 
-interface ProjectedMapCluster {
+interface MapCluster {
+  key: string;
   markers: ProjectedMapEntity[];
-  x: number;
-  y: number;
-  anchorX: number;
-  anchorY: number;
+  point: L.Point;
+  anchor: L.Point;
 }
 
 @Component({
@@ -69,12 +67,14 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   private routeSequence = 0;
   private map?: L.Map;
   private markerLayer = L.layerGroup();
+  private spiderLayer = L.layerGroup();
   private routeLayer = L.layerGroup();
   private streetLayer?: L.TileLayer;
   private satelliteLayer?: L.TileLayer;
   private resizeObserver?: ResizeObserver;
   private selectedEntityId: string | null = null;
   private openSelectedPopup = false;
+  private spiderfiedClusterKey: string | null = null;
   private lastSelectedMarker?: AdminMapMarker;
   @ViewChild('mapElement') private mapElement?: ElementRef<HTMLDivElement>;
   @ViewChild('mapShell') private mapShell?: ElementRef<HTMLDivElement>;
@@ -318,14 +318,15 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  focusEntity(entity: AdminMapEntity, showRoute = false): void {
+  focusEntity(entity: AdminMapEntity, showRoute = false, moveMap = true): void {
     this.selectionSequence += 1;
     this.selectedEntity.set(entity);
     this.selectedEntityId = entity.id;
     this.openSelectedPopup = true;
     this.renderMarkers();
-    if (entity.location && this.isValidLocation(entity.location)) {
-      this.map?.flyTo([entity.location.latitude, entity.location.longitude], 14, {
+    if (moveMap && entity.location && this.isValidLocation(entity.location)) {
+      const zoom = Math.max(this.map?.getZoom() ?? CLUSTER_MAX_ZOOM + 1, CLUSTER_MAX_ZOOM + 1);
+      this.map?.flyTo([entity.location.latitude, entity.location.longitude], zoom, {
         duration: 0.6,
       });
     }
@@ -582,6 +583,8 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       this.lastSelectedMarker = undefined;
       this.selectedEntity.set(null);
       this.selectedEntityId = null;
+      this.spiderfiedClusterKey = null;
+      this.spiderLayer.clearLayers();
       this.loadMarkers(hasSearch);
       this.clearRoute();
     } else {
@@ -647,6 +650,8 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   private loadMarkers(silent = false): void {
     const sequence = ++this.markerSequence;
     this.mapEntities.set([]);
+    this.spiderfiedClusterKey = null;
+    this.spiderLayer.clearLayers();
     this.mapLoading.set(true);
     this.mapError.set('');
     this.renderMarkers();
@@ -690,7 +695,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     const sequence = ++this.selectionSequence;
     const existing = this.entities().find((entity) => entity.id === marker.id);
     if (existing) {
-      this.focusEntity(existing);
+      this.focusEntity(existing, false, false);
       return;
     }
 
@@ -706,7 +711,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
           this.resolveLocationLabels(updatedEntities);
           this.visibleLimit.set(Math.max(this.visibleLimit(), this.entities().length));
         }
-        this.focusEntity(entity);
+        this.focusEntity(entity, false, false);
       },
       error: (error: HttpErrorResponse) => {
         this.markerDetailRequests.delete(marker.id);
@@ -751,9 +756,11 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(this.map);
+    this.spiderLayer.addTo(this.map);
     this.markerLayer.addTo(this.map);
     this.routeLayer.addTo(this.map);
-    this.map.on('moveend zoomend', this.renderMarkers);
+    this.map.on('moveend zoomend', this.handleMapViewChange);
+    this.map.on('click', this.collapseSpiderfy);
     this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
     this.resizeObserver.observe(this.mapElement.nativeElement);
     this.renderMarkers();
@@ -777,6 +784,9 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly renderMarkers = (): void => {
     if (!this.map) return;
     this.markerLayer.clearLayers();
+    this.spiderLayer.clearLayers();
+    const zoom = this.map.getZoom();
+    const entityById = new Map(this.entities().map((entity) => [entity.id, entity]));
     const projected: ProjectedMapEntity[] = this.mapEntities()
       .filter((marker) => this.isValidLocation(marker.location))
       .filter((marker) =>
@@ -784,22 +794,136 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       )
       .map((entity) => ({
         entity,
-        ...this.map!.latLngToContainerPoint([entity.location.latitude, entity.location.longitude]),
+        point: this.map!.latLngToContainerPoint([
+          entity.location.latitude,
+          entity.location.longitude,
+        ]),
       }))
-      .filter(({ x, y }) => Number.isFinite(x) && Number.isFinite(y));
-    const clusters: ProjectedMapCluster[] = [];
-    const clustersByCell = new Map<string, ProjectedMapCluster[]>();
-    const radius = 52;
-    for (const point of projected) {
-      const cellX = Math.floor(point.x / radius);
-      const cellY = Math.floor(point.y / radius);
-      let closest: ProjectedMapCluster | undefined;
+      .filter(({ point }) => Number.isFinite(point.x) && Number.isFinite(point.y));
+    let selectedMarker: L.Marker | undefined;
+    let selectedRendered = false;
+
+    const addIndividual = (
+      entity: AdminMapMarker,
+      location: L.LatLngExpression,
+      spider = false,
+    ): void => {
+      const selected = entity.id === this.selectedEntityId;
+      const marker = this.createRequestMarker(
+        entity,
+        location,
+        selected,
+        spider,
+        entityById.get(entity.id),
+      );
+      this.markerLayer.addLayer(marker);
+      if (selected) {
+        selectedRendered = true;
+        if (this.openSelectedPopup) selectedMarker = marker;
+      }
+    };
+
+    if (zoom > CLUSTER_MAX_ZOOM) {
+      groupMarkerPoints(projected).forEach((group) => {
+        const selectedIndex = group.findIndex(({ entity }) => entity.id === this.selectedEntityId);
+        const offsets =
+          group.length === 1
+            ? [L.point(0, 0)]
+            : markerSpreadOffsets(selectedIndex >= 0 ? group.length - 1 : group.length);
+        let offsetIndex = 0;
+        group.forEach(({ entity, point }, index) => {
+          const offset = selectedIndex === index ? L.point(0, 0) : offsets[offsetIndex++];
+          const location: L.LatLngExpression =
+            offset.x === 0 && offset.y === 0
+              ? [entity.location.latitude, entity.location.longitude]
+              : this.map!.containerPointToLatLng(point.add(offset));
+          addIndividual(entity, location);
+        });
+      });
+    } else {
+      let spiderfiedRendered = false;
+      for (const cluster of this.buildClusters(projected)) {
+        if (cluster.markers.length === 1) {
+          const [{ entity }] = cluster.markers;
+          addIndividual(entity, [entity.location.latitude, entity.location.longitude]);
+          continue;
+        }
+        if (cluster.key === this.spiderfiedClusterKey) {
+          const center = this.map.containerPointToLatLng(cluster.point);
+          const selectedIndex = cluster.markers.findIndex(
+            ({ entity }) => entity.id === this.selectedEntityId,
+          );
+          const selectedInCluster = selectedIndex >= 0 ? cluster.markers[selectedIndex] : undefined;
+          const others = selectedInCluster
+            ? cluster.markers.filter((_, index) => index !== selectedIndex)
+            : cluster.markers;
+          const offsets = spiderfyOffsets(others.length);
+          if (selectedInCluster) {
+            addIndividual(selectedInCluster.entity, center, true);
+          }
+          others.forEach((item, index) => {
+            const location = this.map!.containerPointToLatLng(cluster.point.add(offsets[index]));
+            const leg = L.polyline([center, location], {
+              color: item.entity.id === this.selectedEntityId ? '#168043' : '#2563eb',
+              weight: 1.5,
+              opacity: 0.5,
+              interactive: false,
+              className: 'admin-map-spider-leg',
+            });
+            this.spiderLayer.addLayer(leg);
+            addIndividual(item.entity, location, true);
+          });
+          spiderfiedRendered = true;
+          continue;
+        }
+
+        const containsSelected = cluster.markers.some(
+          ({ entity }) => entity.id === this.selectedEntityId,
+        );
+        const size = this.clusterIconSize(cluster.markers.length);
+        const marker = L.marker(this.map.containerPointToLatLng(cluster.point), {
+          bubblingMouseEvents: false,
+          icon: L.divIcon({
+            className: 'admin-map-cluster-icon',
+            html: `<span class="admin-map-cluster${containsSelected ? ' contains-selected' : ''}">${cluster.markers.length}</span>`,
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+          }),
+        });
+        marker.bindTooltip(`${cluster.markers.length} repair requests. Click to expand.`, {
+          direction: 'top',
+          offset: [0, -size / 2],
+        });
+        marker.on('click', () => this.spiderfyCluster(cluster.key));
+        this.markerLayer.addLayer(marker);
+      }
+      if (this.spiderfiedClusterKey && !spiderfiedRendered) {
+        this.spiderfiedClusterKey = null;
+      }
+    }
+
+    if (selectedMarker && this.openSelectedPopup) {
+      selectedMarker.openPopup();
+      this.openSelectedPopup = false;
+    } else if (selectedRendered) {
+      this.openSelectedPopup = false;
+    }
+  };
+
+  private buildClusters(points: ProjectedMapEntity[]): MapCluster[] {
+    const clusters: MapCluster[] = [];
+    const clustersByCell = new Map<string, MapCluster[]>();
+    const radius = CLUSTER_RADIUS_PX;
+    for (const point of points) {
+      const cellX = Math.floor(point.point.x / radius);
+      const cellY = Math.floor(point.point.y / radius);
+      let closest: MapCluster | undefined;
       let closestDistance = radius * radius;
       for (let x = cellX - 1; x <= cellX + 1; x += 1) {
         for (let y = cellY - 1; y <= cellY + 1; y += 1) {
           for (const candidate of clustersByCell.get(`${x}:${y}`) ?? []) {
-            const dx = candidate.anchorX - point.x;
-            const dy = candidate.anchorY - point.y;
+            const dx = candidate.anchor.x - point.point.x;
+            const dy = candidate.anchor.y - point.point.y;
             const distance = dx * dx + dy * dy;
             if (distance <= closestDistance) {
               closest = candidate;
@@ -810,17 +934,18 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       }
       if (closest) {
         const count = closest.markers.length;
-        closest.x = (closest.x * count + point.x) / (count + 1);
-        closest.y = (closest.y * count + point.y) / (count + 1);
+        closest.point = L.point(
+          (closest.point.x * count + point.point.x) / (count + 1),
+          (closest.point.y * count + point.point.y) / (count + 1),
+        );
         closest.markers.push(point);
         continue;
       }
-      const cluster: ProjectedMapCluster = {
+      const cluster: MapCluster = {
+        key: '',
         markers: [point],
-        x: point.x,
-        y: point.y,
-        anchorX: point.x,
-        anchorY: point.y,
+        point: point.point.clone(),
+        anchor: point.point,
       };
       clusters.push(cluster);
       const cell = clustersByCell.get(`${cellX}:${cellY}`) ?? [];
@@ -828,37 +953,66 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       clustersByCell.set(`${cellX}:${cellY}`, cell);
     }
     for (const cluster of clusters) {
-      const point = cluster.markers[0];
-      if (cluster.markers.length > 1) {
-        const marker = L.marker(this.map.containerPointToLatLng([cluster.x, cluster.y]), {
-          icon: L.divIcon({
-            className: '',
-            html: `<span class="admin-map-cluster">${cluster.markers.length}</span>`,
-            iconSize: [42, 42],
-            iconAnchor: [21, 21],
-          }),
-        });
-        marker.bindPopup(this.createClusterPopup(cluster.markers));
-        this.markerLayer.addLayer(marker);
-        continue;
-      }
-      const entity = point.entity;
-      const marker = L.marker([entity.location.latitude, entity.location.longitude], {
-        icon: L.divIcon({
-          className: '',
-          html: `<span class="admin-map-marker ${this.markerColor(entity)}${
-            entity.id === this.selectedEntityId ? ' selected' : ''
-          }">${this.markerGlyph(entity)}</span>`,
-          iconSize: [36, 42],
-          iconAnchor: [18, 38],
-        }),
-      });
-      marker.bindPopup(this.createMarkerPopup(entity), { maxWidth: 300 });
-      marker.on('click', () => this.selectMapMarker(entity));
-      this.markerLayer.addLayer(marker);
-      if (entity.id === this.selectedEntityId && this.openSelectedPopup) marker.openPopup();
+      cluster.key = cluster.markers
+        .map(({ entity }) => entity.id)
+        .sort()
+        .join('|');
     }
-    if (this.openSelectedPopup) this.openSelectedPopup = false;
+    return clusters;
+  }
+
+  private clusterIconSize(count: number): number {
+    if (count >= 1000) return 62;
+    if (count >= 100) return 56;
+    if (count >= 10) return 48;
+    return 42;
+  }
+
+  private createRequestMarker(
+    entity: AdminMapMarker,
+    location: L.LatLngExpression,
+    selected: boolean,
+    spider: boolean,
+    request?: AdminMapEntity,
+  ): L.Marker {
+    const marker = L.marker(location, {
+      riseOnHover: true,
+      riseOffset: 250,
+      bubblingMouseEvents: false,
+      icon: L.divIcon({
+        className: spider ? 'admin-map-spider-icon' : 'admin-map-dot-icon',
+        html: `<span class="admin-map-dot${selected ? ' selected' : ''}${
+          spider ? ' admin-map-spider-dot' : ''
+        }"></span>`,
+        iconSize: [21, 21],
+        iconAnchor: [10.5, 10.5],
+      }),
+    });
+    marker.bindPopup(() => (request ? this.createPopup(request) : this.createMarkerPopup(entity)), {
+      maxWidth: 320,
+    });
+    marker.on('click', () => this.selectMapMarker(entity));
+    return marker;
+  }
+
+  private spiderfyCluster(key: string): void {
+    this.spiderfiedClusterKey = key;
+    this.renderMarkers();
+  }
+
+  private readonly handleMapViewChange = (): void => {
+    if (this.spiderfiedClusterKey) {
+      this.spiderfiedClusterKey = null;
+      this.spiderLayer.clearLayers();
+    }
+    this.renderMarkers();
+  };
+
+  private readonly collapseSpiderfy = (): void => {
+    this.openSelectedPopup = false;
+    if (!this.spiderfiedClusterKey) return;
+    this.spiderfiedClusterKey = null;
+    this.renderMarkers();
   };
 
   private createPopup(entity: AdminMapEntity): HTMLElement {
@@ -899,23 +1053,10 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     } else {
       addLine('Request ID', this.formatRequestId(entity.id), 'request-reference');
       addLine('Customer', entity.customerName ?? '');
-      addLine('Customer phone', entity.customerPhone ?? '');
-      addLine('Customer email', entity.customerEmail ?? '');
-      addLine('Repair shop', entity.shopName ?? 'Not assigned');
-      addLine('Shop phone', entity.shopPhone ?? '');
-      addLine('Shop email', entity.shopEmail ?? '');
-      addLine('Shop location', this.shopLocationLabel(entity));
-      addLine('Customer location', this.customerLocationLabel(entity));
-      addLine('Issue', entity.description ?? '');
-      addLine('Service type', entity.serviceType ?? '');
-      addLine('Requested', entity.createdAt ? new Date(entity.createdAt).toLocaleDateString() : '');
-      addLine(
-        'Quotation',
-        entity.quotationAmount === null || entity.quotationAmount === undefined
-          ? ''
-          : `${entity.quotationAmount} ${entity.quotationCurrency ?? ''}`.trim(),
-      );
+      addLine('Repair type', this.serviceTypeLabel(entity));
       addLine('Status', this.statusLabel(entity.status));
+      addLine('Address', this.locationLabel(entity));
+      addLine('Date', entity.createdAt ? new Date(entity.createdAt).toLocaleDateString() : '');
     }
     const actions = document.createElement('div');
     actions.className = 'admin-map-popup-actions';
@@ -929,7 +1070,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
         ? 'View customer'
         : entity.type === 'shop'
           ? 'View shop'
-          : 'View request';
+          : 'View Details';
     actions.append(detailsLink);
     if (entity.type === 'request') {
       const routeButton = document.createElement('button');
@@ -944,8 +1085,6 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private createMarkerPopup(marker: AdminMapMarker): HTMLElement {
-    const request = this.entities().find((entity) => entity.id === marker.id);
-    if (request) return this.createPopup(request);
     const root = document.createElement('div');
     root.className = 'admin-map-popup';
     const heading = document.createElement('strong');
@@ -962,67 +1101,19 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       root.append(line);
     };
     addLine('Request ID', this.formatRequestId(marker.id), 'request-reference');
+    addLine('Customer', 'Loading request details…');
+    addLine('Repair type', marker.name || 'Repair service');
     addLine('Status', this.statusLabel(marker.status));
-    addLine('Location', 'Loading location…');
-    addLine('Details', 'Loading request details…');
+    addLine('Address', this.resolvedLocationLabel(marker.location));
+    addLine('Date', 'Loading request details…');
+    const actions = document.createElement('div');
+    actions.className = 'admin-map-popup-actions';
+    const detailsLink = document.createElement('a');
+    detailsLink.href = `/admin/repair-jobs/${encodeURIComponent(marker.id)}`;
+    detailsLink.textContent = 'View Details';
+    actions.append(detailsLink);
+    root.append(actions);
     return root;
-  }
-
-  private createClusterPopup(markers: ProjectedMapEntity[]): HTMLElement {
-    const root = document.createElement('div');
-    root.className = 'admin-map-popup';
-    const heading = document.createElement('strong');
-    heading.textContent = `${markers.length} repair requests in this area`;
-    root.append(heading);
-    const list = document.createElement('ul');
-    for (const { entity } of markers.slice(0, 5)) {
-      const item = document.createElement('li');
-      const requestId = document.createElement('strong');
-      requestId.className = 'request-reference';
-      requestId.textContent = this.formatRequestId(entity.id);
-      item.append(requestId, document.createTextNode(` · ${entity.name || 'Repair request'}`));
-      list.append(item);
-    }
-    root.append(list);
-    if (markers.length > 5) {
-      const remaining = document.createElement('p');
-      remaining.textContent = `and ${markers.length - 5} more`;
-      root.append(remaining);
-    }
-    const zoomButton = document.createElement('button');
-    zoomButton.type = 'button';
-    zoomButton.textContent = 'Zoom to these requests';
-    zoomButton.addEventListener('click', () => {
-      this.map?.fitBounds(
-        L.latLngBounds(
-          markers.map(
-            ({ entity }) =>
-              [entity.location.latitude, entity.location.longitude] as L.LatLngExpression,
-          ),
-        ),
-        { padding: [56, 56], maxZoom: 18 },
-      );
-    });
-    root.append(zoomButton);
-    return root;
-  }
-
-  private markerGlyph(entity: Pick<AdminMapEntity, 'type' | 'status' | 'name'>): string {
-    if (entity.type === 'customer') return this.initials(entity.name);
-    if (entity.type === 'shop') return 'S';
-    if (entity.status === 'completed') return '✓';
-    if (entity.status === 'disputed') return '!';
-    if (entity.status === 'cancelled') return '×';
-    if (this.markerColor(entity) === 'in-progress') return '↻';
-    return '•';
-  }
-
-  private initials(value: string): string {
-    const parts = value.trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return 'C';
-    return parts.length > 1
-      ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
-      : parts[0].slice(0, 2).toUpperCase();
   }
 
   private isValidLocation(location: { latitude: number; longitude: number }): boolean {

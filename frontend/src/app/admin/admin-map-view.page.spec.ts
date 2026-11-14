@@ -77,8 +77,11 @@ describe('AdminMapViewPage', () => {
     expect(page.visibleCount).toBe(20);
     expect(page.data()?.total).toBe(45);
     expect(page.mapEntities()).toHaveSize(45);
-    const cluster = page['markerLayer'].getLayers()[0] as L.Marker;
-    expect((cluster.getIcon() as L.DivIcon).options.html).toContain('45');
+    const markers = page['markerLayer'].getLayers() as L.Marker[];
+    expect(markers).toHaveSize(1);
+    const clusterIcon = String((markers[0].getIcon() as L.DivIcon).options.html ?? '');
+    expect(clusterIcon).toContain('admin-map-cluster');
+    expect(clusterIcon).toContain('45');
     const atBottom = document.createElement('div');
     Object.defineProperties(atBottom, {
       scrollHeight: { value: 1000 },
@@ -123,9 +126,14 @@ describe('AdminMapViewPage', () => {
     fixture.destroy();
   });
 
-  it('zooms in enough to separate nearby request locations', () => {
+  it('clusters nearby request locations until the admin zooms in', () => {
     const fixture = TestBed.createComponent(AdminMapViewPage);
+    document.body.appendChild(fixture.nativeElement);
     fixture.detectChanges();
+    const canvas = fixture.nativeElement.querySelector('.map-canvas') as HTMLElement;
+    canvas.style.width = '640px';
+    canvas.style.height = '480px';
+    fixture.componentInstance['map']?.invalidateSize();
     const markers = [
       {
         ...makeMarker('request-1'),
@@ -133,7 +141,7 @@ describe('AdminMapViewPage', () => {
       },
       {
         ...makeMarker('request-2'),
-        location: { latitude: 43.652, longitude: -79.38 },
+        location: { latitude: 43.6515, longitude: -79.38 },
       },
     ];
     flushMarkers(http, markers);
@@ -142,8 +150,158 @@ describe('AdminMapViewPage', () => {
       .flush({ data: mapData([]) });
     fixture.detectChanges();
 
-    expect(fixture.componentInstance['map']?.getZoom()).toBe(15);
-    expect(fixture.componentInstance['markerLayer'].getLayers()).toHaveSize(2);
+    const page = fixture.componentInstance;
+    const map = page['map']!;
+    expect(map.getZoom()).toBe(15);
+    let layers = page['markerLayer'].getLayers() as L.Marker[];
+    expect(layers).toHaveSize(1);
+    expect(String((layers[0].getIcon() as L.DivIcon).options.html)).toContain('admin-map-cluster');
+
+    map.setZoom(16, { animate: false });
+    fixture.detectChanges();
+
+    layers = page['markerLayer'].getLayers() as L.Marker[];
+    expect(layers).toHaveSize(2);
+    expect(layers[0].getLatLng().equals(layers[1].getLatLng())).toBeFalse();
+    expect(
+      layers.every((layer) =>
+        String((layer.getIcon() as L.DivIcon).options.html ?? '').includes('admin-map-dot'),
+      ),
+    ).toBeTrue();
+    fixture.nativeElement.remove();
+    fixture.destroy();
+  });
+
+  it('spiderfies a cluster and keeps the selected request marker green', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    document.body.appendChild(fixture.nativeElement);
+    fixture.detectChanges();
+    const canvas = fixture.nativeElement.querySelector('.map-canvas') as HTMLElement;
+    canvas.style.width = '640px';
+    canvas.style.height = '480px';
+    fixture.componentInstance['map']?.invalidateSize();
+
+    const requests = ['request-1', 'request-2', 'request-3'].map((id, index) => ({
+      ...makeEntity(id, 'request'),
+      location: { latitude: 43.65, longitude: -79.38 },
+      address: `1${index} King Street`,
+      city: 'Toronto',
+      state: 'Ontario',
+      appliance: index === 0 ? 'Phone' : 'Laptop',
+      customerName: `Customer ${index + 1}`,
+      createdAt: '2026-10-28T12:00:00.000Z',
+    }));
+    flushMarkers(
+      http,
+      requests.map((request) => makeMarker(request.id)),
+    );
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData(requests) });
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map/reverse-geocode`)
+      .flush({ data: { label: 'Toronto, Ontario, Canada' } });
+    fixture.detectChanges();
+
+    const page = fixture.componentInstance;
+    let layers = page['markerLayer'].getLayers() as L.Marker[];
+    expect(layers).toHaveSize(1);
+    expect(String((layers[0].getIcon() as L.DivIcon).options.html)).toContain('admin-map-cluster');
+
+    layers[0].fire('click');
+    fixture.detectChanges();
+
+    layers = page['markerLayer'].getLayers() as L.Marker[];
+    expect(layers).toHaveSize(3);
+    expect(page['spiderLayer'].getLayers()).toHaveSize(3);
+    expect(
+      layers.every((layer) =>
+        String((layer.getIcon() as L.DivIcon).options.html ?? '').includes('admin-map-spider-dot'),
+      ),
+    ).toBeTrue();
+
+    layers[1].fire('click');
+    fixture.detectChanges();
+
+    layers = page['markerLayer'].getLayers() as L.Marker[];
+    expect(layers).toHaveSize(3);
+    expect(page['spiderLayer'].getLayers()).toHaveSize(2);
+    const selected = layers.filter((layer) =>
+      String((layer.getIcon() as L.DivIcon).options.html ?? '').includes('selected'),
+    );
+    expect(selected).toHaveSize(1);
+    expect((selected[0].getIcon() as L.DivIcon).options.html).toContain('admin-map-dot selected');
+
+    const popup = document.querySelector('.admin-map-popup') as HTMLElement;
+    expect(popup).not.toBeNull();
+    expect(popup.textContent).toContain('Request ID');
+    expect(popup.textContent).toContain('EQUEST-2');
+    expect(popup.textContent).toContain('Customer 2');
+    expect(popup.textContent).toContain('Laptop');
+    expect(popup.textContent).toContain('11 King Street, Toronto, Ontario');
+    expect(popup.textContent).toContain('2026');
+    const details = popup.querySelector('.admin-map-popup-actions a') as HTMLAnchorElement;
+    expect(details.textContent).toBe('View Details');
+    expect(details.getAttribute('href')).toBe(
+      `/admin/repair-jobs/${encodeURIComponent(requests[1].id)}`,
+    );
+
+    fixture.nativeElement.remove();
+    fixture.destroy();
+  });
+
+  it('uses individual dots, highlights the selected request, and shows request details', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    document.body.appendChild(fixture.nativeElement);
+    fixture.detectChanges();
+    const canvas = fixture.nativeElement.querySelector('.map-canvas') as HTMLElement;
+    canvas.style.width = '640px';
+    canvas.style.height = '480px';
+    fixture.componentInstance['map']?.invalidateSize();
+    const id = '6afad85h46jg666e727c';
+    const request = {
+      ...makeEntity(id, 'request'),
+      location: { latitude: 43.65, longitude: -79.38 },
+      address: '12 King Street',
+      city: 'Toronto',
+      state: 'Ontario',
+      appliance: 'Phone',
+      customerName: 'Avery Johnson',
+      createdAt: '2026-10-28T12:00:00.000Z',
+    };
+    flushMarkers(http, [makeMarker(id)]);
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData([request]) });
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map/reverse-geocode`)
+      .flush({ data: { label: 'Toronto, Ontario, Canada' } });
+    fixture.detectChanges();
+
+    const page = fixture.componentInstance;
+    const marker = page['markerLayer'].getLayers()[0] as L.Marker;
+    const icon = (marker.getIcon() as L.DivIcon).options.html ?? '';
+    expect(icon).toContain('admin-map-dot');
+    expect(icon).not.toContain('selected');
+
+    marker.fire('click');
+    fixture.detectChanges();
+
+    const selected = page['markerLayer'].getLayers()[0] as L.Marker;
+    expect((selected.getIcon() as L.DivIcon).options.html).toContain('admin-map-dot selected');
+    const popup = document.querySelector('.admin-map-popup') as HTMLElement;
+    expect(popup).not.toBeNull();
+    expect(popup.textContent).toContain('Request ID');
+    expect(popup.textContent).toContain('666E727C');
+    expect(popup.textContent).toContain('Avery Johnson');
+    expect(popup.textContent).toContain('Phone');
+    expect(popup.textContent).toContain('In progress');
+    expect(popup.textContent).toContain('12 King Street, Toronto, Ontario');
+    expect(popup.textContent).toContain('2026');
+    const details = popup.querySelector('.admin-map-popup-actions a') as HTMLAnchorElement;
+    expect(details.textContent).toBe('View Details');
+    expect(details.getAttribute('href')).toBe(`/admin/repair-jobs/${encodeURIComponent(id)}`);
+    fixture.nativeElement.remove();
     fixture.destroy();
   });
 
@@ -235,15 +393,10 @@ describe('AdminMapViewPage', () => {
       '↻ In progress',
     ]);
     expect(
-      badges.map((badge) =>
-        getComputedStyle(badge.querySelector('span') as HTMLElement).backgroundColor,
+      badges.map(
+        (badge) => getComputedStyle(badge.querySelector('span') as HTMLElement).backgroundColor,
       ),
-    ).toEqual([
-      'rgb(23, 107, 52)',
-      'rgb(168, 91, 12)',
-      'rgb(104, 117, 129)',
-      'rgb(46, 105, 173)',
-    ]);
+    ).toEqual(['rgb(23, 107, 52)', 'rgb(168, 91, 12)', 'rgb(104, 117, 129)', 'rgb(46, 105, 173)']);
     fixture.destroy();
   });
 
@@ -425,7 +578,7 @@ describe('AdminMapViewPage', () => {
 
     expect(flyTo).toHaveBeenCalledWith(
       [request.location!.latitude, request.location!.longitude],
-      14,
+      16,
       { duration: 0.6 },
     );
     const routeRequest = http.expectOne(
