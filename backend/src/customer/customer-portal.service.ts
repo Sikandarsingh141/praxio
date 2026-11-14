@@ -552,6 +552,111 @@ export class CustomerPortalService {
     });
   }
 
+  async reverseGeocode(latitude: number, longitude: number): Promise<string> {
+    if (
+      !Number.isFinite(latitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      !Number.isFinite(longitude) ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      throw new BadRequestException(
+        'A valid latitude and longitude are required.',
+      );
+    }
+
+    const endpoint = this.config.get<string>(
+      'GEOCODER_URL',
+      'https://photon.komoot.io/api/',
+    );
+    let url: URL;
+    try {
+      url = new URL(endpoint);
+      const apiPath = url.pathname.replace(/\/$/, '');
+      url.pathname = apiPath.endsWith('/api')
+        ? `${apiPath.slice(0, -4)}/reverse`
+        : `${apiPath}/reverse`;
+      url.search = '';
+    } catch {
+      throw new BadGatewayException(
+        'Address suggestions are not configured correctly.',
+      );
+    }
+    url.searchParams.set('lat', String(latitude));
+    url.searchParams.set('lon', String(longitude));
+    url.searchParams.set('limit', '1');
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        headers: { 'User-Agent': 'PraxioRepairDiscovery/1.0' },
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {
+      throw new BadGatewayException(
+        'Location lookup is temporarily unavailable.',
+      );
+    }
+    if (!response.ok) {
+      throw new BadGatewayException(
+        'Location lookup is temporarily unavailable.',
+      );
+    }
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      throw new BadGatewayException(
+        'Location provider returned invalid results.',
+      );
+    }
+    if (!payload || typeof payload !== 'object' || !('features' in payload)) {
+      throw new BadGatewayException(
+        'Location provider returned invalid results.',
+      );
+    }
+    const features = payload.features;
+    if (!Array.isArray(features)) {
+      throw new BadGatewayException(
+        'Location provider returned invalid results.',
+      );
+    }
+
+    const feature = features.find(
+      (item): item is { properties?: Record<string, unknown> } =>
+        Boolean(item && typeof item === 'object'),
+    );
+    const properties = feature?.properties;
+    if (!properties) {
+      return 'Location unavailable';
+    }
+    const property = (...keys: string[]): string | undefined => {
+      for (const key of keys) {
+        const value = properties[key];
+        if (typeof value === 'string' && value.trim()) return value.trim();
+      }
+      return undefined;
+    };
+    const labelParts = [
+      property('suburb', 'locality'),
+      property('city', 'town', 'village', 'municipality', 'district', 'county'),
+      property('state'),
+      property('country'),
+    ].filter((part): part is string => !!part);
+    const uniqueLabelParts = labelParts.filter(
+      (part, index) =>
+        labelParts.findIndex(
+          (candidate) => candidate.toLowerCase() === part.toLowerCase(),
+        ) === index,
+    );
+    if (!uniqueLabelParts.length) {
+      return property('name') ?? 'Location unavailable';
+    }
+    return uniqueLabelParts.join(', ');
+  }
+
   async createRepairRequest(
     customerId: string,
     input: CreateRepairRequestDto,

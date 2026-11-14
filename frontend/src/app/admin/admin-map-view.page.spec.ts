@@ -162,13 +162,113 @@ describe('AdminMapViewPage', () => {
     http
       .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
       .flush({ data: mapData([request]) });
+    const reverseGeocodeRequest = http.expectOne(
+      (pending) =>
+        pending.url === `${environment.apiBaseUrl}/admin/map/reverse-geocode` &&
+        pending.params.get('latitude') === '43.65' &&
+        pending.params.get('longitude') === '-79.38',
+    );
+    reverseGeocodeRequest.flush({ data: { label: 'Toronto, Ontario, Canada' } });
     fixture.detectChanges();
 
     const route = fixture.nativeElement.querySelector('.result-route') as HTMLElement;
     expect(route.querySelectorAll('.route-pin')).toHaveSize(2);
     expect(route.querySelector('.route-direction')?.textContent).toBe('→');
-    expect(route.textContent).toContain('43.6500, -79.3800');
+    expect(route.textContent).toContain('Toronto, Ontario, Canada');
+    expect(route.textContent).not.toContain('43.6500, -79.3800');
     expect(route.textContent).toContain('10 King Street, Toronto, Ontario');
+    fixture.destroy();
+  });
+
+  it('renders compact status badges with matching card accents', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    fixture.detectChanges();
+    const requests = [
+      { ...makeEntity('completed-1', 'request'), status: 'completed' },
+      { ...makeEntity('pending-1', 'request'), status: 'inspection_pending' },
+      { ...makeEntity('cancelled-1', 'request'), status: 'cancelled' },
+      { ...makeEntity('in-progress-1', 'request'), status: 'in_progress' },
+    ];
+    flushMarkers(
+      http,
+      requests.map((request) => makeMarker(request.id)),
+    );
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData(requests) });
+    fixture.detectChanges();
+
+    const cards = Array.from(
+      fixture.nativeElement.querySelectorAll('.result-card') as NodeListOf<HTMLElement>,
+    );
+    const badges = Array.from(
+      fixture.nativeElement.querySelectorAll('.result-status') as NodeListOf<HTMLElement>,
+    );
+    expect(cards.map((card) => card.classList.contains('completed'))).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
+    expect(cards.map((card) => card.classList.contains('pending'))).toEqual([
+      false,
+      true,
+      false,
+      false,
+    ]);
+    expect(cards.map((card) => card.classList.contains('cancelled'))).toEqual([
+      false,
+      false,
+      true,
+      false,
+    ]);
+    expect(cards.map((card) => card.classList.contains('in-progress'))).toEqual([
+      false,
+      false,
+      false,
+      true,
+    ]);
+    expect(badges.map((badge) => badge.textContent?.trim())).toEqual([
+      '✓ Completed',
+      '◷ Pending',
+      '× Cancelled',
+      '↻ In progress',
+    ]);
+    expect(
+      badges.map((badge) =>
+        getComputedStyle(badge.querySelector('span') as HTMLElement).backgroundColor,
+      ),
+    ).toEqual([
+      'rgb(23, 107, 52)',
+      'rgb(168, 91, 12)',
+      'rgb(104, 117, 129)',
+      'rgb(46, 105, 173)',
+    ]);
+    fixture.destroy();
+  });
+
+  it('uses a repair tool icon and places readable service and date details at the bottom', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    fixture.detectChanges();
+    const request = {
+      ...makeEntity('request-1', 'request'),
+      appliance: 'Laptop',
+      serviceType: 'home_service',
+    };
+    flushMarkers(http, [makeMarker(request.id)]);
+    http
+      .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData([request]) });
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('.result-card') as HTMLElement;
+    const markerIcon = card.querySelector('.result-marker svg') as SVGElement;
+    const metadata = card.querySelector('.result-meta') as HTMLElement;
+    expect(markerIcon.querySelector('rect')).toBeNull();
+    expect(markerIcon.querySelector('path')).not.toBeNull();
+    expect(metadata.previousElementSibling?.classList.contains('result-route')).toBeTrue();
+    expect(metadata.textContent).toContain('Home service');
+    expect(metadata.textContent).toContain('2026');
     fixture.destroy();
   });
 
@@ -296,10 +396,24 @@ describe('AdminMapViewPage', () => {
   it('focuses a selected request and displays provider route metrics', () => {
     const fixture = TestBed.createComponent(AdminMapViewPage);
     fixture.detectChanges();
-    const request = makeEntity('request-1', 'request');
+    const request = {
+      ...makeEntity('request-1', 'request'),
+      location: { latitude: 43.65, longitude: -79.38 },
+      shopLocation: { latitude: 43.67, longitude: -79.4 },
+      shopAddress: '10 King Street',
+      shopCity: 'Toronto',
+      shopState: 'Ontario',
+    };
     http
       .expectOne((pending) => pending.url === `${environment.apiBaseUrl}/admin/map`)
       .flush({ data: mapData([request]) });
+    http
+      .expectOne(
+        (pending) =>
+          pending.url === `${environment.apiBaseUrl}/admin/map/reverse-geocode` &&
+          pending.params.get('latitude') === '43.65',
+      )
+      .flush({ data: { label: 'Toronto, Ontario, Canada' } });
     flushMarkers(http, [makeMarker(request.id)]);
     fixture.detectChanges();
 
@@ -399,7 +513,7 @@ function makeEntity(id: string, type: AdminMapEntity['type']): AdminMapEntity {
     id,
     type,
     name: type === 'request' ? 'Phone repair' : 'Avery Johnson',
-    location: { latitude: 43.65, longitude: -79.38 },
+    location: null,
     address: '',
     city: '',
     state: '',
@@ -410,7 +524,7 @@ function makeEntity(id: string, type: AdminMapEntity['type']): AdminMapEntity {
     shopName: 'Northstar Repairs',
     shopEmail: 'shop@example.test',
     shopPhone: '+1 4165550199',
-    shopLocation: { latitude: 43.67, longitude: -79.4 },
+    shopLocation: null,
     appliance: 'Phone',
     description: 'Screen is cracked',
     createdAt: '2026-10-28T12:00:00.000Z',

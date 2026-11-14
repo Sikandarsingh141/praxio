@@ -506,6 +506,17 @@ export class AdminService {
       .pipe(map((response) => response.data.route));
   }
 
+  getMapLocationLabel(latitude: number, longitude: number): Observable<string> {
+    const params = new HttpParams()
+      .set('latitude', String(latitude))
+      .set('longitude', String(longitude));
+    return this.http
+      .get<ApiEnvelope<{ label: string }>>(`${environment.apiBaseUrl}/admin/map/reverse-geocode`, {
+        params,
+      })
+      .pipe(map((response) => response.data.label));
+  }
+
   getDashboardOverview(
     from: string,
     to: string,

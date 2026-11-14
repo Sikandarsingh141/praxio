@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseFloatPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CustomerPortalService } from '../customer/customer-portal.service';
@@ -73,6 +80,19 @@ export class AdminMapController {
       status,
     });
     return { data: { markers: result.markers ?? [] } };
+  }
+
+  @Get('reverse-geocode')
+  @ApiOperation({ summary: 'Get a readable label for map coordinates' })
+  async reverseGeocode(
+    @Query('latitude', ParseFloatPipe) latitude: number,
+    @Query('longitude', ParseFloatPipe) longitude: number,
+  ): Promise<{ data: { label: string } }> {
+    return {
+      data: {
+        label: await this.customerPortal.reverseGeocode(latitude, longitude),
+      },
+    };
   }
 
   @Get('repair-requests/:id')

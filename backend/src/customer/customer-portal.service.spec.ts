@@ -747,6 +747,49 @@ describe('CustomerPortalService', () => {
     });
   });
 
+  it('reverse geocodes coordinates to a readable place name', async () => {
+    const fetch = jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          features: [
+            {
+              properties: {
+                city: 'Agra',
+                state: 'Uttar Pradesh',
+                country: 'India',
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    try {
+      await expect(service.reverseGeocode(27.1358, 78.017)).resolves.toBe(
+        'Agra, Uttar Pradesh, India',
+      );
+      expect(String(fetch.mock.calls[0]?.[0])).toBe(
+        'https://photon.komoot.io/reverse?lat=27.1358&lon=78.017&limit=1',
+      );
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it('rejects invalid coordinates before calling the geocoder', async () => {
+    const fetch = jest.spyOn(globalThis, 'fetch');
+
+    try {
+      await expect(service.reverseGeocode(91, 0)).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
   it('calculates the fastest authorized shop route with the server-side Google API key', async () => {
     const shopId = new Types.ObjectId();
     const customerId = new Types.ObjectId();

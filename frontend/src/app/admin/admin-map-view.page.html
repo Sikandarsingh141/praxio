@@ -82,21 +82,35 @@
               type="button"
               (click)="focusEntity(entity, entity.type === 'request')"
             >
-              <span class="result-marker" aria-hidden="true">{{
-                entity.type === 'request' ? '⚒' : entity.type === 'shop' ? '⌂' : '♙'
-              }}</span>
+              <span class="result-marker" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0L21 6.1a6 6 0 0 1-7.9 7.9l-7.9 7.9a2 2 0 0 1-2.8-2.8l7.9-7.9a6 6 0 0 1 7.9-7.9z"
+                  />
+                </svg>
+              </span>
               <span class="result-copy">
-                <span class="result-title">
-                  {{
-                    entity.type === 'request' ? entity.appliance || 'Repair request' : entity.name
-                  }}
+                <span class="result-heading">
+                  <span class="result-title">
+                    {{
+                      entity.type === 'request' ? entity.appliance || 'Repair request' : entity.name
+                    }}
+                  </span>
+                  @if (entity.type === 'request') {
+                    <span class="result-status" [attr.data-status]="markerColor(entity)">
+                      <span aria-hidden="true">{{ statusIcon(entity.status) }}</span>
+                      {{ statusLabel(entity.status) }}
+                    </span>
+                  }
                 </span>
                 @if (entity.type === 'request') {
-                  <span class="result-subtitle"
-                    >Request ID:
-                    <strong class="request-reference">{{ formatRequestId(entity.id) }}</strong>
-                    · {{ entity.customerName }}</span
-                  >
+                  <span class="result-subtitle">
+                    <span
+                      >Request ID:
+                      <strong class="request-reference">{{ formatRequestId(entity.id) }}</strong>
+                      · {{ entity.customerName }}</span
+                    >
+                  </span>
                   <span class="result-route" aria-label="Customer to shop location">
                     <span
                       class="route-endpoint customer-endpoint"
@@ -104,9 +118,7 @@
                       [attr.title]="'Customer: ' + customerLocationLabel(entity)"
                     >
                       <svg class="route-pin" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z"
-                        />
+                        <path d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z" />
                         <circle cx="12" cy="10" r="2.5" />
                       </svg>
                       <span>{{ customerLocationLabel(entity) }}</span>
@@ -118,18 +130,27 @@
                       [attr.title]="'Shop: ' + shopLocationLabel(entity)"
                     >
                       <svg class="route-pin" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z"
-                        />
+                        <path d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z" />
                         <circle cx="12" cy="10" r="2.5" />
                       </svg>
                       <span>{{ shopLocationLabel(entity) }}</span>
                     </span>
                   </span>
                   <span class="result-meta">
-                    {{ entity.serviceType || entity.appliance }} ·
-                    {{ entity.createdAt | date: 'mediumDate' }} ·
-                    {{ statusLabel(entity.status) | titlecase }}
+                    <span class="result-chip">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3.5 11 12 4l8.5 7v8a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z" />
+                        <path d="M9 20v-6h6v6" />
+                      </svg>
+                      {{ serviceTypeLabel(entity) }}
+                    </span>
+                    <span class="result-chip">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3.5" y="5" width="17" height="16" rx="2" />
+                        <path d="M7.5 3v4m9-4v4M3.5 10h17" />
+                      </svg>
+                      {{ entity.createdAt | date: 'mediumDate' }}
+                    </span>
                   </span>
                 }
               </span>
