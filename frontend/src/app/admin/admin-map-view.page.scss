@@ -169,6 +169,57 @@
       font-weight: 750;
     }
 
+    .entity-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.35rem;
+      padding: 0.55rem 0.65rem;
+      border-bottom: 1px solid #edf1ed;
+      background: #fbfdfb;
+    }
+
+    .entity-tabs button {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      padding: 0.45rem 0.35rem;
+      border: 1px solid #dfe8e1;
+      border-radius: 0.55rem;
+      background: #fff;
+      color: #506257;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.64rem;
+      font-weight: 700;
+      transition:
+        background 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease,
+        box-shadow 140ms ease;
+    }
+
+    .entity-tabs button:hover {
+      border-color: #cfe0d3;
+      background: #f3f8f4;
+    }
+
+    .entity-tabs button.active {
+      border-color: #087c3b;
+      background: #087c3b;
+      box-shadow: 0 4px 10px rgb(8 124 59 / 18%);
+      color: #fff;
+    }
+
+    .entity-tab-count {
+      overflow: hidden;
+      font-size: 0.58rem;
+      opacity: 0.82;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .results-list {
       display: grid;
       min-height: 0;
@@ -266,6 +317,82 @@
       stroke-linecap: round;
       stroke-linejoin: round;
       stroke-width: 1.8;
+    }
+
+    .result-avatar {
+      display: grid;
+      width: 2.05rem;
+      height: 2.05rem;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 50%;
+      background: #eaf3ff;
+      color: #347bc0;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .result-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .result-card.customer {
+      --card-accent: #347bc0;
+
+      background: linear-gradient(110deg, #fff 0%, #f6faff 100%);
+    }
+
+    .result-card.shop .result-avatar {
+      border-radius: 0.68rem;
+      background: #e7f5eb;
+      color: #168043;
+    }
+
+    .result-verification {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      padding: 0.14rem 0.4rem;
+      border-radius: 999px;
+      background: #e7f5eb;
+      color: #176b34;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .result-verification[data-status='pending'] {
+      background: #fff1df;
+      color: #a85b0c;
+    }
+
+    .result-verification[data-status='declined'] {
+      background: #fff0ef;
+      color: #b52b24;
+    }
+
+    .result-rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.18rem;
+      color: #9a6508;
+      font-size: 0.6rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .result-rating span {
+      color: #e9a51b;
+      font-size: 0.7rem;
+    }
+
+    .result-rating.muted {
+      color: #849087;
+      font-weight: 600;
     }
 
     .result-card.shop .result-marker,
@@ -818,6 +945,14 @@
         box-shadow 0.15s ease;
     }
 
+    .admin-map-dot--customer {
+      background: #0f766e;
+    }
+
+    .admin-map-dot--shop {
+      background: #b45309;
+    }
+
     .admin-map-dot.selected {
       background: #168043;
       box-shadow:
@@ -847,6 +982,20 @@
       transition:
         background-color 0.15s ease,
         box-shadow 0.15s ease;
+    }
+
+    .admin-map-cluster--customers {
+      background: #0f766e;
+      box-shadow:
+        0 2px 9px rgb(20 60 55 / 35%),
+        0 0 0 5px rgb(15 118 110 / 16%);
+    }
+
+    .admin-map-cluster--shops {
+      background: #b45309;
+      box-shadow:
+        0 2px 9px rgb(70 45 10 / 35%),
+        0 0 0 5px rgb(180 83 9 / 16%);
     }
 
     .admin-map-cluster.contains-selected {
@@ -1003,6 +1152,22 @@
 
       .map-toolbar {
         align-items: stretch;
+      }
+
+      .entity-tabs {
+        gap: 0.25rem;
+        padding: 0.45rem 0.5rem;
+      }
+
+      .entity-tabs button {
+        flex-direction: column;
+        gap: 0;
+        padding: 0.4rem 0.2rem;
+        font-size: 0.64rem;
+      }
+
+      .entity-tab-count {
+        font-size: 0.56rem;
       }
 
       .mobile-view-switch {

@@ -60,17 +60,19 @@ export class AdminMapController {
   }
 
   @Get('markers')
-  @ApiOperation({ summary: 'Get filtered repair request map markers' })
+  @ApiOperation({ summary: 'Get filtered marketplace map markers' })
   async getMapMarkers(
+    @Query('type') type?: string,
     @Query('search') search?: string,
     @Query('city') city?: string,
     @Query('state') state?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('status') status?: string,
+    @Query('approvalStatus') approvalStatus?: string,
   ): Promise<{ data: { markers: AdminMapMarker[] } }> {
     const result = await this.adminService.getMapData({
-      type: 'requests',
+      type: type ?? 'requests',
       mapOnly: true,
       search,
       city,
@@ -78,6 +80,7 @@ export class AdminMapController {
       from,
       to,
       status,
+      approvalStatus,
     });
     return { data: { markers: result.markers ?? [] } };
   }

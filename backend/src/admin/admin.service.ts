@@ -194,6 +194,11 @@ export interface AdminMapEntity {
   quotationAmount?: number | null;
   quotationCurrency?: string | null;
   repairCounts?: { total: number; active: number; completed: number };
+  profileImageUrl?: string | null;
+  shopImageUrl?: string | null;
+  services?: string[];
+  rating?: number | null;
+  reviewCount?: number;
 }
 
 export interface AdminMapData {
@@ -214,7 +219,7 @@ export interface AdminMapData {
 
 export interface AdminMapMarker {
   id: string;
-  type: 'request';
+  type: 'customer' | 'shop' | 'request';
   name: string;
   status: string;
   location: { latitude: number; longitude: number };
@@ -1841,6 +1846,7 @@ export class AdminService {
     city?: string;
     state?: string;
     includeCustomersWithApprovalStatus?: boolean;
+    mapOnly?: boolean;
   }): Promise<RegistrationRequestPage> {
     const page = Math.max(1, options.page);
     const allowedLimits = [5, 10, 20, 25, 50, 100];
@@ -2078,8 +2084,9 @@ export class AdminService {
       {
         $facet: {
           requests: [
-            { $skip: (page - 1) * limit },
-            { $limit: limit },
+            ...(options.mapOnly
+              ? []
+              : [{ $skip: (page - 1) * limit }, { $limit: limit }]),
             {
               $project: {
                 _id: 1,
@@ -2414,10 +2421,69 @@ export class AdminService {
         toDate: options.to,
         city: type === 'customers' ? undefined : options.city,
         state: type === 'customers' ? undefined : options.state,
+        mapOnly: options.mapOnly,
       });
       total += usersPage.total;
       const pageUsers = usersPage.requests;
       const ids = pageUsers.map((user) => new Types.ObjectId(user.userId));
+      const mediaById = new Map<
+        string,
+        {
+          profileImageData?: string;
+          shopImageData?: string;
+          services?: string[];
+        }
+      >();
+      const ratingById = new Map<
+        string,
+        { rating: number; reviewCount: number }
+      >();
+      if (ids.length) {
+        const [mediaRecords, ratingRecords] = await Promise.all([
+          this.users
+            .aggregate<{
+              _id: Types.ObjectId;
+              profileImageData?: string;
+              shopImageData?: string;
+              services?: string[];
+            }>([
+              { $match: { _id: { $in: ids } } },
+              {
+                $project: {
+                  profileImageData: 1,
+                  shopImageData: '$shopDetails.shopImageData',
+                  services: { $ifNull: ['$shopDetails.services', []] },
+                },
+              },
+            ])
+            .exec(),
+          this.repairReviews
+            .aggregate<{
+              _id: Types.ObjectId;
+              rating: number;
+              reviewCount: number;
+            }>([
+              { $match: { shopId: { $in: ids } } },
+              {
+                $group: {
+                  _id: '$shopId',
+                  rating: { $avg: '$overallRating' },
+                  reviewCount: { $sum: 1 },
+                },
+              },
+            ])
+            .exec(),
+        ]);
+        mediaRecords.forEach((record) =>
+          mediaById.set(String(record._id), record),
+        );
+        ratingRecords.forEach((record) =>
+          ratingById.set(String(record._id), {
+            rating: Math.round(record.rating * 10) / 10,
+            reviewCount: record.reviewCount,
+          }),
+        );
+      }
       const stats = ids.length
         ? await this.repairRequests
             .aggregate<{
@@ -2555,40 +2621,69 @@ export class AdminService {
           });
         });
       }
-      entities.push(
-        ...pageUsers.map((user): AdminMapEntity => {
-          const isShop = user.accountType === 'shop';
-          const location =
-            user.latitude !== null &&
-            user.longitude !== null &&
-            Number.isFinite(user.latitude) &&
-            Number.isFinite(user.longitude) &&
-            Math.abs(user.latitude) <= 90 &&
-            Math.abs(user.longitude) <= 180
-              ? { latitude: user.latitude, longitude: user.longitude }
-              : null;
-          return {
-            id: user.userId,
-            type: isShop ? 'shop' : 'customer',
-            name: isShop
-              ? (user.shopName ?? user.applicantName)
-              : user.applicantName,
-            ownerName: user.applicantName,
-            location,
-            address: user.businessAddress ?? '',
-            city: user.city,
-            state: user.state,
-            email: user.email,
-            phone: `${user.countryCode} ${user.mobileNumber}`.trim(),
-            status: user.registrationStatus,
-            accountStatus: user.accountStatus,
-            approvalStatus: user.registrationStatus,
-            repairCounts: statsById.get(
-              `${isShop ? 'shop' : 'customer'}:${user.userId}`,
-            ) ?? { total: 0, active: 0, completed: 0 },
-          };
-        }),
-      );
+      const userEntities = pageUsers.map((user): AdminMapEntity => {
+        const isShop = user.accountType === 'shop';
+        const location =
+          user.latitude !== null &&
+          user.longitude !== null &&
+          Number.isFinite(user.latitude) &&
+          Number.isFinite(user.longitude) &&
+          Math.abs(user.latitude) <= 90 &&
+          Math.abs(user.longitude) <= 180
+            ? { latitude: user.latitude, longitude: user.longitude }
+            : null;
+        const media = mediaById.get(user.userId);
+        const rating = ratingById.get(user.userId);
+        return {
+          id: user.userId,
+          type: isShop ? 'shop' : 'customer',
+          name: isShop
+            ? (user.shopName ?? user.applicantName)
+            : user.applicantName,
+          ownerName: user.applicantName,
+          location,
+          address: user.businessAddress ?? '',
+          city: user.city,
+          state: user.state,
+          email: user.email,
+          phone: `${user.countryCode} ${user.mobileNumber}`.trim(),
+          status: user.registrationStatus,
+          accountStatus: user.accountStatus,
+          approvalStatus: user.registrationStatus,
+          repairCounts: statsById.get(
+            `${isShop ? 'shop' : 'customer'}:${user.userId}`,
+          ) ?? { total: 0, active: 0, completed: 0 },
+          profileImageUrl: media?.profileImageData ?? null,
+          shopImageUrl: isShop ? (media?.shopImageData ?? null) : null,
+          services: isShop ? (media?.services ?? user.services ?? []) : [],
+          rating: isShop ? (rating?.rating ?? null) : null,
+          reviewCount: isShop ? (rating?.reviewCount ?? 0) : 0,
+        };
+      });
+      entities.push(...userEntities);
+      if (options.mapOnly && type !== 'all') {
+        const markers = userEntities.flatMap((entity): AdminMapMarker[] =>
+          entity.location
+            ? [
+                {
+                  id: entity.id,
+                  type: entity.type,
+                  name: entity.name,
+                  status: entity.approvalStatus ?? entity.status,
+                  location: entity.location,
+                },
+              ]
+            : [],
+        );
+        return {
+          counts,
+          entities: [],
+          markers,
+          page: 1,
+          limit: markers.length,
+          total: markers.length,
+        };
+      }
     }
 
     if (showRequestMarkers) {

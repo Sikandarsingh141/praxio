@@ -398,6 +398,11 @@ export interface AdminMapEntity {
   quotationAmount?: number | null;
   quotationCurrency?: string | null;
   repairCounts?: { total: number; active: number; completed: number };
+  profileImageUrl?: string | null;
+  shopImageUrl?: string | null;
+  services?: string[];
+  rating?: number | null;
+  reviewCount?: number;
 }
 
 export interface AdminMapData {
@@ -417,7 +422,7 @@ export interface AdminMapData {
 
 export interface AdminMapMarker {
   id: string;
-  type: 'request';
+  type: 'customer' | 'shop' | 'request';
   name: string;
   status: string;
   location: { latitude: number; longitude: number };
@@ -475,17 +480,27 @@ export class AdminService {
 
   getMapMarkers(
     options: {
+      type?: AdminMapType;
       search?: string;
       city?: string;
       state?: string;
       from?: string;
       to?: string;
       status?: string;
+      approvalStatus?: string;
     },
     requestOptions: { silent?: boolean } = {},
   ): Observable<AdminMapMarker[]> {
-    let params = new HttpParams();
-    for (const key of ['search', 'city', 'state', 'from', 'to', 'status'] as const) {
+    let params = new HttpParams().set('type', options.type ?? 'requests');
+    for (const key of [
+      'search',
+      'city',
+      'state',
+      'from',
+      'to',
+      'status',
+      'approvalStatus',
+    ] as const) {
       const value = options[key]?.trim();
       if (value) params = params.set(key, value);
     }
@@ -506,6 +521,20 @@ export class AdminService {
         `${environment.apiBaseUrl}/admin/map/repair-requests/${encodeURIComponent(requestId)}`,
       )
       .pipe(map((response) => response.data));
+  }
+
+  getMapUser(userId: string, type: 'customer' | 'shop'): Observable<AdminMapEntity | null> {
+    return this.getMapData({
+      type: type === 'customer' ? 'customers' : 'shops',
+      page: 1,
+      limit: 10,
+      search: userId,
+    }).pipe(
+      map(
+        (data) =>
+          data.entities.find((entity) => entity.id === userId && entity.type === type) ?? null,
+      ),
+    );
   }
 
   getMapRoute(requestId: string): Observable<AdminMapRoute> {

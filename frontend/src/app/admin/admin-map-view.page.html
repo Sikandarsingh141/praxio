@@ -1,17 +1,17 @@
 <section class="admin-map-page" aria-labelledby="map-page-title">
   <section class="map-toolbar" aria-label="Map search and filters">
     <label class="search-filter inline-search-field">
-      <span class="sr-only">Search repair requests by ID, customer, shop, or location</span>
+      <span class="sr-only">{{ searchLabel }} by name, ID, or location</span>
       <span aria-hidden="true">⌕</span>
       <input
         #searchInput
         type="search"
         [value]="searchText()"
-        placeholder="Search request ID, customer, shop, or location..."
+        [placeholder]="searchPlaceholder"
         (input)="updateSearch(searchInput.value)"
       />
       @if (searchLoading()) {
-        <span class="inline-search-spinner" role="status" aria-label="Searching repair requests"></span>
+        <span class="inline-search-spinner" role="status" [attr.aria-label]="searchLabel"></span>
       }
     </label>
     <app-common-filter
@@ -46,17 +46,50 @@
     <aside class="results-panel" [class.mobile-hidden]="listView() === 'map'">
       <div class="results-heading">
         <div>
-          <h2>Repair requests</h2>
+          <h2>{{ activeTabLabel }}</h2>
           <p>
             @if (loading()) {
-              Loading repair requests…
+              Loading {{ activeTabLabel.toLowerCase() }}…
             } @else {
               {{ visibleCount | number }} shown · {{ data()?.total ?? 0 | number }} matching
-              requests
+              {{ activeTabLabel.toLowerCase() }}
             }
           </p>
         </div>
         <span class="result-count">{{ visibleCount | number }}</span>
+      </div>
+
+      <div class="entity-tabs" role="tablist" aria-label="Map records">
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'requests'"
+          [class.active]="activeTab() === 'requests'"
+          (click)="selectTab('requests')"
+        >
+          <span>All Requests</span>
+          <span class="entity-tab-count">({{ counts.requests | number }})</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'customers'"
+          [class.active]="activeTab() === 'customers'"
+          (click)="selectTab('customers')"
+        >
+          <span>Customers</span>
+          <span class="entity-tab-count">({{ counts.customers | number }})</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="activeTab() === 'shops'"
+          [class.active]="activeTab() === 'shops'"
+          (click)="selectTab('shops')"
+        >
+          <span>Shops</span>
+          <span class="entity-tab-count">({{ counts.shops | number }})</span>
+        </button>
       </div>
 
       @if (error()) {
@@ -67,102 +100,34 @@
       } @else if (loading() && !entities().length) {
         <div class="loading-state" role="status">
           <span class="loading-spinner" aria-hidden="true"></span>
-          Loading repair request data…
+          Loading {{ activeTabLabel.toLowerCase() }}…
         </div>
       } @else if (!entities().length) {
         <div class="empty-state">
           <span aria-hidden="true">⌖</span>
-          <strong>No matching repair requests</strong>
+          <strong>No matching {{ activeTabLabel.toLowerCase() }}</strong>
           <p>Try adjusting your search or filters.</p>
         </div>
       } @else {
         <div class="results-list" aria-label="Map results" (scroll)="onResultsScroll($event)">
           @for (entity of visibleEntities; track entity.type + entity.id) {
-            <button
-              [class.selected]="selectedEntity()?.id === entity.id"
-              [class]="'result-card ' + markerColor(entity)"
-              [attr.data-request-id]="entity.id"
-              type="button"
-              (click)="focusEntity(entity, entity.type === 'request')"
-            >
-              <span class="result-marker" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path
-                    d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0L21 6.1a6 6 0 0 1-7.9 7.9l-7.9 7.9a2 2 0 0 1-2.8-2.8l7.9-7.9a6 6 0 0 1 7.9-7.9z"
-                  />
-                </svg>
-              </span>
-              <span class="result-copy">
-                <span class="result-heading">
-                  <span class="result-title">
-                    {{
-                      entity.type === 'request' ? entity.appliance || 'Repair request' : entity.name
-                    }}
-                  </span>
-                  @if (entity.type === 'request') {
-                    <span class="result-status" [attr.data-status]="markerColor(entity)">
-                      <span aria-hidden="true">{{ statusIcon(entity.status) }}</span>
-                      {{ statusLabel(entity.status) }}
-                    </span>
-                  }
-                </span>
-                @if (entity.type === 'request') {
-                  <span class="result-subtitle">
-                    <span
-                      >Request ID:
-                      <strong class="request-reference">{{ formatRequestId(entity.id) }}</strong>
-                      · {{ entity.customerName }}</span
-                    >
-                  </span>
-                  <span class="result-route" aria-label="Customer to shop location">
-                    <span
-                      class="route-endpoint customer-endpoint"
-                      [attr.aria-label]="'Customer location: ' + customerLocationLabel(entity)"
-                      [attr.title]="'Customer: ' + customerLocationLabel(entity)"
-                    >
-                      <svg class="route-pin" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z" />
-                        <circle cx="12" cy="10" r="2.5" />
-                      </svg>
-                      <span>{{ customerLocationLabel(entity) }}</span>
-                    </span>
-                    <span class="route-direction" aria-hidden="true">→</span>
-                    <span
-                      class="route-endpoint shop-endpoint"
-                      [attr.aria-label]="'Shop location: ' + shopLocationLabel(entity)"
-                      [attr.title]="'Shop: ' + shopLocationLabel(entity)"
-                    >
-                      <svg class="route-pin" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M12 22s8-4.9 8-12A8 8 0 1 0 4 10c0 7.1 8 12 8 12Z" />
-                        <circle cx="12" cy="10" r="2.5" />
-                      </svg>
-                      <span>{{ shopLocationLabel(entity) }}</span>
-                    </span>
-                  </span>
-                  <span class="result-meta">
-                    <span class="result-chip">
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M3.5 11 12 4l8.5 7v8a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z" />
-                        <path d="M9 20v-6h6v6" />
-                      </svg>
-                      {{ serviceTypeLabel(entity) }}
-                    </span>
-                    <span class="result-chip">
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <rect x="3.5" y="5" width="17" height="16" rx="2" />
-                        <path d="M7.5 3v4m9-4v4M3.5 10h17" />
-                      </svg>
-                      {{ entity.createdAt | date: 'mediumDate' }}
-                    </span>
-                  </span>
-                }
-              </span>
-              <span class="result-arrow" aria-hidden="true">›</span>
-            </button>
+            <app-admin-map-entity-card
+              [entity]="entity"
+              [selected]="selectedEntity()?.id === entity.id"
+              [markerColor]="markerColor(entity)"
+              [requestId]="formatRequestId(entity.id)"
+              [statusLabel]="statusLabel(entity.status)"
+              [statusIcon]="statusIcon(entity.status)"
+              [serviceTypeLabel]="serviceTypeLabel(entity)"
+              [customerLocationLabel]="customerLocationLabel(entity)"
+              [shopLocationLabel]="shopLocationLabel(entity)"
+              [locationLabel]="locationLabel(entity)"
+              (select)="focusEntity(entity, entity.type === 'request')"
+            />
           }
           @if (hasMore) {
             <button class="load-more" type="button" [disabled]="loadingMore()" (click)="loadMore()">
-              {{ loadingMore() ? 'Loading…' : 'Load 20 more requests' }}
+              {{ loadingMore() ? 'Loading…' : 'Load 20 more ' + activeTabLabel.toLowerCase() }}
             </button>
           }
           @if (loadMoreError()) {
@@ -180,7 +145,7 @@
         <div
           #mapElement
           class="map-canvas"
-          aria-label="Interactive map of repair request locations"
+          [attr.aria-label]="'Interactive map of ' + activeTabLabel.toLowerCase() + ' locations'"
         ></div>
         <div class="map-style-control" role="group" aria-label="Map style">
           <button
@@ -238,7 +203,7 @@
           </div>
         }
         <div class="map-attribution">
-          <span>Showing saved request locations</span>
+          <span>Showing saved {{ activeTabLabel.toLowerCase() }} locations</span>
           <span class="attribution-divider"></span>
           <span>{{ mapEntities().length | number }} locations</span>
         </div>

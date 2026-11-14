@@ -27,8 +27,10 @@ import {
   AdminMapEntity,
   AdminMapMarker,
   AdminMapRoute,
+  AdminMapType,
   AdminService,
 } from './admin.service';
+import { AdminMapEntityCardComponent } from './admin-map-entity-card.component';
 import {
   groupMarkerPoints,
   markerSpreadOffsets,
@@ -37,6 +39,8 @@ import {
 
 const CLUSTER_MAX_ZOOM = 15;
 const CLUSTER_RADIUS_PX = 56;
+
+type MapTab = 'requests' | 'customers' | 'shops';
 
 interface ProjectedMapEntity {
   entity: AdminMapMarker;
@@ -53,7 +57,7 @@ interface MapCluster {
 @Component({
   selector: 'app-admin-map-view-page',
   standalone: true,
-  imports: [CommonFilterComponent, DatePipe, DecimalPipe],
+  imports: [CommonFilterComponent, DatePipe, DecimalPipe, AdminMapEntityCardComponent],
   templateUrl: './admin-map-view.page.html',
 })
 export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
@@ -89,12 +93,14 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   readonly error = signal('');
   readonly loadMoreError = signal('');
   readonly mapError = signal('');
+  readonly activeTab = signal<MapTab>('requests');
   readonly searchText = signal('');
   readonly city = signal('');
   readonly state = signal('');
   readonly fromDate = signal('');
   readonly toDate = signal('');
   readonly status = signal('all');
+  readonly approvalStatus = signal('all');
   readonly page = signal(1);
   readonly visibleLimit = signal(20);
   readonly listView = signal<'list' | 'map'>('list');
@@ -109,6 +115,46 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   private readonly pendingLocationLookups = new Set<string>();
 
   get filterConfig(): FilterConfig {
+    const tab = this.activeTab();
+    if (tab === 'customers') {
+      return {
+        title: 'Customer filters',
+        fields: [
+          {
+            key: 'dateRange',
+            label: 'Registration date range',
+            type: 'date-range',
+          },
+        ],
+      };
+    }
+    if (tab === 'shops') {
+      return {
+        title: 'Shop filters',
+        fields: [
+          {
+            key: 'approvalStatus',
+            label: 'Verification status',
+            type: 'select',
+            placeholder: 'All shops',
+            options: [
+              { label: 'Approved', value: 'approved' },
+              { label: 'Pending', value: 'pending' },
+              { label: 'Declined', value: 'declined' },
+            ],
+          },
+          { key: 'city', label: 'City', type: 'text', placeholder: 'Enter a city' },
+          {
+            key: 'state',
+            label: 'State or region',
+            type: 'text',
+            placeholder: 'Enter a state or region',
+          },
+          { key: 'dateRange', label: 'Registration date range', type: 'date-range' },
+        ],
+      };
+    }
+
     const category = this.filterText(this.appliedFilters()['mapCategory']);
     const fields: FilterConfig['fields'] = [
       {
@@ -160,6 +206,32 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     return { title: 'Map filters', fields };
+  }
+
+  get tabType(): AdminMapType {
+    return this.activeTab();
+  }
+
+  get activeTabLabel(): string {
+    if (this.activeTab() === 'customers') return 'Customers';
+    if (this.activeTab() === 'shops') return 'Registered shops';
+    return 'Repair requests';
+  }
+
+  get searchPlaceholder(): string {
+    if (this.activeTab() === 'customers') {
+      return 'Search customer name, email, phone, or location...';
+    }
+    if (this.activeTab() === 'shops') {
+      return 'Search shop name, owner, email, phone, or location...';
+    }
+    return 'Search request ID, customer, shop, or location...';
+  }
+
+  get searchLabel(): string {
+    if (this.activeTab() === 'customers') return 'Search customers';
+    if (this.activeTab() === 'shops') return 'Search repair shops';
+    return 'Search repair requests';
   }
 
   ngOnInit(): void {
@@ -217,7 +289,15 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     this.searchChanges.next(value.trim());
   }
 
+  selectTab(tab: MapTab): void {
+    if (this.activeTab() === tab) return;
+    this.activeTab.set(tab);
+    this.resetSearchAndFilters();
+    this.loadData(true);
+  }
+
   applyFilters(filters: FilterValues): void {
+    const tab = this.activeTab();
     const category = this.filterText(filters['mapCategory']);
     const nextFilters = { ...filters };
     if (['active', 'completed', 'disputed'].includes(category)) {
@@ -225,16 +305,25 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.appliedFilters.set(nextFilters);
-    this.city.set(this.filterText(filters['city']));
-    this.state.set(this.filterText(filters['state']));
+    this.city.set(tab === 'customers' ? '' : this.filterText(filters['city']));
+    this.state.set(tab === 'customers' ? '' : this.filterText(filters['state']));
     const dateRange = this.filterDateRange(filters['dateRange']);
     this.fromDate.set(dateRange.from ?? '');
     this.toDate.set(dateRange.to ?? '');
-    this.status.set(
-      ['active', 'completed', 'disputed'].includes(category)
-        ? category
-        : this.filterText(filters['status']) || 'all',
-    );
+    if (tab === 'requests') {
+      this.status.set(
+        ['active', 'completed', 'disputed'].includes(category)
+          ? category
+          : this.filterText(filters['status']) || 'all',
+      );
+      this.approvalStatus.set('all');
+    } else if (tab === 'shops') {
+      this.status.set('all');
+      this.approvalStatus.set(this.filterText(filters['approvalStatus']) || 'all');
+    } else {
+      this.status.set('all');
+      this.approvalStatus.set('all');
+    }
     this.loadData(true);
   }
 
@@ -508,15 +597,18 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   private resolveLocationLabels(entities: AdminMapEntity[]): void {
     const locations = new Map<string, { latitude: number; longitude: number }>();
     for (const entity of entities) {
-      if (entity.type !== 'request') continue;
-      if (entity.location) {
+      if (entity.type === 'request') {
+        if (entity.location) {
+          locations.set(this.locationKey(entity.location), entity.location);
+        }
+        const shopAddress = [entity.shopAddress, entity.shopCity, entity.shopState]
+          .filter((part) => part?.trim())
+          .join(', ');
+        if (entity.shopLocation && !shopAddress) {
+          locations.set(this.locationKey(entity.shopLocation), entity.shopLocation);
+        }
+      } else if (entity.location && !entity.address && !entity.city && !entity.state) {
         locations.set(this.locationKey(entity.location), entity.location);
-      }
-      const shopAddress = [entity.shopAddress, entity.shopCity, entity.shopState]
-        .filter((part) => part?.trim())
-        .join(', ');
-      if (entity.shopLocation && !shopAddress) {
-        locations.set(this.locationKey(entity.shopLocation), entity.shopLocation);
       }
     }
 
@@ -592,18 +684,20 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       this.loadMoreError.set('');
     }
     const sequence = ++this.requestSequence;
+    const tab = this.activeTab();
     this.adminService
       .getMapData(
         {
-          type: 'requests',
+          type: tab,
           page: requestedPage,
           limit: 20,
           search: this.searchText(),
-          city: this.city(),
-          state: this.state(),
+          city: tab === 'customers' ? '' : this.city(),
+          state: tab === 'customers' ? '' : this.state(),
           from: this.fromDate(),
           to: this.toDate(),
-          status: this.status(),
+          status: tab === 'requests' ? this.status() : '',
+          approvalStatus: tab === 'shops' ? this.approvalStatus() : '',
         },
         { silent: hasSearch },
       )
@@ -611,18 +705,20 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
         next: (data) => {
           if (sequence !== this.requestSequence) return;
           this.data.set(data);
+          const expectedType =
+            tab === 'requests' ? 'request' : tab === 'customers' ? 'customer' : 'shop';
+          const pageEntities = data.entities.filter((entity) => entity.type === expectedType);
           let updatedEntities: AdminMapEntity[] = [];
           this.entities.update((current) => {
-            const requests = data.entities.filter((entity) => entity.type === 'request');
             if (reset) {
               const selected =
                 this.selectedEntityId === null
                   ? []
                   : current.filter((entity) => entity.id === this.selectedEntityId);
-              updatedEntities = this.uniqueEntities([...requests, ...selected]);
+              updatedEntities = this.uniqueEntities([...pageEntities, ...selected]);
               return updatedEntities;
             }
-            updatedEntities = this.uniqueEntities([...current, ...requests]);
+            updatedEntities = this.uniqueEntities([...current, ...pageEntities]);
             return updatedEntities;
           });
           this.resolveLocationLabels(updatedEntities);
@@ -655,15 +751,18 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     this.mapLoading.set(true);
     this.mapError.set('');
     this.renderMarkers();
+    const tab = this.activeTab();
     this.adminService
       .getMapMarkers(
         {
+          type: tab,
           search: this.searchText(),
-          city: this.city(),
-          state: this.state(),
+          city: tab === 'customers' ? '' : this.city(),
+          state: tab === 'customers' ? '' : this.state(),
           from: this.fromDate(),
           to: this.toDate(),
-          status: this.status(),
+          status: tab === 'requests' ? this.status() : '',
+          approvalStatus: tab === 'shops' ? this.approvalStatus() : '',
         },
         { silent },
       )
@@ -691,21 +790,34 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
   private selectMapMarker(marker: AdminMapMarker): void {
     this.lastSelectedMarker = marker;
     this.mapError.set('');
-    if (this.markerDetailRequests.has(marker.id)) return;
+    const detailKey = `${marker.type}:${marker.id}`;
+    if (this.markerDetailRequests.has(detailKey)) return;
     const sequence = ++this.selectionSequence;
-    const existing = this.entities().find((entity) => entity.id === marker.id);
+    const existing = this.entities().find(
+      (entity) => entity.id === marker.id && entity.type === marker.type,
+    );
     if (existing) {
       this.focusEntity(existing, false, false);
       return;
     }
 
     const markerSequence = this.markerSequence;
-    this.markerDetailRequests.add(marker.id);
-    this.adminService.getMapRequest(marker.id).subscribe({
+    this.markerDetailRequests.add(detailKey);
+    const detailRequest =
+      marker.type === 'request'
+        ? this.adminService.getMapRequest(marker.id)
+        : this.adminService.getMapUser(marker.id, marker.type);
+    detailRequest.subscribe({
       next: (entity) => {
-        this.markerDetailRequests.delete(marker.id);
+        this.markerDetailRequests.delete(detailKey);
         if (sequence !== this.selectionSequence || markerSequence !== this.markerSequence) return;
-        if (!this.entities().some((loaded) => loaded.id === entity.id)) {
+        if (!entity) {
+          this.mapError.set('The selected record could not be found.');
+          return;
+        }
+        if (
+          !this.entities().some((loaded) => loaded.id === entity.id && loaded.type === entity.type)
+        ) {
           const updatedEntities = this.uniqueEntities([...this.entities(), entity]);
           this.entities.set(updatedEntities);
           this.resolveLocationLabels(updatedEntities);
@@ -714,10 +826,10 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
         this.focusEntity(entity, false, false);
       },
       error: (error: HttpErrorResponse) => {
-        this.markerDetailRequests.delete(marker.id);
+        this.markerDetailRequests.delete(detailKey);
         if (sequence !== this.selectionSequence || markerSequence !== this.markerSequence) return;
         this.mapError.set(
-          error.error?.message || 'Request details could not be loaded. Select Retry to try again.',
+          error.error?.message || 'Record details could not be loaded. Select Retry to try again.',
         );
       },
     });
@@ -732,6 +844,18 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       ).find((element) => element.dataset['requestId'] === id);
       card?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     });
+  }
+
+  private resetSearchAndFilters(): void {
+    this.searchText.set('');
+    this.searchLoading.set(false);
+    this.city.set('');
+    this.state.set('');
+    this.fromDate.set('');
+    this.toDate.set('');
+    this.status.set('all');
+    this.approvalStatus.set('all');
+    this.appliedFilters.set({});
   }
 
   private filterText(value: FilterValue | undefined): string {
@@ -809,7 +933,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       spider = false,
     ): void => {
       const selected = entity.id === this.selectedEntityId;
-      const marker = this.createRequestMarker(
+      const marker = this.createEntityMarker(
         entity,
         location,
         selected,
@@ -885,15 +1009,18 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
           bubblingMouseEvents: false,
           icon: L.divIcon({
             className: 'admin-map-cluster-icon',
-            html: `<span class="admin-map-cluster${containsSelected ? ' contains-selected' : ''}">${cluster.markers.length}</span>`,
+            html: `<span class="admin-map-cluster admin-map-cluster--${this.activeTab()}${containsSelected ? ' contains-selected' : ''}">${cluster.markers.length}</span>`,
             iconSize: [size, size],
             iconAnchor: [size / 2, size / 2],
           }),
         });
-        marker.bindTooltip(`${cluster.markers.length} repair requests. Click to expand.`, {
-          direction: 'top',
-          offset: [0, -size / 2],
-        });
+        marker.bindTooltip(
+          `${cluster.markers.length} ${this.activeTabLabel.toLowerCase()}. Click to expand.`,
+          {
+            direction: 'top',
+            offset: [0, -size / 2],
+          },
+        );
         marker.on('click', () => this.spiderfyCluster(cluster.key));
         this.markerLayer.addLayer(marker);
       }
@@ -968,7 +1095,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     return 42;
   }
 
-  private createRequestMarker(
+  private createEntityMarker(
     entity: AdminMapMarker,
     location: L.LatLngExpression,
     selected: boolean,
@@ -983,7 +1110,7 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
         className: spider ? 'admin-map-spider-icon' : 'admin-map-dot-icon',
         html: `<span class="admin-map-dot${selected ? ' selected' : ''}${
           spider ? ' admin-map-spider-dot' : ''
-        }"></span>`,
+        } admin-map-dot--${entity.type}"></span>`,
         iconSize: [21, 21],
         iconAnchor: [10.5, 10.5],
       }),
@@ -1045,8 +1172,15 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       addLine('Phone', entity.phone);
       addLine('Email', entity.email);
       addLine('Address', this.locationLabel(entity));
-      addLine('Approval', entity.approvalStatus ?? entity.status);
+      addLine('Verification', entity.approvalStatus ?? entity.status);
       addLine('Account', entity.accountStatus ?? 'Unknown');
+      addLine(
+        'Rating',
+        entity.rating == null
+          ? 'No reviews'
+          : `${entity.rating.toFixed(1)} / 5 (${entity.reviewCount ?? 0} reviews)`,
+      );
+      addLine('Services', (entity.services ?? []).join(', '));
       addLine('Total repairs', String(entity.repairCounts?.total ?? 0));
       addLine('Active repairs', String(entity.repairCounts?.active ?? 0));
       addLine('Completed repairs', String(entity.repairCounts?.completed ?? 0));
@@ -1088,7 +1222,13 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     const root = document.createElement('div');
     root.className = 'admin-map-popup';
     const heading = document.createElement('strong');
-    heading.textContent = marker.name || 'Repair request';
+    heading.textContent =
+      marker.name ||
+      (marker.type === 'customer'
+        ? 'Customer'
+        : marker.type === 'shop'
+          ? 'Repair shop'
+          : 'Repair request');
     root.append(heading);
     const addLine = (label: string, value: string, valueClass?: string): void => {
       const line = document.createElement('p');
@@ -1100,17 +1240,34 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
       line.append(caption, content);
       root.append(line);
     };
-    addLine('Request ID', this.formatRequestId(marker.id), 'request-reference');
-    addLine('Customer', 'Loading request details…');
-    addLine('Repair type', marker.name || 'Repair service');
-    addLine('Status', this.statusLabel(marker.status));
-    addLine('Address', this.resolvedLocationLabel(marker.location));
-    addLine('Date', 'Loading request details…');
+    if (marker.type === 'request') {
+      addLine('Request ID', this.formatRequestId(marker.id), 'request-reference');
+      addLine('Customer', 'Loading request details…');
+      addLine('Repair type', marker.name || 'Repair service');
+      addLine('Status', this.statusLabel(marker.status));
+      addLine('Address', this.resolvedLocationLabel(marker.location));
+      addLine('Date', 'Loading request details…');
+    } else if (marker.type === 'customer') {
+      addLine('Customer', 'Loading customer details…');
+      addLine('Location', this.resolvedLocationLabel(marker.location));
+    } else {
+      addLine('Shop', 'Loading shop details…');
+      addLine('Verification', this.statusLabel(marker.status));
+      addLine('Address', this.resolvedLocationLabel(marker.location));
+    }
     const actions = document.createElement('div');
     actions.className = 'admin-map-popup-actions';
     const detailsLink = document.createElement('a');
-    detailsLink.href = `/admin/repair-jobs/${encodeURIComponent(marker.id)}`;
-    detailsLink.textContent = 'View Details';
+    detailsLink.href =
+      marker.type === 'request'
+        ? `/admin/repair-jobs/${encodeURIComponent(marker.id)}`
+        : `/admin/users/${encodeURIComponent(marker.id)}`;
+    detailsLink.textContent =
+      marker.type === 'customer'
+        ? 'View customer'
+        : marker.type === 'shop'
+          ? 'View shop'
+          : 'View Details';
     actions.append(detailsLink);
     root.append(actions);
     return root;

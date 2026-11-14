@@ -37,7 +37,7 @@ describe('AdminMapViewPage', () => {
     fixture.detectChanges();
 
     const page = fixture.componentInstance;
-    expect(fixture.nativeElement.querySelector('.entity-tabs')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.entity-tabs')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.map-legend')).toBeNull();
     expect(page['markerLayer'].getLayers().length).toBe(1);
     expect(page.entities().map((entity) => entity.type)).toEqual(['request']);
@@ -55,6 +55,164 @@ describe('AdminMapViewPage', () => {
     expect(page.error()).toBe('');
     fixture.destroy();
   }));
+
+  it('switches between request, customer, and shop tabs with tab-specific data and markers', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    fixture.detectChanges();
+    const initialData = http.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/admin/map`,
+    );
+    const initialMarkers = http.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/admin/map/markers`,
+    );
+    initialData.flush({ data: mapData([makeEntity('request-1', 'request')]) });
+    initialMarkers.flush({ data: { markers: [makeMarker('request-1')] } });
+    fixture.detectChanges();
+
+    const page = fixture.componentInstance;
+    const tabs = Array.from(
+      fixture.nativeElement.querySelectorAll('.entity-tabs button') as NodeListOf<HTMLElement>,
+    );
+    expect(tabs).toHaveSize(3);
+    expect(tabs[0].classList).toContain('active');
+    expect(tabs[0].textContent).toContain('All Requests');
+    expect(tabs[0].textContent).toContain('(9)');
+    expect(tabs[1].textContent).toContain('Customers');
+    expect(tabs[1].textContent).toContain('(12)');
+    expect(tabs[2].textContent).toContain('Shops');
+    expect(tabs[2].textContent).toContain('(5)');
+
+    page.selectTab('customers');
+    expect(page.searchText()).toBe('');
+    expect(page.appliedFilters()).toEqual({});
+    expect(page.filterConfig.fields.map((field) => field.key)).toEqual(['dateRange']);
+    const customerRequest = http.expectOne(
+      (request) =>
+        request.url === `${environment.apiBaseUrl}/admin/map` &&
+        request.params.get('type') === 'customers',
+    );
+    const customerMarkers = http.expectOne(
+      (request) =>
+        request.url === `${environment.apiBaseUrl}/admin/map/markers` &&
+        request.params.get('type') === 'customers',
+    );
+    const customer = {
+      ...makeEntity('customer-1', 'customer'),
+      name: 'Avery Johnson',
+      email: 'avery@example.test',
+      phone: '+1 4165550100',
+      city: 'Toronto',
+      state: 'Ontario',
+      location: { latitude: 43.65, longitude: -79.38 },
+      repairCounts: { total: 4, active: 1, completed: 2 },
+    };
+    customerRequest.flush({ data: mapData([customer]) });
+    customerMarkers.flush({ data: { markers: [makeMarker(customer.id, 'customer')] } });
+    fixture.detectChanges();
+
+    const customerCard = fixture.nativeElement.querySelector('.result-card') as HTMLElement;
+    expect(customerCard.textContent).toContain('Avery Johnson');
+    expect(customerCard.textContent).toContain('avery@example.test');
+    expect(customerCard.textContent).toContain('Requests 4');
+    expect(customerCard.querySelector('.result-avatar')).not.toBeNull();
+    expect(page.mapEntities()).toHaveSize(1);
+    expect(page.mapEntities()[0].type).toBe('customer');
+
+    page.selectTab('shops');
+    expect(page.filterConfig.fields.map((field) => field.key)).toEqual([
+      'approvalStatus',
+      'city',
+      'state',
+      'dateRange',
+    ]);
+    const shopRequest = http.expectOne(
+      (request) =>
+        request.url === `${environment.apiBaseUrl}/admin/map` &&
+        request.params.get('type') === 'shops' &&
+        request.params.get('approvalStatus') === 'all',
+    );
+    const shopMarkers = http.expectOne(
+      (request) =>
+        request.url === `${environment.apiBaseUrl}/admin/map/markers` &&
+        request.params.get('type') === 'shops' &&
+        request.params.get('approvalStatus') === 'all',
+    );
+    const shop = {
+      ...makeEntity('shop-1', 'shop'),
+      name: 'Northstar Repairs',
+      ownerName: 'Morgan Lee',
+      approvalStatus: 'approved',
+      status: 'approved',
+      address: '10 King Street',
+      city: 'Toronto',
+      state: 'Ontario',
+      location: { latitude: 43.66, longitude: -79.39 },
+      services: ['Phone repair', 'Laptop repair', 'Tablet repair'],
+      rating: 4.6,
+      reviewCount: 12,
+      repairCounts: { total: 7, active: 2, completed: 4 },
+    };
+    shopRequest.flush({ data: mapData([shop]) });
+    shopMarkers.flush({ data: { markers: [makeMarker(shop.id, 'shop')] } });
+    fixture.detectChanges();
+
+    const shopCard = fixture.nativeElement.querySelector('.result-card') as HTMLElement;
+    expect(shopCard.textContent).toContain('Northstar Repairs');
+    expect(shopCard.textContent).toContain('Approved');
+    expect(shopCard.textContent).toContain('4.6 (12)');
+    expect(shopCard.textContent).toContain('Phone repair, Laptop repair +1');
+    expect(shopCard.textContent).toContain('Requests 7');
+    expect(page.mapEntities()[0].type).toBe('shop');
+    fixture.destroy();
+  });
+
+  it('loads customer details when a customer marker is not in the list', () => {
+    const fixture = TestBed.createComponent(AdminMapViewPage);
+    fixture.detectChanges();
+    http
+      .expectOne((request) => request.url === `${environment.apiBaseUrl}/admin/map`)
+      .flush({ data: mapData([]) });
+    flushMarkers(http, []);
+    const page = fixture.componentInstance;
+
+    page.selectTab('customers');
+    http
+      .expectOne(
+        (request) =>
+          request.url === `${environment.apiBaseUrl}/admin/map` &&
+          request.params.get('type') === 'customers',
+      )
+      .flush({ data: mapData([]) });
+    const customerMarker = makeMarker('customer-2', 'customer');
+    http
+      .expectOne(
+        (request) =>
+          request.url === `${environment.apiBaseUrl}/admin/map/markers` &&
+          request.params.get('type') === 'customers',
+      )
+      .flush({ data: { markers: [customerMarker] } });
+
+    page['selectMapMarker'](customerMarker);
+    const detailRequest = http.expectOne(
+      (request) =>
+        request.url === `${environment.apiBaseUrl}/admin/map` &&
+        request.params.get('type') === 'customers' &&
+        request.params.get('search') === customerMarker.id &&
+        request.params.get('limit') === '10',
+    );
+    const customer = {
+      ...makeEntity(customerMarker.id, 'customer'),
+      name: 'Jordan Blake',
+      city: 'Toronto',
+      state: 'Ontario',
+      location: { latitude: 43.7, longitude: -79.4 },
+    };
+    detailRequest.flush({ data: mapData([customer]) });
+
+    expect(page.selectedEntity()?.id).toBe(customerMarker.id);
+    expect(page.entities().some((entity) => entity.id === customerMarker.id)).toBeTrue();
+    fixture.destroy();
+  });
 
   it('loads all map markers independently and appends list pages on scroll', () => {
     const fixture = TestBed.createComponent(AdminMapViewPage);
@@ -651,12 +809,12 @@ function flushMarkers(
   request.flush({ data: { markers } });
 }
 
-function makeMarker(id: string): AdminMapMarker {
+function makeMarker(id: string, type: AdminMapMarker['type'] = 'request'): AdminMapMarker {
   return {
     id,
-    type: 'request',
-    name: 'Phone repair',
-    status: 'in_progress',
+    type,
+    name: type === 'request' ? 'Phone repair' : 'Avery Johnson',
+    status: type === 'request' ? 'in_progress' : 'approved',
     location: { latitude: 43.65, longitude: -79.38 },
   };
 }

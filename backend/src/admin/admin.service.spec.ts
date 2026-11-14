@@ -629,6 +629,99 @@ describe('AdminService', () => {
     ).toBe(false);
   });
 
+  it('returns customer map markers without request pagination or entities', async () => {
+    const customerId = new Types.ObjectId('507f1f77bcf86cd799439021');
+    const customer = {
+      _id: customerId,
+      userId: customerId,
+      registrationRequestId: null,
+      registrationNumber: '',
+      applicantName: 'Avery Johnson',
+      shopName: null,
+      businessType: null,
+      businessAddress: null,
+      services: [],
+      city: 'Toronto',
+      state: 'Ontario',
+      email: 'avery@example.test',
+      countryCode: '+1',
+      mobileNumber: '4165550100',
+      accountType: 'customer',
+      accountStatus: 'active',
+      registrationStatus: 'approved',
+      approvalStatus: 'approved',
+      paymentStatus: 'not_required',
+      subscriptionPlan: null,
+      paymentAmountCents: null,
+      paymentCurrency: null,
+      paidAt: null,
+      submittedAt: new Date('2026-01-01T00:00:00.000Z'),
+      reviewedAt: null,
+      declineReason: null,
+      latitude: 43.65,
+      longitude: -79.38,
+    };
+    usersModel.aggregate
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue([
+          {
+            requests: [customer],
+            metadata: [{ total: 1 }],
+          },
+        ]),
+      })
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue([
+          {
+            _id: customerId,
+            profileImageData: 'data:image/png;base64,avatar',
+          },
+        ]),
+      });
+    repairReviewsModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+    repairRequestsModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([
+        {
+          customers: [{ _id: customerId, total: 4, active: 1, completed: 2 }],
+          shops: [],
+        },
+      ]),
+    });
+
+    const result = await service.getMapData({
+      type: 'customers',
+      mapOnly: true,
+      page: 1,
+      limit: 20,
+    });
+
+    expect(result.entities).toEqual([]);
+    expect(result.markers).toEqual([
+      {
+        id: customerId.toString(),
+        type: 'customer',
+        name: 'Avery Johnson',
+        status: 'approved',
+        location: { latitude: 43.65, longitude: -79.38 },
+      },
+    ]);
+    expect(result.total).toBe(1);
+    expect(result.limit).toBe(1);
+    const usersPipeline = usersModel.aggregate.mock.calls[0][0] as Array<
+      Record<string, unknown>
+    >;
+    const facet = usersPipeline.find((stage) => '$facet' in stage) as {
+      $facet: { requests: Array<Record<string, unknown>> };
+    };
+    expect(facet.$facet.requests.some((stage) => '$skip' in stage)).toBe(false);
+    expect(facet.$facet.requests.some((stage) => '$limit' in stage)).toBe(
+      false,
+    );
+    expect(repairRequestsModel.aggregate).toHaveBeenCalledTimes(1);
+  });
+
   it('matches a displayed eight-character request ID during map search', async () => {
     usersModel.aggregate.mockReturnValue({
       exec: jest.fn().mockResolvedValue([]),
