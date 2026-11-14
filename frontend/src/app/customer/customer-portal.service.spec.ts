@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 import { environment } from '../../environments/environment';
 import { CustomerPortalService } from './customer-portal.service';
 
@@ -36,7 +37,22 @@ describe('CustomerPortalService', () => {
     expect(request.request.params.get('service')).toBe('AC Repair');
     expect(request.request.params.get('latitude')).toBe('18.52');
     expect(request.request.params.get('maxDistanceKm')).toBe('10');
+    expect(request.request.context.get(SKIP_GLOBAL_LOADER)).toBeFalse();
     request.flush({ data: { shops: [] } });
+  });
+
+  it('can fetch address suggestions without showing the global loader', () => {
+    service.suggestAddresses('Pune', true).subscribe((suggestions) => {
+      expect(suggestions).toEqual([]);
+    });
+
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === `${environment.apiBaseUrl}/customer/addresses` &&
+        candidate.params.get('q') === 'Pune',
+    );
+    expect(request.request.context.get(SKIP_GLOBAL_LOADER)).toBeTrue();
+    request.flush({ data: { suggestions: [] } });
   });
 
   it('submits one repair request and the same selected shops with optional photos', () => {

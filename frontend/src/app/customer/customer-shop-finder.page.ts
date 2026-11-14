@@ -78,6 +78,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   readonly shopSearchError = signal('');
   readonly shopPickerMessage = signal('');
   readonly loading = signal(false);
+  readonly addressSuggestionsLoading = signal(false);
   readonly submitting = signal(false);
   readonly error = signal('');
   readonly addressError = signal('');
@@ -125,10 +126,12 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
         switchMap((query) => {
           if (query.trim().length < 3) {
             this.addressError.set('');
+            this.addressSuggestionsLoading.set(false);
             return of([]);
           }
           this.addressError.set('');
-          return this.portal.suggestAddresses(query.trim()).pipe(
+          this.addressSuggestionsLoading.set(true);
+          return this.portal.suggestAddresses(query.trim(), true).pipe(
             catchError(() => {
               this.addressError.set(
                 'Address suggestions are unavailable. You can still search by city or postal code.',
@@ -139,7 +142,10 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
         }),
         takeUntil(this.destroyed),
       )
-      .subscribe((suggestions) => this.suggestions.set(suggestions));
+      .subscribe((suggestions) => {
+        this.suggestions.set(suggestions);
+        this.addressSuggestionsLoading.set(false);
+      });
     this.shopSearchInput
       .pipe(
         debounceTime(300),
@@ -151,15 +157,17 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
             return of({ query: normalizedQuery, shops: [] as ShopSearchResult[] });
           }
           this.shopSearchLoading.set(true);
-          return this.portal.searchShops({ query: normalizedQuery, sort: 'relevant' }).pipe(
-            map((shops) => ({ query: normalizedQuery, shops })),
-            catchError((error: HttpErrorResponse) => {
-              this.shopSearchError.set(
-                error.error?.message || 'Shop search is unavailable. Please try again.',
-              );
-              return of({ query: normalizedQuery, shops: [] as ShopSearchResult[] });
-            }),
-          );
+          return this.portal
+            .searchShops({ query: normalizedQuery, sort: 'relevant' }, true)
+            .pipe(
+              map((shops) => ({ query: normalizedQuery, shops })),
+              catchError((error: HttpErrorResponse) => {
+                this.shopSearchError.set(
+                  error.error?.message || 'Shop search is unavailable. Please try again.',
+                );
+                return of({ query: normalizedQuery, shops: [] as ShopSearchResult[] });
+              }),
+            );
         }),
         takeUntil(this.destroyed),
       )
@@ -215,6 +223,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
     this.latitude.set(null);
     this.longitude.set(null);
     this.addressMenuOpen.set(true);
+    this.addressSuggestionsLoading.set(value.trim().length >= 3);
     this.addressInput.next(value);
   }
 
@@ -274,9 +283,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
           latitude !== null && longitude !== null && this.maxDistanceKm()
             ? Number(this.maxDistanceKm())
             : undefined,
-        minRating: this.minimumRating()
-          ? Number(this.minimumRating())
-          : undefined,
+        minRating: this.minimumRating() ? Number(this.minimumRating()) : undefined,
         sort: this.sortBy(),
       })
       .subscribe({

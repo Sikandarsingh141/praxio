@@ -177,6 +177,31 @@ p {
   position: relative;
 }
 
+.address-input-wrap > input {
+  padding-right: 2.4rem;
+}
+
+.location-search-spinner {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 0.8rem;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #d5e5d8;
+  border-top-color: #087c3b;
+  border-radius: 50%;
+  animation: location-search-spin 0.7s linear infinite;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+@keyframes location-search-spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
 .suggestions {
   position: absolute;
   z-index: 15;

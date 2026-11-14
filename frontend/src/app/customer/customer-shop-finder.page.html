@@ -23,6 +23,9 @@
             autocomplete="off"
             aria-label="Search by location"
           />
+          @if (addressSuggestionsLoading()) {
+            <span class="location-search-spinner" role="status" aria-label="Searching location"></span>
+          }
           @if (addressMenuOpen() && suggestions().length) {
             <div class="suggestions" role="listbox" aria-label="Address suggestions">
               @for (suggestion of suggestions(); track suggestion.label) {

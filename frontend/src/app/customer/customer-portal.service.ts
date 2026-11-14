@@ -1,9 +1,10 @@
 import { AdditionalChargeRequest, InspectionReportInput } from '../shared/repair-workflow.models';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { ApiEnvelope } from '../core/auth/auth.models';
+import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 import {
   AddressSuggestion,
   CustomerRepairRequest,
@@ -32,7 +33,10 @@ export class CustomerPortalService {
 
   constructor(private readonly http: HttpClient) {}
 
-  searchShops(options: ShopSearchOptions): Observable<ShopSearchResult[]> {
+  searchShops(
+    options: ShopSearchOptions,
+    skipGlobalLoader = false,
+  ): Observable<ShopSearchResult[]> {
     let params = new HttpParams();
     Object.entries(options).forEach(([key, value]) => {
       if (value !== undefined && value !== '') {
@@ -40,7 +44,10 @@ export class CustomerPortalService {
       }
     });
     return this.http
-      .get<ApiEnvelope<{ shops: ShopSearchResult[] }>>(`${this.baseUrl}/shops`, { params })
+      .get<ApiEnvelope<{ shops: ShopSearchResult[] }>>(`${this.baseUrl}/shops`, {
+        params,
+        context: new HttpContext().set(SKIP_GLOBAL_LOADER, skipGlobalLoader),
+      })
       .pipe(map((response) => response.data.shops));
   }
 
@@ -52,11 +59,12 @@ export class CustomerPortalService {
       .pipe(map((response) => response.data.shop));
   }
 
-  suggestAddresses(query: string): Observable<AddressSuggestion[]> {
+  suggestAddresses(query: string, skipGlobalLoader = false): Observable<AddressSuggestion[]> {
     const params = new HttpParams().set('q', query);
     return this.http
       .get<ApiEnvelope<{ suggestions: AddressSuggestion[] }>>(`${this.baseUrl}/addresses`, {
         params,
+        context: new HttpContext().set(SKIP_GLOBAL_LOADER, skipGlobalLoader),
       })
       .pipe(map((response) => response.data.suggestions));
   }

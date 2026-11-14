@@ -1,14 +1,52 @@
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, provideRouter, Router, convertToParamMap } from '@angular/router';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { of } from 'rxjs';
-import { ShopSearchResult } from './customer-portal.models';
+import { of, Subject } from 'rxjs';
+import { AddressSuggestion, ShopSearchResult } from './customer-portal.models';
 import { formatShopAddress } from '../shared/format-shop-address';
 import { CustomerPortalService } from './customer-portal.service';
 import { CustomerShopFinderPage } from './customer-shop-finder.page';
 import { ShopResultsMapComponent } from './shop-results-map.component';
 
 describe('CustomerShopFinderPage', () => {
+  it('shows the inline location spinner only while address suggestions are pending', fakeAsync(() => {
+    const portal = createPortalMock();
+    const suggestions = new Subject<AddressSuggestion[]>();
+    portal.searchShops.and.returnValue(of([]));
+    portal.suggestAddresses.and.returnValue(suggestions);
+    portal.createRepairRequest.and.returnValue(of('created-request-id'));
+
+    TestBed.configureTestingModule({
+      imports: [CustomerShopFinderPage],
+      providers: [
+        { provide: CustomerPortalService, useValue: portal },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+        provideRouter([]),
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CustomerShopFinderPage);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(portal.searchShops).toHaveBeenCalledWith(jasmine.any(Object));
+    expect(fixture.nativeElement.querySelector('.location-search-spinner')).toBeNull();
+
+    page.onAddressInput('Pune');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.location-search-spinner')).not.toBeNull();
+
+    tick(350);
+    expect(portal.suggestAddresses).toHaveBeenCalledWith('Pune', true);
+    suggestions.next([]);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.location-search-spinner')).toBeNull();
+    fixture.destroy();
+  }));
+
   it('selects up to five visible shops at once', () => {
     const portal = createPortalMock();
     const shops: ShopSearchResult[] = Array.from({ length: 6 }, (_, index) => ({
@@ -476,6 +514,7 @@ function makeShop(id: string, shopName: string): ShopSearchResult {
 function createPortalMock(): jasmine.SpyObj<CustomerPortalService> {
   const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
     'searchShops',
+    'suggestAddresses',
     'createRepairRequest',
   ]);
   return portal;
