@@ -17,6 +17,7 @@ export class LoaderService implements OnDestroy {
       backdropClass: 'praxio-loader-backdrop',
       panelClass: 'praxio-loader-panel',
     });
+    this.overlayRef.overlayElement.parentElement?.classList.add('praxio-loader-wrapper');
   }
 
   showLoader(owner: object): void {

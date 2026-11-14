@@ -1180,9 +1180,13 @@
   backdrop-filter: blur(2px);
 }
 
+.cdk-global-overlay-wrapper.praxio-loader-wrapper {
+  z-index: 2147483647 !important;
+}
+
 .cdk-overlay-pane.praxio-loader-panel {
   z-index: 2147483647 !important;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .portal .mobile-search-toggle,
