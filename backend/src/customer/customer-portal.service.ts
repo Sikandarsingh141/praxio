@@ -89,7 +89,7 @@ export interface ShopSearchResult {
   distanceKm: number | null;
   rating: number | null;
   reviewCount: number;
-  logoUrl: null;
+  logoUrl: string | null;
   availability: 'unknown';
   phone: string | null;
   email: string;
@@ -118,6 +118,13 @@ function formatShopAddress(details?: User['shopDetails']): string {
       return true;
     })
     .join(', ');
+}
+
+function shopImageUrl(imageData?: string): string | null {
+  return imageData &&
+    /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData)
+    ? imageData
+    : null;
 }
 
 export interface RouteCoordinate {
@@ -270,7 +277,7 @@ export class CustomerPortalService {
     const shops = await this.users
       .find(query)
       .select(
-        'email countryCode mobileNumber shopDetails.shopName shopDetails.businessType shopDetails.description shopDetails.yearsOfExperience shopDetails.services shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.country shopDetails.postalCode shopDetails.location',
+        'email countryCode mobileNumber shopDetails.shopName shopDetails.shopImageData shopDetails.businessType shopDetails.description shopDetails.yearsOfExperience shopDetails.services shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.country shopDetails.postalCode shopDetails.location',
       )
       .lean()
       .exec();
@@ -334,7 +341,7 @@ export class CustomerPortalService {
           distanceKm,
           rating: shopRatings.get(shop._id.toString())?.rating ?? null,
           reviewCount: shopRatings.get(shop._id.toString())?.reviewCount ?? 0,
-          logoUrl: null,
+          logoUrl: shopImageUrl(details?.shopImageData),
           availability: 'unknown',
           phone:
             shop.mobileNumber && shop.countryCode

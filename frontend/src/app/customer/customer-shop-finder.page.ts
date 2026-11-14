@@ -61,6 +61,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
   readonly visibleLimit = signal(10);
   readonly visibleShops = computed(() => this.shops().slice(0, this.visibleLimit()));
   readonly hasMoreShops = computed(() => this.visibleLimit() < this.shops().length);
+  readonly failedShopPhotos = signal<Set<string>>(new Set());
   readonly shopDirectory = signal<ShopSearchResult[]>([]);
   readonly suggestions = signal<AddressSuggestion[]>([]);
   readonly selectedShops = signal<string[]>([]);
@@ -203,7 +204,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
     if (!panel) {
       return;
     }
-    panel.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    panel.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
     panel.focus({ preventScroll: true });
   }
 
@@ -285,6 +286,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
           }
           this.shops.set(shops);
           this.cacheShops(shops);
+          this.failedShopPhotos.set(new Set());
           this.loading.set(false);
         },
         error: (error: HttpErrorResponse) => {
@@ -376,8 +378,26 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
     const target = event.currentTarget;
     if (!(target instanceof HTMLElement) || !this.hasMoreShops()) return;
     if (target.scrollHeight - target.scrollTop - target.clientHeight < 120) {
-      this.visibleLimit.update((limit) => Math.min(limit + 10, this.shops().length));
+      const nextLimit = Math.min(this.visibleLimit() + 10, this.shops().length);
+      this.visibleLimit.set(nextLimit);
     }
+  }
+
+  onShopPhotoError(shopId: string): void {
+    this.failedShopPhotos.update((failed) => new Set(failed).add(shopId));
+  }
+
+  serviceIcon(service: string): 'mobile' | 'screen' | 'repair' {
+    const normalized = service.toLocaleLowerCase();
+    if (normalized.includes('mobile') || normalized.includes('phone')) return 'mobile';
+    if (
+      normalized.includes('computer') ||
+      normalized.includes('laptop') ||
+      normalized.includes('tv')
+    ) {
+      return 'screen';
+    }
+    return 'repair';
   }
 
   onPhotoSelection(event: Event): void {

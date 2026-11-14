@@ -10,9 +10,46 @@
 
 .results-heading {
   display: flex;
-  align-items: flex-end;
+  min-height: 3.25rem;
+  box-sizing: border-box;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  margin: 1rem 0 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #e1ece3;
+  border-radius: 0.8rem;
+  background:
+    radial-gradient(ellipse at 86% 20%, rgb(222 241 227 / 75%), transparent 29%),
+    linear-gradient(100deg, #fff 20%, #f8fbf8 65%, #eef7f0);
+}
+
+.results-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.results-summary-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.55rem;
+  background: #087c3b;
+  color: #fff;
+}
+
+.results-summary-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .eyebrow,
@@ -208,15 +245,21 @@ p {
 
 .results-heading {
   align-items: center;
-  margin: 1rem 0 0.45rem;
 }
 
 .results-heading h2 {
   margin: 0;
   color: #1b251f;
-  font-size: 1.2rem;
+  font-size: 0.95rem;
   font-weight: 760;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+
+.results-summary p {
+  margin: 0.1rem 0 0;
+  color: #66746b;
+  font-size: 0.65rem;
 }
 
 .select-shop input {
@@ -243,7 +286,7 @@ p {
 .results-layout {
   display: grid;
   height: clamp(320px, 31vw, 440px);
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
   align-items: stretch;
   gap: 0.85rem;
 }
@@ -266,159 +309,6 @@ p {
   color: #64736a;
   font-size: 0.72rem;
   text-align: center;
-}
-
-.shop-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.4rem 0.55rem;
-  min-width: 0;
-  padding: 0.7rem;
-  border-radius: 0.8rem;
-  cursor: pointer;
-  transition:
-    border-color 120ms ease,
-    background-color 120ms ease;
-}
-
-.shop-card:hover {
-  border-color: #9dc9a8;
-}
-
-.shop-view {
-  display: inline-flex;
-  min-height: 2rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.35rem 0.65rem;
-  border: 1px solid #dce8df;
-  border-radius: 0.65rem;
-  background: #fff;
-  color: #17643b;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-.shop-view:hover {
-  border-color: #8ebc99;
-  background: #f5fbf6;
-}
-
-.shop-card.selected {
-  border-color: #51af70;
-  background: #fbfefb;
-}
-
-.shop-heading {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 0.55rem;
-  grid-column: 1 / -1;
-}
-
-.shop-logo {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 0.7rem;
-  object-fit: cover;
-}
-
-.shop-initials {
-  background: #e0f3e5;
-  color: #17643b;
-  font-size: 1.1rem;
-  font-weight: 750;
-}
-
-.shop-title {
-  min-width: 0;
-}
-
-.shop-title h3 {
-  overflow: hidden;
-  margin: 0 0 0.18rem;
-  font-size: 0.9rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shop-title a {
-  color: #1c2721;
-  text-decoration: none;
-}
-
-.shop-title a:hover {
-  color: #477656;
-  text-decoration: underline;
-}
-
-.shop-title span {
-  color: #758078;
-  font-size: 0.68rem;
-}
-
-.shop-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.7rem;
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #69766d;
-  font-size: 0.66rem;
-}
-
-.shop-address {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: #5e6e64;
-  font-size: 0.69rem;
-  line-height: 1.35;
-}
-
-.service-tags {
-  display: flex;
-  min-height: 1.5rem;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  grid-column: 1 / -1;
-}
-
-.service-tags span {
-  padding: 0.22rem 0.45rem;
-  border-radius: 999px;
-  background: #f0f5f0;
-  color: #54705d;
-  font-size: 0.62rem;
-}
-
-.shop-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.35rem;
-  grid-column: 1 / -1;
-}
-
-.select-shop {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  color: #17643b;
-  cursor: pointer;
-}
-
-.select-shop input {
-  width: 1.15rem;
-  height: 1.15rem;
 }
 
 .visually-hidden {

@@ -10,10 +10,7 @@ import { ShopResultsMapComponent } from './shop-results-map.component';
 
 describe('CustomerShopFinderPage', () => {
   it('selects up to five visible shops at once', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     const shops: ShopSearchResult[] = Array.from({ length: 6 }, (_, index) => ({
       id: `shop-${index + 1}`,
       shopName: `Shop ${index + 1}`,
@@ -91,10 +88,7 @@ describe('CustomerShopFinderPage', () => {
   });
 
   it('reveals more shop results when scrolling instead of showing pagination', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     portal.searchShops.and.returnValue(
       of(Array.from({ length: 24 }, (_, index) => makeShop(`shop-${index + 1}`, `Shop ${index + 1}`))),
     );
@@ -150,11 +144,69 @@ describe('CustomerShopFinderPage', () => {
     fixture.destroy();
   });
 
+  it('renders shop photos from search data and shows a fallback when a photo cannot load', () => {
+    const portal = createPortalMock();
+    const shopImageData =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/bGkAAAAASUVORK5CYII=';
+    portal.searchShops.and.returnValue(
+      of([
+        {
+          ...makeShop('shop-1', 'Amit Repair'),
+          logoUrl: shopImageData,
+          businessType: 'Electronics Repair',
+          services: ['Mobile Repair', 'TV Repair'],
+          address: 'Main Road',
+          city: 'Pune',
+          rating: 4.5,
+          reviewCount: 8,
+          distanceKm: 2.3,
+        },
+      ]),
+    );
+    portal.createRepairRequest.and.returnValue(of('created-request-id'));
+
+    TestBed.configureTestingModule({
+      imports: [CustomerShopFinderPage],
+      providers: [
+        { provide: CustomerPortalService, useValue: portal },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+        },
+        provideRouter([]),
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CustomerShopFinderPage);
+    const page = fixture.componentInstance;
+    spyOn(page, 'focusShopOnMap');
+    fixture.detectChanges();
+    const card = fixture.nativeElement.querySelector('.shop-card') as HTMLElement;
+    const photo = card.querySelector('img') as HTMLImageElement;
+    expect(photo.loading).toBe('lazy');
+    expect(photo.src).toBe(shopImageData);
+    expect(photo.alt).toBe('Amit Repair shop photo');
+    expect(card.textContent).toContain('Electronics Repair');
+    expect(card.textContent).toContain('4.5');
+    expect(card.textContent).toContain('(8 reviews)');
+    expect(card.textContent).toContain('2.3 km away');
+    expect(card.querySelector('.approved-badge')).toBeNull();
+    expect(card.textContent).not.toContain('Approved');
+    expect(card.querySelectorAll('.service-tag')).toHaveSize(2);
+
+    (card.querySelector('.shop-view') as HTMLButtonElement).click();
+    expect(page.focusShopOnMap).toHaveBeenCalledWith(page.shops()[0]);
+
+    photo.dispatchEvent(new Event('error'));
+    fixture.detectChanges();
+    expect(card.querySelector('.shop-photo-placeholder')?.textContent).toContain(
+      'Shop photo unavailable',
+    );
+    fixture.destroy();
+  });
+
   it('searches for shops in the request form and adds and removes them', fakeAsync(() => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     const shops = [makeShop('shop-1', 'Amit Shop'), makeShop('shop-2', 'Rahul Repair')];
     portal.searchShops.and.returnValue(of(shops));
     portal.createRepairRequest.and.returnValue(of('created-request-id'));
@@ -205,10 +257,7 @@ describe('CustomerShopFinderPage', () => {
   }));
 
   it('renders the shop finder alongside the repair request form', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     portal.searchShops.and.returnValue(of([]));
     portal.createRepairRequest.and.returnValue(of('created-request-id'));
 
@@ -239,10 +288,7 @@ describe('CustomerShopFinderPage', () => {
   });
 
   it('focuses the map on a shop when its result card is clicked', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     const shop = {
       ...makeShop('shop-1', 'Amit Shop'),
       location: { latitude: 28.6139, longitude: 77.209 },
@@ -278,10 +324,7 @@ describe('CustomerShopFinderPage', () => {
   });
 
   it('opens the repair form without navigating away from the shop finder', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     portal.searchShops.and.returnValue(of([]));
     portal.createRepairRequest.and.returnValue(of('created-request-id'));
 
@@ -302,21 +345,20 @@ describe('CustomerShopFinderPage', () => {
     fixture.detectChanges();
     const originalUrl = router.url;
     const requestPanel = fixture.nativeElement.querySelector('.request-panel');
+    const scrollIntoView = spyOn(requestPanel, 'scrollIntoView');
 
     (fixture.nativeElement.querySelector('.request-link') as HTMLButtonElement).click();
 
     expect(router.url).toBe(originalUrl);
     expect(document.activeElement).toBe(requestPanel);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'end' });
     expect(requestPanel.querySelector('#request-title')?.textContent).toContain(
       'Request a Repair for',
     );
   });
 
   it('navigates to the created repair request details', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     portal.searchShops.and.returnValue(of([]));
     portal.createRepairRequest.and.returnValue(of('created-request-id'));
 
@@ -368,10 +410,7 @@ describe('CustomerShopFinderPage', () => {
   });
 
   it('enables rating filtering and highest-rated sorting', () => {
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'searchShops',
-      'createRepairRequest',
-    ]);
+    const portal = createPortalMock();
     portal.searchShops.and.returnValue(of([]));
     portal.createRepairRequest.and.returnValue(of('created-request-id'));
 
@@ -432,4 +471,12 @@ function makeShop(id: string, shopName: string): ShopSearchResult {
     phone: null,
     email: '',
   };
+}
+
+function createPortalMock(): jasmine.SpyObj<CustomerPortalService> {
+  const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
+    'searchShops',
+    'createRepairRequest',
+  ]);
+  return portal;
 }

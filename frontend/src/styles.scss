@@ -1448,20 +1448,9 @@
   .shop-rating {
     color: #37473c;
 
-    > span {
+    > .rating-star {
       color: #e6a400;
     }
-  }
-
-  .approved-badge {
-    margin-left: auto;
-    padding: 0.25rem 0.5rem;
-    border-radius: 999px;
-    background: #e5f6ea;
-    color: #18743a;
-    font-size: 0.63rem;
-    font-weight: 700;
-    white-space: nowrap;
   }
 
   .search-assist {
@@ -1532,6 +1521,274 @@
   .availability-note {
     color: #7c887f;
     font-size: 0.64rem;
+  }
+
+  .results-layout {
+    grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
+  }
+
+  .shop-card {
+    display: grid;
+    grid-template-columns: 1.15rem 150px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    min-height: 9.5rem;
+    padding: 0.75rem;
+    border-radius: 0.85rem;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+
+    &:hover {
+      border-color: #9dc9a8;
+      box-shadow: 0 5px 16px rgb(22 66 40 / 8%);
+    }
+
+    &.selected {
+      border-color: #51af70;
+      background: #fbfefb;
+    }
+  }
+
+  .select-shop {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #17643b;
+    cursor: pointer;
+
+    input {
+      width: 1.15rem;
+      height: 1.15rem;
+      margin: 0;
+      accent-color: #087c3b;
+      cursor: pointer;
+    }
+  }
+
+  .shop-photo {
+    width: 150px;
+    height: 120px;
+    overflow: hidden;
+    border: 1px solid #e4eae5;
+    border-radius: 0.7rem;
+    background: #edf5ef;
+
+    &-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    &-placeholder {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      align-content: center;
+      justify-items: center;
+      gap: 0.35rem;
+      background: linear-gradient(145deg, #edf7ef, #dceee0);
+      color: #548161;
+      font-size: 0.62rem;
+      text-align: center;
+
+      svg {
+        width: 2.8rem;
+        height: 2.8rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 1.6;
+      }
+    }
+  }
+
+  .shop-content {
+    display: grid;
+    min-width: 0;
+    align-content: center;
+    gap: 0.55rem;
+  }
+
+  .shop-heading {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .shop-title {
+    min-width: 0;
+
+    h3 {
+      overflow: hidden;
+      margin: 0 0 0.15rem;
+      font-size: 0.93rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    a {
+      color: #1c2721;
+      text-decoration: none;
+
+      &:hover {
+        color: #477656;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .shop-name-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .shop-category {
+    color: #758078;
+    font-size: 0.68rem;
+  }
+
+  .verified-badge {
+    display: inline-grid;
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    background: #087c3b;
+    color: #fff;
+
+    svg {
+      width: 0.78rem;
+      height: 0.78rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.5;
+    }
+  }
+
+  .shop-view {
+    flex: 0 0 auto;
+    justify-content: center;
+    padding: 0.35rem 0.6rem;
+    border-color: #d5e5d9;
+    border-radius: 0.65rem;
+    background: #fff;
+    cursor: pointer;
+
+    &:hover {
+      border-color: #8ebc99;
+      background: #f5fbf6;
+    }
+
+    span {
+      font-size: 0.9rem;
+    }
+  }
+
+  .shop-meta {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    color: #69766d;
+    font-size: 0.67rem;
+  }
+
+  .shop-rating,
+  .shop-distance {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .rating-star {
+    color: #edae13;
+    font-size: 0.95rem;
+  }
+
+  .review-count {
+    color: #758078;
+  }
+
+  .shop-distance svg,
+  .shop-address svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: #536d5b;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.7;
+  }
+
+  .shop-distance svg circle,
+  .shop-address svg circle {
+    fill: #fff;
+  }
+
+  .rating-unavailable {
+    color: #79867e;
+  }
+
+  .shop-address {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0;
+    color: #4c5d52;
+    font-size: 0.68rem;
+    line-height: 1.4;
+
+    span {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+  }
+
+  .service-tags {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .service-tag {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: #eef6f0;
+    color: #425e4b;
+    font-size: 0.63rem;
+    line-height: 1.2;
+
+    svg {
+      width: 0.85rem;
+      height: 0.85rem;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.6;
+    }
   }
 
   .request-shop-picker {
@@ -1671,6 +1928,10 @@
   .shop-finder .shop-results {
     max-height: min(60vh, 32rem);
   }
+
+  .shop-finder .map {
+    height: clamp(320px, 55vw, 440px);
+  }
 }
 
 @media (max-width: 560px) {
@@ -1745,6 +2006,40 @@
 
   .shop-finder .results-toolbar .data-note {
     text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  .shop-finder .shop-card {
+    grid-template-columns: 1rem 100px minmax(0, 1fr);
+    gap: 0.55rem;
+    min-height: 7rem;
+    padding: 0.6rem;
+  }
+
+  .shop-finder .shop-photo {
+    width: 100px;
+    height: 80px;
+  }
+
+  .shop-finder .shop-heading {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .shop-finder .shop-title h3 {
+    font-size: 0.84rem;
+  }
+
+  .shop-finder .shop-view {
+    min-height: 1.8rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.62rem;
+  }
+
+  .shop-finder .service-tag {
+    padding: 0.22rem 0.4rem;
+    font-size: 0.59rem;
   }
 }
 

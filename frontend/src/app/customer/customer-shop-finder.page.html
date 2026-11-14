@@ -102,8 +102,17 @@
   </section>
 
   <div class="results-heading">
-    <div>
-      <h2>{{ shops().length }} {{ shops().length === 1 ? 'shop' : 'shops' }} found</h2>
+    <div class="results-summary">
+      <span class="results-summary-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M4 10v10h16V10M3 10l2-6h14l2 6" />
+          <path d="M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" />
+        </svg>
+      </span>
+      <div>
+        <h2>{{ shops().length }} {{ shops().length === 1 ? 'shop found' : 'shops found' }}</h2>
+        <p>Find nearby and trusted repair shops</p>
+      </div>
     </div>
     <div class="results-actions">
       @if (shops().length) {
@@ -135,9 +144,6 @@
         <option value="rating">Highest rated</option>
       </select>
     </label>
-    <span class="data-note">
-      Ratings and live availability are shown only when provided by the shop.
-    </span>
   </div>
 
   @if (error()) {
@@ -161,59 +167,123 @@
                 [class.selected]="selectedShops().includes(shop.id)"
                 (click)="focusShopOnMap(shop)"
               >
-                <div class="shop-heading">
-                  <label class="select-shop" [attr.aria-label]="'Select ' + shop.shopName">
-                    <input
-                      type="checkbox"
-                      [checked]="selectedShops().includes(shop.id)"
-                      (change)="toggleShop(shop.id)"
+                <label
+                  class="select-shop"
+                  [attr.aria-label]="'Select ' + shop.shopName"
+                  (click)="$event.stopPropagation()"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="selectedShops().includes(shop.id)"
+                    (change)="toggleShop(shop.id)"
+                  />
+                  <span class="visually-hidden">Select {{ shop.shopName }}</span>
+                </label>
+                <div class="shop-photo">
+                  @if (!shop.logoUrl || failedShopPhotos().has(shop.id)) {
+                    <div class="shop-photo-placeholder" aria-hidden="true">
+                      <svg viewBox="0 0 64 64">
+                        <path d="M10 26h44l-4-14H14zM14 26v26h36V26" />
+                        <path d="M25 52V36h14v16M10 26c0 4 2.5 6 5.5 6s5.5-2 5.5-6m0 0c0 4 2.5 6 5.5 6s5.5-2 5.5-6m0 0c0 4 2.5 6 5.5 6s5.5-2 5.5-6m0 0c0 4 2.5 6 5.5 6s5.5-2 5.5-6" />
+                      </svg>
+                      <span>Shop photo unavailable</span>
+                    </div>
+                  } @else {
+                    <img
+                      class="shop-photo-image"
+                      [src]="shop.logoUrl"
+                      [alt]="shop.shopName + ' shop photo'"
+                      loading="lazy"
+                      decoding="async"
+                      (error)="onShopPhotoError(shop.id)"
                     />
-                    <span class="visually-hidden">Select {{ shop.shopName }}</span>
-                  </label>
-                  @if (shop.logoUrl) {
-                    <img [src]="shop.logoUrl" [alt]="shop.shopName + ' logo'" class="shop-logo" />
-                  } @else {
-                    <span class="shop-logo shop-initials" aria-hidden="true">
-                      {{ shop.shopName.slice(0, 1).toUpperCase() }}
-                    </span>
                   }
-                  <div class="shop-title">
-                    <h3>
-                      <a
-                        [routerLink]="['/customer/shops', shop.id]"
-                        (click)="$event.stopPropagation()"
-                        >{{ shop.shopName }}</a
-                      >
-                    </h3>
-                    <span>{{ shop.businessType }}</span>
+                </div>
+                <div class="shop-content">
+                  <div class="shop-heading">
+                    <div class="shop-title">
+                      <div class="shop-name-row">
+                        <h3>
+                          <a
+                            [routerLink]="['/customer/shops', shop.id]"
+                            (click)="$event.stopPropagation()"
+                            >{{ shop.shopName }}</a
+                          >
+                        </h3>
+                        <span class="verified-badge" title="Verified shop" aria-label="Verified shop">
+                          <svg viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="m5 10 3.2 3.2L15.5 6" />
+                          </svg>
+                        </span>
+                      </div>
+                      <span class="shop-category">{{ shop.businessType }}</span>
+                    </div>
+                    <button
+                      class="shop-view"
+                      type="button"
+                      (click)="focusShopOnMap(shop); $event.stopPropagation()"
+                    >
+                      Show on map
+                      <span aria-hidden="true">⌖</span>
+                    </button>
                   </div>
-                  <button class="shop-view" type="button">
-                    Show on map
-                    <span aria-hidden="true">⌖</span>
-                  </button>
-                </div>
 
-                <div class="shop-meta">
-                  @if (shop.rating !== null) {
-                    <span class="shop-rating"><span aria-hidden="true">★</span> {{ shop.rating | number: '1.1-1' }} ({{ shop.reviewCount }} reviews)</span>
-                  } @else {
-                    <span class="rating-unavailable">Rating unavailable</span>
-                  }
-                  @if (shop.distanceKm !== null) {
-                    <span>{{ shop.distanceKm }} km away</span>
-                  } @else {
-                    <span>Distance unavailable</span>
-                  }
-                  <span class="approved-badge"><span aria-hidden="true">✓</span> Approved</span>
-                </div>
-                <p class="shop-address">{{ addressFor(shop) }}</p>
-                <div class="service-tags">
-                  @for (service of shop.services; track service) {
-                    <span>{{ service }}</span>
-                  }
-                </div>
-                <div class="shop-actions">
-                  <span class="availability-note">Availability not provided</span>
+                  <div class="shop-meta">
+                    @if (shop.rating !== null) {
+                      <span class="shop-rating">
+                        <span class="rating-star" aria-hidden="true">★</span>
+                        {{ shop.rating | number: '1.1-1' }}
+                        <span class="review-count">({{ shop.reviewCount }} reviews)</span>
+                      </span>
+                    } @else {
+                      <span class="rating-unavailable">Rating unavailable</span>
+                    }
+                    @if (shop.distanceKm !== null) {
+                      <span class="shop-distance">
+                        <svg viewBox="0 0 20 20" aria-hidden="true">
+                          <path d="M10 18s6-4.1 6-10a6 6 0 1 0-12 0c0 5.9 6 10 6 10Z" />
+                          <circle cx="10" cy="8" r="2" />
+                        </svg>
+                        {{ shop.distanceKm }} km away
+                      </span>
+                    } @else {
+                      <span class="shop-distance">Distance unavailable</span>
+                    }
+                  </div>
+                  <p class="shop-address">
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <path d="M10 18s6-4.1 6-10a6 6 0 1 0-12 0c0 5.9 6 10 6 10Z" />
+                      <circle cx="10" cy="8" r="2" />
+                    </svg>
+                    <span>{{ addressFor(shop) }}</span>
+                  </p>
+                  <div class="service-tags">
+                    @for (service of shop.services; track service) {
+                      <span class="service-tag">
+                        @switch (serviceIcon(service)) {
+                          @case ('mobile') {
+                            <svg viewBox="0 0 20 20" aria-hidden="true">
+                              <rect x="6" y="2.5" width="8" height="15" rx="1.5" />
+                              <path d="M9 14.5h2" />
+                            </svg>
+                          }
+                          @case ('screen') {
+                            <svg viewBox="0 0 20 20" aria-hidden="true">
+                              <rect x="2.5" y="3" width="15" height="10" rx="1.5" />
+                              <path d="M7 17h6m-3-4v4" />
+                            </svg>
+                          }
+                          @default {
+                            <svg viewBox="0 0 20 20" aria-hidden="true">
+                              <path d="M12.5 5.5a4 4 0 0 0-5.3 5.3l-4.5 4.5a1.6 1.6 0 0 0 2.3 2.3l4.5-4.5a4 4 0 0 0 5.3-5.3l-2.1 2.1-2-.4-.4-2z" />
+                              <path d="m12 12 4.5 4.5" />
+                            </svg>
+                          }
+                        }
+                        {{ service }}
+                      </span>
+                    }
+                  </div>
                 </div>
               </article>
             }

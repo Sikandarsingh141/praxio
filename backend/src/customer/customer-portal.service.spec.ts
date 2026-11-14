@@ -160,7 +160,27 @@ describe('CustomerPortalService', () => {
     expect(results[0]?.distanceKm).toBe(0);
     expect(results[1]?.distanceKm).toBeGreaterThan(0);
     expect(results[0]?.rating).toBeNull();
+    expect(results[0]?.logoUrl).toBeNull();
     expect(results[0]?.availability).toBe('unknown');
+  });
+
+  it('includes an uploaded shop image data URL in search results', async () => {
+    const shopImageData = 'data:image/png;base64,AA==';
+    userModel.find.mockReturnValue(
+      createQuery([
+        {
+          ...shops[0],
+          shopDetails: { ...shops[0].shopDetails, shopImageData },
+        },
+      ]),
+    );
+
+    const results = await service.searchShops({});
+
+    expect(results[0]?.logoUrl).toBe(shopImageData);
+    expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
+      expect.stringContaining('shopDetails.shopImageData'),
+    );
   });
 
   it('filters by supported service, text terms, and distance without inventing distance', async () => {
