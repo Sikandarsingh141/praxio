@@ -109,7 +109,7 @@ import { ToastItem } from './toast.models';
 
               <!-- Action Footer -->
               <div class="msg-action-footer">
-                <!-- <button
+                <button
                   type="button"
                   class="msg-view-btn"
                   (click)="onViewConversation($event, toast)"
@@ -120,7 +120,7 @@ import { ToastItem } from './toast.models';
                     <polyline points="15 3 21 3 21 9"></polyline>
                     <line x1="10" y1="14" x2="21" y2="3"></line>
                   </svg>
-                </button> -->
+                </button>
               </div>
             </div>
           } @else {

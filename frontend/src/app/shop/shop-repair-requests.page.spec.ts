@@ -36,4 +36,34 @@ describe('ShopRepairRequestsPage', () => {
 
     component.ngOnDestroy();
   }));
+
+  it('correctly retrieves customer uploaded photo when present, and returns null when absent', () => {
+    const component = new ShopRepairRequestsPage(
+      {} as unknown as ShopRepairRequestsService,
+      { notifications$: of() } as unknown as NotificationRealtimeService,
+      { snapshot: { data: {} } } as ActivatedRoute,
+    );
+
+    const withPhoto = {
+      _id: 'req-1',
+      photos: [{ mimeType: 'image/jpeg', data: 'data:image/jpeg;base64,abc123' }],
+    } as any;
+    expect(component.getCustomerPhoto(withPhoto)).toBe('data:image/jpeg;base64,abc123');
+
+    const withRawBase64 = {
+      _id: 'req-2',
+      photos: [{ mimeType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUg==' }],
+    } as any;
+    expect(component.getCustomerPhoto(withRawBase64)).toBe('data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==');
+
+    const withoutPhoto = {
+      _id: 'req-3',
+      photos: [],
+    } as any;
+    expect(component.getCustomerPhoto(withoutPhoto)).toBeNull();
+
+    // After photo load error, returns null fallback
+    component.onPhotoError(withPhoto);
+    expect(component.getCustomerPhoto(withPhoto)).toBeNull();
+  });
 });

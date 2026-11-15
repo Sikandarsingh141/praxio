@@ -174,7 +174,7 @@ app-common-filter {
   display: grid;
   min-width: 0;
   min-height: 6.2rem;
-  grid-template-columns: 3rem minmax(220px, 1.15fr) minmax(270px, 1fr) minmax(8rem, auto);
+  grid-template-columns: 76px minmax(220px, 1.15fr) minmax(270px, 1fr) minmax(8rem, auto);
   align-items: center;
   gap: 0.8rem;
   padding: 0.7rem 0.85rem;
@@ -182,6 +182,44 @@ app-common-filter {
   border-radius: 0.85rem;
   background: #fff;
   box-shadow: 0 1px 3px rgb(20 40 28 / 3%);
+}
+
+.product-thumbnail-wrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  border: 1px solid #e5ebe6;
+  background: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(20, 40, 28, 0.04);
+}
+
+.product-thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 9px;
+}
+
+.product-thumbnail-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f7eb;
+  color: #078132;
+
+  svg {
+    width: 2rem;
+    height: 2rem;
+  }
 }
 
 .appliance-icon {
@@ -208,6 +246,10 @@ app-common-filter {
   text-transform: uppercase;
 }
 
+.request-reference {
+  color: #078132;
+}
+
 .request-summary h2 {
   overflow: hidden;
   margin: 0.16rem 0;
@@ -222,6 +264,9 @@ app-common-filter {
   margin: 0;
   color: #45554a;
   font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .description {
@@ -233,6 +278,20 @@ app-common-filter {
   line-height: 1.4;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+}
+
+.summary-inline-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  color: #78867d;
+}
+
+.meta-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  color: #66746b;
 }
 
 .request-meta {
@@ -396,7 +455,12 @@ app-common-filter {
 
 @media (max-width: 1100px) {
   .request-card {
-    grid-template-columns: 2.8rem minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 68px minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .product-thumbnail-wrap {
+    width: 68px;
+    height: 68px;
   }
 
   .request-meta {
@@ -428,7 +492,12 @@ app-common-filter {
   }
 
   .request-card {
-    grid-template-columns: 2.8rem minmax(0, 1fr) auto;
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+  }
+
+  .product-thumbnail-wrap {
+    width: 60px;
+    height: 60px;
   }
 
   .request-meta {
@@ -478,9 +547,14 @@ app-common-filter {
   }
 
   .request-card {
-    grid-template-columns: 2.4rem minmax(0, 1fr);
+    grid-template-columns: 52px minmax(0, 1fr);
     gap: 0.55rem;
     padding: 0.7rem;
+  }
+
+  .product-thumbnail-wrap {
+    width: 52px;
+    height: 52px;
   }
 
   .appliance-icon {

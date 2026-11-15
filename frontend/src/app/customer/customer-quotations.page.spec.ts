@@ -44,6 +44,17 @@ describe('CustomerQuotationsPage', () => {
       }),
     ).toBe('Repair Cancelled');
 
+    const quoteWithPhoto: any = {
+      _id: 'q-1',
+      repairRequest: {
+        _id: 'req-1',
+        photos: [{ data: 'data:image/png;base64,abc1234', mimeType: 'image/png' }],
+      },
+    };
+    expect(fixture.componentInstance.getCustomerPhoto(quoteWithPhoto)).toBe('data:image/png;base64,abc1234');
+    fixture.componentInstance.onPhotoError('q-1');
+    expect(fixture.componentInstance.getCustomerPhoto(quoteWithPhoto)).toBeNull();
+
     fixture.destroy();
   });
 });

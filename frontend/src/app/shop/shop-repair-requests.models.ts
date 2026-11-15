@@ -100,6 +100,7 @@ export interface ShopQuotationPage {
         brand?: string;
         model?: string;
         description: string;
+        photos?: ShopRepairPhoto[];
       };
       customer: { firstName: string; lastName: string; displayName?: string };
       shop: { id: string; shopName: string };

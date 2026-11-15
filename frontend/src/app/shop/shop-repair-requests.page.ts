@@ -14,6 +14,7 @@ import {
 } from '../shared/common-filter.component';
 import { PaginationComponent } from '../shared/pagination.component';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { getCustomerUploadedPhoto } from '../shared/appliance-thumbnail.util';
 
 const TABS = [
   { label: 'All requests', value: 'all' },
@@ -85,6 +86,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   private repairStatusFilter: ShopRequestFilters['repairStatus'];
   private readonly destroyed = new Subject<void>();
   private readonly realtimeSubscription: Subscription;
+  private readonly failedPhotoIds = new Set<string>();
   private activeLoads = 0;
   private requestSequence = 0;
 
@@ -258,5 +260,16 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
     if (status === 'accepted') return summary.accepted;
     if (status === 'declined') return summary.declined;
     return summary.expired;
+  }
+
+  getCustomerPhoto(request: ShopRepairRequestPage['requests'][number]): string | null {
+    if (this.failedPhotoIds.has(request._id)) {
+      return null;
+    }
+    return getCustomerUploadedPhoto(request);
+  }
+
+  onPhotoError(request: ShopRepairRequestPage['requests'][number]): void {
+    this.failedPhotoIds.add(request._id);
   }
 }

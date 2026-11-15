@@ -1022,7 +1022,7 @@ export class CustomerPortalService {
     const requests = await this.repairRequests
       .find({ customerId: customer._id })
       .select(
-        '_id appliance brand model description preferredServiceDate serviceType status repairJob.status createdAt',
+        '_id appliance brand model description preferredServiceDate serviceType status repairJob.status createdAt photos',
       )
       .lean()
       .exec();
@@ -1113,7 +1113,7 @@ export class CustomerPortalService {
       ? await this.repairRequests
           .find({ _id: { $in: requestIds }, shopIds: shop._id })
           .select(
-            '_id customerId appliance brand model description preferredServiceDate serviceType createdAt',
+            '_id customerId appliance brand model description preferredServiceDate serviceType createdAt photos',
           )
           .lean()
           .exec()
@@ -1804,7 +1804,7 @@ export class CustomerPortalService {
       .map((request) => {
         const safeRequest = {
           ...request,
-          photos: [],
+          photos: request.photos || [],
           shopResponses: [],
           repairJob: request.repairJob
             ? { status: request.repairJob.status }

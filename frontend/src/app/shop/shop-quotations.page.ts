@@ -14,6 +14,7 @@ import { PaginationComponent } from '../shared/pagination.component';
 import { ShopQuotationFilters, ShopQuotationPage } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { getCustomerUploadedPhoto } from '../shared/appliance-thumbnail.util';
 
 type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
 
@@ -141,11 +142,23 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
           @for (quote of quotations(); track quote._id) {
             <article class="card">
               <section class="customer-info" aria-label="Customer and repair request">
-                <div class="device-placeholder" aria-hidden="true">
-                  <svg viewBox="0 0 48 48">
-                    <rect x="12" y="5" width="24" height="38" rx="3" />
-                    <path d="M12 17h24m-18-7v3m0 9v15m12-15v15" />
-                  </svg>
+                <div class="product-thumbnail-wrap">
+                  @if (getCustomerPhoto(quote); as photoUrl) {
+                    <img
+                      class="product-thumbnail-img is-uploaded"
+                      [src]="photoUrl"
+                      [alt]="'Customer photo for ' + quote.repairRequest.appliance"
+                      (error)="onPhotoError(quote._id)"
+                      loading="lazy"
+                    />
+                  } @else {
+                    <div class="product-thumbnail-fallback" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="4" y="4" width="16" height="16" rx="3" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </div>
+                  }
                 </div>
                 <div class="customer-copy">
                   <span class="eyebrow"
@@ -263,8 +276,40 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
     .list { display: grid; gap: 0.7rem; }
     .card { display: grid; grid-template-columns: minmax(14rem, 0.85fr) minmax(18rem, 1.35fr) minmax(8rem, auto); align-items: center; gap: 0.9rem; padding: 0.8rem; box-shadow: 0 1px 3px rgb(20 40 28 / 3%); }
     .customer-info { display: flex; min-width: 0; align-items: center; gap: 0.75rem; }
-    .device-placeholder { display: grid; width: 3.8rem; height: 3.8rem; flex: 0 0 auto; place-items: center; border-radius: 0.8rem; background: #e1f6e6; }
-    .device-placeholder svg { width: 2rem; height: 2rem; fill: none; stroke: #176b34; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+    .product-thumbnail-wrap {
+      position: relative;
+      width: 76px;
+      height: 76px;
+      border-radius: 10px;
+      border: 1px solid #e5ebe6;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(20, 40, 28, 0.04);
+    }
+    .product-thumbnail-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 9px;
+    }
+    .product-thumbnail-fallback {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e8f7eb;
+      color: #078132;
+    }
+    .product-thumbnail-fallback svg {
+      width: 2rem;
+      height: 2rem;
+    }
     .customer-copy { min-width: 0; }
     .customer-copy h2 { overflow: hidden; margin: 0.25rem 0; color: #1c2721; font-size: 0.98rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
     .device-name, .submitted-date { margin: 0.2rem 0; color: #68756d; font-size: 0.7rem; line-height: 1.4; }
@@ -306,7 +351,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
       .card { grid-template-columns: minmax(0, 1fr) auto; gap: 0.65rem; }
       .customer-info, .quote-info { grid-column: 1 / -1; }
       .quote-info { padding: 0.7rem 0 0; border-top: 1px solid #e2e8e3; border-left: 0; }
-      .device-placeholder { width: 3.2rem; height: 3.2rem; }
+      .product-thumbnail-wrap { width: 64px; height: 64px; }
       .card-actions { grid-column: 1 / -1; width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
     }
     @media (max-width: 430px) {
@@ -317,6 +362,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
       .summary-copy span { font-size: 0.63rem; }
       .card { padding: 0.65rem; }
       .customer-info { gap: 0.55rem; }
+      .product-thumbnail-wrap { width: 52px; height: 52px; }
       .customer-copy h2 { font-size: 0.9rem; }
       .pagination { gap: 0.45rem; }
     }
@@ -491,5 +537,18 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
     if (status === 'declined') return 'Rejected';
     if (status === 'sent' || status === 'pending') return 'Pending';
     return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  private readonly failedPhotoIds = new Set<string>();
+
+  getCustomerPhoto(quote: ShopQuotationPage['quotations'][number]): string | null {
+    if (this.failedPhotoIds.has(quote._id)) {
+      return null;
+    }
+    return getCustomerUploadedPhoto(quote.repairRequest);
+  }
+
+  onPhotoError(quoteId: string): void {
+    this.failedPhotoIds.add(quoteId);
   }
 }

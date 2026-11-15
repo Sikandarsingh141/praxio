@@ -61,6 +61,7 @@ export interface CustomerQuotation extends RepairQuotation {
     serviceType?: 'shop_visit' | 'home_service';
     status: 'open' | 'cancelled' | 'completed';
     repairJob?: RepairWorkflowJob;
+    photos?: Array<{ data: string; mimeType: string }>;
   };
   shop: {
     id: string;
