@@ -8,6 +8,7 @@ import { FirebaseMessagingService } from './firebase-messaging.service';
 import type { Unsubscribe } from 'firebase/messaging';
 import { Subscription } from 'rxjs';
 import { NotificationRealtimeService } from './notification-realtime.service';
+import { ToastService } from '../toast/toast.service';
 
 @Component({
   selector: 'app-notification-center',
@@ -30,18 +31,6 @@ import { NotificationRealtimeService } from './notification-realtime.service';
           <span class="notification-count">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
         }
       </button>
-
-      @if (liveMessage(); as message) {
-        <aside class="live-notice" role="status">
-          <div>
-            <strong>{{ message.title }}</strong>
-            <span>{{ message.body }}</span>
-          </div>
-          <button type="button" aria-label="Dismiss notification" (click)="dismissLiveMessage()">
-            ×
-          </button>
-        </aside>
-      }
 
       @if (isOpen()) {
         <section class="notification-panel" aria-label="Notifications">
@@ -631,6 +620,7 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
   private readonly firebaseMessaging = inject(FirebaseMessagingService);
   private readonly zone = inject(NgZone);
   private readonly realtime = inject(NotificationRealtimeService);
+  private readonly toastService = inject(ToastService);
   private realtimeSubscription: Subscription | null = null;
   private unsubscribeFromMessages: Unsubscribe | null = null;
   private liveMessageTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -761,15 +751,31 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
   }
 
   private handleIncomingNotification(notification: RegistrationNotification): void {
-    this.liveMessage.set({
-      title: notification.title,
-      body: notification.message,
-    });
-    if (this.liveMessageTimeout) {
-      clearTimeout(this.liveMessageTimeout);
+    let toastType: 'success' | 'error' | 'warning' | 'info' = 'info';
+    if (
+      notification.type === 'registration_approved' ||
+      notification.type === 'customer_accepted_quotation' ||
+      notification.type === 'account_activated'
+    ) {
+      toastType = 'success';
+    } else if (
+      notification.type === 'registration_declined' ||
+      notification.type === 'customer_rejected_quotation' ||
+      notification.type === 'repair_request_declined'
+    ) {
+      toastType = 'error';
+    } else if (
+      notification.type === 'quotation_expired' ||
+      notification.type === 'account_suspended'
+    ) {
+      toastType = 'warning';
     }
 
-    this.liveMessageTimeout = setTimeout(() => this.dismissLiveMessage(), 8000);
+    this.toastService.show({
+      type: toastType,
+      title: notification.title,
+      message: notification.message,
+    });
 
     const isRegistrationDecision =
       notification.type === 'registration_approved' ||

@@ -21,6 +21,7 @@ import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { AuthService } from '../core/auth/auth.service';
 import { RegistrationAddressSuggestion } from '../core/auth/auth.models';
 import { FirebaseMessagingService } from '../core/notifications/firebase-messaging.service';
+import { ToastService } from '../core/toast/toast.service';
 import {
   ShopRegistrationDraft,
   ShopRegistrationDraftService,
@@ -56,6 +57,7 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
   private readonly draftService = inject(ShopRegistrationDraftService);
   private readonly authService = inject(AuthService);
   private readonly firebaseMessaging = inject(FirebaseMessagingService);
+  private readonly toastService = inject(ToastService);
   readonly pushConfigured = this.firebaseMessaging.isConfigured();
   readonly currentStep = signal(0);
   readonly passwordVisible = signal(false);
@@ -515,18 +517,19 @@ export class ShopRegisterPage implements OnInit, OnDestroy {
       .subscribe({
         next: (result) => {
           this.draftService.clearDraft();
-          this.successMessage.set(
-            'Shop registration submitted. Redirecting to secure Stripe Checkout…',
-          );
+          const msg = 'Shop registration submitted. Redirecting to secure Stripe Checkout…';
+          this.successMessage.set(msg);
+          this.toastService.info('Redirecting to Checkout', msg);
           this.redirectToCheckout(result.checkoutUrl);
         },
-        error: (error: unknown) =>
-          this.errorMessage.set(
-            getAuthErrorMessage(
-              error,
-              'Unable to submit your shop registration. Please try again.',
-            ),
-          ),
+        error: (error: unknown) => {
+          const msg = getAuthErrorMessage(
+            error,
+            'Unable to submit your shop registration. Please try again.',
+          );
+          this.errorMessage.set(msg);
+          this.toastService.error('Registration Failed', msg);
+        },
       });
   }
 

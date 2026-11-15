@@ -11,6 +11,7 @@ import { finalize } from 'rxjs';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { AuthService } from '../core/auth/auth.service';
 import { FirebaseMessagingService } from '../core/notifications/firebase-messaging.service';
+import { ToastService } from '../core/toast/toast.service';
 import { PHONE_COUNTRY_CODES } from './phone-country-codes';
 
 const REGISTRATION_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -33,6 +34,7 @@ export class CustomerRegisterPage {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly firebaseMessaging = inject(FirebaseMessagingService);
+  private readonly toastService = inject(ToastService);
   readonly pushConfigured = this.firebaseMessaging.isConfigured();
   readonly phoneCountryCodes = PHONE_COUNTRY_CODES;
   readonly submitting = signal(false);
@@ -212,12 +214,15 @@ export class CustomerRegisterPage {
           this.form.reset();
           this.profileImageData.set('');
           this.profileImageName.set('');
-          this.successMessage.set('Your customer account is ready. You can now sign in.');
+          const msg = 'Your customer account is ready. You can now sign in.';
+          this.successMessage.set(msg);
+          this.toastService.success('Registration Submitted', msg);
         },
-        error: (error: unknown) =>
-          this.errorMessage.set(
-            getAuthErrorMessage(error, 'Unable to create your account. Please try again.'),
-          ),
+        error: (error: unknown) => {
+          const msg = getAuthErrorMessage(error, 'Unable to create your account. Please try again.');
+          this.errorMessage.set(msg);
+          this.toastService.error('Registration Failed', msg);
+        },
       });
   }
 }

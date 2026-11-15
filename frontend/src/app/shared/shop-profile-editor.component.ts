@@ -17,6 +17,7 @@ import {
 } from '../core/auth/auth.models';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { AuthService } from '../core/auth/auth.service';
+import { ToastService } from '../core/toast/toast.service';
 import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 
 @Component({
@@ -495,6 +496,7 @@ export class ShopProfileEditorComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toastService = inject(ToastService);
   private readonly addressQueryInput = new Subject<string>();
   @Input({ required: true }) profile!: ShopProfile;
   @Output() readonly profileUpdated = new EventEmitter<ShopProfile>();
@@ -720,12 +722,13 @@ export class ShopProfileEditorComponent implements OnInit {
         this.saving.set(false);
         this.editing.set(false);
         this.successMessage.set('Your business profile has been updated.');
+        this.toastService.success('Business Profile', 'Your business profile has been updated.');
       },
       error: (error: unknown) => {
+        const msg = getAuthErrorMessage(error, 'Unable to update your business profile.');
         this.saving.set(false);
-        this.errorMessage.set(
-          getAuthErrorMessage(error, 'Unable to update your business profile.'),
-        );
+        this.errorMessage.set(msg);
+        this.toastService.error('Update Failed', msg);
       },
     });
   }

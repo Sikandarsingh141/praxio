@@ -1,6 +1,7 @@
 import { Component, inject, Input, OnInit, signal } from '@angular/core';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { AuthService } from '../core/auth/auth.service';
+import { ToastService } from '../core/toast/toast.service';
 
 const PROFILE_IMAGE_MAX_BYTES = 1024 * 1024;
 const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -456,6 +457,7 @@ export class ProfileEditorComponent implements OnInit {
   @Input() allowPasswordChange = false;
   @Input() showNameForm = true;
   readonly authService = inject(AuthService);
+  private readonly toastService = inject(ToastService);
   readonly firstName = signal('');
   readonly lastName = signal('');
   readonly savingName = signal(false);
@@ -512,10 +514,13 @@ export class ProfileEditorComponent implements OnInit {
       next: () => {
         this.savingName.set(false);
         this.successMessage.set('Your name has been updated.');
+        this.toastService.success('Profile Updated', 'Your name has been updated.');
       },
       error: (error: unknown) => {
+        const msg = getAuthErrorMessage(error, 'Unable to update your name.');
         this.savingName.set(false);
-        this.errorMessage.set(getAuthErrorMessage(error, 'Unable to update your name.'));
+        this.errorMessage.set(msg);
+        this.toastService.error('Update Failed', msg);
       },
     });
   }
@@ -542,10 +547,13 @@ export class ProfileEditorComponent implements OnInit {
       next: () => {
         this.savingImage.set(false);
         this.successMessage.set('Your profile photo has been updated.');
+        this.toastService.success('Photo Updated', 'Your profile photo has been updated.');
       },
       error: (error: unknown) => {
+        const msg = getAuthErrorMessage(error, 'Unable to upload your profile photo.');
         this.savingImage.set(false);
-        this.errorMessage.set(getAuthErrorMessage(error, 'Unable to upload your profile photo.'));
+        this.errorMessage.set(msg);
+        this.toastService.error('Upload Failed', msg);
       },
     });
   }
@@ -589,10 +597,13 @@ export class ProfileEditorComponent implements OnInit {
         this.newPassword.set('');
         this.confirmPassword.set('');
         this.passwordSuccess.set('Your password has been updated.');
+        this.toastService.success('Password Updated', 'Your password has been updated.');
       },
       error: (error: unknown) => {
+        const msg = getAuthErrorMessage(error, 'Unable to update your password.');
         this.savingPassword.set(false);
-        this.passwordError.set(getAuthErrorMessage(error, 'Unable to update your password.'));
+        this.passwordError.set(msg);
+        this.toastService.error('Password Change Failed', msg);
       },
     });
   }

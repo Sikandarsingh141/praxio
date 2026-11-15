@@ -24,6 +24,7 @@ import {
 } from '../shared/confirmation-dialog.component';
 import { ShopRepairRequest } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
+import { ToastService } from '../core/toast/toast.service';
 
 type PartField = 'name' | 'quantity' | 'unitPrice';
 
@@ -90,7 +91,10 @@ export class ShopRepairWorkflowComponent implements OnChanges {
       this.amount(this.additionalOtherCharges()),
   );
 
-  constructor(private readonly requests: ShopRepairRequestsService) {}
+  constructor(
+    private readonly requests: ShopRepairRequestsService,
+    private readonly toastService: ToastService,
+  ) {}
 
   inspectionPartsForDisplay(
     parts: RepairInspectionReport['parts'],
@@ -365,7 +369,7 @@ export class ShopRepairWorkflowComponent implements OnChanges {
     this.requests.get(this.request._id).subscribe({
       next: (request) => {
         this.requestUpdated.emit(request);
-        this.notice.set(message);
+        this.toastService.success('Repair Workflow', message);
         this.submitting.set(false);
         if (request.repairJob?.inspection?.status === 'awaiting_approval') {
           this.inspectionFormOpen.set(false);
@@ -383,7 +387,9 @@ export class ShopRepairWorkflowComponent implements OnChanges {
   }
 
   private fail(error: HttpErrorResponse, fallback: string): void {
-    this.error.set(error.error?.message || fallback);
+    const msg = error.error?.message || fallback;
+    this.error.set(msg);
+    this.toastService.error('Workflow Error', msg);
     this.submitting.set(false);
   }
 

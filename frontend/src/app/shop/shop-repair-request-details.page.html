@@ -5,9 +5,6 @@
   } @else if (error()) {
     <div class="state-card error" role="alert">{{ error() }}</div>
   } @else if (request(); as request) {
-    @if (success()) {
-      <p class="success-message" role="status">{{ success() }}</p>
-    }
     <div class="request-hero">
       <app-admin-page-header>
         <span adminPageLeading class="appliance-icon" aria-hidden="true">▣</span>

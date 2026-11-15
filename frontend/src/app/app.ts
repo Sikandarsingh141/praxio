@@ -10,10 +10,11 @@ import {
 } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LoaderService } from './loaders/overlay/local/loader.service';
+import { ToastContainerComponent } from './core/toast/toast-container.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, GoogleMapsModule],
+  imports: [RouterOutlet, GoogleMapsModule, ToastContainerComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

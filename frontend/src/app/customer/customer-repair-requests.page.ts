@@ -10,6 +10,7 @@ import {
   ShopSearchResult,
 } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
+import { ToastService } from '../core/toast/toast.service';
 import {
   CommonFilterComponent,
   FilterConfig,
@@ -138,6 +139,7 @@ export class CustomerRepairRequestsPage implements OnInit {
   constructor(
     private readonly portal: CustomerPortalService,
     private readonly route: ActivatedRoute,
+    private readonly toastService: ToastService,
   ) {}
 
   ngOnInit(): void {
@@ -276,13 +278,13 @@ export class CustomerRepairRequestsPage implements OnInit {
       next: () => {
         this.cancellingRequestId.set(null);
         this.cancelRequest.set(null);
-        this.actionMessage.set('Your repair request was cancelled.');
+        this.toastService.success('Request Cancelled', 'Your repair request was cancelled.');
         this.loadRequests();
       },
       error: (error: HttpErrorResponse) => {
-        this.cancelError.set(
-          error.error?.message || 'Your repair request could not be cancelled.',
-        );
+        const msg = error.error?.message || 'Your repair request could not be cancelled.';
+        this.cancelError.set(msg);
+        this.toastService.error('Cancellation Failed', msg);
         this.cancellingRequestId.set(null);
       },
     });
@@ -387,11 +389,13 @@ export class CustomerRepairRequestsPage implements OnInit {
         next: () => {
           this.savingEdit.set(false);
           this.editRequest.set(null);
-          this.actionMessage.set('Your repair request was updated.');
+          this.toastService.success('Request Updated', 'Your repair request was updated.');
           this.loadRequests();
         },
         error: (error: HttpErrorResponse) => {
-          this.editError.set(error.error?.message || 'Your repair request could not be updated.');
+          const msg = error.error?.message || 'Your repair request could not be updated.';
+          this.editError.set(msg);
+          this.toastService.error('Update Failed', msg);
           this.savingEdit.set(false);
         },
       });
@@ -434,10 +438,16 @@ export class CustomerRepairRequestsPage implements OnInit {
     this.portal.updateQuotationStatus(quotationId, status).subscribe({
       next: () => {
         this.updating.set(null);
+        this.toastService.success(
+          'Quotation Updated',
+          status === 'accepted' ? 'Quotation accepted.' : 'Quotation declined.',
+        );
         this.loadRequests();
       },
       error: (error: HttpErrorResponse) => {
-        this.actionError.set(error.error?.message || 'Quotation status could not be updated.');
+        const msg = error.error?.message || 'Quotation status could not be updated.';
+        this.actionError.set(msg);
+        this.toastService.error('Action Failed', msg);
         this.updating.set(null);
       },
     });

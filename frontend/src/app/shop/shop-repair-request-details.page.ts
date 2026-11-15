@@ -10,6 +10,7 @@ import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { ShopRepairRouteComponent } from './shop-repair-route.component';
 import { ShopRepairWorkflowComponent } from './shop-repair-workflow.component';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { ToastService } from '../core/toast/toast.service';
 
 const DECLINE_REASONS = [
   'Service not offered',
@@ -111,6 +112,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly requestsService: ShopRepairRequestsService,
     private readonly authService: AuthService,
+    private readonly toastService: ToastService,
   ) {}
 
   setRequest(request: ShopRepairRequest): void {
@@ -167,13 +169,18 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       })
       .subscribe({
         next: () => {
-          this.success.set('Quotation submitted. The customer has been notified.');
+          this.toastService.success(
+            'Quotation Submitted!',
+            'The customer has been notified successfully.',
+          );
           this.quotationOpen.set(false);
           this.submitting.set(false);
           this.reloadRequest(request._id);
         },
         error: (error: HttpErrorResponse) => {
-          this.formError.set(error.error?.message || 'Quotation could not be submitted.');
+          const msg = error.error?.message || 'Quotation could not be submitted.';
+          this.formError.set(msg);
+          this.toastService.error('Submission Failed', msg);
           this.submitting.set(false);
         },
       });
@@ -216,13 +223,15 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     this.formError.set('');
     this.requestsService.decline(request._id, reason).subscribe({
       next: () => {
-        this.success.set('Request declined. The customer has been notified.');
+        this.toastService.info('Request Declined', 'The customer has been notified.');
         this.declineOpen.set(false);
         this.submitting.set(false);
         this.reloadRequest(request._id);
       },
       error: (error: HttpErrorResponse) => {
-        this.formError.set(error.error?.message || 'Request could not be declined.');
+        const msg = error.error?.message || 'Request could not be declined.';
+        this.formError.set(msg);
+        this.toastService.error('Decline Failed', msg);
         this.submitting.set(false);
       },
     });
@@ -294,12 +303,14 @@ export class ShopRepairRequestDetailsPage implements OnInit {
           complete: 'Repair completion details saved.',
           pickup: 'Customer notified that the repair is ready for pickup.',
         };
-        this.success.set(messages[action]);
+        this.toastService.success('Repair Updated', messages[action]);
         this.repairActionSubmitting.set(false);
         this.reloadRequest(id);
       },
       error: (error: HttpErrorResponse) => {
-        this.repairFormError.set(error.error?.message || 'Repair status could not be updated.');
+        const msg = error.error?.message || 'Repair status could not be updated.';
+        this.repairFormError.set(msg);
+        this.toastService.error('Update Failed', msg);
         this.repairActionSubmitting.set(false);
       },
     });

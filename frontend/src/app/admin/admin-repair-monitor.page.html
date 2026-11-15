@@ -10,10 +10,6 @@
     }
   </app-admin-page-header>
 
-  @if (exportMessage()) {
-    <p class="export-message" role="status">{{ exportMessage() }}</p>
-  }
-
   @if (view() === 'jobs') {
     <section class="summary-grid" aria-label="Repair statistics for selected period" [attr.aria-busy]="overviewLoading()">
       <article class="summary-card">

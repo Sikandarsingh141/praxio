@@ -53,9 +53,6 @@
     @if (error()) {
       <p class="workflow-error" role="alert">{{ error() }}</p>
     }
-    @if (notice()) {
-      <p class="workflow-notice" role="status">{{ notice() }}</p>
-    }
 
     @if (job.status === 'confirmed' || job.status === 'inspection_pending') {
       <div class="workflow-callout">

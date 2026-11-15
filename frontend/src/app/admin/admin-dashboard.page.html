@@ -9,9 +9,6 @@
   @if (errorMessage()) {
     <p class="feedback error" role="alert">{{ errorMessage() }}</p>
   }
-  @if (noticeMessage()) {
-    <p class="feedback success" role="status">{{ noticeMessage() }}</p>
-  }
 
   @if (accountTypeFilter() === 'all') {
     <section class="summary-grid" aria-label="User summary">

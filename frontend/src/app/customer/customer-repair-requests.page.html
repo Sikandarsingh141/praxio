@@ -53,10 +53,6 @@
     </div>
   </div>
 
-  @if (actionMessage()) {
-    <p class="action-success" role="status">{{ actionMessage() }}</p>
-  }
-
   @if (error()) {
     <div class="state-card error" role="alert">
       <p>{{ error() }}</p>

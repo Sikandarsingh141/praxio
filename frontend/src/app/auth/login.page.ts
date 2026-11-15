@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
+import { ToastService } from '../core/toast/toast.service';
 
 @Component({
   selector: 'app-login-page',
@@ -18,6 +19,7 @@ export class LoginPage {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly toastService = inject(ToastService);
 
   readonly submitting = signal(false);
   readonly passwordVisible = signal(false);
@@ -45,10 +47,15 @@ export class LoginPage {
       .login(email, password)
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
-        next: () =>
-          void this.router.navigateByUrl(this.authService.loginDestination() ?? '/customer'),
-        error: (error: unknown) =>
-          this.errorMessage.set(getAuthErrorMessage(error, 'Unable to sign in. Please try again.')),
+        next: () => {
+          this.toastService.success('Login Successful', 'Welcome back!');
+          void this.router.navigateByUrl(this.authService.loginDestination() ?? '/customer');
+        },
+        error: (error: unknown) => {
+          const msg = getAuthErrorMessage(error, 'Unable to sign in. Please try again.');
+          this.errorMessage.set(msg);
+          this.toastService.error('Sign-in Failed', msg);
+        },
       });
   }
 

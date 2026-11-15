@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { getAuthErrorMessage } from '../core/auth/auth-error-message';
 import { AuthService } from '../core/auth/auth.service';
+import { ToastService } from '../core/toast/toast.service';
 
 const SHOP_IMAGE_MAX_BYTES = 1024 * 1024;
 const SHOP_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -159,6 +160,7 @@ const SHOP_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 })
 export class ShopImageEditorComponent {
   private readonly authService = inject(AuthService);
+  private readonly toastService = inject(ToastService);
   @Input() imageData?: string;
   @Input() shopName = '';
   @Output() readonly imageUpdated = new EventEmitter<string>();
@@ -196,12 +198,13 @@ export class ShopImageEditorComponent {
           this.imageUpdated.emit(profile.shopImageData);
         }
         this.successMessage.set('Your shop image has been updated.');
+        this.toastService.success('Shop Image Updated', 'Your shop image has been updated.');
       },
       error: (error: unknown) => {
+        const msg = getAuthErrorMessage(error, 'Unable to upload your shop image.');
         this.saving.set(false);
-        this.errorMessage.set(
-          getAuthErrorMessage(error, 'Unable to upload your shop image.'),
-        );
+        this.errorMessage.set(msg);
+        this.toastService.error('Upload Failed', msg);
       },
     });
   }

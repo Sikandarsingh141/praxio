@@ -7,6 +7,7 @@ import { CustomerRepairRequest, RepairReview } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
 import { CustomerRepairWorkflowComponent } from './customer-repair-workflow.component';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { ToastService } from '../core/toast/toast.service';
 
 type RepairRatingKey =
   | 'overallRating'
@@ -72,6 +73,7 @@ export class CustomerRepairJobPage implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly portal: CustomerPortalService,
+    private readonly toastService: ToastService,
   ) {}
 
   ngOnInit(): void {
@@ -124,15 +126,16 @@ export class CustomerRepairJobPage implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.notice.set(
-            this.inspected()
-              ? 'Pickup confirmed. Please rate your repair experience.'
-              : 'Your issue report has been sent to the shop and Admin.',
-          );
+          const msg = this.inspected()
+            ? 'Pickup confirmed. Please rate your repair experience.'
+            : 'Your issue report has been sent to the shop and Admin.';
+          this.toastService.success('Pickup Status', msg);
           this.load();
         },
         error: (error: HttpErrorResponse) => {
-          this.error.set(error.error?.message || 'Pickup confirmation could not be saved.');
+          const msg = error.error?.message || 'Pickup confirmation could not be saved.';
+          this.error.set(msg);
+          this.toastService.error('Confirmation Failed', msg);
           this.submitting.set(false);
         },
       });
@@ -170,12 +173,17 @@ export class CustomerRepairJobPage implements OnInit {
     };
     this.portal.submitRepairReview(this.requestId, input).subscribe({
       next: () => {
-        this.notice.set('Thank you. Your verified review has been submitted.');
+        this.toastService.success(
+          'Review Submitted',
+          'Thank you. Your verified review has been submitted.',
+        );
         this.submitting.set(false);
         this.load();
       },
       error: (error: HttpErrorResponse) => {
-        this.error.set(error.error?.message || 'Your review could not be submitted.');
+        const msg = error.error?.message || 'Your review could not be submitted.';
+        this.error.set(msg);
+        this.toastService.error('Review Failed', msg);
         this.submitting.set(false);
       },
     });

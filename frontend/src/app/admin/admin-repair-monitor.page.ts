@@ -13,6 +13,7 @@ import {
 } from './admin.service';
 import { PaginationComponent } from '../shared/pagination.component';
 import { AdminPageHeaderComponent } from './admin-page-header.component';
+import { ToastService } from '../core/toast/toast.service';
 
 type MonitorView = 'jobs' | 'completed' | 'reviews';
 
@@ -34,6 +35,7 @@ export class AdminRepairMonitorPage implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toastService = inject(ToastService);
   private readonly searchChanges = new Subject<string>();
   private requestSequence = 0;
   readonly view = signal<MonitorView>('jobs');
@@ -154,7 +156,7 @@ export class AdminRepairMonitorPage implements OnInit {
     anchor.download = `praxio-repairs-page-${this.page()}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
-    this.exportMessage.set(`Exported ${rows.length} repair records from this page.`);
+    this.toastService.success('Export Completed', `Exported ${rows.length} repair records from this page.`);
   }
 
   goToPage(page: number): void {

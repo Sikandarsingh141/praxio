@@ -2,9 +2,6 @@
   @if (error()) {
     <p class="workflow-error" role="alert">{{ error() }}</p>
   }
-  @if (notice()) {
-    <p class="workflow-notice" role="status">{{ notice() }}</p>
-  }
 
   @if (job.status === 'inspection_pending') {
     <p class="workflow-notice" role="status">

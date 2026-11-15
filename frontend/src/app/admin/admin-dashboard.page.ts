@@ -22,6 +22,7 @@ import {
   AdminUserStatistics,
   RegistrationRequestPage,
 } from './admin.service';
+import { ToastService } from '../core/toast/toast.service';
 
 type RequestStatus = 'all' | 'pending' | 'approved' | 'declined' | 'suspended';
 type AccountStatus = 'all' | 'active' | 'inactive' | 'suspended';
@@ -56,6 +57,7 @@ export class AdminDashboardPage implements OnInit {
   private readonly adminService = inject(AdminService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly toastService = inject(ToastService);
   private readonly searchChanges = new Subject<string>();
   private requestSequence = 0;
   readonly requests = signal<AdminRegistrationRequest[]>([]);
@@ -523,16 +525,19 @@ export class AdminDashboardPage implements OnInit {
 
     request$.pipe(finalize(() => this.activeAction.set(null))).subscribe({
       next: () => {
-        this.noticeMessage.set(
+        const msg =
           action === 'approve'
             ? `${request.applicantName || request.email} approved. They can now sign in.`
-            : `${request.applicantName || request.email} declined.`,
-        );
+            : `${request.applicantName || request.email} declined.`;
+        this.toastService.success('Registration Decision', msg);
         this.loadRequests();
         this.loadStatistics();
       },
-      error: (error: unknown) =>
-        this.errorMessage.set(getAuthErrorMessage(error, 'Unable to update this registration.')),
+      error: (error: unknown) => {
+        const err = getAuthErrorMessage(error, 'Unable to update this registration.');
+        this.errorMessage.set(err);
+        this.toastService.error('Decision Failed', err);
+      },
     });
   }
 
@@ -549,9 +554,8 @@ export class AdminDashboardPage implements OnInit {
       .pipe(finalize(() => this.activeAction.set(null)))
       .subscribe({
         next: () => {
-          this.noticeMessage.set(
-            `${request.applicantName || request.email}'s account is now ${status}.`,
-          );
+          const msg = `${request.applicantName || request.email}'s account is now ${status}.`;
+          this.toastService.success('Account Status Updated', msg);
           this.loadRequests();
           this.loadStatistics();
         },
@@ -562,6 +566,7 @@ export class AdminDashboardPage implements OnInit {
             this.loadStatistics();
           }
           this.errorMessage.set(message);
+          this.toastService.error('Update Failed', message);
         },
       });
   }

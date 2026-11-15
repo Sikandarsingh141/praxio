@@ -4,6 +4,7 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CustomerRepairRequest } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
+import { ToastService } from '../core/toast/toast.service';
 import { AdditionalChargeRequest } from '../shared/repair-workflow.models';
 
 @Component({
@@ -26,7 +27,10 @@ export class CustomerRepairWorkflowComponent {
   readonly confirmingCharge = signal<AdditionalChargeRequest | null>(null);
   readonly chargeDecision = signal<'accept' | 'decline'>('accept');
 
-  constructor(private readonly portal: CustomerPortalService) {}
+  constructor(
+    private readonly portal: CustomerPortalService,
+    private readonly toastService: ToastService,
+  ) {}
 
   get job() {
     return this.request.repairJob;
@@ -123,7 +127,7 @@ export class CustomerRepairWorkflowComponent {
     this.portal.getRepairJob(this.request._id).subscribe({
       next: (request) => {
         this.requestUpdated.emit(request);
-        this.notice.set(message);
+        this.toastService.success('Repair Workflow', message);
         this.submitting.set(false);
         this.approvalDialogOpen.set(false);
         this.declineDialogOpen.set(false);
@@ -136,7 +140,9 @@ export class CustomerRepairWorkflowComponent {
   }
 
   private fail(error: HttpErrorResponse, fallback: string): void {
-    this.error.set(error.error?.message || fallback);
+    const msg = error.error?.message || fallback;
+    this.error.set(msg);
+    this.toastService.error('Workflow Error', msg);
     this.submitting.set(false);
   }
 }

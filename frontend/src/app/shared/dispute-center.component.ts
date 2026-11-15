@@ -26,6 +26,7 @@ import {
 } from './confirmation-dialog.component';
 import { PaginationComponent } from './pagination.component';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { ToastService } from '../core/toast/toast.service';
 
 type DisputeConfirmationAction =
   | 'confirmResolution'
@@ -144,6 +145,7 @@ export class DisputeCenterComponent implements OnInit {
     private readonly router: Router,
     private readonly disputes: DisputesService,
     private readonly customerPortal: CustomerPortalService,
+    private readonly toastService: ToastService,
   ) {}
 
   ngOnInit(): void {
@@ -1026,7 +1028,7 @@ export class DisputeCenterComponent implements OnInit {
     request.subscribe({
       next: (dispute) => {
         this.saving.set(false);
-        this.notice.set(successMessage);
+        this.toastService.success('Dispute Center', successMessage);
         onSuccess(dispute);
       },
       error: (error: HttpErrorResponse) =>
@@ -1035,7 +1037,9 @@ export class DisputeCenterComponent implements OnInit {
   }
 
   private fail(error: HttpErrorResponse, fallback: string): void {
-    this.error.set(error.error?.message || fallback);
+    const msg = error.error?.message || fallback;
+    this.error.set(msg);
+    this.toastService.error('Dispute Error', msg);
     this.loading.set(false);
     this.saving.set(false);
   }

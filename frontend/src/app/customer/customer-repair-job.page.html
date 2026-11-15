@@ -10,9 +10,6 @@
   @if (error()) {
     <p class="feedback error" role="alert">{{ error() }}</p>
   }
-  @if (notice()) {
-    <p class="feedback success" role="status">{{ notice() }}</p>
-  }
   @if (loading()) {
     <p class="state-card" role="status">Loading repair details…</p>
   } @else if (job(); as repair) {

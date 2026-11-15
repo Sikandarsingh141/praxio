@@ -7,6 +7,7 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
+import { ToastService } from '../toast/toast.service';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const apiUrl = new URL(environment.apiBaseUrl, window.location.origin);
@@ -23,6 +24,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   const authService = inject(AuthService);
   const router = inject(Router);
+  const toastService = inject(ToastService);
   const isPublicAuthRequest =
     requestUrl.pathname.endsWith('/auth/login') ||
     requestUrl.pathname.endsWith('/auth/register') ||
@@ -31,15 +33,27 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return next(request.clone({ withCredentials: true })).pipe(
     catchError((error: unknown) => {
-      if (error instanceof HttpErrorResponse && error.status === 401) {
-        authService.clearSession();
-        if (
-          !isPublicAuthRequest &&
-          !isSessionCheck &&
-          router.url !== '/login' &&
-          router.url !== '/register'
-        ) {
-          void router.navigateByUrl('/login');
+      if (error instanceof HttpErrorResponse) {
+        if (error.status === 401) {
+          authService.clearSession();
+          if (
+            !isPublicAuthRequest &&
+            !isSessionCheck &&
+            router.url !== '/login' &&
+            router.url !== '/register'
+          ) {
+            void router.navigateByUrl('/login');
+          }
+        } else if (error.status === 0) {
+          toastService.error(
+            'Connection Error',
+            'Unable to reach Fixora server. Please check your internet connection.',
+          );
+        } else if (error.status >= 500) {
+          toastService.error(
+            'Server Error',
+            error.error?.message || 'The server encountered an unexpected error. Please try again.',
+          );
         }
       }
       return throwError(() => error);

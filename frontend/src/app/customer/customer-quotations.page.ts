@@ -14,6 +14,7 @@ import { PaginationComponent } from '../shared/pagination.component';
 import { CustomerQuotation, QuotationListFilters } from './customer-portal.models';
 import { CustomerPortalService } from './customer-portal.service';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { ToastService } from '../core/toast/toast.service';
 
 type QuotationStatus = NonNullable<QuotationListFilters['status']>;
 type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'withdrawn';
@@ -37,9 +38,6 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
           Review and compare shop estimates before choosing a repair partner.
         </p>
       </app-admin-page-header>
-      @if (responseSuccess()) {
-        <p class="success-message" role="status" aria-live="polite">{{ responseSuccess() }}</p>
-      }
 
       <div class="summary" aria-label="Quotation summary">
         @for (item of summaryItems; track item.status) {
@@ -543,6 +541,7 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
     private readonly portal: CustomerPortalService,
     private readonly route: ActivatedRoute,
     realtime: NotificationRealtimeService,
+    private readonly toastService: ToastService,
   ) {
     this.realtimeSubscription = realtime.notifications$.subscribe((notification) => {
       if (notification.type === 'new_repair_quotation') {
@@ -684,18 +683,20 @@ export class CustomerQuotationsPage implements OnInit, OnDestroy {
       .updateQuotationStatus(pending.quote._id, pending.status, this.rejectionReason())
       .subscribe({
         next: () => {
-          this.responseSuccess.set(
+          const msg =
             pending.status === 'accepted'
               ? 'Quotation accepted. This shop has been selected for your repair request.'
-              : 'Quotation response saved.',
-          );
+              : 'Quotation response saved.';
+          this.toastService.success('Quotation Updated', msg);
           this.response.set(null);
           this.responding.set(false);
           this.clearCompare();
           this.load();
         },
         error: (error: HttpErrorResponse) => {
-          this.responseError.set(error.error?.message || 'Quotation response could not be saved.');
+          const msg = error.error?.message || 'Quotation response could not be saved.';
+          this.responseError.set(msg);
+          this.toastService.error('Action Failed', msg);
           this.responding.set(false);
         },
       });
