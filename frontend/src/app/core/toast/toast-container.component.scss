@@ -62,11 +62,23 @@
     border-left: 4px solid #2563eb;
     .toast-progress-bar { background: #2563eb; }
   }
+
+  &.toast-message-card {
+    border-left: 4px solid #166534;
+
+    .toast-progress-track {
+      background: #e8f7eb;
+    }
+
+    .toast-progress-bar {
+      background: #22c55e;
+    }
+  }
 }
 
 /* Premium Real-Time Message Notification */
 .msg-card-inner {
-  padding: 14px 16px 12px 16px;
+  padding: 14px 16px 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;

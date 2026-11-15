@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { ToastContainerComponent } from './toast-container.component';
 import { ToastService } from './toast.service';
 
@@ -6,10 +7,16 @@ describe('ToastContainerComponent', () => {
   let component: ToastContainerComponent;
   let fixture: ComponentFixture<ToastContainerComponent>;
   let toastService: ToastService;
+  let router: { navigateByUrl: jasmine.Spy };
 
   beforeEach(async () => {
+    router = { navigateByUrl: jasmine.createSpy('navigateByUrl') };
+
     await TestBed.configureTestingModule({
       imports: [ToastContainerComponent],
+      providers: [
+        { provide: Router, useValue: router },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ToastContainerComponent);
@@ -117,8 +124,11 @@ describe('ToastContainerComponent', () => {
     expect(onlineDot).toBeTruthy();
 
     const viewBtn = fixture.nativeElement.querySelector('.msg-view-btn');
-    expect(viewBtn).toBeTruthy();
-    expect(viewBtn.textContent).toContain('View Conversation');
+    expect(viewBtn).toBeFalsy();
+
+    // The whole card is clickable and navigates to the conversation
+    card.click();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/shop/messages?conversationId=conv-101');
   });
 
   it('should render fallback initials when sender has no profile photo', () => {
