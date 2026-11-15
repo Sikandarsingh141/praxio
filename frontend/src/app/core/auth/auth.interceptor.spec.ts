@@ -7,6 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { authInterceptor } from './auth.interceptor';
+import { AuthService } from './auth.service';
 
 describe('authInterceptor', () => {
   let httpClient: HttpClient;
@@ -44,5 +45,20 @@ describe('authInterceptor', () => {
 
     expect(request.request.withCredentials).toBe(false);
     request.flush({});
+  });
+
+  it('attaches Authorization Bearer header when token is available for incognito / cross-origin support', () => {
+    const authService = TestBed.inject(AuthService);
+    authService.setToken('sample-jwt-token');
+
+    httpClient.get(`${environment.apiBaseUrl}/notifications/unread-count`).subscribe();
+    const request = httpTestingController.expectOne(
+      `${environment.apiBaseUrl}/notifications/unread-count`,
+    );
+
+    expect(request.request.headers.get('Authorization')).toBe('Bearer sample-jwt-token');
+    expect(request.request.withCredentials).toBe(true);
+    request.flush({ data: { count: 0 } });
+    authService.removeToken();
   });
 });

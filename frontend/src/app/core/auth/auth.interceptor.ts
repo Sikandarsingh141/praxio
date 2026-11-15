@@ -31,7 +31,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     requestUrl.pathname.endsWith('/auth/logout');
   const isSessionCheck = requestUrl.pathname.endsWith('/users/me');
 
-  return next(request.clone({ withCredentials: true })).pipe(
+  const token = authService.getToken();
+  const setHeaders: Record<string, string> = {};
+  if (token && !request.headers.has('Authorization')) {
+    setHeaders['Authorization'] = `Bearer ${token}`;
+  }
+
+  return next(request.clone({ withCredentials: true, setHeaders })).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
         if (error.status === 401) {

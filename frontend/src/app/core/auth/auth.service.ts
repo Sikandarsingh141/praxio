@@ -24,12 +24,46 @@ export class AuthService {
   private readonly loginDestinationState = signal<string | null>(null);
   private readonly shopNameState = signal('');
   private currentUserRequest: Observable<UserProfile | null> | null = null;
+  private readonly tokenKey = 'fixora_access_token';
+  private tokenState: string | null = null;
   readonly currentUser = this.userState.asReadonly();
   readonly loginDestination = this.loginDestinationState.asReadonly();
   readonly shopName = this.shopNameState.asReadonly();
   readonly isAuthenticated = computed(() => this.userState() !== null);
 
   constructor(private readonly http: HttpClient) {}
+
+  getToken(): string | null {
+    if (this.tokenState) return this.tokenState;
+    try {
+      this.tokenState =
+        sessionStorage.getItem(this.tokenKey) ||
+        localStorage.getItem(this.tokenKey);
+    } catch {
+      // storage might be restricted in incognito
+    }
+    return this.tokenState;
+  }
+
+  setToken(token: string): void {
+    this.tokenState = token;
+    try {
+      sessionStorage.setItem(this.tokenKey, token);
+      localStorage.setItem(this.tokenKey, token);
+    } catch {
+      // storage might be restricted in incognito
+    }
+  }
+
+  removeToken(): void {
+    this.tokenState = null;
+    try {
+      sessionStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.tokenKey);
+    } catch {
+      // ignore
+    }
+  }
 
   register(
     firstName: string,
@@ -252,7 +286,11 @@ export class AuthService {
       .post<ApiEnvelope<AuthUserData>>(`${environment.apiBaseUrl}/auth/login`, { email, password })
       .pipe(
         map((response) => response.data),
-        tap(({ user, redirectTo }) => {
+        tap(({ user, redirectTo, token, accessToken }) => {
+          const jwt = token || accessToken;
+          if (jwt) {
+            this.setToken(jwt);
+          }
           this.userState.set(user);
           this.loginDestinationState.set(
             redirectTo ??
@@ -310,6 +348,7 @@ export class AuthService {
   }
 
   clearSession(): void {
+    this.removeToken();
     this.userState.set(null);
     this.loginDestinationState.set(null);
     this.currentUserRequest = null;

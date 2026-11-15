@@ -115,7 +115,14 @@ export class AuthController {
   async login(
     @Body() input: LoginDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<{ data: { user: SafeUser; redirectTo: string } }> {
+  ): Promise<{
+    data: {
+      user: SafeUser;
+      redirectTo: string;
+      token: string;
+      accessToken: string;
+    };
+  }> {
     const result = await this.authService.login(input);
     response.cookie(
       ACCESS_TOKEN_COOKIE,
@@ -123,7 +130,12 @@ export class AuthController {
       this.getCookieOptions(),
     );
     return {
-      data: { user: result.user, redirectTo: result.redirectTo },
+      data: {
+        user: result.user,
+        redirectTo: result.redirectTo,
+        token: result.accessToken,
+        accessToken: result.accessToken,
+      },
     };
   }
 

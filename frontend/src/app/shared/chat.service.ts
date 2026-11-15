@@ -294,9 +294,16 @@ export class ChatService {
   connect(): Socket {
     if (!this.socket) {
       const apiOrigin = new URL(environment.apiBaseUrl, globalThis.location.origin).origin;
+      let token: string | null = null;
+      try {
+        token = sessionStorage.getItem('fixora_access_token') || localStorage.getItem('fixora_access_token');
+      } catch {
+        // storage restricted
+      }
       this.socket = io(`${apiOrigin}/chat`, {
         path: '/api/socket.io',
         withCredentials: true,
+        auth: token ? { token } : undefined,
         transports: ['websocket', 'polling'],
         reconnection: true,
       });

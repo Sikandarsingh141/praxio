@@ -73,6 +73,11 @@ export class NotificationsGateway implements OnGatewayConnection {
   }
 
   private getAccessToken(client: Socket): string | undefined {
+    const auth =
+      client.handshake.auth?.token || client.handshake.headers.authorization;
+    if (typeof auth === 'string' && auth.trim()) {
+      return auth.replace(/^Bearer\s+/i, '').trim();
+    }
     const cookieHeader = client.handshake.headers.cookie;
     if (!cookieHeader) {
       return undefined;

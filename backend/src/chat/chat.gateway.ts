@@ -474,6 +474,11 @@ export class ChatGateway
   }
 
   private getAccessToken(client: ChatSocket) {
+    const auth =
+      client.handshake.auth?.token || client.handshake.headers.authorization;
+    if (typeof auth === 'string' && auth.trim()) {
+      return auth.replace(/^Bearer\s+/i, '').trim();
+    }
     const cookieHeader = client.handshake.headers.cookie;
     const cookie = cookieHeader
       ?.split(';')

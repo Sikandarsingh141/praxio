@@ -238,6 +238,8 @@ export interface ApiEnvelope<T> {
 export interface AuthUserData {
   user: UserProfile;
   redirectTo?: string;
+  token?: string;
+  accessToken?: string;
 }
 
 export interface ShopRegistrationResult {

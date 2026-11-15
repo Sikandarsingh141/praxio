@@ -15,8 +15,15 @@ export class NotificationRealtimeService {
       return;
     }
     const apiOrigin = new URL(environment.apiBaseUrl, globalThis.location.origin).origin;
+    let token: string | null = null;
+    try {
+      token = sessionStorage.getItem('fixora_access_token') || localStorage.getItem('fixora_access_token');
+    } catch {
+      // storage restricted
+    }
     this.socket = io(`${apiOrigin}/notifications`, {
       withCredentials: true,
+      auth: token ? { token } : undefined,
       transports: ['websocket', 'polling'],
     });
     this.socket.on('notification:new', (notification: RegistrationNotification) => {

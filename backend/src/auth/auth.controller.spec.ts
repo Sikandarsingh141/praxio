@@ -331,7 +331,7 @@ describe('AuthController', () => {
     expect(authService.registerCustomer).not.toHaveBeenCalled();
   });
 
-  it('sets an HttpOnly access cookie without returning the token in JSON', async () => {
+  it('sets an HttpOnly access cookie and returns access token for cross-origin/incognito clients', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({
@@ -341,14 +341,31 @@ describe('AuthController', () => {
       .expect(200);
 
     expect(response.body).toEqual({
-      data: { user: serializedUser, redirectTo: '/customer' },
+      data: {
+        user: serializedUser,
+        redirectTo: '/customer',
+        token: 'signed-access-token',
+        accessToken: 'signed-access-token',
+      },
     });
-    expect(response.text).not.toContain('signed-access-token');
     expect(response.headers['set-cookie'][0]).toContain('access_token=');
     expect(response.headers['set-cookie'][0]).toContain('HttpOnly');
     expect(response.headers['set-cookie'][0]).toContain('SameSite=Lax');
     expect(response.headers['set-cookie'][0]).toContain('Path=/api');
     expect(response.headers['set-cookie'][0]).toContain('Max-Age=86400');
+  });
+
+  it('allows protected endpoints with Authorization Bearer header when cookies are blocked', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+    });
+
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
   });
 
   it('allows the access cookie on cross-origin production API requests', async () => {
