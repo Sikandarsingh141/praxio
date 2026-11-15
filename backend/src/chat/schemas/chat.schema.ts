@@ -36,6 +36,9 @@ export class ChatConversation {
   @Prop({ type: Number, min: 0, default: 0 })
   shopUnreadCount!: number;
 
+  @Prop({ type: Number, min: 0, default: 0 })
+  technicianUnreadCount!: number;
+
   @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
   archivedBy!: Types.ObjectId[];
 
@@ -84,8 +87,12 @@ export class ChatMessage {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   senderId!: Types.ObjectId;
 
-  @Prop({ type: String, enum: ['customer', 'shop'], required: true })
-  senderRole!: 'customer' | 'shop';
+  @Prop({
+    type: String,
+    enum: ['customer', 'shop', 'technician'],
+    required: true,
+  })
+  senderRole!: 'customer' | 'shop' | 'technician';
 
   @Prop({ type: String, enum: ['TEXT', 'IMAGE', 'DOCUMENT'], required: true })
   messageType!: 'TEXT' | 'IMAGE' | 'DOCUMENT';

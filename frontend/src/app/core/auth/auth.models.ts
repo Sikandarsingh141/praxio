@@ -2,7 +2,7 @@ export interface UserProfile {
   id: string;
   email: string;
   createdAt: string;
-  accountType?: 'customer' | 'shop' | 'admin';
+  accountType?: 'customer' | 'shop' | 'admin' | 'technician';
   accountStatus?: 'active' | 'pending_approval' | 'rejected';
   accountLifecycleStatus?: 'active' | 'inactive' | 'suspended';
   firstName?: string;

@@ -35,7 +35,7 @@ export interface SafeUser {
   id: string;
   email: string;
   createdAt: Date;
-  accountType: 'customer' | 'shop' | 'admin';
+  accountType: 'customer' | 'shop' | 'admin' | 'technician';
   accountStatus: 'active' | 'pending_approval' | 'rejected';
   accountLifecycleStatus: 'active' | 'inactive' | 'suspended';
   firstName?: string;
@@ -311,6 +311,15 @@ export class AuthService {
         message: 'This account cannot sign in yet.',
       });
     }
+    if (
+      accountType === 'technician' &&
+      (accountStatus !== 'active' || accountLifecycleStatus !== 'active')
+    ) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_NOT_ACTIVE',
+        message: 'This account cannot sign in yet.',
+      });
+    }
 
     const safeUser = await this.toAuthenticatedUser(user);
     const accessToken = await this.jwtService.signAsync({
@@ -325,7 +334,11 @@ export class AuthService {
       redirectTo:
         safeUser.shopAuthorization?.destination ??
         safeUser.customerAuthorization?.destination ??
-        (accountType === 'admin' ? '/admin' : '/customer'),
+        (accountType === 'admin'
+          ? '/admin'
+          : accountType === 'technician'
+            ? '/technician'
+            : '/customer'),
     };
   }
 

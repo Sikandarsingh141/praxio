@@ -21,7 +21,10 @@ import {
   ChatMessage,
 } from './schemas/chat.schema';
 
-export type ChatActor = { userId: string; role: 'customer' | 'shop' };
+export type ChatActor = {
+  userId: string;
+  role: 'customer' | 'shop' | 'technician';
+};
 
 type ChatUserView = {
   _id: Types.ObjectId;
@@ -56,6 +59,7 @@ type ChatConversationView = {
   lastMessageAt?: Date;
   customerUnreadCount: number;
   shopUnreadCount: number;
+  technicianUnreadCount: number;
   archivedBy: Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
@@ -65,7 +69,7 @@ type ChatMessageView = {
   _id: Types.ObjectId;
   conversationId: Types.ObjectId;
   senderId: Types.ObjectId | ChatUserView;
-  senderRole: 'customer' | 'shop';
+  senderRole: 'customer' | 'shop' | 'technician';
   messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
   content: string;
   attachments: ChatAttachment[];
@@ -86,7 +90,7 @@ export type ChatMessageResult = {
   conversationId: string;
   senderId: string;
   sender: { id: string; name: string; profileImageUrl: string | null };
-  senderRole: 'customer' | 'shop';
+  senderRole: 'customer' | 'shop' | 'technician';
   messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
   content: string;
   attachments: Array<{
@@ -157,12 +161,13 @@ export class ChatService {
   async actorForUser(userId: string): Promise<ChatActor> {
     const user = await this.users
       .findById(userId)
-      .select('accountType accountStatus accountLifecycleStatus')
+      .select(
+        'accountType accountStatus accountLifecycleStatus technicianDetails',
+      )
       .lean()
       .exec();
     if (
       !user ||
-      (user.accountType !== 'customer' && user.accountType !== 'shop') ||
       user.accountStatus !== 'active' ||
       (user.accountLifecycleStatus !== undefined &&
         user.accountLifecycleStatus !== 'active')
@@ -183,15 +188,59 @@ export class ChatService {
           'Shop chat access requires approval and an active subscription.',
         );
       }
+    } else if (user.accountType === 'technician') {
+      if (!user.technicianDetails?.shopId) {
+        throw new ForbiddenException(
+          'Technician chat access is not available for this account.',
+        );
+      }
+      const shopId = user.technicianDetails.shopId.toString();
+      const [shop, registration] = await Promise.all([
+        this.users
+          .findOne({
+            _id: shopId,
+            accountType: 'shop',
+            accountStatus: 'active',
+            accountLifecycleStatus: 'active',
+          })
+          .select('_id')
+          .lean()
+          .exec(),
+        this.registrations.findShopRequestForUser(shopId),
+      ]);
+      if (
+        !shop ||
+        !registration ||
+        registration.registrationStatus !== 'approved' ||
+        registration.paymentStatus !== 'paid'
+      ) {
+        throw new ForbiddenException(
+          'Technician chat access requires an active shop account.',
+        );
+      }
+    } else if (user.accountType !== 'customer') {
+      throw new ForbiddenException(
+        'Chat access is not available for this account.',
+      );
     }
     return { userId, role: user.accountType };
+  }
+
+  private unreadField(role: ChatActor['role']) {
+    if (role === 'customer') return 'customerUnreadCount';
+    if (role === 'shop') return 'shopUnreadCount';
+    return 'technicianUnreadCount';
   }
 
   async getEligible(actor: ChatActor) {
     const filter =
       actor.role === 'customer'
         ? { customerId: this.id(actor.userId) }
-        : { shopIds: this.id(actor.userId) };
+        : actor.role === 'shop'
+          ? { shopIds: this.id(actor.userId) }
+          : {
+              'repairJob.activeAssignment.technicianId': this.id(actor.userId),
+            };
     const requests = await this.repairRequests
       .find(filter)
       .sort({ updatedAt: -1 })
@@ -225,7 +274,12 @@ export class ChatService {
         repairRequestId: request._id.toString(),
         appliance: request.appliance,
         repairStatus: request.repairJob?.status ?? request.status,
-        shopId: actor.role === 'shop' ? actor.userId : peerId,
+        shopId:
+          actor.role === 'shop'
+            ? actor.userId
+            : actor.role === 'technician'
+              ? (request.repairJob?.activeAssignment?.shopId.toString() ?? '')
+              : peerId,
         participant: this.userSummary(userMap.get(peerId)),
       }));
     });
@@ -249,6 +303,16 @@ export class ChatService {
     }
     const userId = this.id(actor.userId);
     const filterQuery: Record<string, unknown> = { participants: userId };
+    if (actor.role === 'technician') {
+      const assignedRequests = await this.repairRequests
+        .find({ 'repairJob.activeAssignment.technicianId': userId })
+        .select('_id')
+        .lean()
+        .exec();
+      filterQuery.repairRequestId = {
+        $in: assignedRequests.map((request) => request._id),
+      };
+    }
     if (filter === 'archived') filterQuery.archivedBy = userId;
     if (filter === 'active') filterQuery.archivedBy = { $ne: userId };
     if (search.trim()) {
@@ -314,7 +378,10 @@ export class ChatService {
         .sort({ lastMessageAt: -1, updatedAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .populate('customerId', 'firstName lastName fullName email profileImageData')
+        .populate(
+          'customerId',
+          'firstName lastName fullName email profileImageData',
+        )
         .populate(
           'shopId',
           'firstName lastName fullName email profileImageData shopDetails.shopName shopDetails.shopImageData',
@@ -339,8 +406,7 @@ export class ChatService {
     const messageCountByConversation = new Map(
       messageCounts.map(({ _id, count }) => [_id.toString(), count]),
     );
-    const unreadField =
-      actor.role === 'customer' ? 'customerUnreadCount' : 'shopUnreadCount';
+    const unreadField = this.unreadField(actor.role);
     const archivedBy = userId.toString();
     return {
       conversations: conversations.map((conversation) => {
@@ -358,7 +424,7 @@ export class ChatService {
           lastMessageAt: conversation.lastMessageAt ?? conversation.updatedAt,
           messageCount:
             messageCountByConversation.get(conversation._id.toString()) ?? 0,
-          unreadCount: conversation[unreadField],
+          unreadCount: conversation[unreadField] ?? 0,
           archived: conversation.archivedBy.some(
             (id) => id.toString() === archivedBy,
           ),
@@ -372,11 +438,25 @@ export class ChatService {
   }
 
   async getUnreadMessageCount(actor: ChatActor): Promise<number> {
-    const unreadField =
-      actor.role === 'customer' ? 'customerUnreadCount' : 'shopUnreadCount';
+    const unreadField = this.unreadField(actor.role);
+    const filter: Record<string, unknown> = {
+      participants: this.id(actor.userId),
+    };
+    if (actor.role === 'technician') {
+      const assignedRequests = await this.repairRequests
+        .find({
+          'repairJob.activeAssignment.technicianId': this.id(actor.userId),
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      filter.repairRequestId = {
+        $in: assignedRequests.map((request) => request._id),
+      };
+    }
     const [result] = await this.conversations
       .aggregate<{ total: number }>([
-        { $match: { participants: this.id(actor.userId) } },
+        { $match: filter },
         { $group: { _id: null, total: { $sum: `$${unreadField}` } } },
       ])
       .exec();
@@ -390,9 +470,11 @@ export class ChatService {
   ) {
     const customerId =
       actor.role === 'customer' ? this.id(actor.userId) : undefined;
+    const technicianId =
+      actor.role === 'technician' ? this.id(actor.userId) : undefined;
     const request = await this.repairRequests
       .findById(repairRequestId)
-      .select('customerId shopIds')
+      .select('customerId shopIds repairJob.activeAssignment')
       .lean()
       .exec();
     if (!request) throw new NotFoundException('Repair request not found.');
@@ -406,6 +488,16 @@ export class ChatService {
     ) {
       throw new ForbiddenException(
         'This repair request does not belong to you.',
+      );
+    }
+    if (
+      technicianId &&
+      (request.repairJob?.activeAssignment?.technicianId.toString() !==
+        actor.userId ||
+        request.repairJob.activeAssignment.shopId.toString() !== shopId)
+    ) {
+      throw new ForbiddenException(
+        'You can only message customers for jobs currently assigned to you.',
       );
     }
     if (!request.shopIds.some((id) => id.toString() === shopId)) {
@@ -427,7 +519,7 @@ export class ChatService {
       .lean()
       .exec();
     if (!shop) throw new ForbiddenException('This shop is not available.');
-    return this.conversations
+    const conversation = await this.conversations
       .findOneAndUpdate(
         {
           repairRequestId: this.id(repairRequestId),
@@ -445,10 +537,43 @@ export class ChatService {
         { upsert: true, new: true, setDefaultsOnInsert: true },
       )
       .exec();
+    if (!conversation) {
+      throw new NotFoundException('Chat conversation could not be created.');
+    }
+    if (technicianId) {
+      await this.conversations
+        .updateOne(
+          { _id: conversation._id },
+          { $addToSet: { participants: technicianId } },
+        )
+        .exec();
+      const updatedConversation = await this.conversations
+        .findById(conversation._id)
+        .exec();
+      if (!updatedConversation) {
+        throw new NotFoundException('Chat conversation could not be loaded.');
+      }
+      return updatedConversation;
+    }
+    return conversation;
   }
 
   async getConversation(actor: ChatActor, conversationId: string) {
     return this.requireConversation(actor, conversationId);
+  }
+
+  async getCurrentParticipants(actor: ChatActor, conversationId: string) {
+    const conversation = await this.requireConversation(actor, conversationId);
+    const participantIds = await this.currentParticipantIds(conversation);
+    return participantIds.map((userId) => ({
+      userId,
+      unreadCount:
+        userId === conversation.customerId.toString()
+          ? (conversation.customerUnreadCount ?? 0)
+          : userId === conversation.shopId.toString()
+            ? (conversation.shopUnreadCount ?? 0)
+            : (conversation.technicianUnreadCount ?? 0),
+    }));
   }
 
   async getMessages(
@@ -601,20 +726,39 @@ export class ChatService {
 
   async getPresencePeerIds(userId: string): Promise<string[]> {
     const userObjectId = this.id(userId);
-    const conversations = await this.conversations
-      .find({ participants: userObjectId })
-      .select('customerId shopId')
+    const user = await this.users
+      .findById(userObjectId)
+      .select('accountType')
       .lean()
       .exec();
-    return [
-      ...new Set(
-        conversations.map((conversation) =>
-          conversation.customerId.equals(userObjectId)
-            ? conversation.shopId.toString()
-            : conversation.customerId.toString(),
-        ),
-      ),
-    ];
+    const activeRequestIds =
+      user?.accountType === 'technician'
+        ? (
+            await this.repairRequests
+              .find({ 'repairJob.activeAssignment.technicianId': userObjectId })
+              .select('_id')
+              .lean()
+              .exec()
+          ).map((request) => request._id)
+        : undefined;
+    const conversations = await this.conversations
+      .find({
+        participants: userObjectId,
+        ...(activeRequestIds
+          ? { repairRequestId: { $in: activeRequestIds } }
+          : {}),
+      })
+      .select('customerId shopId repairRequestId participants')
+      .lean()
+      .exec();
+    const peerIds = new Set<string>();
+    for (const conversation of conversations) {
+      const participantIds = await this.currentParticipantIds(conversation);
+      participantIds
+        .filter((id) => id !== userId)
+        .forEach((id) => peerIds.add(id));
+    }
+    return [...peerIds];
   }
 
   async sendMessage(
@@ -661,6 +805,8 @@ export class ChatService {
       conversation._id,
       attachmentIds,
     );
+    const hasTechnicianParticipant =
+      (await this.currentParticipantIds(conversation)).length > 2;
     const message = await this.messages.create({
       conversationId: conversation._id,
       senderId,
@@ -677,24 +823,29 @@ export class ChatService {
       readBy: [senderId],
       deliveredTo: [senderId],
     });
-    const update =
-      actor.role === 'customer'
-        ? {
-            $set: {
-              lastMessage: this.preview(message),
-              lastMessageAt: message.createdAt,
-            },
-            $inc: { shopUnreadCount: 1 },
-            $pull: { archivedBy: senderId },
-          }
-        : {
-            $set: {
-              lastMessage: this.preview(message),
-              lastMessageAt: message.createdAt,
-            },
-            $inc: { customerUnreadCount: 1 },
-            $pull: { archivedBy: senderId },
-          };
+    const unreadIncrements: Record<string, number> = {};
+    if (actor.role === 'customer') {
+      unreadIncrements.shopUnreadCount = 1;
+      if (hasTechnicianParticipant) {
+        unreadIncrements.technicianUnreadCount = 1;
+      }
+    } else if (actor.role === 'shop') {
+      unreadIncrements.customerUnreadCount = 1;
+      if (hasTechnicianParticipant) {
+        unreadIncrements.technicianUnreadCount = 1;
+      }
+    } else {
+      unreadIncrements.customerUnreadCount = 1;
+      unreadIncrements.shopUnreadCount = 1;
+    }
+    const update = {
+      $set: {
+        lastMessage: this.preview(message),
+        lastMessageAt: message.createdAt,
+      },
+      $inc: unreadIncrements,
+      $pull: { archivedBy: senderId },
+    };
     await this.conversations
       .updateOne({ _id: conversation._id }, update)
       .exec();
@@ -829,8 +980,7 @@ export class ChatService {
         { $addToSet: { readBy: readerId, deliveredTo: readerId } },
       )
       .exec();
-    const unreadField =
-      actor.role === 'customer' ? 'customerUnreadCount' : 'shopUnreadCount';
+    const unreadField = this.unreadField(actor.role);
     await this.conversations
       .updateOne({ _id: conversation._id }, { $set: { [unreadField]: 0 } })
       .exec();
@@ -985,10 +1135,7 @@ export class ChatService {
     const shop = this.userSummary(
       users.find((user) => user._id.equals(conversation.shopId)),
     );
-    const unreadCount =
-      actor.role === 'customer'
-        ? conversation.customerUnreadCount
-        : conversation.shopUnreadCount;
+    const unreadCount = conversation[this.unreadField(actor.role)] ?? 0;
     return {
       id: conversation._id.toString(),
       customer,
@@ -1049,7 +1196,55 @@ export class ChatService {
         'You are not a participant in this conversation.',
       );
     }
+    if (actor.role === 'technician') {
+      const request = await this.repairRequests
+        .findOne({
+          _id: conversation.repairRequestId,
+          shopIds: conversation.shopId,
+          'repairJob.activeAssignment.shopId': conversation.shopId,
+          'repairJob.activeAssignment.technicianId': this.id(actor.userId),
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!request) {
+        throw new ForbiddenException(
+          'You can only access messages for jobs currently assigned to you.',
+        );
+      }
+    }
     return conversation;
+  }
+
+  private async currentParticipantIds(
+    conversation: Pick<
+      ChatConversation,
+      'customerId' | 'shopId' | 'repairRequestId' | 'participants'
+    >,
+  ): Promise<string[]> {
+    const participants = [
+      conversation.customerId.toString(),
+      conversation.shopId.toString(),
+    ];
+    if (conversation.participants.length <= 2) {
+      return [...new Set(participants)];
+    }
+    const request = await this.repairRequests
+      .findById(conversation.repairRequestId)
+      .select('repairJob.activeAssignment')
+      .lean()
+      .exec();
+    const technicianId =
+      request?.repairJob?.activeAssignment?.technicianId.toString();
+    if (
+      technicianId &&
+      conversation.participants.some(
+        (participant) => participant.toString() === technicianId,
+      )
+    ) {
+      participants.push(technicianId);
+    }
+    return [...new Set(participants)];
   }
 
   private async updateConversationPreview(

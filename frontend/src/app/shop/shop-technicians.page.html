@@ -1,0 +1,138 @@
+<section class="technicians-page" aria-labelledby="technicians-title">
+  <header class="page-heading">
+    <div>
+      <h1 id="technicians-title">Technicians</h1>
+      <p>Manage your shop technicians, their skills, availability, and assignments.</p>
+    </div>
+    <a class="primary-button" routerLink="/shop/technicians/new"><span aria-hidden="true">＋</span> Add Technician</a>
+  </header>
+
+  @if (error()) { <p class="message error" role="alert">{{ error() }}</p> }
+
+  <div class="summary-grid" aria-label="Technician summary">
+    <article class="summary-card"><span class="summary-icon total">♧</span><div><strong>{{ summary().total }}</strong><span>Total Technicians</span></div></article>
+    <article class="summary-card"><span class="summary-icon available">✓</span><div><strong>{{ summary().available }}</strong><span>Available</span></div></article>
+    <article class="summary-card"><span class="summary-icon busy">◷</span><div><strong>{{ summary().busy }}</strong><span>Busy</span></div></article>
+    <article class="summary-card"><span class="summary-icon leave">◉</span><div><strong>{{ summary().onLeave }}</strong><span>On Leave</span></div></article>
+    <article class="summary-card"><span class="summary-icon inactive">♙</span><div><strong>{{ summary().inactive }}</strong><span>Inactive</span></div></article>
+  </div>
+
+  <section class="list-card" aria-label="Technician directory">
+    <div class="filters">
+      <label class="search-field">
+        <span aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          placeholder="Search by name, employee ID, or skill…"
+          [ngModel]="search()"
+          (ngModelChange)="setSearch($event)"
+        />
+      </label>
+      <label class="filter-field">
+        <span class="visually-hidden">Availability</span>
+        <select [ngModel]="statusFilter()" (ngModelChange)="setFilter('status', $event)">
+          <option value="">All Status</option>
+          <option value="available">Available</option>
+          <option value="busy">Busy</option>
+          <option value="on_leave">On Leave</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </label>
+      <label class="filter-field">
+        <span class="visually-hidden">Skill</span>
+        <select [ngModel]="skillFilter()" (ngModelChange)="setFilter('skill', $event)">
+          <option value="">All Skills</option>
+          @for (skill of skillOptions(); track skill) { <option [value]="skill">{{ skill }}</option> }
+        </select>
+      </label>
+      <label class="filter-field sort-field">
+        <span class="visually-hidden">Sort technicians</span>
+        <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event); page.set(1)">
+          <option value="name">Name A–Z</option>
+          <option value="workload">Most assigned jobs</option>
+          <option value="joiningDate">Joining date</option>
+        </select>
+      </label>
+    </div>
+
+    @if (loading()) {
+      <div class="empty-state" role="status">Loading technicians…</div>
+    } @else if (visibleTechnicians().length) {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Technician</th>
+              <th scope="col">Employee ID</th>
+              <th scope="col">Skills / Specialization</th>
+              <th scope="col">Assigned Jobs</th>
+              <th scope="col">Availability</th>
+              <th scope="col">Joined On</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (technician of visibleTechnicians(); track technician.id) {
+              <tr>
+                <td>
+                  <div class="person-cell">
+                    @if (technician.profileImageData) {
+                      <img [src]="technician.profileImageData" [alt]="technician.name + ' profile photo'" />
+                    } @else {
+                      <span class="avatar-placeholder" aria-hidden="true">{{ technician.name.slice(0, 1) }}</span>
+                    }
+                    <span><strong>{{ technician.name }}</strong><small>Technician</small></span>
+                  </div>
+                </td>
+                <td class="employee-id">{{ technician.employeeId }}</td>
+                <td>
+                  <div class="skill-tags">
+                    @for (skill of technician.skills.slice(0, 3); track skill) { <span>{{ skill }}</span> }
+                    @if (technician.skills.length > 3) { <span>+{{ technician.skills.length - 3 }}</span> }
+                    <small>{{ technician.specialization }}</small>
+                  </div>
+                </td>
+                <td><span class="workload">{{ technician.workload }}</span></td>
+                <td>
+                  <span class="status-badge" [attr.data-status]="technician.availability">
+                    <i aria-hidden="true"></i>{{ availabilityLabel(technician.availability) }}
+                  </span>
+                </td>
+                <td>{{ technician.joiningDate ? (technician.joiningDate | date: 'mediumDate') : '—' }}</td>
+                <td>
+                  <div class="row-actions">
+                    <a class="icon-action" [routerLink]="['/shop/technicians', technician.id]" aria-label="View technician details">◉</a>
+                    <a class="icon-action" [routerLink]="['/shop/technicians', technician.id, 'edit']" aria-label="Edit technician">✎</a>
+                    <button class="icon-action" type="button" (click)="toggleStatus(technician)" [attr.aria-label]="technician.status === 'active' ? 'Deactivate technician' : 'Activate technician'">
+                      {{ technician.status === 'active' ? '⊖' : '✓' }}
+                    </button>
+                    @if (technician.status === 'active') {
+                      <select class="availability-action" [ngModel]="technician.availability === 'on_leave' ? 'on_leave' : 'available'" (ngModelChange)="changeAvailability(technician, $event)" aria-label="Change availability">
+                        <option value="available">Available</option>
+                        <option value="on_leave">On Leave</option>
+                      </select>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer class="table-footer">
+        <span>Showing {{ (page() - 1) * pageSize + 1 }}–{{ (page() - 1) * pageSize + visibleTechnicians().length }} of {{ filteredTechnicians().length }} technicians</span>
+        <div class="pagination">
+          <button type="button" (click)="changePage(page() - 1)" [disabled]="page() === 1" aria-label="Previous page">‹</button>
+          <span>{{ page() }} / {{ pageCount() }}</span>
+          <button type="button" (click)="changePage(page() + 1)" [disabled]="page() === pageCount()" aria-label="Next page">›</button>
+        </div>
+      </footer>
+    } @else {
+      <div class="empty-state">
+        <strong>{{ technicians().length ? 'No matching technicians' : 'No technicians yet' }}</strong>
+        <p>{{ technicians().length ? 'Change your filters or search terms.' : 'Add technicians to start assigning repair jobs.' }}</p>
+        @if (!technicians().length) { <a class="primary-button" routerLink="/shop/technicians/new">Add first technician</a> }
+      </div>
+    }
+  </section>
+</section>

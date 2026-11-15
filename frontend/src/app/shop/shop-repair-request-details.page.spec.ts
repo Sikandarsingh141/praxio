@@ -6,6 +6,7 @@ import { ShopProfile } from '../core/auth/auth.models';
 import { ShopRepairRequest } from './shop-repair-requests.models';
 import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { ShopRepairRequestDetailsPage } from './shop-repair-request-details.page';
+import { TechniciansService } from './technicians.service';
 
 describe('ShopRepairRequestDetailsPage directions', () => {
   it('does not label pre-repair statuses as complete', () => {
@@ -108,6 +109,14 @@ describe('ShopRepairRequestDetailsPage directions', () => {
         {
           provide: AuthService,
           useValue: { getMyShopProfile: jasmine.createSpy().and.returnValue(of(shopProfile)) },
+        },
+        {
+          provide: TechniciansService,
+          useValue: {
+            list: jasmine.createSpy().and.returnValue(of({ technicians: [], summary: {} })),
+            assign: jasmine.createSpy().and.returnValue(of({ warning: null })),
+            unassign: jasmine.createSpy().and.returnValue(of(undefined)),
+          },
         },
       ],
     }).compileComponents();

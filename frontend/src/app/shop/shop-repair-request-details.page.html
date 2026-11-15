@@ -50,6 +50,24 @@
         }
     </ol>
 
+    @if (request.acceptedQuotationId) {
+      <section class="technician-assignment-card" aria-labelledby="technician-assignment-title">
+        <header>
+          <div><h2 id="technician-assignment-title">Technician Assignment</h2><p>Assign this repair to yourself or a technician on your team.</p></div>
+          <button type="button" class="primary-button" (click)="openAssignment()">＋ {{ request.technicianAssignment?.current ? 'Reassign Technician' : 'Assign Technician' }}</button>
+        </header>
+        @if (request.technicianAssignment?.current; as assignment) {
+          <div class="assigned-technician">
+            @if (assignment.profileImageData) { <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" /> }
+            @else { <span class="assignment-avatar" aria-hidden="true">{{ assignment.technicianName.slice(0, 1) }}</span> }
+            <div><strong>{{ assignment.technicianName }} {{ assignment.isOwner ? '(You)' : '' }}</strong><small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>@if (assignment.note) { <small>{{ assignment.note }}</small> }</div>
+          </div>
+        } @else {
+          <p class="unassigned-message">No technician assigned yet. Assign to yourself or a technician to start the repair.</p>
+        }
+      </section>
+    }
+
     @if (request.repairJob) {
       <app-shop-repair-workflow [request]="request" (requestUpdated)="setRequest($event)" />
     }
@@ -485,6 +503,7 @@
               min="0.01"
               step="0.01"
               required
+              placeholder="Enter estimated amount"
               [ngModel]="quotationAmount()"
               (ngModelChange)="quotationAmount.set($event); formError.set('')"
               [attr.aria-invalid]="quotationAttempted() && (quotationAmount() === null || quotationAmount()! <= 0)"
@@ -502,6 +521,7 @@
               max="365"
               step="1"
               required
+              placeholder="Enter estimated days"
               [ngModel]="completionDays()"
               (ngModelChange)="completionDays.set($event); formError.set('')"
               [attr.aria-invalid]="quotationAttempted() && (completionDays() === null || completionDays()! < 1 || completionDays()! % 1 !== 0)"
@@ -519,6 +539,7 @@
               max="365"
               step="1"
               required
+              placeholder="Enter validity period"
               [ngModel]="validityDays()"
               (ngModelChange)="validityDays.set($event); formError.set('')"
               [attr.aria-invalid]="quotationAttempted() && (validityDays() === null || validityDays()! < 1 || validityDays()! > 365 || validityDays()! % 1 !== 0)"
@@ -617,6 +638,33 @@
             {{ submitting() ? 'Declining…' : 'Confirm decline' }}
           </button>
         </footer>
+      </section>
+    </div>
+  }
+
+  @if (assignmentModalOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section class="dialog assignment-dialog" role="dialog" aria-modal="true" aria-labelledby="assignment-dialog-title">
+        <header><div><span class="section-kicker">REPAIR ASSIGNMENT</span><h2 id="assignment-dialog-title">{{ request()?.technicianAssignment?.current ? 'Reassign Technician' : 'Assign Technician' }}</h2></div><button type="button" class="dialog-close" aria-label="Close assignment dialog" (click)="cancelAssignment()">×</button></header>
+        <button type="button" class="self-assignment" [class.selected]="selectedTechnicianId() === ''" (click)="selectedTechnicianId.set('')"><span class="assignment-avatar">♙</span><span><strong>Assign to Myself</strong><small>Shop owner · Handle this repair personally</small></span><i>{{ selectedTechnicianId() === '' ? '●' : '○' }}</i></button>
+        <label class="assignment-search"><span>Or select a technician</span><input type="search" placeholder="Search name, employee ID, or skill" [ngModel]="assignmentSearch()" (ngModelChange)="assignmentSearch.set($event)" /></label>
+        @if (assignmentLoading()) { <p role="status">Loading technicians…</p> }
+        <div class="assignment-options">
+          @for (technician of filteredAssignmentTechnicians; track technician.id) {
+            <button type="button" class="technician-option" [class.selected]="selectedTechnicianId() === technician.id" [disabled]="technician.status !== 'active' || technician.availability === 'on_leave'" (click)="selectedTechnicianId.set(technician.id)">
+              @if (technician.profileImageData) { <img [src]="technician.profileImageData" [alt]="technician.name" /> } @else { <span class="assignment-avatar">{{ technician.name.slice(0, 1) }}</span> }
+              <span><strong>{{ technician.name }}</strong><small>{{ technician.employeeId }} · {{ technician.skills.slice(0, 2).join(' · ') }}</small></span>
+              <span class="status-badge" [attr.data-status]="technician.availability">{{ technician.availability.replace('_', ' ') | titlecase }} · {{ technician.workload }} jobs</span>
+              <i>{{ selectedTechnicianId() === technician.id ? '●' : '○' }}</i>
+            </button>
+          }
+          @if (!assignmentLoading() && !filteredAssignmentTechnicians.length) { <p class="muted">No matching technicians.</p> }
+        </div>
+        @if (isSelectedTechnicianBusy()) { <p class="assignment-warning" role="status">This technician already has active work. Confirm only if they can take another repair.</p> }
+        <label class="assignment-search"><span>Assignment note (optional)</span><textarea rows="2" maxlength="500" [ngModel]="assignmentNote()" (ngModelChange)="assignmentNote.set($event)"></textarea></label>
+        @if (request()?.technicianAssignment?.current) { <label class="assignment-search"><span>Reassignment reason <b>*</b></span><textarea rows="2" maxlength="500" [ngModel]="assignmentReason()" (ngModelChange)="assignmentReason.set($event)"></textarea></label> }
+        @if (assignmentError()) { <p class="form-error" role="alert">{{ assignmentError() }}</p> }
+        <footer><button type="button" class="secondary-button" (click)="cancelAssignment()">Cancel</button>@if (request()?.technicianAssignment?.current) { <button type="button" class="decline-button" [disabled]="assignmentSubmitting()" (click)="unassignTechnician()">Unassign</button> }<button type="button" class="primary-button" [disabled]="assignmentSubmitting() || assignmentLoading()" (click)="submitAssignment()">{{ assignmentSubmitting() ? 'Saving…' : 'Confirm Assignment' }}</button></footer>
       </section>
     </div>
   }

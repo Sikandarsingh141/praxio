@@ -22,6 +22,7 @@ export const authGuard: CanActivateFn = (route) => {
           customer: '/customer',
           shop: '/shop',
           admin: '/admin',
+          technician: '/technician',
         }[accountType];
         return router.createUrlTree([portalPath]);
       }

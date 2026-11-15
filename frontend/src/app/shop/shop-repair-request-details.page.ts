@@ -10,6 +10,8 @@ import { ShopRepairRequestsService } from './shop-repair-requests.service';
 import { ShopRepairRouteComponent } from './shop-repair-route.component';
 import { ShopRepairWorkflowComponent } from './shop-repair-workflow.component';
 import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
+import { Technician } from './technicians.models';
+import { TechniciansService } from './technicians.service';
 import { ToastService } from '../core/toast/toast.service';
 
 const DECLINE_REASONS = [
@@ -61,6 +63,15 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly pickupInstructions = signal('');
   readonly pickupMessage = signal('');
   readonly repairFormError = signal('');
+  readonly assignmentModalOpen = signal(false);
+  readonly assignmentLoading = signal(false);
+  readonly assignmentSubmitting = signal(false);
+  readonly assignmentSearch = signal('');
+  readonly assignmentTechnicians = signal<Technician[]>([]);
+  readonly selectedTechnicianId = signal('');
+  readonly assignmentNote = signal('');
+  readonly assignmentReason = signal('');
+  readonly assignmentError = signal('');
   readonly customerCoordinates = computed(() => {
     const request = this.request();
     if (!request) return null;
@@ -112,11 +123,123 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly requestsService: ShopRepairRequestsService,
     private readonly authService: AuthService,
+    private readonly techniciansService: TechniciansService,
     private readonly toastService: ToastService,
   ) {}
 
   setRequest(request: ShopRepairRequest): void {
     this.request.set(request);
+  }
+
+  openAssignment(): void {
+    this.assignmentModalOpen.set(true);
+    this.assignmentError.set('');
+    const current = this.request()?.technicianAssignment?.current;
+    this.selectedTechnicianId.set(current?.isOwner ? '' : current?.technicianId ?? '');
+    this.assignmentLoading.set(true);
+    this.techniciansService.list().subscribe({
+      next: (result) => {
+        this.assignmentTechnicians.set(result.technicians);
+        this.assignmentLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.assignmentError.set(error.error?.message || 'Technician list could not be loaded.');
+        this.assignmentLoading.set(false);
+      },
+    });
+  }
+
+  get filteredAssignmentTechnicians(): Technician[] {
+    const query = this.assignmentSearch().trim().toLocaleLowerCase();
+    return this.assignmentTechnicians().filter((technician) =>
+      [
+        technician.name,
+        technician.employeeId,
+        technician.skills.join(' '),
+        technician.specialization,
+      ]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(query),
+    );
+  }
+
+  isSelectedTechnicianBusy(): boolean {
+    const selectedId = this.selectedTechnicianId();
+    return this.assignmentTechnicians().some(
+      (technician) => technician.id === selectedId && technician.availability === 'busy',
+    );
+  }
+
+  submitAssignment(): void {
+    const request = this.request();
+    if (!request) return;
+    const current = request.technicianAssignment?.current;
+    const selected = this.selectedTechnicianId();
+    if (
+      current &&
+      (current.technicianId === selected || (current.isOwner && selected === ''))
+    ) {
+      this.assignmentError.set('Select a different technician or use Unassign.');
+      return;
+    }
+    if (current && !this.assignmentReason().trim()) {
+      this.assignmentError.set('Enter a reason to reassign this repair.');
+      return;
+    }
+    this.assignmentSubmitting.set(true);
+    this.assignmentError.set('');
+    this.techniciansService
+      .assign(request._id, {
+        ...(selected ? { technicianId: selected } : {}),
+        note: this.assignmentNote().trim(),
+        ...(current ? { reason: this.assignmentReason().trim() } : {}),
+      })
+      .subscribe({
+        next: (result) => {
+          this.assignmentSubmitting.set(false);
+          this.assignmentModalOpen.set(false);
+          this.success.set(
+            result.warning
+              ? `Technician assigned. Warning: ${result.warning}`
+              : 'Technician assignment updated.',
+          );
+          this.reloadRequest(request._id);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.assignmentError.set(error.error?.message || 'Technician could not be assigned.');
+          this.assignmentSubmitting.set(false);
+        },
+      });
+  }
+
+  unassignTechnician(): void {
+    const request = this.request();
+    if (!request?.technicianAssignment?.current) return;
+    const reason = this.assignmentReason().trim();
+    if (!reason) {
+      this.assignmentError.set('Enter a reason before unassigning this technician.');
+      return;
+    }
+    if (!window.confirm('Unassign the current technician from this repair?')) return;
+    this.assignmentSubmitting.set(true);
+    this.techniciansService.unassign(request._id, reason).subscribe({
+      next: () => {
+        this.assignmentSubmitting.set(false);
+        this.assignmentModalOpen.set(false);
+        this.success.set('Technician unassigned.');
+        this.reloadRequest(request._id);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.assignmentError.set(error.error?.message || 'Technician could not be unassigned.');
+        this.assignmentSubmitting.set(false);
+      },
+    });
+  }
+
+  cancelAssignment(): void {
+    this.assignmentModalOpen.set(false);
+    this.assignmentError.set('');
   }
 
   ngOnInit(): void {

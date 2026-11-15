@@ -97,6 +97,28 @@
                   ></span>
                   <strong>{{ day.count }}</strong>
                 </div>
+                @if (data.repairs.recent.length) {
+                  <section class="panel assigned-repairs-panel" aria-labelledby="assigned-repairs-title">
+                    <header class="panel-heading">
+                      <div>
+                        <h3 id="assigned-repairs-title">Active repair assignments</h3>
+                        <p>Technicians currently responsible for repair jobs</p>
+                      </div>
+                      <a routerLink="/shop/technician-assignments">Manage assignments</a>
+                    </header>
+                    <div class="compact-list">
+                      @for (repair of data.repairs.recent; track repair._id) {
+                        <article>
+                          <div>
+                            <strong>{{ repair.appliance }}</strong>
+                            <span>{{ repair.technicianAssignment?.technicianName || 'Not assigned' }} · {{ repair.repairJob.status.replaceAll('_', ' ') | titlecase }}</span>
+                          </div>
+                          <a [routerLink]="['/shop/repair-requests', repair._id]">View repair</a>
+                        </article>
+                      }
+                    </div>
+                  </section>
+                }
               }
             </div>
           } @else {

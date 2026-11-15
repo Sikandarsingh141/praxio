@@ -31,6 +31,13 @@ import { CustomerPortalController } from '../customer/customer-portal.controller
 import { CustomerPortalService } from '../customer/customer-portal.service';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ShopRepairRequestsController } from '../customer/shop-repair-requests.controller';
+import {
+  TechnicianAssignmentsController,
+  TechnicianPortalController,
+  TechniciansController,
+} from './technicians.controller';
+import { TechniciansService } from './technicians.service';
+import { TechnicianPortalGuard } from './technician-portal.guard';
 import { ShopQuotationsController } from '../customer/shop-quotations.controller';
 import { ShopDashboardController } from '../customer/shop-dashboard.controller';
 import {
@@ -71,6 +78,9 @@ import {
     StripePaymentsController,
     CustomerPortalController,
     ShopRepairRequestsController,
+    TechniciansController,
+    TechnicianAssignmentsController,
+    TechnicianPortalController,
     ShopQuotationsController,
     ShopDashboardController,
     CustomerRepairWorkflowController,
@@ -80,7 +90,9 @@ import {
     AuthService,
     JwtAuthGuard,
     ShopPortalGuard,
+    TechnicianPortalGuard,
     CustomerPortalService,
+    TechniciansService,
   ],
   exports: [JwtAuthGuard, ShopPortalGuard, JwtModule],
 })

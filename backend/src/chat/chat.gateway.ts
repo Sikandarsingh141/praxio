@@ -23,7 +23,7 @@ import {
 
 type ChatSocketData = {
   userId?: string;
-  role?: 'customer' | 'shop';
+  role?: 'customer' | 'shop' | 'technician';
 };
 type ChatSocket = Omit<Socket, 'data'> & { data: ChatSocketData };
 
@@ -210,11 +210,18 @@ export class ChatGateway
   ) {
     const actor = this.actor(client);
     const conversationId = this.string(body?.conversationId);
-    await this.chat.getConversation(actor, conversationId);
-    client.to(this.conversationRoom(conversationId)).emit('user_typing', {
-      userId: actor.userId,
-      role: actor.role,
-    });
+    const participants = await this.chat.getCurrentParticipants(
+      actor,
+      conversationId,
+    );
+    for (const { userId } of participants) {
+      if (userId !== actor.userId) {
+        this.server.to(this.userRoom(userId)).emit('user_typing', {
+          userId: actor.userId,
+          role: actor.role,
+        });
+      }
+    }
   }
 
   @SubscribeMessage('typing_stop')
@@ -224,12 +231,17 @@ export class ChatGateway
   ) {
     const actor = this.actor(client);
     const conversationId = this.string(body?.conversationId);
-    await this.chat.getConversation(actor, conversationId);
-    client
-      .to(this.conversationRoom(conversationId))
-      .emit('user_stopped_typing', {
-        userId: actor.userId,
-      });
+    const participants = await this.chat.getCurrentParticipants(
+      actor,
+      conversationId,
+    );
+    for (const { userId } of participants) {
+      if (userId !== actor.userId) {
+        this.server.to(this.userRoom(userId)).emit('user_stopped_typing', {
+          userId: actor.userId,
+        });
+      }
+    }
   }
 
   async broadcastNewMessage(
@@ -238,54 +250,45 @@ export class ChatGateway
     message: unknown,
   ): Promise<void> {
     try {
-      const conversation = await this.chat.getConversation(
+      const participants = await this.chat.getCurrentParticipants(
         actor,
         conversationId,
       );
-      const customerId = conversation.customerId.toString();
-      const shopId = conversation.shopId.toString();
-      const recipientId = actor.role === 'customer' ? shopId : customerId;
-      const unreadCount =
-        actor.role === 'customer'
-          ? conversation.shopUnreadCount
-          : conversation.customerUnreadCount;
       const preview = {
         conversationId,
         lastMessage: this.getMessagePreview(message),
         lastMessageAt: this.getMessageTimestamp(message),
       };
 
-      for (const userId of new Set([customerId, shopId])) {
+      for (const { userId } of participants) {
         const room = this.userRoom(userId);
         this.server.to(room).emit('new_message', message);
         this.server.to(room).emit('conversation_updated', preview);
       }
-      this.server
-        .to(this.userRoom(recipientId))
-        .emit('unread_count_updated', { conversationId, unreadCount });
-
-      const connectedSockets = await this.server
-        .in(this.userRoom(recipientId))
-        .fetchSockets();
       const messageId = this.getMessageId(message);
-      if (!connectedSockets.length || !messageId) return;
-
-      await this.chat.markDelivered(
-        actor,
-        conversationId,
-        messageId,
-        recipientId,
-      );
-      this.server.to(this.userRoom(customerId)).emit('message_delivered', {
-        conversationId,
-        messageId,
-        recipientId,
-      });
-      this.server.to(this.userRoom(shopId)).emit('message_delivered', {
-        conversationId,
-        messageId,
-        recipientId,
-      });
+      for (const participant of participants) {
+        if (participant.userId === actor.userId) continue;
+        const room = this.userRoom(participant.userId);
+        this.server.to(room).emit('unread_count_updated', {
+          conversationId,
+          unreadCount: participant.unreadCount,
+        });
+        const connectedSockets = await this.server.in(room).fetchSockets();
+        if (!connectedSockets.length || !messageId) continue;
+        await this.chat.markDelivered(
+          actor,
+          conversationId,
+          messageId,
+          participant.userId,
+        );
+        for (const { userId } of participants) {
+          this.server.to(this.userRoom(userId)).emit('message_delivered', {
+            conversationId,
+            messageId,
+            recipientId: participant.userId,
+          });
+        }
+      }
     } catch (error) {
       this.logger.warn(
         `Could not broadcast chat message: ${error instanceof Error ? error.message : String(error)}`,
@@ -294,75 +297,81 @@ export class ChatGateway
   }
 
   broadcastMessageEdited(actor: ChatActor, message: ChatMessageResult) {
-    void this.chat
-      .getConversation(actor, message.conversationId)
-      .then((conversation) => {
-        this.server
-          .to(this.conversationRoom(message.conversationId))
-          .emit('message_edited', message);
-        const preview = {
-          conversationId: message.conversationId,
-          lastMessage: conversation.lastMessage ?? '',
-          lastMessageAt: conversation.lastMessageAt,
-        };
-        this.emitConversationUpdate(
-          conversation.customerId.toString(),
-          conversation.shopId.toString(),
-          preview,
+    void (async () => {
+      try {
+        const conversation = await this.chat.getConversation(
+          actor,
+          message.conversationId,
         );
-      })
-      .catch((error: unknown) => {
+        const participants = await this.chat.getCurrentParticipants(
+          actor,
+          message.conversationId,
+        );
+        for (const { userId } of participants) {
+          this.server.to(this.userRoom(userId)).emit('message_edited', message);
+        }
+        this.emitConversationUpdate(
+          participants.map(({ userId }) => userId),
+          {
+            conversationId: message.conversationId,
+            lastMessage: conversation.lastMessage ?? '',
+            lastMessageAt: conversation.lastMessageAt,
+          },
+        );
+      } catch (error) {
         this.logger.warn(
           `Could not broadcast edited chat message: ${error instanceof Error ? error.message : String(error)}`,
         );
-      });
+      }
+    })();
   }
 
   broadcastMessageDeleted(actor: ChatActor, message: ChatDeletedMessageResult) {
-    void this.chat
-      .getConversation(actor, message.conversationId)
-      .then(() => {
-        this.server
-          .to(this.conversationRoom(message.conversationId))
-          .emit('message_deleted', message);
-        this.server
-          .to(this.conversationRoom(message.conversationId))
-          .emit('conversation_updated', {
+    void (async () => {
+      try {
+        const participants = await this.chat.getCurrentParticipants(
+          actor,
+          message.conversationId,
+        );
+        for (const { userId } of participants) {
+          const room = this.userRoom(userId);
+          this.server.to(room).emit('message_deleted', message);
+          this.server.to(room).emit('conversation_updated', {
             conversationId: message.conversationId,
             lastMessage: message.lastMessage,
             lastMessageAt: message.lastMessageAt,
           });
-        void this.chat
-          .getConversation(actor, message.conversationId)
-          .then((conversation) =>
-            this.emitConversationUpdate(
-              conversation.customerId.toString(),
-              conversation.shopId.toString(),
-              {
-                conversationId: message.conversationId,
-                lastMessage: message.lastMessage,
-                lastMessageAt: message.lastMessageAt,
-              },
-            ),
-          );
-      })
-      .catch((error: unknown) => {
+        }
+        this.emitConversationUpdate(
+          participants.map(({ userId }) => userId),
+          {
+            conversationId: message.conversationId,
+            lastMessage: message.lastMessage,
+            lastMessageAt: message.lastMessageAt,
+          },
+        );
+      } catch (error) {
         this.logger.warn(
           `Could not broadcast deleted chat message: ${error instanceof Error ? error.message : String(error)}`,
         );
-      });
+      }
+    })();
   }
 
   broadcastRead(actor: ChatActor, conversationId: string, readerId: string) {
     void this.chat
-      .getConversation(actor, conversationId)
-      .then(() => {
-        this.server
-          .to(this.conversationRoom(conversationId))
-          .emit('messages_read', { conversationId, readerId });
-        this.server
-          .to(this.conversationRoom(conversationId))
-          .emit('message_read', { conversationId, readerId });
+      .getCurrentParticipants(actor, conversationId)
+      .then((participants) => {
+        for (const { userId } of participants) {
+          this.server.to(this.userRoom(userId)).emit('messages_read', {
+            conversationId,
+            readerId,
+          });
+          this.server.to(this.userRoom(userId)).emit('message_read', {
+            conversationId,
+            readerId,
+          });
+        }
         this.server
           .to(this.userRoom(readerId))
           .emit('unread_count_updated', { conversationId, unreadCount: 0 });
@@ -424,14 +433,14 @@ export class ChatGateway
   }
 
   private emitConversationUpdate(
-    customerId: string,
-    shopId: string,
+    participantIds: string[],
     update: Record<string, unknown>,
   ) {
-    this.server
-      .to(this.userRoom(customerId))
-      .emit('conversation_updated', update);
-    this.server.to(this.userRoom(shopId)).emit('conversation_updated', update);
+    for (const userId of participantIds) {
+      this.server
+        .to(this.userRoom(userId))
+        .emit('conversation_updated', update);
+    }
   }
 
   private async emitPresence(userId: string, isOnline: boolean) {

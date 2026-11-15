@@ -1,0 +1,113 @@
+<div class="technician-portal">
+  <header class="portal-header">
+    <a class="brand" routerLink="/technician" aria-label="Fixora Technician Portal">
+      <img src="/fixroa-logo.png" alt="Fixora" />
+      <span>TECHNICIAN PORTAL</span>
+    </a>
+
+    <div class="header-actions">
+      <label class="availability-picker">
+        <span class="availability-dot" [attr.data-status]="technician()?.availability"></span>
+        <select
+          aria-label="Set your availability"
+          [value]="technician()?.availabilityPreference || 'available'"
+          [disabled]="loadingAvailability()"
+          (change)="updateAvailability($event)"
+        >
+          <option value="available">Available</option>
+          <option value="on_leave">On Leave</option>
+        </select>
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="m5 7.5 5 5 5-5" />
+        </svg>
+      </label>
+
+      <app-notification-center />
+
+      <div class="account">
+        <a class="account-link" routerLink="/technician/profile">
+          @if (auth.currentUser()?.profileImageUrl; as profileImageUrl) {
+            <img class="avatar" [src]="profileImageUrl" alt="" />
+          } @else {
+            <span class="avatar avatar-placeholder">
+              {{ technician()?.name?.slice(0, 1) || 'T' }}
+            </span>
+          }
+          <span class="account-info">
+            <strong>{{ technician()?.name || 'Technician' }}</strong>
+            <small>{{ technician()?.employeeId || 'Technician' }}</small>
+          </span>
+          <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m5 7.5 5 5 5-5" />
+          </svg>
+        </a>
+        <button class="sign-out" type="button" (click)="signOut()">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="portal-body">
+    <aside class="portal-sidebar" aria-label="Technician portal navigation">
+      <nav>
+        @for (item of navigation; track item.route) {
+          <a
+            class="portal-nav"
+            [routerLink]="item.route"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: item.exact || false }"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              @switch (item.icon) {
+                @case ('dashboard') {
+                  <path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z" />
+                }
+                @case ('jobs') {
+                  <rect x="3" y="6" width="18" height="15" rx="2" />
+                  <path d="M8 6V4h8v2M3 11h18M10 11v2h4v-2" />
+                }
+                @case ('history') {
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2M4 5v4h4" />
+                }
+                @case ('messages') {
+                  <path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5" />
+                }
+                @case ('performance') {
+                  <path d="M4 20V12M10 20V5M16 20V9M22 20V3" />
+                }
+                @case ('availability') {
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M7 3v4M17 3v4M3 10h18M8 14l2 2 5-5" />
+                }
+                @case ('profile') {
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21a8 8 0 0 1 16 0" />
+                }
+              }
+            </svg>
+            <span>{{ item.label }}</span>
+            @if (item.icon === 'messages' && chat.unreadMessageCount() > 0) {
+              <span class="unread-count">
+                {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
+              </span>
+            }
+          </a>
+        }
+      </nav>
+      <a class="help-link" href="mailto:support@fixroa.com">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.8 1.3-1.8 2.8M12 17h.01" />
+        </svg>
+        Help &amp; Support
+      </a>
+    </aside>
+
+    <main class="portal-content">
+      @if (error()) {
+        <p class="portal-error" role="alert">{{ error() }}</p>
+      }
+      <router-outlet />
+    </main>
+  </div>
+</div>

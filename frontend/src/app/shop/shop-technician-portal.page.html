@@ -1,0 +1,419 @@
+<section class="page">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">{{ view() === 'history' ? 'YOUR WORK' : 'MY WORK' }}</p>
+      <h1>
+        @switch (view()) {
+          @case ('jobs') {
+            My Assigned Jobs
+          }
+          @case ('history') {
+            Job History
+          }
+          @default {
+            Dashboard
+          }
+        }
+      </h1>
+      <p>
+        @switch (view()) {
+          @case ('jobs') {
+            Repair requests currently assigned to you by your shop.
+          }
+          @case ('history') {
+            Review repair jobs assigned to you, including completed work.
+          }
+          @default {
+            Your assigned repairs and work status at a glance.
+          }
+        }
+      </p>
+    </div>
+    @if (technician(); as profile) {
+      <span class="availability" [attr.data-status]="profile.availability">
+        <span class="availability-dot"></span>
+        {{ profile.availability.replace('_', ' ') | titlecase }}
+      </span>
+    }
+  </header>
+
+  @if (error()) {
+    <p class="message error" role="alert">{{ error() }}</p>
+  }
+  @if (success()) {
+    <p class="message success" role="status">{{ success() }}</p>
+  }
+
+  @if (view() !== 'history') {
+    <section class="summary-grid" aria-label="Job summary">
+      <article class="summary-card">
+        <span class="summary-icon assigned">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="6" width="18" height="15" rx="2" />
+            <path d="M8 6V4h8v2M3 11h18M10 11v2h4v-2" />
+          </svg>
+        </span>
+        <span
+          ><strong>{{ summary().assigned }}</strong
+          ><small>Assigned Jobs</small></span
+        >
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon progress">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m8 5 11 7-11 7z" />
+          </svg>
+        </span>
+        <span
+          ><strong>{{ summary().inProgress }}</strong
+          ><small>In Progress</small></span
+        >
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon completed">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 4 4L19 6" />
+          </svg>
+        </span>
+        <span
+          ><strong>{{ summary().completed }}</strong
+          ><small>Completed</small></span
+        >
+      </article>
+      <article class="summary-card">
+        <span class="summary-icon on-hold">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5v14M16 5v14" />
+          </svg>
+        </span>
+        <span
+          ><strong>{{ summary().onHold }}</strong
+          ><small>On Hold</small></span
+        >
+      </article>
+    </section>
+  }
+
+  @if (view() === 'jobs') {
+    <nav class="filters" aria-label="Filter jobs">
+      @for (item of filterOptions; track item.key) {
+        <button type="button" [class.active]="filter() === item.key" (click)="setFilter(item.key)">
+          {{ item.label }} <span>{{ counts()[item.key] }}</span>
+        </button>
+      }
+    </nav>
+  }
+
+  <section class="jobs-layout" [class.single-column]="!detailLoading() && !details()">
+    <div class="jobs-card">
+      <header class="list-heading">
+        <div>
+          <h2>
+            {{
+              view() === 'history'
+                ? 'Assigned Job History'
+                : view() === 'dashboard'
+                  ? 'Recent Jobs'
+                  : 'Repair Requests'
+            }}
+          </h2>
+          <p>
+            @if (view() === 'history') {
+              {{ jobs().length }} records from your assignments
+            } @else {
+              {{ counts()[filter()] }} jobs in this view
+            }
+          </p>
+        </div>
+        @if (view() === 'dashboard') {
+          <a routerLink="/technician/jobs">View all jobs</a>
+        }
+      </header>
+
+      @if (view() !== 'dashboard') {
+        <label class="search-box">
+          <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="#718078"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.7"
+            aria-hidden="true"
+          >
+            <circle cx="10.8" cy="10.8" r="6.3" />
+            <path d="m16 16 4 4" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Search by request ID, customer, or device..."
+            aria-label="Search assigned jobs"
+            [ngModel]="searchText()"
+            (ngModelChange)="searchText.set($event)"
+          />
+        </label>
+      }
+
+      @if (loading()) {
+        <p class="state" role="status">Loading your jobs…</p>
+      } @else if (visibleJobs().length) {
+        <div class="job-list">
+          @for (job of visibleJobs(); track job.id) {
+            <button
+              type="button"
+              class="job-row"
+              [class.selected]="selectedJobId() === job.id"
+              [attr.aria-label]="
+                'View ' + job.appliance + ' repair for ' + (job.customer || 'customer')
+              "
+              (click)="openJob(job)"
+            >
+              <span class="device-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="6" y="2.5" width="12" height="19" rx="2" />
+                  <path d="M10 18.5h4" />
+                </svg>
+              </span>
+              <span class="job-info">
+                <strong>{{ job.appliance }}</strong>
+                <small>
+                  {{ job.id.slice(-8).toUpperCase() }} · {{ job.customer || 'Customer' }}
+                </small>
+                <small>
+                  @if (job.scheduledDate) {
+                    Scheduled {{ job.scheduledDate | date: 'mediumDate' }}
+                  } @else {
+                    Schedule not provided
+                  }
+                </small>
+              </span>
+              <span class="job-status" [attr.data-status]="job.status">
+                {{ job.status.replace('_', ' ') | titlecase }}
+              </span>
+            </button>
+          }
+        </div>
+      } @else {
+        <p class="state">
+          <strong>{{ searchText() ? 'No matching jobs' : 'No jobs to show' }}</strong>
+          <span>
+            {{
+              searchText() ? 'Try another search term.' : 'Your assigned repairs will appear here.'
+            }}
+          </span>
+        </p>
+      }
+    </div>
+
+    @if (detailLoading() || details()) {
+      <section class="job-details" aria-label="Repair request details">
+        @if (detailLoading()) {
+          <p class="state" role="status">Loading repair information…</p>
+        } @else if (details(); as repair) {
+          <header class="details-heading">
+            <div>
+              <p class="eyebrow">REPAIR REQUEST · {{ repair.id.slice(-8).toUpperCase() }}</p>
+              <h2>{{ repair.appliance }}</h2>
+            </div>
+            <span class="job-status" [attr.data-status]="repair.status">
+              {{ repair.status.replace('_', ' ') | titlecase }}
+            </span>
+          </header>
+
+          <p class="device-description">{{ repair.brand }} {{ repair.model }}</p>
+
+          <dl class="detail-list">
+            <div>
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 21v-1a7 7 0 0 1 14 0v1" />
+                </svg>
+                Customer
+              </dt>
+              <dd>{{ repair.customer }}</dd>
+            </div>
+            <div>
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M6 3h4l2 5-3 2a15 15 0 0 0 5 5l2-3 5 2v4c0 1-1 2-2 2C10 20 4 14 4 5c0-1 1-2 2-2z"
+                  />
+                </svg>
+                Phone
+              </dt>
+              <dd>
+                @if (repair.phone) {
+                  <a [href]="'tel:' + repair.phone">{{ repair.phone }}</a>
+                } @else {
+                  Not provided
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                Location
+              </dt>
+              <dd>
+                @if (repair.location; as location) {
+                  <a
+                    [href]="
+                      'https://www.google.com/maps?q=' +
+                      location.latitude +
+                      ',' +
+                      location.longitude
+                    "
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ location.latitude | number: '1.4-4' }},
+                    {{ location.longitude | number: '1.4-4' }}
+                    <span class="external-link">Open map</span>
+                  </a>
+                } @else {
+                  Not provided
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M7 3v4M17 3v4M3 10h18" />
+                </svg>
+                Scheduled Date
+              </dt>
+              <dd>
+                {{
+                  repair.scheduledDate
+                    ? (repair.scheduledDate | date: 'mediumDate')
+                    : 'Not scheduled'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                Service Type
+              </dt>
+              <dd>
+                {{
+                  repair.serviceType
+                    ? (repair.serviceType.replace('_', ' ') | titlecase)
+                    : 'Not provided'
+                }}
+              </dd>
+            </div>
+          </dl>
+
+          <section class="issue-description">
+            <h3>Issue Description</h3>
+            <p>{{ repair.description }}</p>
+          </section>
+
+          @if (repair.photos.length) {
+            <div class="photos" aria-label="Repair photos">
+              @for (photo of repair.photos; track $index) {
+                <a [href]="photo.data" target="_blank" rel="noopener noreferrer">
+                  <img [src]="photo.data" [alt]="'Repair attachment ' + ($index + 1)" />
+                </a>
+              }
+            </div>
+          }
+
+          <label class="progress-note">
+            Progress note (optional)
+            <textarea
+              rows="2"
+              maxlength="1000"
+              [ngModel]="notes()"
+              (ngModelChange)="notes.set($event)"
+              aria-label="Progress note"
+            ></textarea>
+          </label>
+
+          <div class="job-actions">
+            <button
+              class="secondary"
+              type="button"
+              [disabled]="messaging()"
+              (click)="messageCustomer()"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5" />
+              </svg>
+              {{ messaging() ? 'Opening…' : 'Message Customer' }}
+            </button>
+            @if (repair.status === 'inspection_approved' || repair.status === 'on_hold') {
+              <button class="primary" type="button" [disabled]="updating()" (click)="startJob()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m8 5 11 7-11 7z" />
+                </svg>
+                {{ repair.status === 'on_hold' ? 'Resume Work' : 'Start Work' }}
+              </button>
+            } @else if (repair.status === 'in_progress') {
+              <button class="secondary" type="button" [disabled]="updating()" (click)="holdJob()">
+                Place on Hold
+              </button>
+              <button
+                class="primary"
+                type="button"
+                [disabled]="updating()"
+                (click)="completionOpen.set(!completionOpen())"
+              >
+                Complete Work
+              </button>
+            }
+          </div>
+
+          @if (completionOpen()) {
+            <form class="completion-form" (ngSubmit)="completeJob()">
+              <label>
+                Completion summary *
+                <textarea
+                  required
+                  rows="2"
+                  maxlength="2000"
+                  [ngModel]="completionDescription()"
+                  (ngModelChange)="completionDescription.set($event)"
+                  name="completion"
+                ></textarea>
+              </label>
+              <label>
+                Work performed *
+                <textarea
+                  required
+                  rows="2"
+                  maxlength="2000"
+                  [ngModel]="workPerformed()"
+                  (ngModelChange)="workPerformed.set($event)"
+                  name="work"
+                ></textarea>
+              </label>
+              <label>
+                Parts replaced
+                <textarea
+                  rows="2"
+                  maxlength="1000"
+                  [ngModel]="partsReplaced()"
+                  (ngModelChange)="partsReplaced.set($event)"
+                  name="parts"
+                ></textarea>
+              </label>
+              <button class="primary" type="submit" [disabled]="updating()">Save completion</button>
+            </form>
+          }
+        }
+      </section>
+    }
+  </section>
+</section>

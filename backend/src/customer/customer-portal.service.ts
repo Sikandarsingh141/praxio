@@ -122,7 +122,9 @@ function formatShopAddress(details?: User['shopDetails']): string {
 
 function shopImageUrl(imageData?: string): string | null {
   return imageData &&
-    /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(imageData)
+    /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(
+      imageData,
+    )
     ? imageData
     : null;
 }
@@ -870,7 +872,10 @@ export class CustomerPortalService {
     return safeRequest;
   }
 
-  async cancelRepairRequest(customerId: string, requestId: string): Promise<unknown> {
+  async cancelRepairRequest(
+    customerId: string,
+    requestId: string,
+  ): Promise<unknown> {
     const customer = await this.requireActiveCustomer(customerId);
     if (!isObjectIdOrHexString(requestId)) {
       throw new NotFoundException('Repair request was not found.');
@@ -1239,7 +1244,9 @@ export class CustomerPortalService {
                       localField: 'customerId',
                       foreignField: '_id',
                       pipeline: [
-                        { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                        {
+                          $project: { firstName: 1, lastName: 1, fullName: 1 },
+                        },
                       ],
                       as: 'customer',
                     },
@@ -1247,6 +1254,30 @@ export class CustomerPortalService {
                   {
                     $unwind: {
                       path: '$customer',
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: 'users',
+                      localField: 'repairJob.activeAssignment.technicianId',
+                      foreignField: '_id',
+                      pipeline: [
+                        {
+                          $project: {
+                            firstName: 1,
+                            lastName: 1,
+                            fullName: 1,
+                            profileImageData: 1,
+                          },
+                        },
+                      ],
+                      as: 'assignedTechnician',
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: '$assignedTechnician',
                       preserveNullAndEmptyArrays: true,
                     },
                   },
@@ -1261,7 +1292,53 @@ export class CustomerPortalService {
                       customerLatitude: 1,
                       customerLongitude: 1,
                       shopResponse: 1,
-                      repairJob: { status: '$repairJob.status' },
+                      repairJob: {
+                        status: '$repairJob.status',
+                        activeAssignment: '$repairJob.activeAssignment',
+                      },
+                      technicianAssignment: {
+                        $cond: [
+                          {
+                            $ifNull: [
+                              '$repairJob.activeAssignment.technicianId',
+                              false,
+                            ],
+                          },
+                          {
+                            technicianName: {
+                              $ifNull: [
+                                {
+                                  $trim: {
+                                    input: {
+                                      $concat: [
+                                        {
+                                          $ifNull: [
+                                            '$assignedTechnician.firstName',
+                                            '',
+                                          ],
+                                        },
+                                        ' ',
+                                        {
+                                          $ifNull: [
+                                            '$assignedTechnician.lastName',
+                                            '',
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  },
+                                },
+                                '$assignedTechnician.fullName',
+                              ],
+                            },
+                            profileImageData:
+                              '$assignedTechnician.profileImageData',
+                            assignedAt:
+                              '$repairJob.activeAssignment.assignedAt',
+                          },
+                          null,
+                        ],
+                      },
                       customer: {
                         firstName: '$customer.firstName',
                         lastName: '$customer.lastName',
@@ -1322,7 +1399,9 @@ export class CustomerPortalService {
                       localField: 'customerId',
                       foreignField: '_id',
                       pipeline: [
-                        { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                        {
+                          $project: { firstName: 1, lastName: 1, fullName: 1 },
+                        },
                       ],
                       as: 'customer',
                     },
@@ -1334,12 +1413,82 @@ export class CustomerPortalService {
                     },
                   },
                   {
+                    $lookup: {
+                      from: 'users',
+                      localField: 'repairJob.activeAssignment.technicianId',
+                      foreignField: '_id',
+                      pipeline: [
+                        {
+                          $project: {
+                            firstName: 1,
+                            lastName: 1,
+                            fullName: 1,
+                            profileImageData: 1,
+                          },
+                        },
+                      ],
+                      as: 'assignedTechnician',
+                    },
+                  },
+                  {
+                    $unwind: {
+                      path: '$assignedTechnician',
+                      preserveNullAndEmptyArrays: true,
+                    },
+                  },
+                  {
                     $project: {
                       _id: 1,
                       appliance: 1,
                       description: 1,
                       updatedAt: 1,
-                      repairJob: { status: '$repairJob.status' },
+                      repairJob: {
+                        status: '$repairJob.status',
+                        activeAssignment: '$repairJob.activeAssignment',
+                      },
+                      technicianAssignment: {
+                        $cond: [
+                          {
+                            $ifNull: [
+                              '$repairJob.activeAssignment.technicianId',
+                              false,
+                            ],
+                          },
+                          {
+                            technicianName: {
+                              $ifNull: [
+                                {
+                                  $trim: {
+                                    input: {
+                                      $concat: [
+                                        {
+                                          $ifNull: [
+                                            '$assignedTechnician.firstName',
+                                            '',
+                                          ],
+                                        },
+                                        ' ',
+                                        {
+                                          $ifNull: [
+                                            '$assignedTechnician.lastName',
+                                            '',
+                                          ],
+                                        },
+                                      ],
+                                    },
+                                  },
+                                },
+                                '$assignedTechnician.fullName',
+                              ],
+                            },
+                            profileImageData:
+                              '$assignedTechnician.profileImageData',
+                            assignedAt:
+                              '$repairJob.activeAssignment.assignedAt',
+                          },
+                          null,
+                        ],
+                      },
                       customer: {
                         firstName: '$customer.firstName',
                         lastName: '$customer.lastName',
@@ -1511,7 +1660,9 @@ export class CustomerPortalService {
                       localField: 'customerId',
                       foreignField: '_id',
                       pipeline: [
-                        { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                        {
+                          $project: { firstName: 1, lastName: 1, fullName: 1 },
+                        },
                       ],
                       as: 'customer',
                     },
@@ -1799,37 +1950,83 @@ export class CustomerPortalService {
     });
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
-    const requests = matching
-      .slice((page - 1) * limit, page * limit)
-      .map((request) => {
-        const safeRequest = {
-          ...request,
-          photos: request.photos || [],
-          shopResponses: [],
-          repairJob: request.repairJob
-            ? { status: request.repairJob.status }
-            : undefined,
-        };
-        const customer = customerMap.get(request.customerId.toString());
-        return {
-          ...safeRequest,
-          customer: {
-            ...userNameParts(customer ?? {}),
-            displayName: formatUserName(customer ?? {}) || 'Customer',
-            location:
-              request.customerLatitude !== undefined &&
-              request.customerLongitude !== undefined
-                ? {
-                    latitude: request.customerLatitude,
-                    longitude: request.customerLongitude,
-                  }
-                : (customer?.location ?? null),
-          },
-          shopResponse: request.shopResponses?.find(
-            (item) => item.shopId.toString() === shop._id.toString(),
-          ),
-        };
-      });
+    const pageRequests = matching.slice((page - 1) * limit, page * limit);
+    const assignedTechnicianIds = [
+      ...new Set(
+        pageRequests
+          .map((request) =>
+            request.repairJob?.activeAssignment?.technicianId.toString(),
+          )
+          .filter((id): id is string => !!id),
+      ),
+    ];
+    const assignedTechnicians = assignedTechnicianIds.length
+      ? await this.users
+          .find({
+            _id: {
+              $in: assignedTechnicianIds.map((id) => new Types.ObjectId(id)),
+            },
+          })
+          .select('firstName lastName fullName profileImageData accountType')
+          .lean()
+          .exec()
+      : [];
+    const assignedTechnicianMap = new Map(
+      assignedTechnicians.map((technician) => [
+        technician._id.toString(),
+        technician,
+      ]),
+    );
+    const requests = pageRequests.map((request) => {
+      const safeRequest = {
+        ...request,
+        photos: [],
+        shopResponses: [],
+        repairJob: request.repairJob
+          ? { status: request.repairJob.status }
+          : undefined,
+      };
+      const customer = customerMap.get(request.customerId.toString());
+      const assignment = request.repairJob?.activeAssignment;
+      const assignedUser = assignment
+        ? assignedTechnicianMap.get(assignment.technicianId.toString())
+        : null;
+      return {
+        ...safeRequest,
+        technicianAssignment: assignment
+          ? {
+              current: {
+                technicianId: assignment.technicianId.toString(),
+                assignedAt: assignment.assignedAt,
+                technicianName:
+                  [assignedUser?.firstName, assignedUser?.lastName]
+                    .filter(Boolean)
+                    .join(' ') ||
+                  assignedUser?.fullName ||
+                  'Shop owner',
+                profileImageData: assignedUser?.profileImageData ?? null,
+                isOwner:
+                  assignment.technicianId.toString() === shop._id.toString(),
+              },
+            }
+          : null,
+        customer: {
+          ...userNameParts(customer ?? {}),
+          displayName: formatUserName(customer ?? {}) || 'Customer',
+          location:
+            request.customerLatitude !== undefined &&
+            request.customerLongitude !== undefined
+              ? {
+                  latitude: request.customerLatitude,
+                  longitude: request.customerLongitude,
+                }
+              : (customer?.location ?? null),
+        },
+        shopResponse: request.shopResponses?.find(
+          (item) => item.shopId.toString() === shop._id.toString(),
+        ),
+      };
+    });
     const statuses = accessibleRequests.map(
       (request) =>
         request.shopResponses?.find(
@@ -1933,7 +2130,9 @@ export class CustomerPortalService {
     }
     const customer = await this.users
       .findById(request.customerId)
-      .select('firstName lastName fullName email countryCode mobileNumber location')
+      .select(
+        'firstName lastName fullName email countryCode mobileNumber location',
+      )
       .lean()
       .exec();
     if (!customer) {
@@ -1950,9 +2149,47 @@ export class CustomerPortalService {
         quotation._id.toString() === request.acceptedQuotationId?.toString(),
     );
     const { repairJob, ...safeRequest } = request;
+    const activeAssignment = acceptedByThisShop
+      ? repairJob?.activeAssignment
+      : undefined;
+    const assignedUser =
+      activeAssignment?.technicianId.toString() === shop._id.toString()
+        ? shop
+        : activeAssignment
+          ? await this.users
+              .findById(activeAssignment.technicianId)
+              .select(
+                'firstName lastName fullName profileImageData accountType technicianDetails',
+              )
+              .lean()
+              .exec()
+          : null;
+    const technicianAssignment = acceptedByThisShop
+      ? {
+          current: activeAssignment
+            ? {
+                technicianId: activeAssignment.technicianId.toString(),
+                assignedAt: activeAssignment.assignedAt,
+                note: activeAssignment.note ?? '',
+                technicianName:
+                  [assignedUser?.firstName, assignedUser?.lastName]
+                    .filter(Boolean)
+                    .join(' ') ||
+                  assignedUser?.fullName ||
+                  'Shop owner',
+                profileImageData: assignedUser?.profileImageData ?? null,
+                isOwner:
+                  activeAssignment.technicianId.toString() ===
+                  shop._id.toString(),
+              }
+            : null,
+          history: repairJob?.assignmentHistory ?? [],
+        }
+      : null;
     return {
       ...safeRequest,
       ...(acceptedByThisShop && repairJob ? { repairJob } : {}),
+      technicianAssignment,
       customer: {
         ...userNameParts(customer),
         displayName: formatUserName(customer) || 'Customer',
@@ -3171,13 +3408,40 @@ export class CustomerPortalService {
     requestId: string,
     action: 'start' | 'hold',
     input: RepairProgressDto,
+    actorId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireApprovedShop(shopId);
     if (!isObjectIdOrHexString(requestId)) {
       throw new NotFoundException('Repair job was not found');
     }
+    const actorObjectId = isObjectIdOrHexString(actorId)
+      ? new Types.ObjectId(actorId)
+      : shop._id;
+    const isTechnician = !actorObjectId.equals(shop._id);
+    if (isTechnician) {
+      const technician = await this.users
+        .findOne({
+          _id: actorObjectId,
+          accountType: 'technician',
+          accountLifecycleStatus: 'active',
+          'technicianDetails.shopId': shop._id,
+          'technicianDetails.availabilityPreference': { $ne: 'on_leave' },
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!technician) {
+        throw new NotFoundException('Assigned repair job was not found');
+      }
+    }
+    const assignmentFilter = isTechnician
+      ? {
+          'repairJob.activeAssignment.shopId': shop._id,
+          'repairJob.activeAssignment.technicianId': actorObjectId,
+        }
+      : {};
     const assignedJob = await this.repairRequests
-      .findOne({ _id: requestId, shopIds: shop._id })
+      .findOne({ _id: requestId, shopIds: shop._id, ...assignmentFilter })
       .select('acceptedQuotationId')
       .lean()
       .exec();
@@ -3200,6 +3464,7 @@ export class CustomerPortalService {
         {
           _id: requestId,
           shopIds: shop._id,
+          ...assignmentFilter,
           acceptedQuotationId: { $exists: true },
           'repairJob.status': { $in: expectedStatuses },
           ...(action === 'start'
@@ -3218,13 +3483,13 @@ export class CustomerPortalService {
             ...(action === 'start'
               ? {
                   'repairJob.startedAt': now,
-                  'repairJob.repairStartedBy': shop._id,
+                  'repairJob.repairStartedBy': actorObjectId,
                 }
               : {}),
           },
           $push: {
             'repairJob.history': {
-              actorId: shop._id,
+              actorId: actorObjectId,
               action: nextStatus,
               notes: input.notes?.trim(),
               at: now,
@@ -3256,13 +3521,40 @@ export class CustomerPortalService {
     shopId: string,
     requestId: string,
     input: CompleteRepairDto,
+    actorId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireApprovedShop(shopId);
     if (!isObjectIdOrHexString(requestId)) {
       throw new NotFoundException('Repair job was not found');
     }
+    const actorObjectId = isObjectIdOrHexString(actorId)
+      ? new Types.ObjectId(actorId)
+      : shop._id;
+    const isTechnician = !actorObjectId.equals(shop._id);
+    if (isTechnician) {
+      const technician = await this.users
+        .findOne({
+          _id: actorObjectId,
+          accountType: 'technician',
+          accountLifecycleStatus: 'active',
+          'technicianDetails.shopId': shop._id,
+          'technicianDetails.availabilityPreference': { $ne: 'on_leave' },
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!technician) {
+        throw new NotFoundException('Assigned repair job was not found');
+      }
+    }
+    const assignmentFilter = isTechnician
+      ? {
+          'repairJob.activeAssignment.shopId': shop._id,
+          'repairJob.activeAssignment.technicianId': actorObjectId,
+        }
+      : {};
     const assignedJob = await this.repairRequests
-      .findOne({ _id: requestId, shopIds: shop._id })
+      .findOne({ _id: requestId, shopIds: shop._id, ...assignmentFilter })
       .select('acceptedQuotationId')
       .lean()
       .exec();
@@ -3282,6 +3574,7 @@ export class CustomerPortalService {
         {
           _id: requestId,
           shopIds: shop._id,
+          ...assignmentFilter,
           'repairJob.status': { $in: ['in_progress', 'on_hold'] },
         },
         {
@@ -3296,7 +3589,7 @@ export class CustomerPortalService {
           },
           $push: {
             'repairJob.history': {
-              actorId: shop._id,
+              actorId: actorObjectId,
               action: 'repair_completed',
               notes: input.completionDescription.trim(),
               at: now,
@@ -3898,9 +4191,7 @@ export class CustomerPortalService {
     };
   }
 
-  async getAdminRepairRoute(
-    requestId: string,
-  ): Promise<ShopRepairRouteResult> {
+  async getAdminRepairRoute(requestId: string): Promise<ShopRepairRouteResult> {
     if (!isObjectIdOrHexString(requestId)) {
       throw new NotFoundException('Repair request was not found');
     }
@@ -4237,10 +4528,7 @@ export class CustomerPortalService {
     if (
       !includes(filters.appliance, request?.appliance) ||
       !includes(filters.shop, quote.shop?.shopName) ||
-      !includes(
-        filters.customer,
-        formatUserName(quote.customer ?? {}),
-      )
+      !includes(filters.customer, formatUserName(quote.customer ?? {}))
     ) {
       return false;
     }

@@ -1,7 +1,12 @@
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-export const ACCOUNT_TYPES = ['customer', 'shop', 'admin'] as const;
+export const ACCOUNT_TYPES = [
+  'customer',
+  'shop',
+  'admin',
+  'technician',
+] as const;
 export const ACCOUNT_STATUSES = [
   'active',
   'pending_approval',
@@ -24,6 +29,69 @@ export class LocationCoordinates {
 
 export const LocationCoordinatesSchema =
   SchemaFactory.createForClass(LocationCoordinates);
+
+@Schema({ _id: false })
+export class TechnicianProfileActivity {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  actorId!: Types.ObjectId;
+
+  @Prop({
+    type: String,
+    enum: ['created', 'updated', 'activated', 'deactivated'],
+    required: true,
+  })
+  action!: 'created' | 'updated' | 'activated' | 'deactivated';
+
+  @Prop({ type: Date, required: true, default: Date.now })
+  at!: Date;
+}
+
+export const TechnicianProfileActivitySchema = SchemaFactory.createForClass(
+  TechnicianProfileActivity,
+);
+
+@Schema({ _id: false })
+export class TechnicianDetails {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  shopId!: Types.ObjectId;
+
+  @Prop({
+    type: String,
+    required: true,
+    trim: true,
+    uppercase: true,
+    maxlength: 30,
+  })
+  employeeId!: string;
+
+  @Prop({ type: [String], required: true, default: [] })
+  skills!: string[];
+
+  @Prop({ type: String, required: true, trim: true, maxlength: 120 })
+  specialization!: string;
+
+  @Prop({ type: Number, required: true, min: 0, max: 80 })
+  experienceYears!: number;
+
+  @Prop({
+    type: String,
+    enum: ['full_time', 'part_time', 'contract'],
+    required: true,
+  })
+  employmentType!: 'full_time' | 'part_time' | 'contract';
+
+  @Prop({ type: Date, required: true })
+  joiningDate!: Date;
+
+  @Prop({ type: String, enum: ['available', 'on_leave'], default: 'available' })
+  availabilityPreference!: 'available' | 'on_leave';
+
+  @Prop({ type: [TechnicianProfileActivitySchema], default: [] })
+  activityHistory!: TechnicianProfileActivity[];
+}
+
+export const TechnicianDetailsSchema =
+  SchemaFactory.createForClass(TechnicianDetails);
 
 @Schema({ _id: false })
 export class ShopDetails {
@@ -138,6 +206,9 @@ export class User {
   @Prop({ type: ShopDetailsSchema })
   shopDetails?: ShopDetails;
 
+  @Prop({ type: TechnicianDetailsSchema })
+  technicianDetails?: TechnicianDetails;
+
   @Prop({ type: [String], default: [], select: false })
   notificationTokens!: string[];
 
@@ -156,4 +227,12 @@ UserSchema.index(
 UserSchema.index(
   { accountType: 1, createdAt: -1 },
   { name: 'IX_users_type_created' },
+);
+UserSchema.index(
+  { 'technicianDetails.shopId': 1, 'technicianDetails.employeeId': 1 },
+  {
+    unique: true,
+    name: 'UQ_technician_shop_employee',
+    partialFilterExpression: { accountType: 'technician' },
+  },
 );

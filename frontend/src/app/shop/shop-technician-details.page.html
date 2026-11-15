@@ -1,0 +1,88 @@
+<section class="technician-details-page">
+  <a class="back-link" routerLink="/shop/technicians">← Technicians</a>
+  @if (loading()) { <div class="state-card" role="status">Loading technician profile…</div> }
+  @else if (error() && !technician()) { <p class="message error" role="alert">{{ error() }}</p> }
+  @else if (technician(); as technician) {
+    @if (error()) { <p class="message error" role="alert">{{ error() }}</p> }
+    <header class="profile-header">
+      <div class="identity">
+        @if (technician.profileImageData) { <img class="profile-photo" [src]="technician.profileImageData" [alt]="technician.name + ' profile photo'" /> }
+        @else { <span class="profile-photo avatar-placeholder" aria-hidden="true">{{ technician.name.slice(0, 1) }}</span> }
+        <div><h1>{{ technician.name }} <span class="status-badge" [attr.data-status]="technician.availability"><i></i>{{ technician.availability.replace('_', ' ') | titlecase }}</span></h1><p>Technician <span>·</span> {{ technician.employeeId }}</p></div>
+      </div>
+      <div class="header-actions">
+        <a class="secondary-button" [routerLink]="['/shop/technicians', technician.id, 'edit']">✎ Edit</a>
+        <button class="danger-button" type="button" (click)="toggleActive()">{{ technician.status === 'active' ? '⊖ Deactivate' : '✓ Activate' }}</button>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="Technician details sections">
+      <button type="button" [class.active]="tab() === 'overview'" (click)="setTab('overview')">◉ Overview</button>
+      <button type="button" [class.active]="tab() === 'jobs'" (click)="setTab('jobs')">▤ Assigned Jobs <span>{{ technician.jobs?.length ?? 0 }}</span></button>
+      <button type="button" [class.active]="tab() === 'performance'" (click)="setTab('performance')">↗ Performance</button>
+      <button type="button" [class.active]="tab() === 'activity'" (click)="setTab('activity')">◷ Activity</button>
+    </nav>
+
+    @if (tab() === 'overview') {
+      <div class="overview-grid">
+        <section class="detail-card">
+          <h2>Basic Information</h2>
+          <dl>
+            <div><dt>Full Name</dt><dd>{{ technician.name }}</dd></div>
+            <div><dt>Email</dt><dd>{{ technician.email }}</dd></div>
+            <div><dt>Phone</dt><dd>{{ technician.phone || 'Not provided' }}</dd></div>
+            <div><dt>Employee ID</dt><dd>{{ technician.employeeId }}</dd></div>
+            <div><dt>Employment Type</dt><dd>{{ technician.employmentType.replace('_', ' ') | titlecase }}</dd></div>
+            <div><dt>Joined On</dt><dd>{{ technician.joiningDate ? (technician.joiningDate | date: 'mediumDate') : '—' }}</dd></div>
+          </dl>
+        </section>
+        <section class="detail-card">
+          <h2>Skills &amp; Specialization</h2>
+          <div class="skill-tags">@for (skill of technician.skills; track skill) { <span>{{ skill }}</span> }</div>
+          <dl class="compact"><div><dt>Specialization</dt><dd>{{ technician.specialization }}</dd></div><div><dt>Experience</dt><dd>{{ technician.experienceYears }} years</dd></div></dl>
+        </section>
+        <section class="detail-card status-card">
+          <h2>Status &amp; Availability</h2>
+          <dl>
+            <div><dt>Current Status</dt><dd><span class="status-badge" [attr.data-status]="technician.availability">{{ technician.availability.replace('_', ' ') | titlecase }}</span></dd></div>
+            <div><dt>Active Assignments</dt><dd>{{ technician.workload }} Jobs</dd></div>
+            <div><dt>Account</dt><dd>{{ technician.status | titlecase }}</dd></div>
+          </dl>
+        </section>
+        <section class="detail-card workload-card">
+          <h2>Current Workload</h2>
+          <strong>{{ technician.workload }}</strong><span>active assignments</span>
+          <a routerLink="/shop/technician-assignments">View technician assignments →</a>
+        </section>
+      </div>
+    } @else if (tab() === 'jobs') {
+      <section class="detail-card table-card">
+        <h2>Assigned Jobs</h2>
+        @if (technician.jobs?.length) {
+          <div class="table-wrap"><table><thead><tr><th>Repair Request</th><th>Device</th><th>Status</th><th>Assignment Date</th><th>Completion Date</th><th></th></tr></thead><tbody>
+            @for (job of technician.jobs; track job.id) { <tr><td>{{ job.id.slice(-8).toUpperCase() }}</td><td>{{ job.appliance }} {{ job.brand }} {{ job.model }}</td><td><span class="repair-status">{{ job.status.replace('_', ' ') | titlecase }}</span></td><td>{{ job.assignedAt | date: 'mediumDate' }}</td><td>{{ job.completedAt ? (job.completedAt | date: 'mediumDate') : '—' }}</td><td><a [routerLink]="['/shop/repair-requests', job.id]">View request</a></td></tr> }
+          </tbody></table></div>
+        } @else { <p class="muted">No repair requests have been assigned to this technician.</p> }
+      </section>
+    } @else if (tab() === 'performance') {
+      <section class="performance-grid">
+        <article class="metric-card"><span>Total Jobs</span><strong>{{ technician.performance?.totalJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Completed Jobs</span><strong>{{ technician.performance?.completedJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>In Progress</span><strong>{{ technician.performance?.inProgressJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Reassigned</span><strong>{{ technician.performance?.reassignedJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Average Completion Time</span><strong>{{ technician.performance?.averageCompletionTimeHours === null || technician.performance?.averageCompletionTimeHours === undefined ? '—' : (technician.performance?.averageCompletionTimeHours + ' hrs') }}</strong></article>
+        <article class="metric-card"><span>Customer Ratings</span><strong>Not available</strong></article>
+      </section>
+    } @else {
+      <section class="detail-card activity-card">
+        <h2>Activity History</h2>
+        @if ((technician.history?.length ?? 0) + (technician.profileActivity?.length ?? 0)) {
+          <ol class="timeline">
+            @for (activity of technician.profileActivity ?? []; track activity.at + activity.action) { <li><i></i><div><strong>Profile {{ activityLabel(activity) }}</strong><p>By {{ activity.actor }}</p><time>{{ activity.at | date: 'medium' }}</time></div></li> }
+            @for (activity of technician.history ?? []; track activity.at + activity.action + activity.requestId) { <li><i></i><div><strong>{{ activityLabel(activity) }} · {{ activity.appliance }}</strong><p>{{ activity.reason || 'Repair request ' + activity.requestId?.slice(-8)?.toUpperCase() }} · By {{ activity.actor }}</p><time>{{ activity.at | date: 'medium' }}</time></div></li> }
+          </ol>
+        } @else { <p class="muted">No activity history yet.</p> }
+      </section>
+    }
+  }
+</section>

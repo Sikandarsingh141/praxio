@@ -239,6 +239,113 @@ export const routes: Routes = [
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
+      {
+        path: 'technicians',
+        loadComponent: () =>
+          import('./shop/shop-technicians.page').then((module) => module.ShopTechniciansPage),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
+        path: 'technicians/new',
+        loadComponent: () =>
+          import('./shop/shop-technician-form.page').then((module) => module.ShopTechnicianFormPage),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
+        path: 'technicians/:id/edit',
+        loadComponent: () =>
+          import('./shop/shop-technician-form.page').then((module) => module.ShopTechnicianFormPage),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
+        path: 'technicians/:id',
+        loadComponent: () =>
+          import('./shop/shop-technician-details.page').then(
+            (module) => module.ShopTechnicianDetailsPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
+        path: 'technician-assignments',
+        loadComponent: () =>
+          import('./shop/shop-technician-assignments.page').then(
+            (module) => module.ShopTechnicianAssignmentsPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+    ],
+  },
+  {
+    path: 'technician',
+    loadComponent: () =>
+      import('./shop/technician-layout.component').then(
+        (module) => module.TechnicianLayoutComponent,
+      ),
+    canActivate: [authGuard],
+    canActivateChild: [authGuard],
+    data: { accountType: 'technician' },
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./shop/shop-technician-portal.page').then(
+            (module) => module.ShopTechnicianPortalPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'dashboard' },
+      },
+      {
+        path: 'jobs',
+        loadComponent: () =>
+          import('./shop/shop-technician-portal.page').then(
+            (module) => module.ShopTechnicianPortalPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'jobs' },
+      },
+      {
+        path: 'history',
+        loadComponent: () =>
+          import('./shop/shop-technician-portal.page').then(
+            (module) => module.ShopTechnicianPortalPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'history' },
+      },
+      {
+        path: 'messages',
+        loadComponent: () =>
+          import('./shared/chat-center.component').then(
+            (module) => module.ChatCenterComponent,
+          ),
+        data: { accountType: 'technician' },
+      },
+      {
+        path: 'performance',
+        loadComponent: () =>
+          import('./shop/shop-technician-account.page').then(
+            (module) => module.ShopTechnicianAccountPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'performance' },
+      },
+      {
+        path: 'availability',
+        loadComponent: () =>
+          import('./shop/shop-technician-account.page').then(
+            (module) => module.ShopTechnicianAccountPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'availability' },
+      },
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('./shop/shop-technician-account.page').then(
+            (module) => module.ShopTechnicianAccountPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'profile' },
+      },
     ],
   },
   {

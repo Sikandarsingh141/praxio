@@ -20,6 +20,7 @@ describe('ChatGateway', () => {
   let gateway: ChatGateway;
   let chat: {
     getConversation: jest.Mock;
+    getCurrentParticipants: jest.Mock;
     getPresencePeerIds: jest.Mock;
     markDelivered: jest.Mock;
   };
@@ -34,6 +35,10 @@ describe('ChatGateway', () => {
         customerUnreadCount: 0,
         shopUnreadCount: 1,
       }),
+      getCurrentParticipants: jest.fn().mockResolvedValue([
+        { userId: customerId, unreadCount: 0 },
+        { userId: shopId, unreadCount: 1 },
+      ]),
       getPresencePeerIds: jest.fn().mockResolvedValue([shopId]),
       markDelivered: jest.fn().mockResolvedValue(undefined),
     };

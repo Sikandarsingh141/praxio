@@ -72,7 +72,7 @@ describe('ShopLayout', () => {
     expect(fixture.nativeElement.textContent).toContain('Repair requests');
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
-    expect(fixture.nativeElement.textContent).toContain('Coming Soon');
+    expect(fixture.nativeElement.textContent).toContain('Technician Assignments');
     expect(fixture.nativeElement.textContent).toContain('Business profile');
     expect(
       (fixture.nativeElement.querySelector('#shop-global-search') as HTMLInputElement).placeholder,

@@ -247,6 +247,59 @@ export const RepairJobEventSchema =
   SchemaFactory.createForClass(RepairJobEvent);
 
 @Schema({ _id: false })
+export class TechnicianAssignment {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  shopId!: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  technicianId!: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  assignedById!: Types.ObjectId;
+
+  @Prop({ type: Date, required: true, default: Date.now })
+  assignedAt!: Date;
+
+  @Prop({ type: String, trim: true, maxlength: 500 })
+  note?: string;
+}
+
+export const TechnicianAssignmentSchema =
+  SchemaFactory.createForClass(TechnicianAssignment);
+
+@Schema({ _id: false })
+export class TechnicianAssignmentEvent {
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  shopId!: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  previousTechnicianId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  technicianId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  actorId!: Types.ObjectId;
+
+  @Prop({
+    type: String,
+    enum: ['assigned', 'reassigned', 'unassigned'],
+    required: true,
+  })
+  action!: 'assigned' | 'reassigned' | 'unassigned';
+
+  @Prop({ type: String, trim: true, maxlength: 500 })
+  reason?: string;
+
+  @Prop({ type: Date, required: true, default: Date.now })
+  at!: Date;
+}
+
+export const TechnicianAssignmentEventSchema = SchemaFactory.createForClass(
+  TechnicianAssignmentEvent,
+);
+
+@Schema({ _id: false })
 export class RepairCustomerVerification {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   customerId!: Types.ObjectId;
@@ -365,6 +418,12 @@ export class RepairJob {
 
   @Prop({ type: [RepairJobEventSchema], default: [] })
   history!: RepairJobEvent[];
+
+  @Prop({ type: TechnicianAssignmentSchema })
+  activeAssignment?: TechnicianAssignment;
+
+  @Prop({ type: [TechnicianAssignmentEventSchema], default: [] })
+  assignmentHistory!: TechnicianAssignmentEvent[];
 }
 
 export const RepairJobSchema = SchemaFactory.createForClass(RepairJob);

@@ -51,6 +51,24 @@ export interface ShopRepairRequest {
   quotations: ShopQuotation[];
   acceptedQuotationId?: string;
   repairJob?: RepairWorkflowJob;
+  technicianAssignment?: {
+    current: {
+      technicianId: string;
+      assignedAt: string;
+      note: string;
+      technicianName: string;
+      profileImageData: string | null;
+      isOwner: boolean;
+    } | null;
+    history: Array<{
+      technicianId?: string;
+      previousTechnicianId?: string;
+      actorId: string;
+      action: 'assigned' | 'reassigned' | 'unassigned';
+      reason?: string;
+      at: string;
+    }>;
+  } | null;
 }
 
 export interface ShopQuotation {
@@ -195,7 +213,15 @@ export interface ShopDashboardOverview {
       appliance: string;
       description: string;
       updatedAt: string;
-      repairJob: { status: string };
+      repairJob: {
+        status: string;
+        activeAssignment?: { technicianId: string; assignedAt: string };
+      };
+      technicianAssignment?: {
+        technicianName: string;
+        profileImageData?: string | null;
+        assignedAt: string;
+      } | null;
       customer?: { firstName?: string; lastName?: string; displayName?: string };
     }>;
   };

@@ -27,7 +27,7 @@ export interface ChatMessage {
   conversationId: string;
   senderId: string;
   sender: ChatParticipant;
-  senderRole: 'customer' | 'shop';
+  senderRole: 'customer' | 'shop' | 'technician';
   messageType: 'TEXT' | 'IMAGE' | 'DOCUMENT';
   content: string;
   attachments: ChatAttachment[];

@@ -298,7 +298,9 @@ export class AuthService {
                 ? '/admin'
                 : user.accountType === 'shop'
                   ? (user.shopAuthorization?.destination ?? '/shop')
-                  : (user.customerAuthorization?.destination ?? '/customer')),
+                  : user.accountType === 'technician'
+                    ? '/technician'
+                    : (user.customerAuthorization?.destination ?? '/customer')),
           );
         }),
         map((response) => response.user),

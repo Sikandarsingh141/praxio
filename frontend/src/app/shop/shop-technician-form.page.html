@@ -1,0 +1,432 @@
+<section class="technician-form-page">
+  <a class="back-link" routerLink="/shop/technicians">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19 12H5m7-7-7 7 7 7" />
+    </svg>
+    Back to Technicians
+  </a>
+
+  <header class="page-heading">
+    <div class="heading-left">
+      <span class="heading-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="8.5" cy="7" r="4"></circle>
+          <line x1="20" y1="8" x2="20" y2="14"></line>
+          <line x1="23" y1="11" x2="17" y2="11"></line>
+        </svg>
+      </span>
+      <div class="heading-text">
+        <h1>{{ editing ? 'Edit Technician' : 'Add Technician' }}</h1>
+        <p>
+          {{ editing ? 'Update technician profile, work details, and permissions.' : 'Create a technician account for your repair shop.' }}
+        </p>
+      </div>
+    </div>
+    <div class="heading-decorative-graphic" aria-hidden="true">
+      <svg viewBox="0 0 120 70" fill="none">
+        <g opacity="0.45" stroke="#16a34a" stroke-width="2" stroke-linecap="round">
+          <circle cx="28" cy="35" r="13" stroke-dasharray="4 4" />
+          <circle cx="28" cy="35" r="5" />
+        </g>
+        <g opacity="0.4" stroke="#15803d" stroke-width="2" stroke-linecap="round">
+          <circle cx="96" cy="24" r="9" stroke-dasharray="3 3" />
+          <circle cx="96" cy="24" r="3.5" />
+        </g>
+        <g opacity="0.75" stroke="#15803d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M60 15 L78 33 M74 15 L56 33 M76 13 A 4 4 0 0 0 72 17 L78 23 A 4 4 0 0 0 82 19 Z M58 13 A 4 4 0 0 1 62 17 L56 23 A 4 4 0 0 1 52 19 Z" />
+          <path d="M68 25 L88 45" />
+          <path d="M66 23 L46 43" />
+        </g>
+      </svg>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="form-card state" role="status">Loading technician…</div>
+  } @else {
+    @if (error()) {
+      <p class="message error" role="alert">{{ error() }}</p>
+    }
+
+    <form class="technician-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="personal-section">
+        <section class="form-card personal-card">
+          <div class="card-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <h2>Personal Information</h2>
+          </div>
+          <div class="personal-grid">
+            <label class="field-label col-half">
+              <span class="label-text">First Name <b>*</b></span>
+              <div class="input-wrap">
+                <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input formControlName="firstName" autocomplete="given-name" placeholder="Enter first name" />
+              </div>
+            </label>
+
+            <label class="field-label col-half">
+              <span class="label-text">Last Name <b>*</b></span>
+              <div class="input-wrap">
+                <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input formControlName="lastName" autocomplete="family-name" placeholder="Enter last name" />
+              </div>
+            </label>
+
+            <!-- Row 2: Email, Phone, Employee ID on the same line -->
+            <label class="field-label col-third">
+              <span class="label-text">Email <b>*</b></span>
+              <div class="input-wrap">
+                <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                  <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
+                </svg>
+                <input type="email" formControlName="email" autocomplete="email" placeholder="Enter email address" />
+              </div>
+            </label>
+
+            <label class="field-label col-third">
+              <span class="label-text">Phone <b>*</b></span>
+              <div class="phone-input-wrap">
+                <svg class="field-icon phone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <select formControlName="countryCode" aria-label="Country calling code" class="country-code-select">
+                  <option value="+91">+91</option>
+                  <option value="+1">+1</option>
+                  <option value="+44">+44</option>
+                  <option value="+61">+61</option>
+                  <option value="+971">+971</option>
+                  <option value="+92">+92</option>
+                  <option value="+880">+880</option>
+                </select>
+                <span class="phone-chevron" aria-hidden="true">⌄</span>
+                <input
+                  formControlName="mobileNumber"
+                  inputmode="numeric"
+                  maxlength="10"
+                  autocomplete="tel-national"
+                  placeholder="Enter phone number"
+                  class="phone-number-input"
+                />
+              </div>
+            </label>
+
+            <label class="field-label col-third">
+              <span class="label-text">Employee ID <b>*</b></span>
+              <div class="input-wrap">
+                <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                  <circle cx="9" cy="10" r="2"></circle>
+                  <line x1="15" y1="8" x2="17" y2="8"></line>
+                  <line x1="15" y1="12" x2="17" y2="12"></line>
+                  <line x1="7" y1="16" x2="17" y2="16"></line>
+                </svg>
+                <input formControlName="employeeId" placeholder="e.g., FX-TCH-1001" />
+              </div>
+            </label>
+
+            <!-- Row 3: Password & Confirm Password -->
+            <div class="field-label col-half password-field-group">
+              <label class="field-label">
+                <span class="label-text">Password @if (editing) { (Optional) } @else { <b>*</b> }</span>
+                <div class="input-wrap">
+                  <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <input
+                    [type]="showPassword() ? 'text' : 'password'"
+                    formControlName="password"
+                    autocomplete="new-password"
+                    [placeholder]="editing ? 'Leave blank to keep password' : 'Create a password'"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle-btn"
+                    (click)="togglePasswordVisibility()"
+                    [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                  >
+                    @if (showPassword()) {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    }
+                  </button>
+                </div>
+              </label>
+              @if (!editing) {
+                <small class="field-hint">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hint-icon" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  Minimum 8 characters (letters and numbers).
+                </small>
+              }
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="field-label col-half password-field-group">
+              <label class="field-label">
+                <span class="label-text">Confirm Password @if (editing) { (Optional) } @else { <b>*</b> }</span>
+                <div class="input-wrap">
+                  <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  <input
+                    [type]="showConfirmPassword() ? 'text' : 'password'"
+                    formControlName="confirmPassword"
+                    autocomplete="new-password"
+                    [placeholder]="editing ? 'Leave blank to keep password' : 'Confirm password'"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle-btn"
+                    (click)="toggleConfirmPasswordVisibility()"
+                    [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                  >
+                    @if (showConfirmPassword()) {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                      </svg>
+                    } @else {
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                      </svg>
+                    }
+                  </button>
+                </div>
+              </label>
+              @if (passwordsMismatch) {
+                <small class="field-error">Passwords do not match.</small>
+              } @else if (!editing) {
+                <small class="field-hint">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hint-icon" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  Re-enter the password to confirm.
+                </small>
+              }
+            </div>
+          </div>
+        </section>
+
+        <section class="form-card photo-card">
+          <div class="card-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <h2>Profile Photo</h2>
+          </div>
+          <label class="photo-drop">
+            <div class="photo-upload-inner">
+              <span class="upload-icon-circle" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </span>
+              <strong class="upload-title">{{ profileImageData() ? 'Change Profile Photo' : 'Upload Profile Photo' }}</strong>
+              <small class="upload-subtitle">JPG, PNG, WebP · Max 1 MB</small>
+
+              <div class="avatar-preview-wrap">
+                @if (profileImageData()) {
+                  <img [src]="profileImageData()" alt="Technician profile preview" class="avatar-preview-img" />
+                } @else {
+                  <div class="avatar-preview-placeholder" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  </div>
+                }
+              </div>
+            </div>
+            <input type="file" accept="image/jpeg,image/png,image/webp" (change)="choosePhoto($event)" />
+          </label>
+        </section>
+      </div>
+
+      <section class="form-card work-card">
+        <div class="card-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+          <h2>Work Information</h2>
+        </div>
+        <div class="work-grid">
+          <!-- Row 1 Left: Skills with Checkboxes -->
+          <div class="field-col skills-col">
+            <label class="field-label">
+              <span class="label-text">Skills <b>*</b></span>
+              <div
+                class="skills-input-box"
+                (click)="toggleSkillsDropdown($event)"
+                [class.dropdown-active]="isSkillsDropdownOpen()"
+                role="button"
+                tabindex="0"
+                (keydown.enter)="toggleSkillsDropdown($event)"
+                (keydown.space)="toggleSkillsDropdown($event)"
+              >
+                <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                </svg>
+                <div class="skills-pill-container">
+                  @if (!selectedSkills().length) {
+                    <span class="skills-placeholder">Select skills using checkboxes…</span>
+                  }
+                  @for (skill of selectedSkills(); track skill) {
+                    <span class="skill-tag-pill">
+                      {{ skill }}
+                      <button
+                        type="button"
+                        class="skill-remove-btn"
+                        (click)="removeSkill(skill); $event.stopPropagation()"
+                        aria-label="Remove skill"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  }
+                </div>
+                <span class="select-chevron" [class.rotated]="isSkillsDropdownOpen()" aria-hidden="true">⌄</span>
+
+                @if (isSkillsDropdownOpen()) {
+                  <div class="skills-dropdown-menu" (click)="$event.stopPropagation()">
+                    <div class="skills-checkbox-list">
+                      @for (skill of skillOptions(); track skill) {
+                        <label class="skill-checkbox-row" [class.checked]="isSkillSelected(skill)">
+                          <input
+                            type="checkbox"
+                            class="skill-checkbox-input"
+                            [checked]="isSkillSelected(skill)"
+                            (change)="toggleSkill(skill)"
+                          />
+                          <span class="custom-checkbox" aria-hidden="true">
+                            @if (isSkillSelected(skill)) {
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            }
+                          </span>
+                          <span class="skill-name">{{ skill }}</span>
+                        </label>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </label>
+            <small class="skills-hint">Click the box to select or unselect skills with checkboxes.</small>
+
+            <div class="add-skill-row">
+              <div class="input-wrap add-skill-input-wrap">
+                <span class="plus-icon" aria-hidden="true">+</span>
+                <input
+                  formControlName="customSkill"
+                  placeholder="Add another skill"
+                  (keydown.enter)="$event.preventDefault(); addSkill()"
+                />
+              </div>
+              <button type="button" class="add-skill-btn" (click)="addSkill()">Add</button>
+            </div>
+          </div>
+
+          <!-- Row 1 Right: Specialization -->
+          <div class="field-col specialization-col">
+            <label class="field-label">
+              <span class="label-text">Specialization <b>*</b></span>
+              <div class="input-wrap">
+                <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="2 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                <input formControlName="specialization" placeholder="e.g., Laptop &amp; Mobile Repair" />
+              </div>
+            </label>
+          </div>
+
+          <!-- Row 2: 3 clean columns (Status and Availability removed) -->
+          <!-- Experience -->
+          <label class="field-label col-3">
+            <span class="label-text">Experience (Years) <b>*</b></span>
+            <div class="input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <circle cx="12" cy="8" r="7"></circle>
+                <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+              </svg>
+              <input type="number" min="0" max="80" formControlName="experienceYears" placeholder="0" />
+            </div>
+          </label>
+
+          <!-- Employment Type -->
+          <label class="field-label col-3">
+            <span class="label-text">Employment Type <b>*</b></span>
+            <div class="input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+              </svg>
+              <select formControlName="employmentType">
+                <option value="full_time">Full-time</option>
+                <option value="part_time">Part-time</option>
+                <option value="contract">Contract</option>
+              </select>
+              <span class="select-chevron" aria-hidden="true">⌄</span>
+            </div>
+          </label>
+
+          <!-- Joining Date -->
+          <label class="field-label col-3">
+            <span class="label-text">Joining Date <b>*</b></span>
+            <div class="input-wrap">
+              <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <input type="date" formControlName="joiningDate" placeholder="mm/dd/yyyy" />
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <footer class="form-actions">
+        <a class="secondary-button" routerLink="/shop/technicians">Cancel</a>
+        <button class="primary-button" type="submit" [disabled]="submitting()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          {{ submitting() ? 'Saving…' : editing ? 'Save Changes' : 'Save Technician' }}
+        </button>
+      </footer>
+    </form>
+  }
+</section>

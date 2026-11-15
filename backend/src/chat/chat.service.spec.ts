@@ -270,12 +270,21 @@ describe('ChatService', () => {
 
   it('returns only private conversation peers for presence updates', async () => {
     const otherShopId = new Types.ObjectId();
+    users.findById.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue({ accountType: 'customer' }),
+    });
     conversations.find.mockReturnValue({
       select: jest.fn().mockReturnThis(),
       lean: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue([
-        { customerId, shopId },
-        { customerId, shopId: otherShopId },
+        { customerId, shopId, participants: [customerId, shopId] },
+        {
+          customerId,
+          shopId: otherShopId,
+          participants: [customerId, otherShopId],
+        },
       ]),
     });
 
