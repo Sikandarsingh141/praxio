@@ -161,11 +161,12 @@ export class AuthController {
   }
 
   private getCookieOptions(includeMaxAge = true): CookieOptions {
+    const isProduction =
+      this.configService.getOrThrow<string>('NODE_ENV') === 'production';
     const options: CookieOptions = {
       httpOnly: true,
-      secure:
-        this.configService.getOrThrow<string>('NODE_ENV') === 'production',
-      sameSite: 'lax',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/api',
     };
     if (includeMaxAge) {

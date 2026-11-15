@@ -105,6 +105,7 @@ describe('AuthController', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    configService.getOrThrow.mockReturnValue('development');
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         JwtModule.register({
@@ -348,6 +349,21 @@ describe('AuthController', () => {
     expect(response.headers['set-cookie'][0]).toContain('SameSite=Lax');
     expect(response.headers['set-cookie'][0]).toContain('Path=/api');
     expect(response.headers['set-cookie'][0]).toContain('Max-Age=86400');
+  });
+
+  it('allows the access cookie on cross-origin production API requests', async () => {
+    configService.getOrThrow.mockReturnValue('production');
+
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({
+        email: safeUser.email,
+        password: 'a-correct-horse-battery',
+      })
+      .expect(200);
+
+    expect(response.headers['set-cookie'][0]).toContain('SameSite=None');
+    expect(response.headers['set-cookie'][0]).toContain('Secure');
   });
 
   it('clears the access cookie on logout', async () => {
