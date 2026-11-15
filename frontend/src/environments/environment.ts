@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiBaseUrl: '/api',
+  apiBaseUrl: 'https://praxio-gw57.onrender.com/api',
   googleMapsApiKey: '',
   firebase: {
     apiKey: '',

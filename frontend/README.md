@@ -8,7 +8,8 @@ npm start
 ```
 
 Open <http://localhost:4200>. Development API requests use
-`http://localhost:3000/api`; production builds use `/api` on the same origin.
+`http://localhost:3000/api`; the Render production build uses
+`https://praxio-gw57.onrender.com/api`.
 The authentication interceptor sends cookies only to the configured API
 origin. The JWT remains inaccessible to browser JavaScript.
 
