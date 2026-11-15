@@ -85,4 +85,73 @@ describe('ToastService', () => {
     tick(300);
     expect(service.toasts().length).toBe(0);
   }));
+
+  it('should create real-time message notification with 9s duration and metadata', () => {
+    service.showRealtimeMessage({
+      conversationId: 'conv-123',
+      messageId: 'msg-1',
+      senderId: 'user-456',
+      senderName: 'Sikandar Customer',
+      senderPhoto: 'data:image/jpeg;base64,photo',
+      isOnline: true,
+      repairItem: 'Nokia Phone',
+      requestId: '#88907075',
+      content: 'Can you share the updated quotation?',
+      destinationUrl: '/shop/messages?conversationId=conv-123',
+    });
+
+    const toasts = service.toasts();
+    expect(toasts.length).toBe(1);
+    expect(toasts[0].duration).toBe(9000);
+    expect(toasts[0].title).toBe('New Message');
+    expect(toasts[0].messageData?.senderName).toBe('Sikandar Customer');
+    expect(toasts[0].messageData?.repairItem).toBe('Nokia Phone');
+    expect(toasts[0].messageData?.requestId).toBe('#88907075');
+    expect(toasts[0].messageData?.content).toBe('Can you share the updated quotation?');
+    expect(toasts[0].messageData?.unreadCount).toBe(1);
+    expect(toasts[0].messageData?.isOnline).toBe(true);
+  });
+
+  it('should group repeated messages from same conversation and increment unread count', () => {
+    service.showRealtimeMessage({
+      conversationId: 'conv-123',
+      senderId: 'user-456',
+      senderName: 'Sikandar Customer',
+      content: 'First message',
+      destinationUrl: '/shop/messages?conversationId=conv-123',
+    });
+
+    service.showRealtimeMessage({
+      conversationId: 'conv-123',
+      senderId: 'user-456',
+      senderName: 'Sikandar Customer',
+      content: 'Second message',
+      destinationUrl: '/shop/messages?conversationId=conv-123',
+    });
+
+    const toasts = service.toasts();
+    expect(toasts.length).toBe(1);
+    expect(toasts[0].messageData?.unreadCount).toBe(2);
+    expect(toasts[0].messageData?.content).toBe('Second message');
+  });
+
+  it('should stack messages from different conversations separately', () => {
+    service.showRealtimeMessage({
+      conversationId: 'conv-1',
+      senderId: 'user-1',
+      senderName: 'Customer 1',
+      content: 'Msg 1',
+      destinationUrl: '/shop/messages?conversationId=conv-1',
+    });
+
+    service.showRealtimeMessage({
+      conversationId: 'conv-2',
+      senderId: 'user-2',
+      senderName: 'Customer 2',
+      content: 'Msg 2',
+      destinationUrl: '/shop/messages?conversationId=conv-2',
+    });
+
+    expect(service.toasts().length).toBe(2);
+  });
 });

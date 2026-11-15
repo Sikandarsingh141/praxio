@@ -1,9 +1,11 @@
 import { HttpClient, HttpContext, HttpEvent, HttpParams } from '@angular/common/http';
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { io, Socket } from 'socket.io-client';
 import { SKIP_GLOBAL_LOADER } from '../core/loading/global-loader.context';
 import { environment } from '../../environments/environment';
+import { ToastService } from '../core/toast/toast.service';
+import { AuthService } from '../core/auth/auth.service';
 
 export interface ChatParticipant {
   id: string;
@@ -39,6 +41,11 @@ export interface ChatMessage {
   readBy: string[];
   createdAt: string;
   updatedAt: string;
+  repairRequest?: {
+    id: string;
+    appliance: string;
+    status: string;
+  };
 }
 
 export interface ChatMessagePage {
@@ -90,8 +97,12 @@ export interface EligibleChat {
 export class ChatService {
   private socket: Socket | null = null;
   private readonly baseUrl = `${environment.apiBaseUrl}/chat`;
+  private readonly toast = inject(ToastService);
+  private readonly auth = inject(AuthService);
   readonly unreadMessageCount = signal(0);
   readonly unreadMessageCountError = signal('');
+  readonly activeConversationId = signal<string | null>(null);
+  readonly onlineUserIds = new Set<string>();
 
   constructor(private readonly http: HttpClient) {}
 
@@ -290,8 +301,73 @@ export class ChatService {
         reconnection: true,
       });
       this.socket.on('unread_count_updated', () => this.refreshUnreadMessageCount());
+      this.socket.on('user_online', (event: { userId: string }) => {
+        if (event?.userId) this.onlineUserIds.add(event.userId);
+      });
+      this.socket.on('user_offline', (event: { userId: string }) => {
+        if (event?.userId) this.onlineUserIds.delete(event.userId);
+      });
+      this.socket.on(
+        'participant_presence',
+        (event: { userId: string; isOnline: boolean }) => {
+          if (event?.userId) {
+            if (event.isOnline) this.onlineUserIds.add(event.userId);
+            else this.onlineUserIds.delete(event.userId);
+          }
+        },
+      );
+      this.socket.on('new_message', (message: ChatMessage) => {
+        this.handleIncomingMessageToast(message);
+      });
     }
     return this.socket;
+  }
+
+  private handleIncomingMessageToast(message: ChatMessage): void {
+    if (!message || !message.senderId) return;
+
+    // Do not notify for the currently logged-in user's own outgoing messages
+    const currentUser = this.auth.currentUser();
+    if (!currentUser || message.senderId === currentUser.id) return;
+
+    // Do not pop up a toast if user is already actively viewing this conversation
+    if (this.activeConversationId() === message.conversationId) return;
+
+    // Always update the unread count in real-time
+    this.refreshUnreadMessageCount();
+
+    const role = currentUser.accountType || 'customer';
+    const destinationUrl =
+      role === 'shop'
+        ? `/shop/messages?conversationId=${encodeURIComponent(message.conversationId)}`
+        : `/customer/messages?conversationId=${encodeURIComponent(message.conversationId)}`;
+
+    const repairItem = message.repairRequest?.appliance || 'Repair Request';
+    const rawId = message.repairRequest?.id || '';
+    const requestId = rawId ? `#${rawId.slice(-8).toUpperCase()}` : '';
+
+    let content = message.content?.trim();
+    if (!content && message.attachments?.length) {
+      content =
+        message.attachments.length === 1
+          ? 'Sent an attachment'
+          : `Sent ${message.attachments.length} attachments`;
+    }
+
+    const isOnline = this.onlineUserIds.has(message.senderId) ? true : undefined;
+
+    this.toast.showRealtimeMessage({
+      conversationId: message.conversationId,
+      messageId: message.id,
+      senderId: message.senderId,
+      senderName: message.sender?.name || 'User',
+      senderPhoto: message.sender?.profileImageUrl,
+      isOnline,
+      repairItem,
+      requestId,
+      content: content || 'New message',
+      destinationUrl,
+    });
   }
 
   disconnect(): void {

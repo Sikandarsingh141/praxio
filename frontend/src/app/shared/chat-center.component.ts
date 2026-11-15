@@ -115,6 +115,17 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     this.socket = this.chat.connect();
     this.bindSocket();
     this.loadLists();
+    this.subscriptions.add(
+      this.route.queryParamMap.subscribe((params) => {
+        const requestedId = params.get('conversationId');
+        if (requestedId) {
+          const match = this.conversations().find((c) => c.id === requestedId);
+          if (match && this.selected()?.id !== requestedId) {
+            this.openConversation(match);
+          }
+        }
+      }),
+    );
   }
 
   toggleMessageSearch(): void {
@@ -205,6 +216,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     const selected = this.selected();
     if (selected) this.socket?.emit('leave_conversation', { conversationId: selected.id });
+    this.chat.activeConversationId.set(null);
     for (const event of [
       'connect',
       'disconnect',
@@ -296,6 +308,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
     const previous = this.selected();
     if (previous?.id === conversation.id && this.messages().length) return;
     if (previous) this.socket?.emit('leave_conversation', { conversationId: previous.id });
+    this.chat.activeConversationId.set(conversation.id);
     this.selected.set(conversation);
     this.messages.set([]);
     this.hasMoreMessages.set(false);
@@ -346,6 +359,7 @@ export class ChatCenterComponent implements OnInit, OnDestroy {
   goBackToConversations(): void {
     const conversation = this.selected();
     if (conversation) this.socket?.emit('leave_conversation', { conversationId: conversation.id });
+    this.chat.activeConversationId.set(null);
     this.selected.set(null);
     this.messages.set([]);
     this.newMessagesCount.set(0);

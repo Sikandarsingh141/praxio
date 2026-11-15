@@ -20,11 +20,44 @@ export class ToastService {
 
   show(options: ToastOptions): string {
     const type: ToastType = options.type || 'info';
-    const duration = options.duration ?? DEFAULT_DURATIONS[type];
+    const duration = options.duration ?? (options.messageData ? 9000 : DEFAULT_DURATIONS[type]);
     const title = options.title.trim();
     const message = options.message?.trim();
 
-    // Prevent duplicate notifications
+    // Group incoming messages from the same conversation
+    if (options.messageData?.conversationId) {
+      const existingMessageToast = this._toasts().find(
+        (t) =>
+          !t.closing &&
+          t.messageData?.conversationId === options.messageData?.conversationId,
+      );
+
+      if (existingMessageToast) {
+        const nextUnreadCount = (existingMessageToast.messageData?.unreadCount ?? 1) + 1;
+        this._toasts.update((items) =>
+          items.map((t) =>
+            t.id === existingMessageToast.id
+              ? {
+                  ...t,
+                  message,
+                  remainingTime: duration,
+                  progressPercent: 100,
+                  paused: false,
+                  onClick: options.onClick ?? t.onClick,
+                  messageData: {
+                    ...options.messageData!,
+                    unreadCount: nextUnreadCount,
+                  },
+                }
+              : t,
+          ),
+        );
+        this.ensureTimerRunning();
+        return existingMessageToast.id;
+      }
+    }
+
+    // Prevent duplicate non-message notifications
     const existing = this._toasts().find(
       (t) => !t.closing && t.type === type && t.title === title && (t.message || '') === (message || '')
     );
@@ -54,6 +87,9 @@ export class ToastService {
       paused: false,
       closing: false,
       createdAt: Date.now(),
+      avatar: options.avatar,
+      messageData: options.messageData,
+      onClick: options.onClick,
     };
 
     this._toasts.update((items) => [...items, newToast]);
@@ -75,6 +111,65 @@ export class ToastService {
 
   info(title: string, message?: string, options?: Partial<ToastOptions>): string {
     return this.show({ ...options, type: 'info', title, message });
+  }
+
+  showRealtimeMessage(data: {
+    conversationId: string;
+    messageId?: string;
+    senderId: string;
+    senderName: string;
+    senderPhoto?: string | null;
+    isOnline?: boolean;
+    repairItem?: string;
+    requestId?: string;
+    content: string;
+    time?: string;
+    relativeTime?: string;
+    destinationUrl: string;
+    onClick?: () => void;
+  }): string {
+    const rawName = (data.senderName || 'User').trim();
+    const initials =
+      rawName
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('') || rawName.slice(0, 1).toUpperCase();
+
+    return this.show({
+      type: 'info',
+      title: 'New Message',
+      message: `${rawName}: ${data.content}`,
+      duration: 9000,
+      avatar: {
+        imageUrl: data.senderPhoto,
+        name: rawName,
+        initials,
+        isOnline: data.isOnline,
+      },
+      messageData: {
+        conversationId: data.conversationId,
+        messageId: data.messageId,
+        senderId: data.senderId,
+        senderName: rawName,
+        senderPhoto: data.senderPhoto,
+        senderInitials: initials,
+        isOnline: data.isOnline,
+        repairItem: data.repairItem || 'Repair Request',
+        requestId: data.requestId || '',
+        content: data.content,
+        time:
+          data.time ||
+          new Intl.DateTimeFormat(undefined, {
+            hour: 'numeric',
+            minute: '2-digit',
+          }).format(new Date()),
+        relativeTime: data.relativeTime || 'Just now',
+        unreadCount: 1,
+        destinationUrl: data.destinationUrl,
+      },
+      onClick: data.onClick,
+    });
   }
 
   dismiss(id: string): void {

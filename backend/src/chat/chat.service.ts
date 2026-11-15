@@ -30,7 +30,7 @@ type ChatUserView = {
   fullName?: string;
   email?: string;
   profileImageData?: string;
-  shopDetails?: { shopName?: string };
+  shopDetails?: { shopName?: string; shopImageData?: string };
 };
 
 type ChatReplyView = {
@@ -106,6 +106,11 @@ export type ChatMessageResult = {
   deliveredTo: string[];
   createdAt: Date;
   updatedAt: Date;
+  repairRequest?: {
+    id: string;
+    appliance: string;
+    status: string;
+  };
 };
 
 export type ChatDeletedMessageResult = {
@@ -205,7 +210,7 @@ export class ChatService {
     ];
     const counterpartUsers = await this.users
       .find({ _id: { $in: counterpartIds } })
-      .select('firstName lastName fullName email profileImageData shopDetails.shopName')
+      .select('firstName lastName fullName email profileImageData shopDetails.shopName shopDetails.shopImageData')
       .lean()
       .exec();
     const userMap = new Map(
@@ -312,7 +317,7 @@ export class ChatService {
         .populate('customerId', 'firstName lastName fullName email profileImageData')
         .populate(
           'shopId',
-          'firstName lastName fullName email profileImageData shopDetails.shopName',
+          'firstName lastName fullName email profileImageData shopDetails.shopName shopDetails.shopImageData',
         )
         .populate('repairRequestId', 'appliance status repairJob')
         .lean<ChatConversationView[]>()
@@ -478,7 +483,7 @@ export class ChatService {
       .find(filter)
       .sort({ createdAt: loadingNewer ? 1 : -1, _id: loadingNewer ? 1 : -1 })
       .limit(21)
-      .populate('senderId', 'firstName lastName fullName profileImageData')
+      .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
       .populate('repliedToMessageId', 'content senderId isDeleted')
       .lean<ChatMessageView[]>()
       .exec();
@@ -517,7 +522,7 @@ export class ChatService {
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * 20)
       .limit(21)
-      .populate('senderId', 'firstName lastName fullName profileImageData')
+      .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
       .populate('repliedToMessageId', 'content senderId isDeleted')
       .lean<ChatMessageView[]>()
       .exec();
@@ -542,7 +547,7 @@ export class ChatService {
         conversationId: conversationObjectId,
         isDeleted: false,
       })
-      .populate('senderId', 'firstName lastName fullName profileImageData')
+      .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
       .populate('repliedToMessageId', 'content senderId isDeleted')
       .lean<ChatMessageView>()
       .exec();
@@ -561,7 +566,7 @@ export class ChatService {
         })
         .sort({ createdAt: -1, _id: -1 })
         .limit(11)
-        .populate('senderId', 'firstName lastName fullName profileImageData')
+        .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
         .populate('repliedToMessageId', 'content senderId isDeleted')
         .lean<ChatMessageView[]>()
         .exec(),
@@ -576,7 +581,7 @@ export class ChatService {
         })
         .sort({ createdAt: 1, _id: 1 })
         .limit(10)
-        .populate('senderId', 'firstName lastName fullName profileImageData')
+        .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
         .populate('repliedToMessageId', 'content senderId isDeleted')
         .lean<ChatMessageView[]>()
         .exec(),
@@ -636,7 +641,7 @@ export class ChatService {
           senderId,
           clientMessageId: input.clientMessageId,
         })
-        .populate('senderId', 'firstName lastName fullName profileImageData')
+        .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
         .populate('repliedToMessageId', 'content senderId isDeleted')
         .lean<ChatMessageView>()
         .exec();
@@ -693,14 +698,21 @@ export class ChatService {
     await this.conversations
       .updateOne({ _id: conversation._id }, update)
       .exec();
-    const populated = await this.messages
-      .findById(message._id)
-      .populate('senderId', 'firstName lastName fullName profileImageData')
-      .populate('repliedToMessageId', 'content senderId isDeleted')
-      .lean<ChatMessageView>()
-      .exec();
+    const [populated, repair] = await Promise.all([
+      this.messages
+        .findById(message._id)
+        .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
+        .populate('repliedToMessageId', 'content senderId isDeleted')
+        .lean<ChatMessageView>()
+        .exec(),
+      this.repairRequests
+        .findById(conversation.repairRequestId)
+        .select('appliance status repairJob')
+        .lean()
+        .exec(),
+    ]);
     if (!populated) throw new NotFoundException('Message could not be loaded.');
-    return this.messageDto(populated);
+    return this.messageDto(populated, repair);
   }
 
   async editMessage(
@@ -743,7 +755,7 @@ export class ChatService {
     return this.messageDto(
       await this.messages
         .findById(message._id)
-        .populate('senderId', 'firstName lastName fullName profileImageData')
+        .populate('senderId', 'firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData')
         .populate('repliedToMessageId', 'content senderId isDeleted')
         .lean<ChatMessageView>()
         .exec(),
@@ -963,7 +975,7 @@ export class ChatService {
         .exec(),
       this.users
         .find({ _id: { $in: [conversation.customerId, conversation.shopId] } })
-        .select('firstName lastName fullName email profileImageData shopDetails.shopName')
+        .select('firstName lastName fullName email profileImageData shopDetails.shopName shopDetails.shopImageData')
         .lean()
         .exec(),
     ]);
@@ -1070,7 +1082,10 @@ export class ChatService {
     return message.attachments[0]?.fileName ?? 'Attachment';
   }
 
-  private messageDto(message: ChatMessageView | null): ChatMessageResult {
+  private messageDto(
+    message: ChatMessageView | null,
+    repair?: ChatRepairView | Types.ObjectId | null,
+  ): ChatMessageResult {
     if (!message) throw new NotFoundException('Message not found.');
     const sender =
       message.senderId instanceof Types.ObjectId ? null : message.senderId;
@@ -1116,6 +1131,7 @@ export class ChatService {
       deliveredTo: message.deliveredTo.map((id) => id.toString()),
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
+      ...(repair ? { repairRequest: this.repairSummary(repair) } : {}),
     };
   }
 
@@ -1131,7 +1147,9 @@ export class ChatService {
         formatUserName(user) ||
         user.email ||
         'User',
-      profileImageUrl: this.normalizeProfileImage(user.profileImageData),
+      profileImageUrl: this.normalizeProfileImage(
+        user.profileImageData || user.shopDetails?.shopImageData,
+      ),
     };
   }
 

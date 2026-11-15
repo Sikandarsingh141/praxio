@@ -79,4 +79,60 @@ describe('ToastContainerComponent', () => {
 
     expect(toastService.toasts()[0].paused).toBe(false);
   });
+
+  it('should render message toast with sender profile photo, online indicator, and metadata', () => {
+    toastService.showRealtimeMessage({
+      conversationId: 'conv-101',
+      senderId: 'user-202',
+      senderName: 'Sikandar Customer',
+      senderPhoto: 'data:image/jpeg;base64,profilephoto',
+      isOnline: true,
+      repairItem: 'Nokia Phone',
+      requestId: '#88907075',
+      content: 'Can you share the updated quotation?',
+      destinationUrl: '/shop/messages?conversationId=conv-101',
+    });
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('.toast-message-card');
+    expect(card).toBeTruthy();
+
+    const senderName = fixture.nativeElement.querySelector('.msg-sender-name');
+    expect(senderName.textContent).toContain('Sikandar Customer');
+
+    const metaLine = fixture.nativeElement.querySelector('.msg-meta-line');
+    expect(metaLine.textContent).toContain('Nokia Phone · Request #88907075');
+
+    const preview = fixture.nativeElement.querySelector('.msg-preview-text');
+    expect(preview.textContent).toContain('Can you share the updated quotation?');
+
+    const unreadPill = fixture.nativeElement.querySelector('.msg-unread-pill');
+    expect(unreadPill.textContent).toContain('1 new message');
+
+    const avatarImg = fixture.nativeElement.querySelector('.msg-avatar-img');
+    expect(avatarImg).toBeTruthy();
+    expect(avatarImg.getAttribute('src')).toBe('data:image/jpeg;base64,profilephoto');
+
+    const onlineDot = fixture.nativeElement.querySelector('.msg-online-indicator');
+    expect(onlineDot).toBeTruthy();
+
+    const viewBtn = fixture.nativeElement.querySelector('.msg-view-btn');
+    expect(viewBtn).toBeTruthy();
+    expect(viewBtn.textContent).toContain('View Conversation');
+  });
+
+  it('should render fallback initials when sender has no profile photo', () => {
+    toastService.showRealtimeMessage({
+      conversationId: 'conv-102',
+      senderId: 'user-203',
+      senderName: 'Sikandar Customer',
+      content: 'Hello',
+      destinationUrl: '/shop/messages?conversationId=conv-102',
+    });
+    fixture.detectChanges();
+
+    const fallback = fixture.nativeElement.querySelector('.msg-avatar-fallback');
+    expect(fallback).toBeTruthy();
+    expect(fallback.textContent.trim()).toBe('SC');
+  });
 });
