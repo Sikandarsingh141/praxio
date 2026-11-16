@@ -138,6 +138,49 @@ describe('JobSharedService', () => {
     });
   });
 
+  it('returns shop request counts including accepted assignments', (done) => {
+    shopApi.list.and.returnValue(
+      of(
+        shopPage(
+          [
+            shopRequest('open', 'new'),
+            shopRequest('pending', 'quotation_submitted'),
+            shopRequest('assigned', 'customer_accepted', 'confirmed'),
+            shopRequest('active', 'customer_accepted', 'in_progress'),
+            shopRequest('completed', 'customer_accepted', 'completed'),
+          ],
+          1,
+          5,
+        ),
+      ),
+    );
+    disputesApi.list.and.returnValue(
+      of({
+        items: [],
+        pagination: { page: 1, limit: 1, total: 3, totalPages: 3 },
+        summary: { TOTAL: 3 },
+      } satisfies DisputeListResult),
+    );
+
+    service.shopJobCounts().subscribe((counts) => {
+      expect(counts).toEqual({
+        new: 1,
+        pending: 1,
+        assigned: 1,
+        active: 1,
+        disputed: 3,
+        completed: 1,
+      });
+      expect(shopApi.list).toHaveBeenCalledOnceWith({
+        status: 'all',
+        limit: 50,
+        page: 1,
+      });
+      expect(disputesApi.list).toHaveBeenCalledOnceWith('shop', { page: 1, limit: 1 });
+      done();
+    });
+  });
+
   it('exposes only actionable customer quotations for pending job responses', (done) => {
     const request = customerRequest('pending-quotation');
     request.shops = [{ id: 'shop-1', name: 'Repair shop' }];

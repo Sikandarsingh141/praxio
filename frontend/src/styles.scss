@@ -4538,7 +4538,7 @@ a {
   }
 }
 
-.portal .request-nav-toggle {
+:is(.portal, .role-portal) .request-nav-toggle {
   width: 100%;
   border: 0;
   background: transparent;
@@ -4547,19 +4547,21 @@ a {
   text-align: left;
 }
 
-.portal .request-nav-toggle:hover,
-.portal .request-nav-toggle[aria-expanded='true'] {
+:is(.portal, .role-portal) .request-nav-toggle:hover,
+:is(.portal, .role-portal) .request-nav-toggle[aria-expanded='true'] {
   background: #f5f8f5;
   color: #315d4b;
 }
 
 .portal .request-nav-toggle.nav-active,
-.portal .request-nav-toggle.nav-active:hover {
+.portal .request-nav-toggle.nav-active:hover,
+.role-portal .request-nav-toggle.active,
+.role-portal .request-nav-toggle.active:hover {
   background: #edf4ee;
   color: #315d4b;
 }
 
-.portal .nav-chevron {
+:is(.portal, .role-portal) .nav-chevron {
   width: 1rem;
   height: 1rem;
   margin-left: auto;
@@ -4569,11 +4571,11 @@ a {
   transition: transform 160ms;
 }
 
-.portal .nav-chevron-expanded {
+:is(.portal, .role-portal) .nav-chevron-expanded {
   transform: rotate(180deg);
 }
 
-.portal .request-submenu {
+:is(.portal, .role-portal) .request-submenu {
   position: relative;
   display: grid;
   margin-left: 1.2rem;
@@ -4581,14 +4583,14 @@ a {
   border-left: 1px solid #d7ead9;
 }
 
-.portal .request-submenu-item {
+:is(.portal, .role-portal) .request-submenu-item {
   min-height: 2.4rem;
   gap: 0.45rem;
   padding: 0.45rem;
   font-size: 0.77rem;
 }
 
-.portal .request-submenu-dot {
+:is(.portal, .role-portal) .request-submenu-dot {
   width: 0.38rem;
   height: 0.38rem;
   flex: 0 0 auto;
@@ -4596,12 +4598,12 @@ a {
   background: #b4cfb8;
 }
 
-.portal .request-submenu-label {
+:is(.portal, .role-portal) .request-submenu-label {
   min-width: 0;
   flex: 1;
 }
 
-.portal .nav-request-count {
+:is(.portal, .role-portal) .nav-request-count {
   display: inline-flex;
   min-width: 1.35rem;
   height: 1.3rem;
@@ -4615,12 +4617,25 @@ a {
   font-weight: 700;
 }
 
-.portal .nav-count-error {
+:is(.portal, .role-portal) .nav-count-error {
   margin: 0.2rem 0 0 0.4rem;
   color: #a34842;
   font-size: 0.67rem;
 }
 
-.portal .request-submenu-item.nav-active .request-submenu-dot {
+:is(.portal, .role-portal) .request-submenu-item:hover {
+  background: #f5f8f5;
+  color: #315d4b;
+}
+
+.portal .request-submenu-item.nav-active,
+.role-portal .request-submenu-item.active {
+  background: #edfaee;
+  color: #176b34;
+  font-weight: 700;
+}
+
+.portal .request-submenu-item.nav-active .request-submenu-dot,
+.role-portal .request-submenu-item.active .request-submenu-dot {
   background: #16842e;
 }

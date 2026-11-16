@@ -2,8 +2,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 import { ShopLayout } from './shop-layout.component';
 
 describe('ShopLayout', () => {
@@ -13,7 +15,18 @@ describe('ShopLayout', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ShopLayout],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        {
+          provide: JobSharedService,
+          useValue: {
+            shopJobCounts: () =>
+              of({ new: 2, pending: 3, assigned: 4, active: 5, disputed: 6, completed: 7 }),
+          },
+        },
+      ],
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);
     authService = TestBed.inject(AuthService);
@@ -69,7 +82,8 @@ describe('ShopLayout', () => {
       'data:image/png;base64,abc',
     );
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
-    expect(fixture.nativeElement.textContent).toContain('Repair requests');
+    expect(fixture.nativeElement.textContent).toContain('My Repair Requests');
+    expect(fixture.nativeElement.textContent).toContain('All repair requests');
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
     expect(fixture.nativeElement.textContent).toContain('Technician Assignments');
@@ -77,6 +91,30 @@ describe('ShopLayout', () => {
     expect(
       (fixture.nativeElement.querySelector('#shop-global-search') as HTMLInputElement).placeholder,
     ).toBe('Search repair requests, quotations, or customers...');
+
+    const requestToggle = fixture.nativeElement.querySelector(
+      '.request-nav-toggle',
+    ) as HTMLButtonElement;
+    expect(requestToggle.getAttribute('aria-expanded')).toBe('false');
+    requestToggle.click();
+    fixture.detectChanges();
+    const submenuLabels = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.request-submenu-label',
+      ) as NodeListOf<HTMLElement>,
+    ).map((element) => element.textContent?.trim());
+    const requestCounts = Array.from(
+      fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
+    ).map((element) => element.textContent?.trim());
+    expect(submenuLabels).toEqual([
+      'Open Requests',
+      'Pending Requests',
+      'Assigned Jobs',
+      'Active Requests',
+      'Disputed Jobs',
+      'Completed Jobs',
+    ]);
+    expect(requestCounts).toEqual(['2', '3', '4', '5', '6', '7']);
 
     const updatedPhoto = 'data:image/jpeg;base64,bmV3';
     const image = new File([new Uint8Array([1, 2, 3])], 'profile.jpg', {

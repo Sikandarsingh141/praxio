@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
+  DestroyRef,
   HostListener,
   inject,
   OnDestroy,
@@ -8,11 +9,19 @@ import {
   signal,
   ViewChild,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter, forkJoin } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationCenterComponent } from '../../core/notifications/notification-center.component';
 import { ChatService } from '../../shared/services/chat.service';
+import { JobSharedService, ShopJobCounts } from '../../shared/services/job-shared.service';
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 
 @Component({
@@ -27,7 +36,25 @@ export class ShopLayout implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   readonly chat = inject(ChatService);
   private readonly router = inject(Router);
+  private readonly jobs = inject(JobSharedService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly shopRequests = inject(ShopRepairRequestsService);
+  readonly requestSubmenus: Array<{
+    label: string;
+    route: string;
+    countKey: keyof ShopJobCounts;
+  }> = [
+    { label: 'Open Requests', route: '/shop/jobs/new-jobs', countKey: 'new' },
+    { label: 'Pending Requests', route: '/shop/jobs/pending-jobs', countKey: 'pending' },
+    { label: 'Assigned Jobs', route: '/shop/jobs/assigned-jobs', countKey: 'assigned' },
+    { label: 'Active Requests', route: '/shop/jobs/active-jobs', countKey: 'active' },
+    { label: 'Disputed Jobs', route: '/shop/jobs/disputed-jobs', countKey: 'disputed' },
+    { label: 'Completed Jobs', route: '/shop/jobs/completed-jobs', countKey: 'completed' },
+  ];
+  readonly requestSectionExpanded = signal(this.isRequestSectionActive());
+  readonly requestCounts = signal<ShopJobCounts | null>(null);
+  readonly requestCountsLoading = signal(false);
+  readonly requestCountsError = signal('');
   readonly signingOut = signal(false);
   readonly accountMenuOpen = signal(false);
   readonly shopName = this.authService.shopName;
@@ -39,6 +66,15 @@ export class ShopLayout implements OnInit, OnDestroy {
   private searchRequestId = 0;
 
   ngOnInit(): void {
+    this.loadRequestCounts();
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (this.isRequestSectionActive()) this.requestSectionExpanded.set(true);
+      });
     this.chat.connect();
     this.chat.refreshUnreadMessageCount();
     this.authService.getShopDashboard().subscribe({
@@ -48,6 +84,36 @@ export class ShopLayout implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.chat.disconnect();
+  }
+
+  toggleRequestSection(): void {
+    this.requestSectionExpanded.update((expanded) => !expanded);
+  }
+
+  isRequestSectionActive(): boolean {
+    return this.requestSubmenus.some((item) => this.isRequestSubmenuActive(item.route));
+  }
+
+  isRequestSubmenuActive(route: string): boolean {
+    const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
+    return currentRoute === route || currentRoute.startsWith(`${route}/`);
+  }
+
+  private loadRequestCounts(): void {
+    this.requestCountsLoading.set(true);
+    this.jobs
+      .shopJobCounts()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (counts) => {
+          this.requestCounts.set(counts);
+          this.requestCountsLoading.set(false);
+        },
+        error: () => {
+          this.requestCountsError.set('Request counts could not be loaded.');
+          this.requestCountsLoading.set(false);
+        },
+      });
   }
 
   toggleAccountMenu(): void {

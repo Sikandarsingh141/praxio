@@ -127,29 +127,55 @@
         </svg>
         Dashboard
       </a>
-      <a
-        class="portal-nav"
-        routerLink="/shop/jobs/new-jobs"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
+      <button
+        class="portal-nav request-nav-toggle"
+        [class.active]="isRequestSectionActive()"
+        [attr.aria-expanded]="requestSectionExpanded()"
+        aria-controls="shop-request-submenu"
+        type="button"
+        (click)="toggleRequestSection()"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
+          <path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" />
         </svg>
-        Repair requests
-      </a>
-      <a class="portal-nav" routerLink="/shop/jobs/pending-jobs" routerLinkActive="active">
-        Pending jobs
-      </a>
-      <a class="portal-nav" routerLink="/shop/jobs/assigned-jobs" routerLinkActive="active">
-        Assigned jobs
-      </a>
-      <a class="portal-nav" routerLink="/shop/jobs/active-jobs" routerLinkActive="active">
-        Active jobs
-      </a>
-      <a class="portal-nav" routerLink="/shop/jobs/disputed-jobs" routerLinkActive="active">
-        Disputed jobs
-      </a>
+        My Repair Requests
+        <svg
+          class="nav-chevron"
+          [class.nav-chevron-expanded]="requestSectionExpanded()"
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+        >
+          <path d="m5 7.5 5 5 5-5" />
+        </svg>
+      </button>
+      @if (requestSectionExpanded()) {
+        <div class="request-submenu" id="shop-request-submenu">
+          @for (submenu of requestSubmenus; track submenu.route) {
+            <a
+              class="portal-nav request-submenu-item"
+              [routerLink]="submenu.route"
+              [class.active]="isRequestSubmenuActive(submenu.route)"
+              [attr.aria-current]="isRequestSubmenuActive(submenu.route) ? 'page' : null"
+            >
+              <span class="request-submenu-dot" aria-hidden="true"></span>
+              <span class="request-submenu-label">{{ submenu.label }}</span>
+              @if (requestCounts(); as counts) {
+                <span
+                  class="nav-request-count"
+                  [attr.aria-label]="counts[submenu.countKey] + ' requests'"
+                >
+                  {{ counts[submenu.countKey] }}
+                </span>
+              } @else if (requestCountsLoading()) {
+                <span class="nav-request-count" aria-label="Loading request count">-</span>
+              }
+            </a>
+          }
+          @if (requestCountsError(); as countError) {
+            <p class="nav-count-error" role="alert">{{ countError }}</p>
+          }
+        </div>
+      }
       <a
         class="portal-nav"
         routerLink="/shop/repair-requests"
@@ -163,17 +189,6 @@
           <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
         </svg>
         Quotations
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/shop/disputes"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3 3.5 7v5c0 5 3.6 8 8.5 9 4.9-1 8.5-4 8.5-9V7zM12 8v5M12 16h.01" />
-        </svg>
-        Disputes
       </a>
       <a
         class="portal-nav"
@@ -194,17 +209,6 @@
             {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
           </span>
         }
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/shop/jobs/completed-jobs"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m5 12 4 4L19 6M4 3h16v18H4z" />
-        </svg>
-        Completed Repairs
       </a>
       <a class="portal-nav" routerLink="/shop/reviews" routerLinkActive="active">
         <svg viewBox="0 0 24 24" aria-hidden="true">

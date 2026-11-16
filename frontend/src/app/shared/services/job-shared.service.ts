@@ -29,6 +29,15 @@ export interface CustomerJobCounts {
   completed: number;
 }
 
+export interface ShopJobCounts {
+  new: number;
+  pending: number;
+  assigned: number;
+  active: number;
+  disputed: number;
+  completed: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class JobSharedService {
   constructor(
@@ -64,6 +73,23 @@ export class JobSharedService {
         active: requests.filter((request) => this.matchesCustomerCategory(request, 'active')).length,
         disputed: disputes.pagination.total,
         completed: requests.filter((request) => this.matchesCustomerCategory(request, 'completed'))
+          .length,
+      })),
+    );
+  }
+
+  shopJobCounts(): Observable<ShopJobCounts> {
+    return forkJoin({
+      requests: this.allShopRequests(),
+      disputes: this.disputes.list('shop', { page: 1, limit: 1 }),
+    }).pipe(
+      map(({ requests, disputes }) => ({
+        new: requests.filter((request) => this.matchesShopCategory(request, 'new')).length,
+        pending: requests.filter((request) => this.matchesShopCategory(request, 'pending')).length,
+        assigned: requests.filter((request) => this.matchesShopCategory(request, 'assigned')).length,
+        active: requests.filter((request) => this.matchesShopCategory(request, 'active')).length,
+        disputed: disputes.pagination.total,
+        completed: requests.filter((request) => this.matchesShopCategory(request, 'completed'))
           .length,
       })),
     );
