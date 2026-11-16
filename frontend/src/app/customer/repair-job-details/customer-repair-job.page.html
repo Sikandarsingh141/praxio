@@ -1,24 +1,22 @@
-<main class="repair-job-page" aria-labelledby="job-title" [attr.aria-busy]="loading()">
-  <nav class="detail-breadcrumb" aria-label="Breadcrumb">
-    <a routerLink="/customer/repair-requests">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
-      Back to repair requests
-    </a>
-  </nav>
-  @if (error()) {
-    <p class="feedback error" role="alert">{{ error() }}</p>
-  }
+<main class="job-detail-page customer-repair-request-detail-page">
   @if (loading()) {
-    <p class="state-card" role="status">Loading repair details…</p>
-  } @else if (job(); as repair) {
-    <h1 class="detail-page-title" id="job-title">{{ pageTitle(repair) }}</h1>
+    <p class="state" role="status">Loading job details...</p>
+  } @else if (error()) {
+    <p class="state error" role="alert">{{ error() }}</p>
+  } @else if (job(); as job) {
+    <a class="detail-back-link" routerLink="/customer/repair-requests">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+      Back to My Repair Requests
+    </a>
+    <h1 class="detail-page-title">{{ pageTitle(job) }}</h1>
+
     <section class="request-hero" aria-label="Repair request summary">
       <div class="request-hero-photo">
-        @if (repair.photos?.[0]; as heroPhoto) {
+        @if (job.photos?.[0]; as photo) {
           @if (!heroImageUnavailable()) {
             <img
-              [src]="photoSource(heroPhoto)"
-              [alt]="repair.appliance + ' photo'"
+              [src]="photoSource(photo)"
+              [alt]="job.appliance + ' photo'"
               (error)="heroImageUnavailable.set(true)"
             />
           } @else {
@@ -41,33 +39,19 @@
         }
       </div>
       <div class="request-hero-copy">
-        <h2>{{ repair.appliance }}</h2>
-        <div class="request-header-meta">
-          <span class="request-id">
-            <span>Request ID:</span>
-            <strong class="request-reference">#{{ repair._id.slice(-8).toUpperCase() }}</strong>
-          </span>
-        </div>
-        <div class="job-header-actions">
-          <span class="status-badge">
-            <span class="status-dot" aria-hidden="true"></span>{{ statusLabel(repair) }}
-          </span>
-          @if (
-            repair.repairJob &&
-            (repair.repairJob.status === 'picked_up' || repair.repairJob.status === 'completed')
-          ) {
-            <a
-              class="secondary-button dispute-link"
-              [routerLink]="['/customer/disputes/new', repair._id]"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3 3 7v2h18V7l-9-4ZM5 9v8m4-8v8m-6 2h10m3-10v8m4-8v8m-6 2h10M12 9v10m-3 2h6" />
-              </svg>
-              Raise a Dispute
-            </a>
-          }
-        </div>
+        <h2>{{ job.appliance }}</h2>
+        <span class="request-id">
+          Request ID: <strong>#{{ job._id.slice(-8).toUpperCase() }}</strong>
+        </span>
+        @if (job.repairJob?.status === 'completed') {
+          <a class="job-button secondary dispute-link" [routerLink]="['/customer/disputes/new', job._id]">
+            Raise a dispute
+          </a>
+        }
       </div>
+      <span class="detail-status" [attr.data-status]="job.repairJob?.status ?? job.status">
+        <span class="status-dot" aria-hidden="true"></span>{{ statusLabel(job) }}
+      </span>
     </section>
 
     <ol class="request-progress" aria-label="Repair request progress">
@@ -81,646 +65,275 @@
         >
           <span class="progress-marker" aria-hidden="true">
             @if (isRepairComplete || index + 1 < currentProgressStep) {
-              <svg viewBox="0 0 24 24">
-                <path d="m5 12 4 4L19 6" />
-              </svg>
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
             } @else {
               {{ index + 1 }}
             }
           </span>
           <strong>{{ step }}</strong>
           @if (progressDate(index); as stepDate) {
-            <time>{{ stepDate | date: 'medium' }}</time>
+            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
           }
         </li>
       }
     </ol>
 
-    @if (repair.repairJob?.status === 'ready_for_pickup') {
-      <section class="pickup-alert" aria-labelledby="pickup-title">
-        <span class="pickup-icon" aria-hidden="true">✓</span>
-        <div>
-          <h2 id="pickup-title">Your item is ready for pickup</h2>
-          <p>Visit {{ repair.shop?.name || 'the repair shop' }} to collect your repaired item.</p>
-          @if (repair.repairJob?.pickupMessage) {
-            <p>{{ repair.repairJob?.pickupMessage }}</p>
-          }
-        </div>
-      </section>
-    }
-
-    <div class="job-grid customer-detail-grid">
-      <section class="panel request-summary-card customer-info-card">
-        <h2 class="panel-heading">
-          <span class="summary-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <circle cx="12" cy="8" r="3.5" />
-              <path d="M5 21a7 7 0 0 1 14 0" />
-            </svg>
-          </span>
-          Customer Information
-        </h2>
-        @if (authService.currentUser(); as customer) {
-          <div class="customer-identity">
-            @if (customer.profileImageUrl && !customerAvatarUnavailable()) {
-              <img
-                [src]="customer.profileImageUrl"
-                [alt]="customerName(customer) + ' profile photo'"
-                (error)="customerAvatarUnavailable.set(true)"
-              />
+    <div class="customer-detail-layout">
+      <div class="customer-detail-main">
+        <section
+          class="detail-section customer-detail-main-card"
+          aria-label="Customer repair request details"
+        >
+          <section class="customer-detail-block customer-information-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
+              Customer Information
+            </h2>
+            @if (authService.currentUser(); as customer) {
+              <div class="customer-information-row">
+                <div class="customer-identity">
+                  <span class="customer-avatar" aria-hidden="true">{{ customerInitials(customer) }}</span>
+                  <strong>{{ customerName(customer) }}</strong>
+                </div>
+                <dl class="customer-facts">
+                  <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
+                  <div><dt>Phone</dt><dd>{{ customerPhone(customer) }}</dd></div>
+                  <div>
+                    <dt>Location</dt>
+                    <dd>
+                      @if (customer.location; as location) {
+                        <a [href]="customerMapUrl(location)" target="_blank" rel="noopener noreferrer">
+                          {{ customerLocation(customer) }}
+                        </a>
+                      } @else {
+                        {{ customerLocation(customer) }}
+                      }
+                    </dd>
+                  </div>
+                </dl>
+              </div>
             } @else {
-              <span class="customer-avatar-fallback" aria-hidden="true">
-                {{ customerInitials(customer) }}
-              </span>
+              <p class="muted-copy">Customer information is not available.</p>
             }
-            <strong>{{ customerName(customer) }}</strong>
-          </div>
-          <dl class="details customer-details">
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="5" width="18" height="14" rx="2" />
-                  <path d="m4 7 8 6 8-6" />
-                </svg>
-                Email
-              </dt>
-              <dd>{{ customer.email }}</dd>
-            </div>
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 3h4l2 5-2.5 2a15 15 0 0 0 5.5 5.5l2-2.5 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2Z" />
-                </svg>
-                Phone
-              </dt>
-              <dd>{{ customerPhone(customer) }}</dd>
-            </div>
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
-                  <circle cx="12" cy="10" r="2.5" />
-                </svg>
-                Location
-              </dt>
-              <dd>{{ customerLocation(customer) }}</dd>
-            </div>
-          </dl>
-          @if (customer.location; as location) {
-            <a class="customer-map-link" [href]="customerMapUrl(location)" target="_blank" rel="noopener noreferrer">
-              View on Map <span aria-hidden="true">↗</span>
-            </a>
-          }
-        } @else {
-          <p>Customer information is not available.</p>
-        }
-      </section>
+          </section>
 
-      <section class="panel request-summary-card repair-information-card">
-        <h2 class="panel-heading">
-          <span class="summary-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" />
-              <path d="m14 14 6 6M17 13l3-3" />
-            </svg>
-          </span>
-          Repair Information
-        </h2>
-        <dl class="details">
-          <div class="detail-row">
-            <dt>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="6" y="3" width="12" height="18" rx="2" />
-                <path d="M10 17h4" />
-              </svg>
-              Device
-            </dt>
-            <dd>
-              {{ repair.appliance }}{{ repair.brand ? ' · ' + repair.brand : ''
-              }}{{ repair.model ? ' · ' + repair.model : '' }}
-            </dd>
-          </div>
-          <div class="detail-row">
-            <dt>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="4" y="6" width="16" height="15" rx="2" />
-                <path d="M8 3v6M16 3v6M4 11h16" />
-              </svg>
-              Request Date
-            </dt>
-            <dd>{{ repair.createdAt | date: 'medium' }}</dd>
-          </div>
-          <div class="detail-row">
-            <dt>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <rect x="4" y="6" width="16" height="15" rx="2" />
-                <path d="M8 3v6M16 3v6M4 11h16M8 15h3" />
-              </svg>
-              Preferred Date
-            </dt>
-            <dd>
-              {{
-                repair.preferredServiceDate
-                  ? (repair.preferredServiceDate | date: 'mediumDate')
-                  : 'Not specified'
-              }}
-            </dd>
-          </div>
-          <div class="detail-row">
-            <dt>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1" />
-                <circle cx="12" cy="12" r="4" />
-              </svg>
-              Service Type
-            </dt>
-            <dd>{{ repair.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd>
-          </div>
-          <div class="detail-row">
-            <dt>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 10 5 4h14l2 6M4 10v10h16V10M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" />
-                <path d="M9 20v-5h6v5" />
-              </svg>
-              Shop Visit
-            </dt>
-            <dd>
-              {{ repair.serviceType === 'home_service' ? 'Yes (Home service)' : 'No (At shop)' }}
-            </dd>
-          </div>
-          <div class="detail-row">
-            <dt>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 11v5m0-8h.01" />
-              </svg>
-              Issue Description
-            </dt>
-            <dd>{{ repair.description }}</dd>
-          </div>
-        </dl>
-      </section>
+          <section class="customer-detail-block problem-description-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8m-8 4h8" /></svg>
+              Problem Description
+            </h2>
+            <p>{{ job.description || 'No issue details provided.' }}</p>
+          </section>
 
-      <section class="panel request-summary-card shop-summary-card">
-        <h2 class="panel-heading">
-          <span class="summary-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M3 10h18v10H3zM2 10l2-6h16l2 6M8 20v-6h8v6" />
-            </svg>
-          </span>
-          {{ repair.shop ? 'Repair Shop' : 'Selected Repair Shops' }}
-        </h2>
-        @if (repair.shop; as shop) {
-          <dl class="details">
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 10h18v10H3zM2 10l2-6h16l2 6M8 20v-6h8v6" />
-                </svg>
-                Shop Name
-              </dt>
-              <dd>{{ shop.name }}</dd>
-            </div>
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
-                  <circle cx="12" cy="10" r="2.5" />
-                </svg>
-                Address
-              </dt>
-              <dd>{{ shop.address || 'Contact shop for pickup location' }}</dd>
-            </div>
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 3h4l2 5-2.5 2a15 15 0 0 0 5.5 5.5l2-2.5 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2Z" />
-                </svg>
-                Phone
-              </dt>
-              <dd>{{ shop.phone || 'Not provided' }}</dd>
-            </div>
-            <div class="detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="5" width="18" height="14" rx="2" />
-                  <path d="m4 7 8 6 8-6" />
-                </svg>
-                Email
-              </dt>
-              <dd>{{ shop.email }}</dd>
-            </div>
-          </dl>
-          @if (shop.phone) {
-            <a class="secondary-button" [href]="'tel:' + shop.phone">Contact shop</a>
-          }
-        } @else if (repair.shops?.length) {
-          <ul class="assigned-shops">
-            @for (assignedShop of repair.shops; track assignedShop.id) {
-              <li>
-                <span class="shop-avatar" aria-hidden="true">{{ shopInitials(assignedShop.name) }}</span>
-                <span class="shop-identity">
-                  <strong>{{ assignedShop.name }}</strong>
-                  <span>{{
-                    assignedShop.responseStatus?.replaceAll('_', ' ') || 'Awaiting response'
-                      | titlecase
-                  }}</span>
-                </span>
-                @if (assignedShop.declineReason) {
-                  <small>{{ assignedShop.declineReason }}</small>
-                }
-              </li>
-            }
-          </ul>
-        } @else {
-          <p>No repair shops have been selected for this request.</p>
-        }
-        @if (!repair.shop) {
-          <a class="secondary-button quotations-button" routerLink="/customer/quotations">
-            View Quotations
-          </a>
-        }
-      </section>
-
-      <section class="panel request-summary-card photos-summary-card">
-        <h2 class="panel-heading">
-          <span class="summary-icon" aria-hidden="true">▧</span>
-          Uploaded Photos <small>({{ repair.photos?.length || 0 }})</small>
-        </h2>
-        <app-job-attachments [items]="jobs.photoAttachments(repair.photos ?? [])" />
-      </section>
-
-      <section class="panel request-summary-card diagnosis-summary-card">
-        <h2 class="panel-heading">
-          <span class="summary-icon" aria-hidden="true">✚</span>
-          Initial Diagnosis
-        </h2>
-        @if (repair.repairJob?.inspection; as inspection) {
-          <div class="diagnosis-callout">
-            <strong>{{ inspection.identifiedProblem || 'Inspection in progress' }}</strong>
-            @if (inspection.findings) {
-              <p>{{ inspection.findings }}</p>
-            }
-            @if (inspection.requiredRepairWork) {
-              <p><b>Recommended repair:</b> {{ inspection.requiredRepairWork }}</p>
-            }
-          </div>
-        } @else if (repair.repairJob?.completionDescription) {
-          <div class="diagnosis-callout">
-            <strong>Repair summary</strong>
-            <p>{{ repair.repairJob?.completionDescription }}</p>
-            @if (repair.repairJob?.workPerformed) {
-              <p><b>Work performed:</b> {{ repair.repairJob?.workPerformed }}</p>
-            }
-            @if (repair.repairJob?.partsReplaced) {
-              <p><b>Parts replaced:</b> {{ repair.repairJob?.partsReplaced }}</p>
-            }
-          </div>
-        } @else {
-          <div class="diagnosis-callout diagnosis-pending">
-            <strong>Pending Inspection</strong>
-            <p>The repair shop will inspect your device and share a diagnosis and quotation.</p>
-          </div>
-        }
-      </section>
-
-      <section class="panel request-summary-card route-summary-card">
-        <h2 class="panel-heading">
-          <span class="summary-icon" aria-hidden="true">⌖</span>
-          Route to Repair Shop
-        </h2>
-        @if (repair.shop; as shop) {
-          @if (shop.address; as shopAddress) {
-            <p class="route-caption">Driving directions from your location to {{ shop.name }}.</p>
-            <iframe
-              class="route-map-frame"
-              [src]="shopMapEmbedUrl(shopAddress)"
-              [title]="'Map showing the location of ' + shop.name"
-              loading="lazy"
-              referrerpolicy="no-referrer"
-            ></iframe>
-            @if (shopDirectionsUrl(shopAddress); as directionsUrl) {
-              <a
-                class="primary-button map-directions-button"
-                [href]="directionsUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Get Directions <span aria-hidden="true">↗</span>
-              </a>
-            }
-          } @else {
-            <p>The shop has not provided an address for directions yet.</p>
-          }
-        } @else {
-          <div class="route-preview route-pending">
-            <span class="route-pin" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
-            </span>
-            <p>Shop directions will appear after a repair shop is confirmed.</p>
-          </div>
-        }
-      </section>
-
-      @if (repair.acceptedQuotation || repair.quotations.length) {
-        <section class="panel request-summary-card customer-quotations-card">
-          <h2 class="panel-heading">
-            <span class="summary-icon" aria-hidden="true">▤</span>
-            Quotation Details
-          </h2>
-          <div class="quotation-table-wrap">
-            <table class="customer-quotation-table">
-              <thead>
-                <tr>
-                  <th scope="col">Quotation</th>
-                  <th scope="col">Service &amp; Parts</th>
-                  <th scope="col">Total Amount</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (quote of repair.quotations; track quote._id; let index = $index) {
-                  <tr>
-                    <td>QTN-{{ (index + 1).toString().padStart(3, '0') }}</td>
-                    <td>{{ quote.proposedSolution || quote.message }}</td>
-                    <td class="quote-amount">{{ quote.amount | currency: quote.currency }}</td>
-                    <td>
-                      <span class="quotation-status" [attr.data-status]="quote.status">
-                        {{ quote.status | titlecase }}
-                      </span>
-                    </td>
-                  </tr>
-                }
-                @if (!repair.quotations.length && repair.acceptedQuotation; as quote) {
-                  <tr>
-                    <td>Accepted</td>
-                    <td>{{ quote.proposedSolution || quote.message }}</td>
-                    <td class="quote-amount">{{ quote.amount | currency: quote.currency }}</td>
-                    <td><span class="quotation-status">Accepted</span></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-      }
-    </div>
-
-    @if (repair.repairJob) {
-      <app-customer-repair-workflow [request]="repair" (requestUpdated)="job.set($event)" />
-    }
-
-    <details class="more-request-details">
-      <summary>View full repair progress and additional details</summary>
-    @if (!repair.repairJob) {
-      <div class="job-grid request-detail-grid">
-        <section class="panel request-panel">
-          <h2 class="panel-heading">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8 4h8l2 2h2v15H4V6h2l2-2Z" />
-              <path d="M9 4v4h6V4M8 12h8M8 16h8" />
-            </svg>
-            Request Details
-          </h2>
-          <dl class="details request-detail-rows">
-            <div class="request-detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m14 7 3-3 3 3-3 3M4 20l8-8M8 5l11 11M5 8l3-3 3 3-3 3" />
-                </svg>
-                Issue / Problem
-              </dt>
-              <dd>
-                <strong>
-                  {{ repair.appliance }}
-                  @if (repair.brand) {
-                    · {{ repair.brand }}
-                  }
-                  @if (repair.model) {
-                    · {{ repair.model }}
-                  }
-                </strong>
-                <span>{{ repair.description }}</span>
-              </dd>
-            </div>
-            <div class="request-detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="4" y="6" width="16" height="15" rx="2" />
-                  <path d="M8 3v6M16 3v6M4 11h16" />
-                </svg>
-                Preferred Date
-              </dt>
-              <dd>
-                {{
-                  repair.preferredServiceDate
-                    ? (repair.preferredServiceDate | date: 'mediumDate')
-                    : 'Not specified'
-                }}
-              </dd>
-            </div>
-            <div class="request-detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5" />
-                </svg>
-                Service Type
-              </dt>
-              <dd>{{ repair.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd>
-            </div>
-            <div class="request-detail-row">
-              <dt>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2" />
-                </svg>
-                Submitted On
-              </dt>
-              <dd>{{ repair.createdAt | date: 'medium' }}</dd>
-            </div>
-          </dl>
-          @if (repair.photos?.length) {
-            <div class="detail-photos" aria-label="Repair request photos">
-              @for (photo of repair.photos; track $index) {
-                <img
-                  [src]="photo.data"
-                  [alt]="'Repair photo ' + ($index + 1) + ' for ' + repair.appliance"
+          <section class="customer-detail-block route-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+              Location and Route
+            </h2>
+            @if (job.shop; as shop) {
+              @if (shop.address) {
+                <iframe
+                  class="shop-map-embed"
+                  [src]="shopMapEmbedUrl(shop.address)"
+                  title="Map to repair shop"
                   loading="lazy"
-                />
+                  referrerpolicy="no-referrer-when-downgrade"
+                ></iframe>
+                @if (shopDirectionsUrl(shop.address); as directionsUrl) {
+                  <a class="shop-link map-directions-button" [href]="directionsUrl" target="_blank" rel="noopener noreferrer">
+                    Get directions
+                  </a>
+                }
+              } @else {
+                <div class="route-empty" role="status">
+                  <p>Repair shop location is not available yet.</p>
+                </div>
               }
-            </div>
-          }
-        </section>
+              <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
+            } @else {
+              <div class="route-empty" role="status">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                <p>Route details will be available after a repair shop is confirmed.</p>
+              </div>
+            }
+          </section>
 
-        <section class="panel request-panel selected-shops-panel">
-          <h2 class="panel-heading">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M3 10 5 4h14l2 6M4 10v10h16V10M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"
-              />
-              <path d="M9 20v-5h6v5" />
-            </svg>
-            Selected Repair Shops
-          </h2>
-          @if (repair.shops?.length) {
-            <ul class="assigned-shops">
-              @for (assignedShop of repair.shops; track assignedShop.id) {
-                <li>
-                  <span class="shop-avatar" aria-hidden="true">
-                    {{ shopInitials(assignedShop.name) }}
-                  </span>
-                  <span class="shop-identity">
-                    <strong>{{ assignedShop.name }}</strong>
-                    <span>{{
-                      assignedShop.responseStatus?.replaceAll('_', ' ') || 'Awaiting response'
-                        | titlecase
-                    }}</span>
-                  </span>
-                  @if (assignedShop.declineReason) {
-                    <small>{{ assignedShop.declineReason }}</small>
+          <section class="customer-detail-block quotation-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" /><path d="M8 2v3m8-3v3" /></svg>
+              Quotation and Payment
+            </h2>
+            @if (job.acceptedQuotation; as quotation) {
+              <article class="quotation-entry">
+                <div class="quotation-heading">
+                  <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                  <span class="quotation-status accepted">Accepted</span>
+                </div>
+                <p>{{ quotation.message }}</p>
+                @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+              </article>
+            } @else if (job.quotations.length) {
+              <div class="quotation-list">
+                @for (quotation of job.quotations; track quotation._id) {
+                  <article class="quotation-entry">
+                    <div class="quotation-heading">
+                      <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                      <span class="quotation-status" [attr.data-status]="quotation.status">{{ quotation.status | titlecase }}</span>
+                    </div>
+                    <p>{{ quotation.message }}</p>
+                    @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+                  </article>
+                }
+              </div>
+              <a class="review-quotation" routerLink="/customer/quotations">View Quotations</a>
+            } @else {
+              <div class="quotation-empty">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" /><path d="M8 2v3m8-3v3" /></svg>
+                <strong>No quotation yet</strong>
+                <span>No quotation has been submitted.</span>
+              </div>
+              <a class="review-quotation" routerLink="/customer/quotations">View Quotations</a>
+            }
+          </section>
+
+          <section class="customer-detail-block timeline-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+              Repair Progress and Inspection
+            </h2>
+            @if (jobs.customerTimeline(job).length) {
+              <app-job-timeline [items]="jobs.customerTimeline(job)" />
+            } @else {
+              <div class="timeline-empty">
+                <span class="timeline-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                </span>
+                <div>
+                  <strong>No repair history yet</strong>
+                  <p>Repair activity will appear here once the shop starts working on your request.</p>
+                </div>
+              </div>
+            }
+            @if (job.repairJob; as repairJob) {
+              @if (repairJob.status === 'ready_for_pickup') {
+                <div class="pickup-notice" role="status">
+                  <strong>Your repair is ready for pickup</strong>
+                  @if (repairJob.pickupMessage || repairJob.pickupInstructions) {
+                    <p>{{ repairJob.pickupMessage || repairJob.pickupInstructions }}</p>
                   }
-                </li>
+                </div>
               }
-            </ul>
-          } @else {
-            <p class="empty-shops">No repair shops have been selected for this request.</p>
-          }
-          <a class="secondary-button quotations-button" routerLink="/customer/quotations">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
-            </svg>
-            View Quotations
-          </a>
+              @if (repairJob.inspection; as inspection) {
+                @if (inspection.identifiedProblem || inspection.findings || inspection.requiredRepairWork) {
+                  <div class="inspection-summary">
+                    <h3>Inspection summary</h3>
+                    @if (inspection.identifiedProblem) { <p><strong>Identified problem:</strong> {{ inspection.identifiedProblem }}</p> }
+                    @if (inspection.findings) { <p><strong>Findings:</strong> {{ inspection.findings }}</p> }
+                    @if (inspection.requiredRepairWork) { <p><strong>Required work:</strong> {{ inspection.requiredRepairWork }}</p> }
+                  </div>
+                }
+              }
+              @if (repairJob.completionDescription || repairJob.workPerformed || repairJob.partsReplaced || repairJob.finalNotes) {
+                <div class="inspection-summary">
+                  <h3>Repair summary</h3>
+                  @if (repairJob.completionDescription) { <p>{{ repairJob.completionDescription }}</p> }
+                  @if (repairJob.workPerformed) { <p><strong>Work performed:</strong> {{ repairJob.workPerformed }}</p> }
+                  @if (repairJob.partsReplaced) { <p><strong>Parts replaced:</strong> {{ repairJob.partsReplaced }}</p> }
+                  @if (repairJob.finalNotes) { <p><strong>Final notes:</strong> {{ repairJob.finalNotes }}</p> }
+                </div>
+              }
+              <app-customer-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" />
+              @if (repairJob.status === 'picked_up') {
+                <form class="post-pickup-issue" (ngSubmit)="reportIssue()">
+                  <label for="post-pickup-issue">Report a problem with the repair</label>
+                  <textarea
+                    id="post-pickup-issue"
+                    name="issueDescription"
+                    rows="3"
+                    [ngModel]="issueDescription()"
+                    (ngModelChange)="issueDescription.set($event)"
+                    placeholder="Describe the issue you are experiencing"
+                  ></textarea>
+                  <button class="job-button secondary" type="submit">Report an issue</button>
+                </form>
+              }
+            }
+          </section>
         </section>
       </div>
-    } @else {
-      @if (
-        repair.repairJob.status === 'in_progress' ||
-        repair.repairJob.status === 'on_hold' ||
-        repair.repairJob.status === 'repair_completed' ||
-        repair.repairJob.status === 'ready_for_pickup' ||
-        repair.repairJob.status === 'picked_up' ||
-        repair.repairJob.status === 'completed'
-      ) {
-        <div class="job-grid">
-          <section class="panel">
-            <h2>Repair progress</h2>
-            <ol class="timeline">
-              @for (step of timeline; track step.action) {
-                <li [class.current]="step.action === repair.repairJob.status">
-                  <span class="timeline-dot"></span>
-                  <div>
-                    <strong>{{ step.label }}</strong>
-                    @if (step.at) {
-                      <time>{{ step.at | date: 'medium' }}</time>
-                    }
-                  </div>
-                </li>
-              }
-            </ol>
-          </section>
 
-          <section class="panel">
-            <h2>Repair shop</h2>
-            @if (repair.shop; as shop) {
-              <dl class="details">
-                <div>
-                  <dt>Shop</dt>
-                  <dd>{{ shop.name }}</dd>
-                </div>
-                <div>
-                  <dt>Pickup address</dt>
-                  <dd>{{ shop.address || 'Contact shop for pickup location' }}</dd>
-                </div>
-                <div>
-                  <dt>Phone</dt>
-                  <dd>{{ shop.phone || 'Not provided' }}</dd>
-                </div>
-                <div>
-                  <dt>Email</dt>
-                  <dd>{{ shop.email }}</dd>
-                </div>
-                @if (repair.repairJob.pickupInstructions) {
-                  <div>
-                    <dt>Pickup instructions</dt>
-                    <dd>{{ repair.repairJob.pickupInstructions }}</dd>
-                  </div>
-                }
-              </dl>
-              @if (shop.phone) {
-                <a class="secondary-button" [href]="'tel:' + shop.phone">Contact shop</a>
-              }
-            } @else {
-              <p>Shop information is not available yet.</p>
-            }
-          </section>
-
-          <section class="panel">
-            <h2>Repair issue</h2>
-            <p>{{ repair.description }}</p>
-            @if (repair.repairJob.completionDescription) {
-              <h3>Completion summary</h3>
-              <p>{{ repair.repairJob.completionDescription }}</p>
-            }
-            @if (repair.repairJob.workPerformed) {
-              <h3>Work performed</h3>
-              <p>{{ repair.repairJob.workPerformed }}</p>
-            }
-            @if (repair.repairJob.partsReplaced) {
-              <h3>Parts replaced</h3>
-              <p>{{ repair.repairJob.partsReplaced }}</p>
-            }
-            @if (repair.repairJob.finalNotes) {
-              <p>{{ repair.repairJob.finalNotes }}</p>
-            }
-          </section>
-
-          <section class="panel">
-            <h2>Accepted quotation</h2>
-            @if (repair.acceptedQuotation; as quote) {
-              <strong class="quote-amount">{{ quote.amount | currency: quote.currency }}</strong>
-              <p>{{ quote.message }}</p>
-              @if (quote.proposedSolution) {
-                <p>{{ quote.proposedSolution }}</p>
-              }
-              @if (quote.warrantyInformation) {
-                <p><strong>Warranty:</strong> {{ quote.warrantyInformation }}</p>
-              }
-            } @else {
-              <p>No accepted quotation is linked to this repair yet.</p>
-            }
-          </section>
-        </div>
-      }
-    }
-    </details>
-
-    @if (repair.repairJob?.status === 'picked_up') {
-      <section class="panel action-panel" aria-labelledby="post-pickup-issue-title">
-        <h2 id="post-pickup-issue-title">Report a repair issue</h2>
-        <p>
-          If you noticed a problem after collecting your item, send the details to the shop and
-          Admin.
-        </p>
-        <label
-          ><span>Issue description</span
-          ><textarea
-            rows="3"
-            maxlength="1000"
-            [ngModel]="issueDescription()"
-            (ngModelChange)="issueDescription.set($event)"
-          ></textarea>
-        </label>
-        <button
-          class="secondary-button"
-          type="button"
-          [disabled]="submitting()"
-          (click)="reportIssue()"
+      <aside class="customer-detail-sidebar">
+        <section
+          class="detail-section customer-detail-sidebar-card"
+          aria-label="Device and repair shop information"
         >
-          Report issue
-        </button>
-      </section>
-    }
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>
+              Device Information
+            </h2>
+            <dl class="sidebar-facts">
+              <div><dt>Device</dt><dd>{{ job.appliance }}</dd></div>
+              <div><dt>Brand</dt><dd>{{ job.brand || 'Not specified' }}</dd></div>
+              <div><dt>Model</dt><dd>{{ job.model || 'Not specified' }}</dd></div>
+              <div><dt>Category</dt><dd>{{ job.appliance }}</dd></div>
+              <div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'MMM d, y' }}</dd></div>
+            </dl>
+          </section>
 
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" /><path d="m14 14 6 6M17 13l3-3" /></svg>
+              Service Details
+            </h2>
+            <dl class="sidebar-facts">
+              <div><dt>Service Type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Repair' }}</dd></div>
+              <div><dt>Preferred Date</dt><dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'MMM d, y') : 'Not specified' }}</dd></div>
+              <div><dt>Visit Type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="customer-detail-block uploaded-photos-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+              Uploaded Photos <small>({{ job.photos?.length || 0 }})</small>
+            </h2>
+            <app-job-attachments
+              [items]="jobs.photoAttachments(job.photos ?? [])"
+              [showViewAllAction]="true"
+            />
+          </section>
+
+          @if (job.shop; as shop) {
+            <section class="customer-detail-block repair-shop-section">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" /></svg>
+                Repair Shop
+              </h2>
+              <div class="shop-summary">
+                <span class="shop-logo" aria-hidden="true">{{ shopInitials(shop.name) }}</span>
+                <div class="shop-copy"><strong>{{ shop.name }}</strong><span>{{ shop.address || 'Address not available' }}</span></div>
+              </div>
+              @if (shop.phone) { <a [href]="'tel:' + shop.phone">{{ shop.phone }}</a> }
+              @if (shop.email) { <a [href]="'mailto:' + shop.email">{{ shop.email }}</a> }
+              <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
+            </section>
+          } @else if (job.shops?.length) {
+            <section class="customer-detail-block repair-shop-section">
+              <h2 class="section-heading">Selected Shops</h2>
+              @for (shop of job.shops; track shop.id) {
+                <div class="shop-summary">
+                  <span class="shop-logo" aria-hidden="true">{{ shopInitials(shop.name) }}</span>
+                  <div class="shop-copy">
+                    <strong>{{ shop.name }}</strong>
+                    <span>{{ shop.responseStatus ? (shop.responseStatus | titlecase) : 'Awaiting response' }}</span>
+                  </div>
+                </div>
+              }
+            </section>
+          }
+        </section>
+      </aside>
+    </div>
   }
 </main>

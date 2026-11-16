@@ -24,6 +24,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogConfig,
 } from '../confirmation-dialog/confirmation-dialog.component';
+import { JobPaginationComponent } from '../job-pagination/job-pagination.component';
 import { PaginationComponent } from '../pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../page-header/admin-page-header.component';
 import { ToastService } from '../../../core/toast/toast.service';
@@ -50,6 +51,26 @@ const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
   { value: 'other', label: 'Other' },
 ];
 
+const DISPUTE_REVIEW_PROGRESS_STATUSES: DisputeStatus[] = [
+  'UNDER_REVIEW',
+  'ACCEPTED',
+  'AWAITING_SHOP_RESPONSE',
+  'AWAITING_CUSTOMER_RESPONSE',
+  'REINSPECTION_IN_PROGRESS',
+];
+const DISPUTE_RESOLUTION_PROGRESS_STATUSES: DisputeStatus[] = [
+  'RESOLUTION_PROPOSED',
+  'AWAITING_CUSTOMER_APPROVAL',
+  'REPAIR_IN_PROGRESS',
+  'CUSTOMER_VERIFICATION_PENDING',
+];
+const DISPUTE_COMPLETE_PROGRESS_STATUSES: DisputeStatus[] = [
+  'CLOSED',
+  'RESOLVED',
+  'REJECTED',
+  'CUSTOMER_CONFIRMED',
+];
+
 @Component({
   selector: 'app-dispute-center',
   standalone: true,
@@ -59,6 +80,7 @@ const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
     RouterLink,
     CommonFilterComponent,
     ConfirmationDialogComponent,
+    JobPaginationComponent,
     PaginationComponent,
     AdminPageHeaderComponent,
   ],
@@ -83,6 +105,12 @@ export class DisputeCenterComponent implements OnInit {
     status?: string;
   } | null>(null);
   readonly categories = DISPUTE_CATEGORIES;
+  readonly disputeProgressSteps = [
+    'Dispute submitted',
+    'Under review',
+    'Resolution',
+    'Resolved / closed',
+  ];
   readonly activeAttachmentUrls = new Map<string, string>();
   readonly appliedFilters = signal<FilterValues>({});
   filterConfig: FilterConfig = this.createFilterConfig('customer');
@@ -310,6 +338,15 @@ export class DisputeCenterComponent implements OnInit {
     if (page < 1 || page > totalPages || page === this.page) return;
     this.page = page;
     this.loadList();
+  }
+
+  customerDisputeDetailLink(disputeId: string): string[] {
+    const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
+    const baseRoute =
+      currentRoute === '/customer/jobs/disputed-jobs'
+        ? '/customer/jobs/disputed-jobs'
+        : '/customer/disputes';
+    return [baseRoute, disputeId];
   }
 
   changePageSize(size: number): void {
@@ -948,6 +985,46 @@ export class DisputeCenterComponent implements OnInit {
     const job = repair.repairJob;
     const repairedAt = job?.['completedAt'] || job?.['repairCompletedAt'] || job?.['pickedUpAt'];
     return typeof repairedAt === 'string' || repairedAt instanceof Date ? repairedAt : null;
+  }
+
+  disputeProgressStep(item: RepairDispute): number {
+    if (
+      item.resolution.state === 'final' ||
+      DISPUTE_COMPLETE_PROGRESS_STATUSES.includes(item.status)
+    ) {
+      return 4;
+    }
+    if (
+      item.resolution.state === 'proposed' ||
+      DISPUTE_RESOLUTION_PROGRESS_STATUSES.includes(item.status)
+    ) {
+      return 3;
+    }
+    return item.status === 'OPEN' ? 1 : 2;
+  }
+
+  isDisputeComplete(item: RepairDispute): boolean {
+    return (
+      item.resolution.state === 'final' ||
+      DISPUTE_COMPLETE_PROGRESS_STATUSES.includes(item.status)
+    );
+  }
+
+  disputeProgressDate(item: RepairDispute, stepIndex: number): string | undefined {
+    if (stepIndex === 0) return item.createdAt;
+    if (stepIndex === 2 && item.resolution.proposedAt) {
+      return item.resolution.proposedAt;
+    }
+    if (stepIndex === 3 && (item.resolution.resolvedAt || item.resolution.closedAt)) {
+      return item.resolution.resolvedAt || item.resolution.closedAt;
+    }
+    const statuses =
+      stepIndex === 1
+        ? DISPUTE_REVIEW_PROGRESS_STATUSES
+        : stepIndex === 2
+          ? DISPUTE_RESOLUTION_PROGRESS_STATUSES
+          : DISPUTE_COMPLETE_PROGRESS_STATUSES;
+    return item.statusHistory.find((entry) => statuses.includes(entry.to))?.at;
   }
 
   get isRepairEligible(): boolean {

@@ -1,0 +1,84 @@
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { of } from 'rxjs';
+import { CustomerPortalService } from '../../../services/customer-portal.service';
+import { DisputeListResult } from '../../../../shared/models/disputes.models';
+import { DisputesService } from '../../../../shared/services/disputes.service';
+import { CustomerDisputedJobsListingPage } from './customer-disputed-jobs-listing.page';
+
+describe('CustomerDisputedJobsListingPage', () => {
+  it('uses the dispute management listing and opens the active-style disputed detail route', async () => {
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list']);
+    disputes.list.and.returnValue(
+      of({
+        items: [
+          {
+            _id: 'dispute-1',
+            reference: 'DSP-001',
+            repairRequestId: 'request-1',
+            customerId: 'customer-1',
+            shopId: 'shop-1',
+            category: 'repair_quality',
+            subject: 'Repair issue',
+            description: 'Issue after repair',
+            expectedResolution: 'Fix the issue',
+            attachments: [],
+            status: 'UNDER_REVIEW',
+            priority: 'normal',
+            messages: [],
+            statusHistory: [],
+            resolution: {
+              documents: [],
+              completionDocuments: [],
+              requiredActionCompleted: false,
+            },
+            reinspections: [],
+            additionalCharges: [],
+            reworkProgress: [],
+            reworkCompletions: [],
+            verificationHistory: [],
+            createdAt: '2025-01-01T10:00:00.000Z',
+            updatedAt: '2025-01-01T10:00:00.000Z',
+            parties: {
+              customer: { id: 'customer-1', name: 'Customer One' },
+              shop: { id: 'shop-1', name: 'Repair Shop' },
+            },
+          },
+        ],
+        pagination: { page: 1, limit: 10, total: 1, totalPages: 1 },
+        summary: { TOTAL: 0, OPEN: 0, UNDER_REVIEW: 0, RESOLVED: 0, CLOSED: 0 },
+      } satisfies DisputeListResult),
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [CustomerDisputedJobsListingPage],
+      providers: [
+        provideRouter([
+          { path: 'customer/jobs/disputed-jobs', component: CustomerDisputedJobsListingPage },
+        ]),
+        { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: { getRepairJob: jasmine.createSpy() } },
+      ],
+    }).compileComponents();
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/customer/jobs/disputed-jobs', CustomerDisputedJobsListingPage);
+
+    const page = harness.routeNativeElement as HTMLElement;
+    const text = page.textContent ?? '';
+    expect(page.querySelector('app-dispute-center')).not.toBeNull();
+    expect(text).toContain('Dispute management');
+    expect(text).toContain('Total Disputes');
+    expect(text).toContain('Raise a Dispute');
+    const detailsLink = page.querySelector(
+      '.dispute-action-popup a',
+    ) as HTMLAnchorElement | null;
+    expect(detailsLink?.getAttribute('href')).toBe('/customer/jobs/disputed-jobs/dispute-1');
+    expect(disputes.list).toHaveBeenCalledWith(
+      'customer',
+      jasmine.objectContaining({ page: 1, limit: 10 }),
+      jasmine.objectContaining({ silent: false }),
+    );
+  });
+});

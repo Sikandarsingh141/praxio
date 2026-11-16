@@ -7,6 +7,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { AuthService } from '../../core/auth/auth.service';
 import { UserProfile } from '../../core/auth/auth.models';
 import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
+import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
 import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerRepairRequest } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
@@ -21,6 +22,7 @@ import { ToastService } from '../../core/toast/toast.service';
     FormsModule,
     RouterLink,
     JobAttachmentsComponent,
+    JobTimelineComponent,
     CustomerRepairWorkflowComponent,
   ],
   templateUrl: './customer-repair-job.page.html',
@@ -77,6 +79,10 @@ export class CustomerRepairJobPage implements OnInit {
         this.loading.set(false);
       },
     });
+  }
+
+  refreshRecord(updated: CustomerRepairRequest): void {
+    this.job.set(updated);
   }
 
   reportIssue(): void {

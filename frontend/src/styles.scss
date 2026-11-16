@@ -3896,3 +3896,644 @@ a {
     justify-content: center;
   }
 }
+
+.portal .customer-dispute-list-page {
+  display: flex;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.customer-dispute-list-page .summary-grid {
+  margin: 0;
+  border-color: #e2e8e4;
+  border-radius: 0.85rem;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.customer-dispute-list-page .dispute-list-controls {
+  margin: 0;
+}
+
+.customer-dispute-table-card {
+  overflow: visible;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.customer-dispute-table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.customer-dispute-table thead {
+  background: #edf8ef;
+}
+
+.customer-dispute-table th {
+  padding: 0.8rem 0.7rem;
+  border-bottom: 1px solid #e2e8e4;
+  color: #173c26;
+  font-size: 0.73rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.customer-dispute-table td {
+  padding: 0.75rem 0.7rem;
+  border-bottom: 1px solid #edf1ed;
+  color: #33443a;
+  font-size: 0.79rem;
+  vertical-align: middle;
+}
+
+.customer-dispute-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.customer-dispute-table tbody tr:hover {
+  background: #fbfdfb;
+}
+
+.dispute-request-id-cell {
+  display: grid;
+  min-width: 7rem;
+  gap: 0.25rem;
+}
+
+.customer-dispute-list-page .dispute-request-id-cell strong {
+  color: #17231c;
+  font-size: 0.78rem;
+}
+
+.customer-dispute-list-page .dispute-request-id-cell span {
+  color: #68756d;
+  font-size: 0.65rem;
+}
+
+.dispute-device-cell {
+  min-width: 10.5rem;
+}
+
+.dispute-issue-copy,
+.dispute-date-copy {
+  display: inline-flex;
+  align-items: center;
+}
+
+.dispute-device-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dispute-device-thumbnail {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.55rem;
+  background: #f8fafc;
+}
+
+.dispute-device-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.dispute-device-thumbnail svg {
+  width: 1.8rem;
+  height: 1.8rem;
+  fill: none;
+  stroke: #64748b;
+  stroke-width: 1.8;
+}
+
+.dispute-device-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.dispute-device-copy strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dispute-device-copy span,
+.customer-dispute-list-page .dispute-issue-cell small {
+  color: #64748b;
+  font-size: 0.68rem;
+}
+
+.dispute-issue-cell {
+  max-width: 15rem;
+}
+
+.dispute-issue-copy {
+  max-width: 100%;
+  gap: 0.45rem;
+}
+
+.dispute-issue-copy svg,
+.dispute-date-copy svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: #64748b;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.dispute-issue-copy span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #33443a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.customer-dispute-list-page .dispute-issue-cell small {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.dispute-date-cell {
+  white-space: nowrap;
+}
+
+.dispute-date-copy {
+  gap: 0.4rem;
+  color: #334155;
+  font-size: 0.76rem;
+}
+
+.dispute-shop-cell {
+  min-width: 8.5rem;
+}
+
+.customer-dispute-table .job-status {
+  display: inline-flex;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #edf8ef;
+  color: #087c3b;
+  font-size: 0.73rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.customer-dispute-table .job-status[data-status*='UNDER'],
+.customer-dispute-table .job-status[data-status*='RESPONSE'],
+.customer-dispute-table .job-status[data-status*='APPROVAL'] {
+  background: #eef4ff;
+  color: #315f9b;
+}
+
+.customer-dispute-table .job-status[data-status*='RESOLVED'],
+.customer-dispute-table .job-status[data-status*='CLOSED'],
+.customer-dispute-table .job-status[data-status*='CONFIRMED'] {
+  background: #e5f6e8;
+  color: #17643b;
+}
+
+.dispute-action-heading,
+.dispute-action-cell {
+  text-align: right;
+}
+
+.dispute-action-menu {
+  position: relative;
+  display: inline-block;
+  text-align: left;
+}
+
+.dispute-action-menu summary {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border: 1px solid #dfe6e1;
+  border-radius: 0.55rem;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  list-style: none;
+}
+
+.dispute-action-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.dispute-action-menu summary:hover,
+.dispute-action-menu[open] summary {
+  border-color: #8abd94;
+  background: #f2faf3;
+  color: #087c3b;
+}
+
+.dispute-action-menu summary svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentColor;
+}
+
+.dispute-action-popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.3rem);
+  right: 0;
+  width: 9.5rem;
+  padding: 0.3rem;
+  border: 1px solid #e4e9e5;
+  border-radius: 0.65rem;
+  background: #fff;
+  box-shadow: 0 8px 22px rgb(15 23 42 / 16%);
+}
+
+.dispute-action-popup a {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.45rem;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.dispute-action-popup a:hover {
+  background: #f2faf3;
+  color: #087c3b;
+}
+
+.dispute-action-popup svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.portal .customer-dispute-detail-page {
+  display: flex;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.customer-dispute-detail-page .detail-back-link {
+  width: fit-content;
+  color: #176b34;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.customer-dispute-detail-page .detail-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: #68756d;
+  font-size: 0.73rem;
+}
+
+.customer-dispute-detail-page .detail-breadcrumb strong {
+  color: #176b34;
+}
+
+.customer-dispute-detail-page .repair-overview {
+  grid-template-columns: minmax(15rem, 1.6fr) repeat(3, minmax(7rem, 1fr));
+  align-items: stretch;
+  gap: 0;
+  margin: 0;
+  padding: 0.75rem;
+  border-color: #e2e8e4;
+  border-radius: 0.85rem;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.customer-dispute-detail-page .repair-device {
+  align-items: center;
+  gap: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.customer-dispute-detail-page .repair-device img,
+.customer-dispute-detail-page .device-placeholder {
+  width: 5rem;
+  height: 4.25rem;
+  flex: 0 0 auto;
+  border-radius: 0.6rem;
+  background: #f3f6f3;
+  object-fit: contain;
+}
+
+.customer-dispute-detail-page .repair-device > div {
+  min-width: 0;
+}
+
+.customer-dispute-detail-page .repair-device h2 {
+  margin: 0.15rem 0;
+  color: #17231c;
+  font-size: 0.94rem;
+}
+
+.customer-dispute-detail-page .repair-device p {
+  margin: 0;
+  color: #68756d;
+  font-size: 0.75rem;
+}
+
+.customer-dispute-detail-page .repair-fact {
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border-left: 1px solid #e8eee9;
+}
+
+.customer-dispute-detail-page .repair-fact strong {
+  overflow-wrap: anywhere;
+  color: #17231c;
+  font-size: 0.8rem;
+}
+
+.customer-dispute-detail-page .dispute-detail-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.customer-dispute-detail-page .detail-grid > .panel,
+.customer-dispute-detail-page > .panel {
+  min-width: 0;
+  margin: 0;
+  padding: 0.75rem;
+  border-color: #e2e8e4;
+  border-radius: 0.85rem;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.customer-dispute-detail-page .complaint-card {
+  grid-column: 1;
+}
+
+.customer-dispute-detail-page .original-repair-card {
+  grid-column: 1;
+}
+
+.customer-dispute-detail-page .participants-card {
+  grid-column: 2;
+}
+
+.customer-dispute-detail-page .history-card {
+  grid-column: 1;
+}
+
+.customer-dispute-detail-page .customer-detail-main > .panel {
+  min-width: 0;
+  margin: 0;
+  padding: 0.8rem;
+  border-color: #e2e8e4;
+  border-radius: 0.85rem;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.customer-dispute-detail-page .customer-detail-main > .panel > h2:not(.panel-title) {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  margin: 0 0 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: #edf8ef;
+  color: #173c26;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.customer-dispute-detail-page .dispute-sidebar-copy {
+  margin: 0;
+  color: #43564a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.customer-dispute-detail-page .dispute-participant {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #edf1ee;
+  color: #17212b;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.customer-dispute-detail-page .dispute-participant:last-child {
+  border-bottom: 0;
+}
+
+.customer-dispute-detail-page .dispute-participant span {
+  color: #536158;
+}
+
+.customer-dispute-detail-page .dispute-participant .shop-link {
+  margin-top: 0.2rem;
+}
+
+.customer-dispute-detail-page .dispute-repair-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.75rem, 1fr));
+  gap: 0.4rem;
+}
+
+.customer-dispute-detail-page .dispute-repair-photos a {
+  display: block;
+  height: 3.75rem;
+  overflow: hidden;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.5rem;
+  background: #f8faf8;
+}
+
+.customer-dispute-detail-page .dispute-repair-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-dispute-detail-page .detail-status[data-status='UNDER_REVIEW'],
+.customer-dispute-detail-page .detail-status[data-status='AWAITING_CUSTOMER_RESPONSE'],
+.customer-dispute-detail-page .detail-status[data-status='AWAITING_SHOP_RESPONSE'] {
+  background: #fff2d9;
+  color: #815b10;
+}
+
+.customer-dispute-detail-page .detail-status[data-status='RESOLVED'],
+.customer-dispute-detail-page .detail-status[data-status='CLOSED'],
+.customer-dispute-detail-page .detail-status[data-status='CUSTOMER_CONFIRMED'] {
+  background: #e5f6e8;
+  color: #17643b;
+}
+
+.customer-dispute-detail-page .detail-status[data-status='REJECTED'] {
+  background: #fff0ed;
+  color: #9c3d31;
+}
+
+.customer-layout-disabled,
+.customer-layout-disabled > .customer-detail-main {
+  display: contents;
+}
+
+.customer-dispute-detail-page .panel-title {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: #edf8ef;
+  color: #173c26;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.customer-dispute-detail-page .panel-icon {
+  color: #087c3b;
+}
+
+.customer-dispute-detail-page .panel-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.customer-dispute-detail-page .history-list {
+  gap: 0;
+}
+
+.customer-dispute-detail-page .history-list li {
+  position: relative;
+  min-width: 0;
+  padding: 0.35rem 0 0.75rem 1.3rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.customer-dispute-detail-page .history-list li:not(:last-child)::before {
+  position: absolute;
+  top: 0.8rem;
+  bottom: -0.15rem;
+  left: 0.25rem;
+  width: 1px;
+  background: #dce8df;
+  content: '';
+}
+
+.customer-dispute-detail-page .history-dot {
+  position: absolute;
+  top: 0.45rem;
+  left: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #16803c;
+  box-shadow: 0 0 0 1px #b8d7c0;
+}
+
+.customer-dispute-detail-page .history-list li strong {
+  color: #203b2a;
+  font-size: 0.8rem;
+}
+
+.customer-dispute-detail-page .history-list li > div > span {
+  color: #7a867f;
+  font-size: 0.7rem;
+}
+
+.customer-dispute-detail-page .history-list li p {
+  margin: 0.25rem 0 0;
+  color: #536159;
+  font-size: 0.76rem;
+}
+
+@media (max-width: 900px) {
+  .customer-dispute-detail-page .repair-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customer-dispute-detail-page .repair-device {
+    grid-column: 1 / -1;
+    padding: 0 0 0.65rem;
+  }
+
+  .customer-dispute-detail-page .repair-fact:nth-child(2) {
+    border-left: 0;
+  }
+
+  .customer-dispute-detail-page .dispute-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .customer-dispute-detail-page .detail-grid.dispute-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .customer-dispute-detail-page .detail-grid > .panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 540px) {
+  .customer-dispute-list-page .summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customer-dispute-detail-page .repair-overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .customer-dispute-detail-page .repair-device {
+    grid-column: auto;
+  }
+
+  .customer-dispute-detail-page .repair-fact {
+    padding: 0.5rem 0 0;
+    border-top: 1px solid #e8eee9;
+    border-left: 0;
+  }
+}

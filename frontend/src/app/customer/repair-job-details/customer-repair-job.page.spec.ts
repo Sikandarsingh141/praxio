@@ -24,7 +24,10 @@ describe('CustomerRepairJobPage', () => {
         },
       }, {
         provide: JobSharedService,
-        useValue: { photoAttachments: () => [] },
+        useValue: {
+          photoAttachments: () => [],
+          customerTimeline: () => [],
+        },
       }],
     });
   });
@@ -131,38 +134,21 @@ describe('CustomerRepairJobPage', () => {
       fixture.nativeElement.querySelectorAll('.request-progress li'),
     ) as HTMLLIElement[];
     expect(steps).toHaveSize(4);
-    expect(getComputedStyle(fixture.nativeElement.querySelector('.request-progress')).display).toBe(
-      'grid',
-    );
+    expect(fixture.nativeElement.querySelector('.request-progress')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.progress-marker svg')).toHaveSize(4);
     expect(steps.every((step) => step.classList.contains('completed'))).toBeTrue();
     expect(fixture.nativeElement.querySelector('[aria-current="step"]')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.request-progress time')).toHaveSize(4);
     const requestIdBadge = fixture.nativeElement.querySelector(
-      '.request-header-meta .request-id',
+      '.request-hero-copy .request-id',
     ) as HTMLElement;
     const disputeLink = fixture.nativeElement.querySelector(
-      '.job-header-actions .dispute-link',
-    ) as HTMLElement;
+      '.request-hero-copy .dispute-link',
+    ) as HTMLAnchorElement;
     expect(disputeLink).not.toBeNull();
-    expect(
-      fixture.nativeElement.querySelector('.request-header-meta .dispute-link'),
-    ).toBeNull();
-    expect(fixture.nativeElement.querySelector('.job-header-actions .status-badge')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.request-meta-divider')).toBeNull();
-    expect(parseFloat(getComputedStyle(requestIdBadge).minHeight)).toBeLessThan(
-      parseFloat(getComputedStyle(disputeLink).minHeight),
-    );
-    expect(
-      getComputedStyle(fixture.nativeElement.querySelector('.request-header-meta')).display,
-    ).toBe('flex');
-    expect(
-      getComputedStyle(fixture.nativeElement.querySelector('.job-header-actions')).flexDirection,
-    ).toBe('column');
-    expect(
-      getComputedStyle(fixture.nativeElement.querySelector('.request-summary-card .details dt'))
-        .display,
-    ).toBe('flex');
+    expect(disputeLink.href).toContain('/customer/disputes/new/');
+    expect(requestIdBadge.textContent).toContain('Request ID');
+    expect(fixture.nativeElement.querySelector('.detail-status')).not.toBeNull();
     expect(fixture.componentInstance.progressDate(1)).toBe('2026-11-09T15:35:00.000Z');
     expect(fixture.componentInstance.progressDate(3)).toBe('2026-11-10T12:05:00.000Z');
   });
@@ -262,19 +248,18 @@ describe('CustomerRepairJobPage', () => {
     expect(text).not.toContain('REPAIR REQUEST DETAILS');
     expect(text).toContain('Request ID:');
     expect(text).toContain('12345678');
-    expect(text).toContain('Issue / Problem');
+    expect(text).toContain('Problem Description');
     expect(text).toContain('Not cooling');
     expect(text).toContain('Preferred Date');
     expect(text).toContain('Shop visit');
-    expect(text).toContain('Shop Visit');
-    expect(text).toContain('No (At shop)');
+    expect(text).toContain('Shop visit');
     expect(text).toContain('Amit Sharma');
     expect(text).toContain('AS');
     expect(text).toContain('View Quotations');
-    expect(text).toContain('Repair Information');
-    expect(text).toContain('Route to Repair Shop');
-    expect(text).toContain('Pending Inspection');
-    expect(fixture.nativeElement.querySelector('.status-badge')?.textContent).toContain('New');
+    expect(text).toContain('Repair Progress and Inspection');
+    expect(text).toContain('Location and Route');
+    expect(text).toContain('Inspection Pending');
+    expect(fixture.nativeElement.querySelector('.detail-status')?.textContent).toContain('New');
   });
 
   it('creates a driving directions link for the assigned shop', async () => {

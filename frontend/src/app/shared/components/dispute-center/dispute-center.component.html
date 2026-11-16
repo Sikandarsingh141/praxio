@@ -1,4 +1,9 @@
-<main class="dispute-page" [attr.aria-busy]="loading()">
+<main
+  class="dispute-page"
+  [class.customer-dispute-list-page]="role() === 'customer' && mode() === 'list'"
+  [class.customer-dispute-detail-page]="role() === 'customer' && mode() === 'detail'"
+  [attr.aria-busy]="loading()"
+>
   @if (mode() === 'list') {
     @if (role() === 'admin') {
       <app-admin-page-header>
@@ -122,48 +127,162 @@
     @if (loading()) {
       <p class="state-card" role="status">Loading disputes…</p>
     } @else if (list()?.items?.length) {
-      <section class="dispute-list" aria-label="Dispute cases">
-        @for (item of list()?.items; track item._id) {
-          <article class="dispute-row">
-            <span class="dispute-card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-                <path d="M10 6h4m-2 11h.01" />
-              </svg>
-            </span>
-            <div class="row-main">
-              <span class="reference">{{ item.reference }}</span>
-              <h2>{{ item.subject }}</h2>
-              <p>{{ item.category.replaceAll('_', ' ') | titlecase }} · {{ item.description }}</p>
-              @if (item.parties?.customer?.name || item.parties?.shop?.name) {
-                <small
-                  >{{ item.parties?.customer?.name || 'Customer' }} ·
-                  {{ item.parties?.shop?.name || 'Assigned shop' }}</small
-                >
+      @if (role() === 'customer') {
+        <section class="customer-dispute-table-card" aria-label="Dispute cases">
+          <table class="customer-dispute-table">
+            <thead>
+              <tr>
+                <th scope="col">Request ID</th>
+                <th scope="col">Device &amp; Brand</th>
+                <th scope="col">Issue / Problem</th>
+                <th scope="col">Request Date</th>
+                <th scope="col">Shop</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="dispute-action-heading">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of list()?.items; track item._id) {
+                <tr>
+                  <td class="dispute-request-id-cell">
+                    <strong [title]="item.repairRequestId">
+                      #{{ item.repairRequestId.slice(-8).toUpperCase() }}
+                    </strong>
+                    <span>Dispute {{ item.reference }}</span>
+                  </td>
+                  <td class="dispute-device-cell">
+                    <div class="dispute-device-content">
+                      <div class="dispute-device-thumbnail">
+                        @if (item.repair?.photos?.[0]; as photo) {
+                          <img [src]="photo.data" [alt]="item.repair?.appliance || 'Repair item'" />
+                        } @else {
+                          <svg viewBox="0 0 40 40" aria-hidden="true">
+                            <rect x="5" y="5" width="30" height="30" rx="5" />
+                            <circle cx="20" cy="20" r="6" />
+                          </svg>
+                        }
+                      </div>
+                      <div class="dispute-device-copy">
+                        <strong>{{ item.repair?.appliance || 'Repair request' }}</strong>
+                        <span>{{ item.repair?.brand }} {{ item.repair?.model }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="dispute-issue-cell" [title]="item.description">
+                    <div class="dispute-issue-copy">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                      <span>{{ item.description }}</span>
+                    </div>
+                    <small>{{ item.category.replaceAll('_', ' ') | titlecase }}</small>
+                  </td>
+                  <td class="dispute-date-cell">
+                    <div class="dispute-date-copy">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      <span>{{ item.createdAt | date: 'MMM d, y, h:mm a' }}</span>
+                    </div>
+                  </td>
+                  <td class="dispute-shop-cell">
+                    {{ item.parties?.shop?.name || 'Assigned shop' }}
+                  </td>
+                  <td>
+                    <span class="job-status" [attr.data-status]="item.status">
+                      {{ item.status.replaceAll('_', ' ') | titlecase }}
+                    </span>
+                  </td>
+                  <td class="dispute-action-cell">
+                    <details class="dispute-action-menu">
+                      <summary [attr.aria-label]="'Actions for dispute ' + item.reference">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <circle cx="12" cy="5" r="1.5" />
+                          <circle cx="12" cy="12" r="1.5" />
+                          <circle cx="12" cy="19" r="1.5" />
+                        </svg>
+                      </summary>
+                      <div class="dispute-action-popup">
+                        <a [routerLink]="customerDisputeDetailLink(item._id)">
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          View Details
+                        </a>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
               }
-            </div>
-            <div class="row-meta">
-              <span class="status dispute-list-status" [attr.data-status]="item.status"><span class="status-dot" aria-hidden="true"></span>{{
-                item.status.replaceAll('_', ' ') | titlecase
-              }}</span>
-              <span>Updated {{ item.updatedAt | date: 'mediumDate' }}</span>
-              <a class="view-dispute-link" [routerLink]="['/', role(), 'disputes', item._id]">
-                View details <span aria-hidden="true">›</span>
-              </a>
-            </div>
-          </article>
+            </tbody>
+          </table>
+        </section>
+      } @else {
+        <section class="dispute-list" aria-label="Dispute cases">
+          @for (item of list()?.items; track item._id) {
+            <article class="dispute-row">
+              <span class="dispute-card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+                  <path d="M10 6h4m-2 11h.01" />
+                </svg>
+              </span>
+              <div class="row-main">
+                <span class="reference">{{ item.reference }}</span>
+                <h2>{{ item.subject }}</h2>
+                <p>{{ item.category.replaceAll('_', ' ') | titlecase }} · {{ item.description }}</p>
+                @if (item.parties?.customer?.name || item.parties?.shop?.name) {
+                  <small
+                    >{{ item.parties?.customer?.name || 'Customer' }} ·
+                    {{ item.parties?.shop?.name || 'Assigned shop' }}</small
+                  >
+                }
+              </div>
+              <div class="row-meta">
+                <span class="status dispute-list-status" [attr.data-status]="item.status"><span class="status-dot" aria-hidden="true"></span>{{
+                  item.status.replaceAll('_', ' ') | titlecase
+                }}</span>
+                <span>Updated {{ item.updatedAt | date: 'mediumDate' }}</span>
+                <a class="view-dispute-link" [routerLink]="['/', role(), 'disputes', item._id]">
+                  View details <span aria-hidden="true">›</span>
+                </a>
+              </div>
+            </article>
+          }
+        </section>
+      }
+      @if (role() === 'customer') {
+        @if ((list()?.pagination?.total ?? 0) > pageSize) {
+          <app-job-pagination
+            variant="brand"
+            [total]="list()?.pagination?.total ?? 0"
+            [page]="list()?.pagination?.page ?? 1"
+            [pageSize]="pageSize"
+            [disabled]="loading()"
+            ariaLabel="Dispute pages"
+            (pageChange)="goToPage($event)"
+            (pageSizeChange)="changePageSize($event)"
+          />
         }
-      </section>
-      <p class="result-count">{{ list()?.pagination?.total }} case(s)</p>
-      <app-pagination
-        [total]="list()?.pagination?.total ?? 0"
-        [page]="list()?.pagination?.page ?? 1"
-        [pageSize]="pageSize"
-        [disabled]="loading()"
-        ariaLabel="Dispute pages"
-        (pageChange)="goToPage($event)"
-        (pageSizeChange)="changePageSize($event)"
-      />
+      } @else {
+        <p class="result-count">{{ list()?.pagination?.total }} case(s)</p>
+        <app-pagination
+          [total]="list()?.pagination?.total ?? 0"
+          [page]="list()?.pagination?.page ?? 1"
+          [pageSize]="pageSize"
+          [disabled]="loading()"
+          ariaLabel="Dispute pages"
+          (pageChange)="goToPage($event)"
+          (pageSizeChange)="changePageSize($event)"
+        />
+      }
     } @else {
       <div class="state-card">
         <h2>No disputes found</h2>
@@ -257,71 +376,137 @@
   }
 
   @if (mode() === 'detail') {
-    <a class="back-link detail-back-link" [routerLink]="['/', role(), 'disputes']">
-      <span aria-hidden="true">←</span> All disputes
-    </a>
+    @if (role() === 'customer') {
+      <a class="detail-back-link" [routerLink]="['/', role(), 'disputes']">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+        Back to Dispute Management
+      </a>
+    } @else {
+      <a class="back-link detail-back-link" [routerLink]="['/', role(), 'disputes']">
+        <span aria-hidden="true">←</span> All disputes
+      </a>
+    }
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
     @if (loading()) {
       <p class="state-card" role="status">Loading dispute details…</p>
     } @else if (dispute(); as item) {
-      @if (role() !== 'admin') {
-        <div class="detail-breadcrumb"><span>Disputes</span><span aria-hidden="true">/</span><strong>Dispute Details</strong></div>
-      }
-      @if (role() === 'admin') {
-        <app-admin-page-header>
-          <h1 adminPageTitle class="admin-page-title">Dispute details</h1>
-          <p adminPageDescription class="admin-page-description dispute-reference">{{ item.reference }}</p>
-          <span adminPageActions class="status detail-status" [attr.data-status]="item.status">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
+      @if (role() === 'customer') {
+        <h1 class="detail-page-title">Dispute Details</h1>
+        <section class="request-hero" aria-label="Dispute summary">
+          <div class="request-hero-photo">
+            @if (item.repair?.photos?.[0]; as photo) {
+              <img
+                [src]="photo.data"
+                [alt]="(item.repair?.appliance || 'Repair item') + ' photo'"
+              />
+            } @else {
+              <span class="hero-image-placeholder" role="img" aria-label="No image available">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <circle cx="8.5" cy="9" r="1.5" />
+                  <path d="m21 15-5-5L5 21" />
+                </svg>
+              </span>
+            }
+          </div>
+          <div class="request-hero-copy">
+            <h2>{{ item.subject }}</h2>
+            <span class="request-id">
+              Dispute ID: <strong>{{ item.reference }}</strong>
+            </span>
+            <span class="request-id">
+              Request ID: <strong>#{{ item.repairRequestId.slice(-8).toUpperCase() }}</strong>
+            </span>
+          </div>
+          <span class="detail-status" [attr.data-status]="item.status">
+            <span class="status-dot" aria-hidden="true"></span>
             {{ item.status.replaceAll('_', ' ') | titlecase }}
           </span>
-        </app-admin-page-header>
+        </section>
+        <ol class="request-progress" aria-label="Dispute progress">
+          @for (step of disputeProgressSteps; track step; let index = $index) {
+            <li
+              [class.completed]="isDisputeComplete(item) || index + 1 < disputeProgressStep(item)"
+              [class.current]="!isDisputeComplete(item) && index + 1 === disputeProgressStep(item)"
+              [attr.aria-current]="
+                !isDisputeComplete(item) && index + 1 === disputeProgressStep(item) ? 'step' : null
+              "
+            >
+              <span class="progress-marker" aria-hidden="true">
+                @if (isDisputeComplete(item) || index + 1 < disputeProgressStep(item)) {
+                  <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+                } @else {
+                  {{ index + 1 }}
+                }
+              </span>
+              <strong>{{ step }}</strong>
+              @if (disputeProgressDate(item, index); as stepDate) {
+                <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
+              }
+            </li>
+          }
+        </ol>
       } @else {
+        @if (role() !== 'admin') {
+          <div class="detail-breadcrumb">
+            <span>Disputes</span><span aria-hidden="true">/</span><strong>Dispute Details</strong>
+          </div>
+        }
         <app-admin-page-header>
           <h1 adminPageTitle class="admin-page-title">Dispute details</h1>
           <p adminPageDescription class="admin-page-description dispute-reference">
             {{ item.reference }}
           </p>
           <span adminPageActions class="status detail-status" [attr.data-status]="item.status">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M12 7v5l3 2" />
+            </svg>
             {{ item.status.replaceAll('_', ' ') | titlecase }}
           </span>
         </app-admin-page-header>
-      }
-
-      @if (item.repair; as repair) {
-        <section class="panel repair-overview">
-          <div class="repair-device">
-            @if (repair.photos[0]; as photo) {
-              <img [src]="photo.data" [alt]="repair.appliance + ' repair'" />
-            } @else {
-              <span class="device-placeholder" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2" /><path d="M10 5h4m-2 13h.01" /></svg>
-              </span>
-            }
-            <div>
-              <span class="repair-kind">{{ repair.appliance }}</span>
-              <h2>{{ repair.brand || repair.appliance }}{{ repair.model ? ' ' + repair.model : '' }}</h2>
-              <p><span aria-hidden="true">⌁</span> {{ repairWork(repair) }}</p>
+        @if (item.repair; as repair) {
+          <section class="panel repair-overview">
+            <div class="repair-device">
+              @if (repair.photos[0]; as photo) {
+                <img [src]="photo.data" [alt]="repair.appliance + ' repair'" />
+              } @else {
+                <span class="device-placeholder" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <rect x="7" y="2.5" width="10" height="19" rx="2" />
+                    <path d="M10 5h4m-2 13h.01" />
+                  </svg>
+                </span>
+              }
+              <div>
+                <span class="repair-kind">{{ repair.appliance }}</span>
+                <h2>{{ repair.brand || repair.appliance }}{{ repair.model ? ' ' + repair.model : '' }}</h2>
+                <p><span aria-hidden="true">⌁</span> {{ repairWork(repair) }}</p>
+              </div>
             </div>
-          </div>
-          <div class="repair-fact">
-            <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>
-            <div><small>Repair Status</small><strong class="repair-status">{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</strong></div>
-          </div>
-          <div class="repair-fact">
-            <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5" /></svg></span>
-            <div><small>Accepted Quote</small><strong>{{ repair.quotation ? (repair.quotation.amount | currency: repair.quotation.currency) : 'Not available' }}</strong></div>
-          </div>
-          <div class="repair-fact">
-            <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 10h16" /></svg></span>
-            <div><small>Repaired On</small><strong>{{ repairCompletedAt(repair) ? (repairCompletedAt(repair)! | date: 'MMM d, y') : '—' }}</strong></div>
-          </div>
-        </section>
+            <div class="repair-fact">
+              <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>
+              <div><small>Repair Status</small><strong class="repair-status">{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</strong></div>
+            </div>
+            <div class="repair-fact">
+              <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5" /></svg></span>
+              <div><small>Accepted Quote</small><strong>{{ repair.quotation ? (repair.quotation.amount | currency: repair.quotation.currency) : 'Not available' }}</strong></div>
+            </div>
+            <div class="repair-fact">
+              <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 10h16" /></svg></span>
+              <div><small>Repaired On</small><strong>{{ repairCompletedAt(repair) ? (repairCompletedAt(repair)! | date: 'MMM d, y') : '—' }}</strong></div>
+            </div>
+          </section>
+        }
       }
 
+      <div
+        class="customer-detail-layout"
+        [class.customer-layout-disabled]="role() !== 'customer'"
+      >
+        <div class="customer-detail-main">
       <div class="detail-grid dispute-detail-grid">
         <section class="panel detail-card complaint-card">
           <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z" /><path d="M9 9h6m-6 3h4" /></svg></span>Original Complaint</h2>
@@ -358,11 +543,41 @@
           </section>
         }
 
-        <section class="panel detail-card participants-card">
-          <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19zm12-8.5a3 3 0 1 0 0-6m1 8.5h.8a3.7 3.7 0 0 1 3.7 3.7v.8h-4" /></svg></span>Participants</h2>
-          <div class="participant"><span class="participant-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></svg></span><p><strong>Customer</strong><span>{{ item.parties?.customer?.name || 'Customer' }}</span></p></div>
-          <div class="participant"><span class="participant-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10 12 4l9 6v10H3zM8 20v-6h8v6M7 10h.01M12 10h.01M17 10h.01" /></svg></span><p><strong>Repair Shop</strong><span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span></p></div>
-        </section>
+        @if (role() !== 'customer') {
+          <section class="panel detail-card participants-card">
+            <h2 class="panel-title">
+              <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="9" cy="8" r="3" />
+                  <path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19zm12-8.5a3 3 0 1 0 0-6m1 8.5h.8a3.7 3.7 0 0 1 3.7 3.7v.8h-4" />
+                </svg>
+              </span>
+              Participants
+            </h2>
+            <div class="participant">
+              <span class="participant-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 20a7 7 0 0 1 14 0" />
+                </svg>
+              </span>
+              <p>
+                <strong>Customer</strong><span>{{ item.parties?.customer?.name || 'Customer' }}</span>
+              </p>
+            </div>
+            <div class="participant">
+              <span class="participant-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 10 12 4l9 6v10H3zM8 20v-6h8v6M7 10h.01M12 10h.01M17 10h.01" />
+                </svg>
+              </span>
+              <p>
+                <strong>Repair Shop</strong
+                ><span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span>
+              </p>
+            </div>
+          </section>
+        }
 
         <section class="panel detail-card history-card">
           <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>Status History</h2>
@@ -389,6 +604,13 @@
         <section class="panel">
           <h2>Shop response</h2>
           <p>{{ response.explanation }}</p>
+          @if (response.message) {
+            <p><strong>Message to customer:</strong> {{ response.message }}</p>
+          }
+          @if (response.proposedResolution) {
+            <p><strong>Proposed next step:</strong> {{ response.proposedResolution }}</p>
+          }
+          <p><strong>Submitted:</strong> {{ response.respondedAt | date: 'medium' }}</p>
           @if (response.attachments.length) {
             <div class="evidence-grid">
               @for (file of response.attachments; track file.name) {
@@ -453,6 +675,10 @@
                 }
               </ul>
               <p><strong>Total:</strong> {{ charge.total | currency }}</p>
+              <p><strong>Requested:</strong> {{ charge.requestedAt | date: 'medium' }}</p>
+              @if (charge.decidedAt) {
+                <p><strong>Decision date:</strong> {{ charge.decidedAt | date: 'medium' }}</p>
+              }
               @if (charge.message) {
                 <p>{{ charge.message }}</p>
               }
@@ -553,6 +779,15 @@
               {{ verification.comments || 'Customer confirmed the issue is resolved.' }} ·
               {{ verification.confirmedAt | date: 'medium' }}
             </p>
+            @if (verification.attachments.length) {
+              <div class="evidence-grid">
+                @for (file of verification.attachments; track file.name) {
+                  <a [href]="attachmentUrl(file)" target="_blank" rel="noopener">
+                    {{ file.name }}
+                  </a>
+                }
+              </div>
+            }
           }
         </section>
       }
@@ -1443,6 +1678,213 @@
           </button>
         </section>
       }
+        </div>
+        @if (role() === 'customer') {
+          <aside class="customer-detail-sidebar">
+            <section
+              class="detail-section customer-detail-sidebar-card"
+              aria-label="Dispute and repair information"
+            >
+              <section class="customer-detail-block">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 5h14v14H5zM8 9h8m-8 4h8m-8 4h4" />
+                  </svg>
+                  Dispute Information
+                </h2>
+                <dl class="sidebar-facts">
+                  <div><dt>Dispute ID</dt><dd>{{ item.reference }}</dd></div>
+                  <div>
+                    <dt>Category</dt>
+                    <dd>{{ item.category.replaceAll('_', ' ') | titlecase }}</dd>
+                  </div>
+                  <div><dt>Priority</dt><dd>{{ item.priority | titlecase }}</dd></div>
+                  @if (item.amountInDispute !== undefined) {
+                    <div><dt>Amount in dispute</dt><dd>{{ item.amountInDispute | currency }}</dd></div>
+                  }
+                  <div><dt>Submitted</dt><dd>{{ item.createdAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                  <div><dt>Last updated</dt><dd>{{ item.updatedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                  @if (item.disputeClosedAt) {
+                    <div><dt>Closed</dt><dd>{{ item.disputeClosedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                  }
+                </dl>
+              </section>
+
+              @if (item.expectedResolution) {
+                <section class="customer-detail-block">
+                  <h2 class="section-heading">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 3v18m9-9H3" />
+                    </svg>
+                    Expected Resolution
+                  </h2>
+                  <p class="dispute-sidebar-copy">{{ item.expectedResolution }}</p>
+                </section>
+              }
+
+              @if (item.repair; as repair) {
+                <section class="customer-detail-block">
+                  <h2 class="section-heading">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" />
+                    </svg>
+                    Original Repair
+                  </h2>
+                  <dl class="sidebar-facts">
+                    <div><dt>Device</dt><dd>{{ repair.appliance }}</dd></div>
+                    <div><dt>Brand</dt><dd>{{ repair.brand || 'Not specified' }}</dd></div>
+                    <div><dt>Model</dt><dd>{{ repair.model || 'Not specified' }}</dd></div>
+                    <div>
+                      <dt>Repair status</dt>
+                      <dd>{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</dd>
+                    </div>
+                    <div><dt>Submitted</dt><dd>{{ repair.createdAt | date: 'MMM d, y' }}</dd></div>
+                    @if (repair.quotation) {
+                      <div>
+                        <dt>Accepted quote</dt>
+                        <dd>{{ repair.quotation.amount | currency: repair.quotation.currency }}</dd>
+                      </div>
+                    }
+                  </dl>
+                  @if (repair.photos.length) {
+                    <div class="dispute-repair-photos" aria-label="Original repair photos">
+                      @for (photo of repair.photos; track $index) {
+                        <a [href]="photo.data" target="_blank" rel="noopener">
+                          <img [src]="photo.data" [alt]="repair.appliance + ' repair photo'" />
+                        </a>
+                      }
+                    </div>
+                  }
+                  <a class="shop-link" [routerLink]="['/customer/repair-requests', repair.id]">
+                    View repair details
+                  </a>
+                </section>
+              }
+
+              <section class="customer-detail-block">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="9" cy="8" r="3" />
+                    <path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19zm12-8.5a3 3 0 1 0 0-6m1 8.5h.8a3.7 3.7 0 0 1 3.7 3.7v.8h-4" />
+                  </svg>
+                  Participants
+                </h2>
+                <div class="dispute-participant">
+                  <strong>Customer</strong>
+                  <span>{{ item.parties?.customer?.name || 'Customer' }}</span>
+                  @if (item.parties?.customer?.email) {
+                    <span>{{ item.parties?.customer?.email }}</span>
+                  }
+                </div>
+                <div class="dispute-participant">
+                  <strong>Repair Shop</strong>
+                  <span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span>
+                  @if (item.parties?.shop?.email) {
+                    <span>{{ item.parties?.shop?.email }}</span>
+                  }
+                  @if (item.parties?.shop?.id) {
+                    <a class="shop-link" [routerLink]="['/customer/shops', item.parties?.shop?.id]">
+                      View shop
+                    </a>
+                  }
+                </div>
+              </section>
+
+              @if (
+                item.resolution.description ||
+                item.resolution.notes ||
+                item.resolution.decision ||
+                item.resolution.completionNotes ||
+                item.resolution.state === 'proposed' ||
+                item.resolution.state === 'final'
+              ) {
+                <section class="customer-detail-block">
+                  <h2 class="section-heading">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m5 12 4 4L19 6" />
+                    </svg>
+                    Resolution Details
+                  </h2>
+                  <dl class="sidebar-facts">
+                    @if (item.resolution.state) {
+                      <div><dt>Resolution status</dt><dd>{{ item.resolution.state | titlecase }}</dd></div>
+                    }
+                    @if (item.resolution.type) {
+                      <div><dt>Resolution type</dt><dd>{{ item.resolution.type.replaceAll('_', ' ') | titlecase }}</dd></div>
+                    }
+                    @if (item.resolution.description) {
+                      <div><dt>Proposal</dt><dd>{{ item.resolution.description }}</dd></div>
+                    }
+                    @if (item.resolution.notes) {
+                      <div><dt>Proposal notes</dt><dd>{{ item.resolution.notes }}</dd></div>
+                    }
+                    @if (item.resolution.amount !== undefined) {
+                      <div><dt>Amount</dt><dd>{{ item.resolution.amount | currency }}</dd></div>
+                    }
+                    @if (item.resolution.responsibleParty) {
+                      <div>
+                        <dt>Responsible party</dt>
+                        <dd>{{ item.resolution.responsibleParty.replaceAll('_', ' ') | titlecase }}</dd>
+                      </div>
+                    }
+                    @if (item.resolution.decision) {
+                      <div><dt>Decision</dt><dd>{{ item.resolution.decision | titlecase }}</dd></div>
+                    }
+                    @if (item.resolution.decisionExplanation) {
+                      <div><dt>Decision details</dt><dd>{{ item.resolution.decisionExplanation }}</dd></div>
+                    }
+                    @if (item.resolution.completionNotes) {
+                      <div><dt>Completion notes</dt><dd>{{ item.resolution.completionNotes }}</dd></div>
+                    }
+                    @if (item.resolution.refundTransactionId) {
+                      <div><dt>Refund transaction</dt><dd>{{ item.resolution.refundTransactionId }}</dd></div>
+                    }
+                    <div>
+                      <dt>Required action</dt>
+                      <dd>{{ item.resolution.requiredActionCompleted ? 'Completed' : 'Pending' }}</dd>
+                    </div>
+                    @if (item.resolution.proposedAt) {
+                      <div><dt>Proposed</dt><dd>{{ item.resolution.proposedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                    }
+                    @if (item.resolution.resolvedAt) {
+                      <div><dt>Resolved</dt><dd>{{ item.resolution.resolvedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                    }
+                    @if (item.resolution.customerAcceptedAt) {
+                      <div><dt>Customer accepted</dt><dd>{{ item.resolution.customerAcceptedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                    }
+                    @if (item.resolution.shopAcceptedAt) {
+                      <div><dt>Shop accepted</dt><dd>{{ item.resolution.shopAcceptedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                    }
+                    @if (item.resolution.closedAt) {
+                      <div><dt>Resolution closed</dt><dd>{{ item.resolution.closedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                    }
+                    @if (item.resolution.customerRejectionReason) {
+                      <div><dt>Customer response</dt><dd>{{ item.resolution.customerRejectionReason }}</dd></div>
+                    }
+                    @if (item.resolution.shopRejectionReason) {
+                      <div><dt>Shop response</dt><dd>{{ item.resolution.shopRejectionReason }}</dd></div>
+                    }
+                  </dl>
+                  @if (item.resolution.documents.length || item.resolution.completionDocuments.length) {
+                    <div class="evidence-grid">
+                      @for (file of item.resolution.documents; track file.name) {
+                        <a [href]="attachmentUrl(file)" target="_blank" rel="noopener">
+                          {{ file.name }}
+                        </a>
+                      }
+                      @for (file of item.resolution.completionDocuments; track file.name) {
+                        <a [href]="attachmentUrl(file)" target="_blank" rel="noopener">
+                          {{ file.name }}
+                        </a>
+                      }
+                    </div>
+                  }
+                </section>
+              }
+            </section>
+          </aside>
+        }
+      </div>
     }
   }
 </main>
