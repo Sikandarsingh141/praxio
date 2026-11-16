@@ -160,29 +160,80 @@
       <nav class="navigation-group" aria-label="Main navigation">
         @for (item of visibleNavigation; track item.label) {
           @if (item.available) {
-            <a
-              class="nav-item"
-              [routerLink]="item.route"
-              [attr.title]="
-                item.route === '/customer/messages' && chat.unreadMessageCountError()
-                  ? chat.unreadMessageCountError()
-                  : null
-              "
-              routerLinkActive="nav-active"
-              [routerLinkActiveOptions]="{ exact: true }"
-              (click)="closeMenu()"
-            >
-              <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
-              <span>{{ item.label }}</span>
-              @if (item.route === '/customer/messages' && chat.unreadMessageCount() > 0) {
-                <span
-                  class="nav-unread-count"
-                  [attr.aria-label]="chat.unreadMessageCount() + ' unread messages'"
+            @if (item.label === 'My Repair Requests') {
+              <button
+                class="nav-item request-nav-toggle"
+                [class.nav-active]="isRequestSectionActive()"
+                [attr.aria-expanded]="requestSectionExpanded()"
+                aria-controls="customer-request-submenu"
+                type="button"
+                (click)="toggleRequestSection()"
+              >
+                <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
+                <span>{{ item.label }}</span>
+                <svg
+                  class="nav-chevron"
+                  [class.nav-chevron-expanded]="requestSectionExpanded()"
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
                 >
-                  {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
-                </span>
+                  <path d="m5 7.5 5 5 5-5" />
+                </svg>
+              </button>
+              @if (requestSectionExpanded()) {
+                <div class="request-submenu" id="customer-request-submenu">
+                  @for (submenu of requestSubmenus; track submenu.route) {
+                    <a
+                      class="nav-item request-submenu-item"
+                      [routerLink]="submenu.route"
+                      [class.nav-active]="isRequestSubmenuActive(submenu.route)"
+                      [attr.aria-current]="isRequestSubmenuActive(submenu.route) ? 'page' : null"
+                      (click)="closeMenu()"
+                    >
+                      <span class="request-submenu-dot" aria-hidden="true"></span>
+                      <span class="request-submenu-label">{{ submenu.label }}</span>
+                      @if (requestCounts(); as counts) {
+                        <span
+                          class="nav-request-count"
+                          [attr.aria-label]="counts[submenu.countKey] + ' requests'"
+                        >
+                          {{ counts[submenu.countKey] }}
+                        </span>
+                      } @else if (requestCountsLoading()) {
+                        <span class="nav-request-count" aria-label="Loading request count">-</span>
+                      }
+                    </a>
+                  }
+                  @if (requestCountsError(); as countError) {
+                    <p class="nav-count-error" role="alert">{{ countError }}</p>
+                  }
+                </div>
               }
-            </a>
+            } @else {
+              <a
+                class="nav-item"
+                [routerLink]="item.route"
+                [attr.title]="
+                  item.route === '/customer/messages' && chat.unreadMessageCountError()
+                    ? chat.unreadMessageCountError()
+                    : null
+                "
+                routerLinkActive="nav-active"
+                [routerLinkActiveOptions]="{ exact: true }"
+                (click)="closeMenu()"
+              >
+                <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>
+                <span>{{ item.label }}</span>
+                @if (item.route === '/customer/messages' && chat.unreadMessageCount() > 0) {
+                  <span
+                    class="nav-unread-count"
+                    [attr.aria-label]="chat.unreadMessageCount() + ' unread messages'"
+                  >
+                    {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
+                  </span>
+                }
+              </a>
+              }
           } @else {
             <span class="nav-item nav-disabled" [attr.aria-label]="item.label + ', coming soon'">
               <span class="nav-icon" [attr.data-icon]="item.icon" aria-hidden="true"></span>

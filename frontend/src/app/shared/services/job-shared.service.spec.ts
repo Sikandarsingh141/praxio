@@ -13,6 +13,7 @@ import {
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { RepairWorkflowJob } from '../models/repair-workflow.models';
+import { DisputeListResult } from '../models/disputes.models';
 import { DisputesService } from './disputes.service';
 import { JobSharedService } from './job-shared.service';
 
@@ -98,6 +99,41 @@ describe('JobSharedService', () => {
         'accepted-inspection-pending',
       ]);
       expect(lists.active.map((item) => item.id)).toEqual(['inspection-in-progress']);
+      done();
+    });
+  });
+
+  it('returns counts for customer request navigation from the existing category rules', (done) => {
+    const pendingRequest = customerRequest('pending', 'confirmed');
+    pendingRequest.shops = [
+      { id: 'shop-1', name: 'Repair shop', responseStatus: 'customer_accepted' },
+    ];
+    customerApi.getRepairRequests.and.returnValue(
+      of([
+        customerRequest('open'),
+        pendingRequest,
+        customerRequest('active', 'in_progress'),
+        customerRequest('completed', 'completed', false, 'completed'),
+      ]),
+    );
+    disputesApi.list.and.returnValue(
+      of({
+        items: [],
+        pagination: { page: 1, limit: 1, total: 2, totalPages: 2 },
+        summary: { TOTAL: 2 },
+      } satisfies DisputeListResult),
+    );
+
+    service.customerJobCounts().subscribe((counts) => {
+      expect(counts).toEqual({
+        new: 1,
+        pending: 1,
+        active: 1,
+        disputed: 2,
+        completed: 1,
+      });
+      expect(customerApi.getRepairRequests).toHaveBeenCalledTimes(1);
+      expect(disputesApi.list).toHaveBeenCalledOnceWith('customer', { page: 1, limit: 1 });
       done();
     });
   });

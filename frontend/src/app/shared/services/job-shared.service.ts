@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { EMPTY, Observable, expand, map, reduce } from 'rxjs';
+import { EMPTY, Observable, expand, forkJoin, map, reduce } from 'rxjs';
 import { CustomerPortalService } from '../../customer/services/customer-portal.service';
 import { CustomerRepairRequest } from '../../customer/models/customer-portal.models';
 import { ShopRepairRequest } from '../../shop/repair-requests/shop-repair-requests.models';
@@ -20,6 +20,14 @@ import {
 import { DisputesService } from './disputes.service';
 
 const PAGE_LIMIT = 50;
+
+export interface CustomerJobCounts {
+  new: number;
+  pending: number;
+  active: number;
+  disputed: number;
+  completed: number;
+}
 
 @Injectable({ providedIn: 'root' })
 export class JobSharedService {
@@ -41,6 +49,23 @@ export class JobSharedService {
           .filter((request) => this.matchesCustomerCategory(request, category))
           .map((request) => this.customerListItem(request)),
       ),
+    );
+  }
+
+  customerJobCounts(): Observable<CustomerJobCounts> {
+    return forkJoin({
+      requests: this.customer.getRepairRequests(),
+      disputes: this.disputes.list('customer', { page: 1, limit: 1 }),
+    }).pipe(
+      map(({ requests, disputes }) => ({
+        new: requests.filter((request) => this.matchesCustomerCategory(request, 'new')).length,
+        pending: requests.filter((request) => this.matchesCustomerCategory(request, 'pending'))
+          .length,
+        active: requests.filter((request) => this.matchesCustomerCategory(request, 'active')).length,
+        disputed: disputes.pagination.total,
+        completed: requests.filter((request) => this.matchesCustomerCategory(request, 'completed'))
+          .length,
+      })),
     );
   }
 

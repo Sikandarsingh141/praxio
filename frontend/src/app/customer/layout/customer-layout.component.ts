@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   computed,
+  DestroyRef,
   HostListener,
   inject,
   OnDestroy,
@@ -9,10 +10,19 @@ import {
   signal,
   ViewChild,
 } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  NavigationEnd,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { NotificationCenterComponent } from '../../core/notifications/notification-center.component';
 import { ChatService } from '../../shared/services/chat.service';
+import { CustomerJobCounts, JobSharedService } from '../../shared/services/job-shared.service';
 
 @Component({
   selector: 'app-customer-layout',
@@ -26,9 +36,45 @@ export class CustomerLayout implements OnInit, OnDestroy {
   readonly authService = inject(AuthService);
   readonly chat = inject(ChatService);
   private readonly router = inject(Router);
+  private readonly jobs = inject(JobSharedService);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly requestSubmenus: Array<{
+    label: string;
+    route: string;
+    countKey: keyof CustomerJobCounts;
+  }> = [
+    { label: 'Open Requests', route: '/customer/jobs/new-jobs', countKey: 'new' },
+    { label: 'Pending Requests', route: '/customer/jobs/pending-jobs', countKey: 'pending' },
+    { label: 'Active Requests', route: '/customer/jobs/active-jobs', countKey: 'active' },
+    { label: 'Disputed Jobs', route: '/customer/jobs/disputed-jobs', countKey: 'disputed' },
+    { label: 'Completed Jobs', route: '/customer/jobs/completed-jobs', countKey: 'completed' },
+  ];
 
   ngOnInit(): void {
     if (this.profileOnly()) return;
+    this.requestCountsLoading.set(true);
+    this.jobs
+      .customerJobCounts()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (counts) => {
+          this.requestCounts.set(counts);
+          this.requestCountsLoading.set(false);
+        },
+        error: () => {
+          this.requestCountsError.set('Request counts could not be loaded.');
+          this.requestCountsLoading.set(false);
+        },
+      });
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (this.isRequestSectionActive()) this.requestSectionExpanded.set(true);
+      });
     this.chat.connect();
     this.chat.refreshUnreadMessageCount();
   }
@@ -41,6 +87,10 @@ export class CustomerLayout implements OnInit, OnDestroy {
   readonly accountMenuOpen = signal(false);
   readonly signingOut = signal(false);
   readonly searchingShops = signal(false);
+  readonly requestSectionExpanded = signal(this.isRequestSectionActive());
+  readonly requestCounts = signal<CustomerJobCounts | null>(null);
+  readonly requestCountsLoading = signal(false);
+  readonly requestCountsError = signal('');
   shopSearchQuery = '';
   readonly mobileSearchOpen = signal(false);
   readonly profileOnly = computed(() => {
@@ -56,9 +106,8 @@ export class CustomerLayout implements OnInit, OnDestroy {
     { label: 'Dashboard', icon: 'grid', route: '/customer', available: true },
     { label: 'Find repair shops', icon: 'search', route: '/customer/shops', available: true },
     {
-      label: 'Open Request',
+      label: 'My Repair Requests',
       icon: 'tool',
-      route: '/customer/jobs/new-jobs',
       available: true,
     },
     {
@@ -67,8 +116,6 @@ export class CustomerLayout implements OnInit, OnDestroy {
       route: '/customer/repair-requests',
       available: true,
     },
-    { label: 'Pending Jobs', icon: 'tool', route: '/customer/jobs/pending-jobs', available: true },
-    { label: 'Active Jobs', icon: 'tool', route: '/customer/jobs/active-jobs', available: true },
     {
       label: 'My quotations',
       icon: 'receipt',
@@ -79,18 +126,6 @@ export class CustomerLayout implements OnInit, OnDestroy {
       label: 'Messages',
       icon: 'message',
       route: '/customer/messages',
-      available: true,
-    },
-    {
-      label: 'Completed Jobs',
-      icon: 'tool',
-      route: '/customer/jobs/completed-jobs',
-      available: true,
-    },
-    {
-      label: 'Disputed Jobs',
-      icon: 'message',
-      route: '/customer/jobs/disputed-jobs',
       available: true,
     },
   ];
@@ -122,6 +157,19 @@ export class CustomerLayout implements OnInit, OnDestroy {
 
   closeMenu(): void {
     this.menuOpen.set(false);
+  }
+
+  toggleRequestSection(): void {
+    this.requestSectionExpanded.update((expanded) => !expanded);
+  }
+
+  isRequestSectionActive(): boolean {
+    return this.requestSubmenus.some((item) => this.isRequestSubmenuActive(item.route));
+  }
+
+  isRequestSubmenuActive(route: string): boolean {
+    const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
+    return currentRoute === route || currentRoute.startsWith(`${route}/`);
   }
 
   submitShopSearch(): void {

@@ -3,9 +3,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, provideRouter, Router } from '@angular/router';
-import { filter, firstValueFrom, take } from 'rxjs';
+import { filter, firstValueFrom, of, take } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerLayout } from './customer-layout.component';
 
 @Component({
@@ -28,7 +29,15 @@ describe('CustomerLayout', () => {
         provideRouter([
           { path: 'login', component: LoginStub },
           { path: 'customer/shops', component: LoginStub },
+          { path: 'customer/jobs/disputed-jobs', component: LoginStub },
         ]),
+        {
+          provide: JobSharedService,
+          useValue: {
+            customerJobCounts: () =>
+              of({ new: 4, pending: 2, active: 3, disputed: 1, completed: 5 }),
+          },
+        },
       ],
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);
@@ -40,7 +49,7 @@ describe('CustomerLayout', () => {
     httpTestingController.verify();
   });
 
-  it('shows customer navigation and supports opening the mobile menu', () => {
+  it('shows expandable request navigation with counts and selected submenu styling', async () => {
     authService.login('person@example.com', 'password').subscribe();
     httpTestingController.expectOne(`${environment.apiBaseUrl}/auth/login`).flush({
       data: {
@@ -83,12 +92,49 @@ describe('CustomerLayout', () => {
       'data:image/png;base64,abc',
     );
     expect(fixture.nativeElement.textContent).toContain('Find repair shops');
-    expect(fixture.nativeElement.textContent).toContain('Open Request');
+    expect(fixture.nativeElement.textContent).toContain('My Repair Requests');
     expect(fixture.nativeElement.textContent).not.toContain('My repair requests');
+    expect(fixture.nativeElement.textContent).toContain('All Repair Requests');
     expect(fixture.nativeElement.textContent).toContain('My quotations');
     expect(fixture.nativeElement.textContent).not.toContain('Disputes');
-    expect(fixture.nativeElement.textContent).toContain('Disputed Jobs');
     expect(fixture.nativeElement.textContent).not.toContain('Assigned Jobs');
+
+    const requestToggle = fixture.nativeElement.querySelector(
+      '.request-nav-toggle',
+    ) as HTMLButtonElement;
+    expect(requestToggle.getAttribute('aria-expanded')).toBe('false');
+    requestToggle.click();
+    fixture.detectChanges();
+
+    const submenuLabels = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.request-submenu-label',
+      ) as NodeListOf<HTMLElement>,
+    ).map((element) => element.textContent?.trim());
+    const requestCounts = Array.from(
+      fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
+    ).map((element) => element.textContent?.trim());
+    expect(submenuLabels).toEqual([
+      'Open Requests',
+      'Pending Requests',
+      'Active Requests',
+      'Disputed Jobs',
+      'Completed Jobs',
+    ]);
+    expect(requestCounts).toEqual(['4', '2', '3', '1', '5']);
+    expect(requestToggle.getAttribute('aria-expanded')).toBe('true');
+
+    requestToggle.click();
+    fixture.detectChanges();
+    await router.navigateByUrl('/customer/jobs/disputed-jobs');
+    fixture.detectChanges();
+    expect(requestToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(
+      fixture.nativeElement
+        .querySelector('.request-submenu-item.nav-active')
+        ?.textContent?.trim(),
+    ).toContain('Disputed Jobs');
+
     const profileLink = fixture.nativeElement.querySelector(
       'a[href="/customer/profile"]',
     ) as HTMLAnchorElement;
