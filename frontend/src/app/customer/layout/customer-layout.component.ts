@@ -76,12 +76,6 @@ export class CustomerLayout implements OnInit, OnDestroy {
       available: true,
     },
     {
-      label: 'Disputes',
-      icon: 'message',
-      route: '/customer/disputes',
-      available: true,
-    },
-    {
       label: 'Messages',
       icon: 'message',
       route: '/customer/messages',
