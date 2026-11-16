@@ -219,20 +219,45 @@
 
               <!-- Action -->
               <td class="td-action">
-                <div class="action-buttons-group">
-                  <a class="action-btn-icon" [routerLink]="[detailRoute, job.id]" [attr.aria-label]="'View job ' + job.id" title="View Details">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                    </svg>
-                  </a>
-                  <a class="action-btn-icon action-btn-more" [routerLink]="[detailRoute, job.id]" [attr.aria-label]="'More options for job ' + job.id" title="More options">
+                <div class="action-menu-anchor">
+                  <button
+                    type="button"
+                    class="action-btn-icon action-btn-more"
+                    cdkOverlayOrigin
+                    #jobMenuOrigin="cdkOverlayOrigin"
+                    [attr.aria-label]="'Job actions for job ' + job.id"
+                    [attr.aria-expanded]="openActionsJobId() === job.id"
+                    (click)="toggleActions(job.id)"
+                    title="Job actions"
+                  >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <circle cx="12" cy="5" r="1.5" fill="currentColor"/>
                       <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
                       <circle cx="12" cy="19" r="1.5" fill="currentColor"/>
                     </svg>
-                  </a>
+                  </button>
+                  <ng-template
+                    cdkConnectedOverlay
+                    [cdkConnectedOverlayOrigin]="jobMenuOrigin"
+                    [cdkConnectedOverlayOpen]="openActionsJobId() === job.id"
+                    [cdkConnectedOverlayPositions]="detailMenuPositions"
+                    [cdkConnectedOverlayPush]="true"
+                    (overlayOutsideClick)="closeActions()"
+                  >
+                    <div class="job-action-menu" role="group" [attr.aria-label]="'Actions for job ' + job.id">
+                      <a
+                        class="job-action-menu-link"
+                        [routerLink]="[detailRoute, job.id]"
+                        (click)="closeActions()"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        View Details
+                      </a>
+                    </div>
+                  </ng-template>
                 </div>
               </td>
             </tr>

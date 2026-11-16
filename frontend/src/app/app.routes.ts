@@ -133,22 +133,6 @@ export const routes: Routes = [
         data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'pending' },
       },
       {
-        path: 'jobs/assigned-jobs',
-        loadComponent: () =>
-          import('./customer/jobs/assigned-jobs/listing/customer-assigned-jobs-listing.page').then(
-            (module) => module.CustomerAssignedJobsListingPage,
-          ),
-        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'assigned' },
-      },
-      {
-        path: 'jobs/assigned-jobs/:id',
-        loadComponent: () =>
-          import('./customer/jobs/assigned-jobs/detail/customer-assigned-job-detail.page').then(
-            (module) => module.CustomerAssignedJobDetailPage,
-          ),
-        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'assigned' },
-      },
-      {
         path: 'jobs/active-jobs',
         loadComponent: () =>
           import('./customer/jobs/active-jobs/listing/customer-active-jobs-listing.page').then(

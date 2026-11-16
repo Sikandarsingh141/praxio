@@ -68,7 +68,6 @@ export class CustomerLayout implements OnInit, OnDestroy {
       available: true,
     },
     { label: 'Pending Jobs', icon: 'tool', route: '/customer/jobs/pending-jobs', available: true },
-    { label: 'Assigned Jobs', icon: 'tool', route: '/customer/jobs/assigned-jobs', available: true },
     { label: 'Active Jobs', icon: 'tool', route: '/customer/jobs/active-jobs', available: true },
     {
       label: 'My quotations',

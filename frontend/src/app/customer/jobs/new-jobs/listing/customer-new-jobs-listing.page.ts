@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminPageHeaderComponent } from '../../../../shared/components/page-header/admin-page-header.component';
@@ -18,6 +19,7 @@ import { CustomerJobCategory, JobListItem } from '../../../../shared/models/job.
   imports: [
     AdminPageHeaderComponent,
     CommonModule,
+    OverlayModule,
     RouterLink,
     EmptyStateComponent,
     JobPaginationComponent,
@@ -33,6 +35,19 @@ export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
   readonly detailRoute: string = '/customer/jobs/new-jobs';
   readonly appliedFilters = signal<FilterValues>({});
   readonly failedImages = signal<Set<string>>(new Set<string>());
+  readonly openActionsJobId = signal<string | null>(null);
+  readonly detailMenuPositions: ConnectedPosition[] = [
+    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -6 },
+  ];
+
+  toggleActions(jobId: string): void {
+    this.openActionsJobId.update((current) => (current === jobId ? null : jobId));
+  }
+
+  closeActions(): void {
+    this.openActionsJobId.set(null);
+  }
 
   hasValidImage(job: JobListItem): boolean {
     if (!job.imageData || typeof job.imageData !== 'string') return false;

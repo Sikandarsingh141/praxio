@@ -85,6 +85,7 @@ describe('CustomerLayout', () => {
     expect(fixture.nativeElement.textContent).toContain('Find repair shops');
     expect(fixture.nativeElement.textContent).toContain('My repair requests');
     expect(fixture.nativeElement.textContent).toContain('My quotations');
+    expect(fixture.nativeElement.textContent).not.toContain('Assigned Jobs');
     const profileLink = fixture.nativeElement.querySelector(
       'a[href="/customer/profile"]',
     ) as HTMLAnchorElement;

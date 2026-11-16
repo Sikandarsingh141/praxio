@@ -176,7 +176,12 @@ export class JobSharedService {
     category: Exclude<CustomerJobCategory, 'disputed'>,
   ): boolean {
     const status = request.repairJob?.status;
-    const hasResponse = request.quotations.length > 0 ||
+    const hasAcceptedQuotation =
+      request.acceptedQuotation?.status === 'accepted' ||
+      request.quotations.some((quotation) => quotation.status === 'accepted') ||
+      request.shops?.some((shop) => shop.responseStatus === 'customer_accepted') === true;
+    const hasResponse = hasAcceptedQuotation ||
+      request.quotations.length > 0 ||
       request.shops?.some((shop) =>
         ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
           shop.responseStatus ?? '',
@@ -188,7 +193,10 @@ export class JobSharedService {
         return request.status === 'open' && !request.repairJob;
       case 'pending':
         return request.status === 'open' &&
-          ((!request.repairJob && hasResponse) || status === 'repair_declined');
+          ((!request.repairJob && hasResponse) ||
+            (hasAcceptedQuotation &&
+              (status === 'confirmed' || status === 'inspection_pending')) ||
+            status === 'repair_declined');
       case 'assigned':
         return request.status === 'open' &&
           (status === 'confirmed' || status === 'inspection_pending');
@@ -266,7 +274,8 @@ export class JobSharedService {
       createdAt: request.createdAt,
       amount: request.acceptedQuotation?.amount ?? null,
       currency: request.acceptedQuotation?.currency,
-      quotationSubmitted: request.quotations.length > 0 ||
+      quotationSubmitted: request.acceptedQuotation?.status === 'accepted' ||
+        request.quotations.length > 0 ||
         request.shops?.some((shop) =>
           ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
             shop.responseStatus ?? '',

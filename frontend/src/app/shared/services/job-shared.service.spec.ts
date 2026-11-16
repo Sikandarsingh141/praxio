@@ -78,6 +78,30 @@ describe('JobSharedService', () => {
     });
   });
 
+  it('keeps accepted requests pending until the shop starts inspection', (done) => {
+    const confirmedRequest = customerRequest('accepted-confirmed', 'confirmed');
+    const inspectionPendingRequest = customerRequest('accepted-inspection-pending', 'inspection_pending');
+    const inspectionStartedRequest = customerRequest('inspection-in-progress', 'inspection_in_progress');
+    for (const request of [confirmedRequest, inspectionPendingRequest]) {
+      request.shops = [{ id: 'shop-1', name: 'Repair shop', responseStatus: 'customer_accepted' }];
+    }
+    customerApi.getRepairRequests.and.returnValue(
+      of([confirmedRequest, inspectionPendingRequest, inspectionStartedRequest]),
+    );
+
+    forkJoin({
+      pending: service.customerJobs('pending'),
+      active: service.customerJobs('active'),
+    }).subscribe((lists) => {
+      expect(lists.pending.map((item) => item.id)).toEqual([
+        'accepted-confirmed',
+        'accepted-inspection-pending',
+      ]);
+      expect(lists.active.map((item) => item.id)).toEqual(['inspection-in-progress']);
+      done();
+    });
+  });
+
   it('exposes only actionable customer quotations for pending job responses', (done) => {
     const request = customerRequest('pending-quotation');
     request.shops = [{ id: 'shop-1', name: 'Repair shop' }];

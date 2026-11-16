@@ -311,12 +311,6 @@
   .td-action {
     white-space: nowrap;
 
-    .action-buttons-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
     .action-btn-icon {
       display: inline-flex;
       align-items: center;
@@ -436,6 +430,7 @@
   font-size: 0.78rem;
   font-weight: 650;
   text-align: left;
+  text-decoration: none;
 }
 
 .quotation-menu-button:hover {
@@ -444,6 +439,10 @@
 
 .quotation-menu-accept {
   color: #087c3b;
+}
+
+.quotation-menu-view {
+  color: #334155;
 }
 
 .quotation-menu-decline {
@@ -470,13 +469,6 @@
   border-color: #efcfcb !important;
   background: #fff5f3;
   color: #a34842;
-}
-
-.no-pending-quotation {
-  margin: 0;
-  color: #68756d;
-  font-size: 0.74rem;
-  line-height: 1.4;
 }
 
 .quotation-response-backdrop {

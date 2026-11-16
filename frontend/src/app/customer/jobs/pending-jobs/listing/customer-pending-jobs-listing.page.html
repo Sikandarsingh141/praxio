@@ -214,19 +214,6 @@
               <!-- Action -->
               <td class="td-action">
                 <div class="action-cell-content">
-                  <div class="action-buttons-group">
-                    <a
-                      class="action-btn-icon"
-                      [routerLink]="[detailRoute, job.id]"
-                      [attr.aria-label]="'View job ' + job.id"
-                      title="View Details"
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/>
-                      </svg>
-                    </a>
-                  </div>
                   <div class="action-menu-anchor">
                     <button
                       type="button"
@@ -258,38 +245,45 @@
                         [class.has-multiple]="(job.pendingQuotations?.length ?? 0) > 1"
                         [attr.aria-label]="'Quotation actions for job ' + job.id"
                       >
-                        @if (job.pendingQuotations?.length) {
-                          @for (quotation of job.pendingQuotations; track quotation.id) {
-                            <div class="quotation-action-item">
-                              @if ((job.pendingQuotations?.length ?? 0) > 1) {
-                                <span class="quotation-action-summary">
-                                  {{ quotation.shopName }} · {{ quotation.amount | currency: quotation.currency }}
-                                </span>
-                              }
-                              <button
-                                type="button"
-                                class="quotation-menu-button quotation-menu-accept"
-                                (click)="prepareQuotationResponse(job, quotation, 'accepted')"
-                              >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="m5 12 4 4L19 6" />
-                                </svg>
-                                Accept
-                              </button>
-                              <button
-                                type="button"
-                                class="quotation-menu-button quotation-menu-decline"
-                                (click)="prepareQuotationResponse(job, quotation, 'declined')"
-                              >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="m7 7 10 10M17 7 7 17" />
-                                </svg>
-                                Decline
-                              </button>
-                            </div>
-                          }
-                        } @else {
-                          <p class="no-pending-quotation">No quotation is waiting for a response.</p>
+                        <a
+                          class="quotation-menu-button quotation-menu-view"
+                          [routerLink]="[detailRoute, job.id]"
+                          (click)="closeActions()"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          View Details
+                        </a>
+                        @for (quotation of job.pendingQuotations ?? []; track quotation.id) {
+                          <div class="quotation-action-item">
+                            @if ((job.pendingQuotations?.length ?? 0) > 1) {
+                              <span class="quotation-action-summary">
+                                {{ quotation.shopName }} · {{ quotation.amount | currency: quotation.currency }}
+                              </span>
+                            }
+                            <button
+                              type="button"
+                              class="quotation-menu-button quotation-menu-accept"
+                              (click)="prepareQuotationResponse(job, quotation, 'accepted')"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m5 12 4 4L19 6" />
+                              </svg>
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              class="quotation-menu-button quotation-menu-decline"
+                              (click)="prepareQuotationResponse(job, quotation, 'declined')"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="m7 7 10 10M17 7 7 17" />
+                              </svg>
+                              Decline
+                            </button>
+                          </div>
                         }
                       </div>
                     </ng-template>
