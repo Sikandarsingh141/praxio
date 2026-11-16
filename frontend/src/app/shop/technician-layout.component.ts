@@ -1,12 +1,11 @@
-import { HttpErrorResponse, HttpClient } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { finalize } from 'rxjs';
-import { environment } from '../../environments/environment';
-import { ApiEnvelope, RegistrationNotification } from '../core/auth/auth.models';
+import { finalize, Subscription } from 'rxjs';
 import { AuthService } from '../core/auth/auth.service';
 import { NotificationCenterComponent } from '../core/notifications/notification-center.component';
+import { NotificationRealtimeService } from '../core/notifications/notification-realtime.service';
 import { ChatService } from '../shared/chat.service';
 import { TechniciansService } from './technicians.service';
 import { Technician, TechnicianSearchResult } from './technicians.models';
@@ -24,19 +23,20 @@ import { Technician, TechnicianSearchResult } from './technicians.models';
   templateUrl: './technician-layout.component.html',
   styleUrl: './technician-layout.component.scss',
 })
-export class TechnicianLayoutComponent implements OnInit {
+export class TechnicianLayoutComponent implements OnInit, OnDestroy {
   readonly auth = inject(AuthService);
   readonly chat = inject(ChatService);
-  private readonly http = inject(HttpClient);
   private readonly technicians = inject(TechniciansService);
   private readonly router = inject(Router);
+  private readonly notificationRealtime = inject(NotificationRealtimeService);
+  private notificationCountSubscription?: Subscription;
 
   readonly technician = signal<Technician | null>(null);
   readonly loadingAvailability = signal(false);
   readonly error = signal('');
   readonly accountMenuOpen = signal(false);
   readonly sidebarOpen = signal(false);
-  readonly unreadNotificationCount = signal(3);
+  readonly unreadNotificationCount = signal(0);
 
   // Global search state
   readonly searchQuery = signal('');
@@ -57,24 +57,14 @@ export class TechnicianLayoutComponent implements OnInit {
   ngOnInit(): void {
     this.chat.refreshUnreadMessageCount();
     this.loadTechnician();
-    this.refreshNotificationCount();
+    this.notificationCountSubscription =
+      this.notificationRealtime.unreadCount$.subscribe((count) =>
+        this.unreadNotificationCount.set(count),
+      );
   }
 
-  private refreshNotificationCount(): void {
-    this.http
-      .get<ApiEnvelope<{ notifications: RegistrationNotification[] }>>(
-        `${environment.apiBaseUrl}/notifications/my`,
-      )
-      .subscribe({
-        next: (res) => {
-          const list = res.data?.notifications || [];
-          const unread = list.filter((n) => !n.isRead).length;
-          this.unreadNotificationCount.set(unread);
-        },
-        error: () => {
-          // fallback to reasonable default
-        },
-      });
+  ngOnDestroy(): void {
+    this.notificationCountSubscription?.unsubscribe();
   }
 
   @HostListener('window:keydown', ['$event'])

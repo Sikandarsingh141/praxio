@@ -1,14 +1,26 @@
-<section class="page">
+<section class="page" [class.active-jobs-page]="isActiveJobsRoute()">
   <!-- ========================================================================= -->
   <!-- DASHBOARD VIEW                                                            -->
   <!-- ========================================================================= -->
   @if (view() === 'dashboard') {
     <!-- Dashboard Top Header -->
-    <header class="dash-greeting-row">
-      <div class="greeting-left">
-        <h1>Dashboard</h1>
+    <app-admin-page-header>
+      <h1 adminPageTitle class="admin-page-title" id="technician-dashboard-title">Dashboard</h1>
+      <p adminPageDescription class="admin-page-description">
+        A live view of assigned repairs, active jobs, and daily schedule.
+      </p>
+      <div adminPageActions class="header-actions">
+        <button
+          class="refresh-button"
+          type="button"
+          [attr.aria-busy]="loading()"
+          (click)="loadDashboard()"
+        >
+          <span aria-hidden="true">⟳</span>
+          {{ loading() ? 'Refreshing…' : 'Refresh data' }}
+        </button>
       </div>
-    </header>
+    </app-admin-page-header>
 
     @if (error()) {
       <p class="message error" role="alert">{{ error() }}</p>
@@ -17,73 +29,94 @@
       <p class="message success" role="status">{{ success() }}</p>
     }
 
+    <!-- Performance Summary Section Heading -->
+    <div class="section-heading">
+      <div>
+        <h2 id="overview-title">Performance summary</h2>
+      </div>
+    </div>
+
     <!-- 5 Modern KPI Cards Row -->
     <section class="kpi-grid" aria-label="KPI overview">
       <!-- Total Assigned Jobs -->
       <article class="kpi-card green-accent" routerLink="/technician/jobs">
-        <div class="kpi-icon total">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="6" width="18" height="15" rx="2" />
-            <path d="M8 6V4h8v2M3 11h18M10 11v2h4v-2" />
-          </svg>
+        <div class="kpi-left">
+          <div class="kpi-icon total">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="6" width="18" height="15" rx="2" />
+              <path d="M8 6V4h8v2M3 11h18M10 11v2h4v-2" />
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <strong>{{ dashboard()?.kpis?.totalAssigned ?? 0 }}</strong>
+            <small>Total Assigned Jobs</small>
+          </div>
         </div>
-        <div class="kpi-info">
-          <strong>{{ dashboard()?.kpis?.totalAssigned ?? 0 }}</strong>
-          <small>Total Assigned Jobs</small>
-        </div>
+        <span class="kpi-trend-badge green-trend">↑ +20%</span>
       </article>
 
       <!-- Pending Jobs -->
       <article class="kpi-card amber-accent" (click)="setFilter('pending'); view.set('jobs')">
-        <div class="kpi-icon pending">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 2" />
-          </svg>
+        <div class="kpi-left">
+          <div class="kpi-icon pending">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <strong>{{ dashboard()?.kpis?.pendingJobs ?? 0 }}</strong>
+            <small>Pending Jobs</small>
+          </div>
         </div>
-        <div class="kpi-info">
-          <strong>{{ dashboard()?.kpis?.pendingJobs ?? 0 }}</strong>
-          <small>Pending Jobs</small>
-        </div>
+        <span class="kpi-trend-badge amber-trend">↑ +12%</span>
       </article>
 
       <!-- Active Jobs -->
       <article class="kpi-card blue-accent" routerLink="/technician/active-jobs">
-        <div class="kpi-icon active">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m8 5 11 7-11 7z" />
-          </svg>
+        <div class="kpi-left">
+          <div class="kpi-icon active">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m8 5 11 7-11 7z" />
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <strong>{{ dashboard()?.kpis?.activeJobs ?? 0 }}</strong>
+            <small>Active Jobs</small>
+          </div>
         </div>
-        <div class="kpi-info">
-          <strong>{{ dashboard()?.kpis?.activeJobs ?? 0 }}</strong>
-          <small>Active Jobs</small>
-        </div>
+        <span class="kpi-trend-badge blue-trend">↑ +50%</span>
       </article>
 
       <!-- Completed Jobs -->
       <article class="kpi-card emerald-accent" routerLink="/technician/completed-jobs">
-        <div class="kpi-icon completed">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m5 12 4 4L19 6" />
-          </svg>
+        <div class="kpi-left">
+          <div class="kpi-icon completed">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m5 12 4 4L19 6" />
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <strong>{{ dashboard()?.kpis?.completedJobs ?? 0 }}</strong>
+            <small>Completed Jobs</small>
+          </div>
         </div>
-        <div class="kpi-info">
-          <strong>{{ dashboard()?.kpis?.completedJobs ?? 0 }}</strong>
-          <small>Completed Jobs</small>
-        </div>
+        <span class="kpi-trend-badge green-trend">↑ +25%</span>
       </article>
 
       <!-- Today's Jobs -->
       <article class="kpi-card purple-accent" (click)="setFilter('today'); view.set('jobs')">
-        <div class="kpi-icon today">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="5" width="18" height="16" rx="2" />
-            <path d="M7 3v4M17 3v4M3 10h18" />
-          </svg>
-        </div>
-        <div class="kpi-info">
-          <strong>{{ dashboard()?.kpis?.todayJobs ?? 0 }}</strong>
-          <small>Today's Jobs</small>
+        <div class="kpi-left">
+          <div class="kpi-icon today">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M7 3v4M17 3v4M3 10h18" />
+            </svg>
+          </div>
+          <div class="kpi-info">
+            <strong>{{ dashboard()?.kpis?.todayJobs ?? 0 }}</strong>
+            <small>Today's Jobs</small>
+          </div>
         </div>
       </article>
     </section>
@@ -94,8 +127,9 @@
       <article class="dash-box current-job-card" aria-label="Current Active Job">
         <header class="dash-card-header">
           <div class="card-title-group">
-            <svg viewBox="0 0 24 24" class="title-icon green-icon" aria-hidden="true">
-              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+            <svg viewBox="0 0 24 24" class="title-icon white-icon" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
             <h3>Current Job</h3>
           </div>
@@ -140,18 +174,40 @@
                 </span>
                 <span class="meta-item">
                   <svg viewBox="0 0 24 24" class="meta-icon" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                  <strong>Scheduled:</strong> {{ activeJob.scheduledDate ? (activeJob.scheduledDate | date: 'mediumDate') : 'Today' }}
+                  <strong>Scheduled:</strong> {{ activeJob.scheduledDate ? (activeJob.scheduledDate | date: 'mediumDate') + ' • ' + (activeJob.scheduledDate | date: 'shortTime') : 'Today' }}
                 </span>
               </div>
             </div>
 
             <!-- Action Buttons -->
             <div class="current-actions-col">
-              <button class="btn-primary-action" type="button" (click)="openProgressModal()">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
-                <span>Update Progress</span>
-                <svg viewBox="0 0 20 20" class="chevron-mini" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
-              </button>
+              @if (activeJob.status === 'confirmed' || activeJob.status === 'inspection_pending') {
+                <button class="btn-primary-action" type="button" (click)="confirmStartInspection(activeJob.id, activeJob.appliance)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  <span>Start Inspection</span>
+                </button>
+              } @else if (activeJob.status === 'inspection_in_progress') {
+                <button class="btn-primary-action" type="button" (click)="openInspectionModal(activeJob.id, activeJob.appliance)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  <span>Inspection &amp; Submit</span>
+                </button>
+              } @else if (activeJob.status === 'awaiting_customer_approval') {
+                <button class="btn-outline-action" type="button" (click)="onViewActiveJob()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span>Awaiting Approval</span>
+                </button>
+              } @else if (activeJob.status === 'inspection_approved') {
+                <button class="btn-primary-action" type="button" (click)="confirmStartApprovedRepair(activeJob.id, activeJob.appliance)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+                  <span>Start Repair</span>
+                </button>
+              } @else {
+                <button class="btn-primary-action" type="button" (click)="openProgressModal()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+                  <span>Update Progress</span>
+                  <svg viewBox="0 0 20 20" class="chevron-mini" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                </button>
+              }
               <button
                 class="btn-outline-action"
                 type="button"
@@ -167,8 +223,13 @@
           <div class="stepper-track">
             <!-- Step 1: Assigned -->
             <div class="step-item step-completed">
-              <div class="step-node"><span class="step-dot"></span></div>
+              <div class="step-node">
+                <svg viewBox="0 0 24 24" class="step-check-icon" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </div>
               <span class="step-label">Assigned</span>
+              <span class="step-time">{{ activeJob.assignedAt ? (activeJob.assignedAt | date: 'MMM d, h:mm a') : 'Nov 15, 9:10 AM' }}</span>
             </div>
             <div class="step-line active"></div>
 
@@ -176,19 +237,20 @@
             <div class="step-item step-active">
               <div class="step-node"><span class="step-dot"></span></div>
               <span class="step-label">In Progress</span>
+              <span class="step-time">{{ activeJob.scheduledDate ? (activeJob.scheduledDate | date: 'MMM d, h:mm a') : 'Nov 15, 11:00 AM' }}</span>
             </div>
             <div class="step-line"></div>
 
             <!-- Step 3: Testing -->
             <div class="step-item">
-              <div class="step-node"><span class="step-dot"></span></div>
+              <div class="step-node"></div>
               <span class="step-label">Testing</span>
             </div>
             <div class="step-line"></div>
 
             <!-- Step 4: Completed -->
             <div class="step-item">
-              <div class="step-node"><span class="step-dot"></span></div>
+              <div class="step-node"></div>
               <span class="step-label">Completed</span>
             </div>
           </div>
@@ -208,12 +270,12 @@
         <header class="dash-card-header">
           <div class="card-title-group">
             <svg viewBox="0 0 24 24" class="title-icon green-icon" aria-hidden="true">
-              <rect x="3" y="5" width="18" height="16" rx="2" />
-              <path d="M7 3v4M17 3v4M3 10h18" />
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
             <h3>Today's Schedule</h3>
           </div>
-          <a class="view-calendar-link" routerLink="/technician/jobs">View Calendar</a>
+          <a class="view-calendar-link" routerLink="/technician/jobs">View Calendar &rarr;</a>
         </header>
 
         <div class="schedule-items-list">
@@ -221,8 +283,8 @@
             @for (job of dashboard()!.todaySchedule; track job.id) {
               <div class="schedule-row" (click)="viewJob(job)">
                 <div class="schedule-time-col">
-                  <strong>{{ job.scheduledDate ? (job.scheduledDate | date: 'shortTime') : 'Scheduled' }}</strong>
-                  <small>{{ job.brand }} {{ job.model }}</small>
+                  <strong>{{ job.scheduledDate ? (job.scheduledDate | date: 'shortTime') : '11:00 AM' }}</strong>
+                  <small>{{ job.scheduledDate ? '- ' + (job.scheduledDate | date: 'shortTime') : '- 1:00 PM' }}</small>
                 </div>
                 <div class="schedule-details-col">
                   <strong>{{ job.appliance }}</strong>
@@ -239,6 +301,7 @@
                   >
                     {{ job.status === 'in_progress' ? 'In Progress' : 'Scheduled' }}
                   </span>
+                  <span class="chevron-arrow" aria-hidden="true">&rsaquo;</span>
                 </div>
               </div>
             }
@@ -258,8 +321,7 @@
         <header class="dash-card-header">
           <div class="card-title-group">
             <svg viewBox="0 0 24 24" class="title-icon green-icon" aria-hidden="true">
-              <rect x="3" y="6" width="18" height="15" rx="2" />
-              <path d="M8 6V4h8v2M3 11h18" />
+              <path d="M18 20V10M12 20V4M6 20v-6" />
             </svg>
             <h3>Job Overview</h3>
           </div>
@@ -340,12 +402,12 @@
         <header class="dash-card-header">
           <div class="card-title-group">
             <svg viewBox="0 0 24 24" class="title-icon green-icon" aria-hidden="true">
-              <rect x="3" y="6" width="18" height="15" rx="2" />
-              <path d="M8 6V4h8v2M3 11h18M10 11v2h4v-2" />
+              <rect x="2" y="7" width="20" height="14" rx="2" />
+              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
             </svg>
             <h3>Recently Assigned Jobs</h3>
           </div>
-          <a class="header-link" routerLink="/technician/jobs">View All</a>
+          <a class="header-link" routerLink="/technician/jobs">View All &rarr;</a>
         </header>
 
         <div class="recent-jobs-list">
@@ -379,7 +441,7 @@
                   >
                     {{ job.status === 'in_progress' ? 'In Progress' : (job.status === 'on_hold' ? 'Pending' : 'Scheduled') }}
                   </span>
-                  <span class="chevron-arrow">›</span>
+                  <span class="chevron-arrow" aria-hidden="true">&rsaquo;</span>
                 </div>
               </div>
             }
@@ -400,7 +462,7 @@
             </svg>
             <h3>Recent Activity</h3>
           </div>
-          <a class="header-link" routerLink="/technician/history">View All</a>
+          <a class="header-link" routerLink="/technician/history">View All &rarr;</a>
         </header>
 
         <div class="activity-timeline-list">
@@ -408,6 +470,9 @@
             @if (recentActs.length) {
               @for (act of recentActs.slice(0, 3); track $index) {
                 <div class="activity-item">
+                  <div class="activity-node-col">
+                    <span class="timeline-dot"></span>
+                  </div>
                   <div class="activity-icon-node" [attr.data-type]="act.type">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       @if (act.type === 'job_started') {
@@ -446,40 +511,116 @@
   <!-- MY ASSIGNED JOBS VIEW (media_1794781321819_87d340f0.jpg)                -->
   <!-- ========================================================================= -->
   @if (view() !== 'dashboard') {
-    <div class="jobs-view-container">
-      <!-- Breadcrumb -->
-      <nav class="jobs-breadcrumb" aria-label="Breadcrumb">
-        <a routerLink="/technician/dashboard" (click)="view.set('dashboard')" class="breadcrumb-link">
-          <svg viewBox="0 0 24 24" class="home-icon" aria-hidden="true">
-            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-          Dashboard
-        </a>
-        <span class="breadcrumb-sep">&gt;</span>
-        <span class="breadcrumb-current">My Assigned Jobs</span>
-      </nav>
+    <div
+      class="jobs-view-container"
+      [class.job-detail-focused]="view() === 'job-detail'"
+      [class.active-jobs-route]="isActiveJobsRoute()"
+      [class.active-job-details]="view() === 'job-detail' && isActiveJobsRoute()"
+      [class.completed-job-details]="view() === 'job-detail' && isCompletedJobsRoute()"
+    >
+      @if (view() === 'job-detail' && isActiveJobsRoute()) {
+        <nav class="jobs-breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/technician/active-jobs" (click)="view.set('active')" class="breadcrumb-link">Active Jobs</a>
+          <span class="breadcrumb-sep">&gt;</span>
+          <span class="breadcrumb-current">Job Details</span>
+        </nav>
+      } @else if (view() === 'job-detail' && isCompletedJobsRoute()) {
+        <nav class="jobs-breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/technician/completed-jobs" (click)="view.set('completed')" class="breadcrumb-link">
+            <svg viewBox="0 0 24 24" class="home-icon" aria-hidden="true">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Completed Jobs
+          </a>
+          <span class="breadcrumb-sep">&gt;</span>
+          <span class="breadcrumb-current">Job Details</span>
+        </nav>
+      } @else if (view() === 'job-detail') {
+        <button type="button" class="detail-back-link" (click)="backToJobs()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M20 12H9"/></svg>
+          Back to My Assigned Jobs
+        </button>
+      } @else {
+        <nav class="jobs-breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/technician/dashboard" (click)="view.set('dashboard')" class="breadcrumb-link">
+            <svg viewBox="0 0 24 24" class="home-icon" aria-hidden="true">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            Dashboard
+          </a>
+          <span class="breadcrumb-sep">&gt;</span>
+          <span class="breadcrumb-current">{{ isActiveJobsRoute() ? 'Active Jobs' : 'My Assigned Jobs' }}</span>
+        </nav>
+      }
 
       <!-- Page Heading with View Schedule Button -->
       <div class="jobs-header-row">
         <div class="title-group">
-          <h1 class="page-title">My Assigned Jobs</h1>
-          <p class="page-subtitle">Manage and work on repair requests assigned to you by your repair shop.</p>
+          @if (view() === 'job-detail') {
+            <h1 class="page-title">
+              {{ isActiveJobsRoute() ? 'Active Job Details' : (isCompletedJobsRoute() ? 'Completed Job Details' : 'Job Details') }}
+            </h1>
+            <p class="page-subtitle">
+              {{ isActiveJobsRoute()
+                ? 'View complete job information, inspection, progress, and repair details.'
+                : (isCompletedJobsRoute()
+                  ? 'Review completed repair information, customer details, and repair activity.'
+                  : 'View complete job information, update progress, and manage the repair.') }}
+            </p>
+          } @else {
+            <h1 class="page-title">{{ isActiveJobsRoute() ? 'Active Jobs' : 'My Assigned Jobs' }}</h1>
+            <p class="page-subtitle">
+              {{ isActiveJobsRoute()
+                ? 'View and manage all currently active repair jobs.'
+                : 'Manage and work on repair requests assigned to you by your repair shop.' }}
+            </p>
+          }
         </div>
-        <button type="button" class="btn-view-schedule" (click)="setFilter('today')">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          View Schedule
-        </button>
+        @if (view() === 'job-detail' && isCompletedJobsRoute()) {
+          <button type="button" class="completed-back-button" (click)="backToJobs()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6M20 12H9"/></svg>
+            Back to Completed Jobs
+          </button>
+        } @else if (view() === 'job-detail' && isActiveJobsRoute()) {
+          <button type="button" class="active-back-button" (click)="backToJobs()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6M20 12H9"/></svg>
+            Back to Active Jobs
+          </button>
+        } @else if (view() === 'job-detail' && details(); as repair) {
+          <span
+            class="detail-status-pill page-status-pill"
+            [class.in-progress]="repair.status === 'in_progress' || repair.status === 'inspection_in_progress'"
+            [class.scheduled]="repair.status === 'scheduled' || repair.status === 'confirmed'"
+            [class.pending]="repair.status === 'pending' || repair.status === 'on_hold'"
+            [class.completed]="repair.status === 'completed' || repair.status === 'repair_completed'"
+          >
+            <span class="status-pulse" aria-hidden="true"></span>
+            {{ repair.status === 'in_progress' || repair.status === 'inspection_in_progress' ? 'In Progress' : (repair.status.replace('_', ' ') | titlecase) }}
+          </span>
+        } @else if (view() !== 'job-detail') {
+          <button type="button" class="btn-view-schedule" (click)="setFilter('today')">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            View Schedule
+          </button>
+        }
       </div>
 
       <!-- Filters & Search Toolbar -->
+      @if (view() !== 'job-detail') {
       <div class="jobs-toolbar">
         <nav class="filter-pills-nav" aria-label="Filter jobs">
+          @if (isActiveJobsRoute()) {
+            <button type="button" class="pill-tab-btn active">
+              Active Jobs <span class="count-badge">{{ counts().active }}</span>
+            </button>
+          } @else {
           <button
             type="button"
             class="pill-tab-btn"
@@ -512,6 +653,7 @@
           >
             Completed <span class="count-badge">{{ counts().completed }}</span>
           </button>
+          }
         </nav>
 
         <div class="search-sort-group">
@@ -542,10 +684,12 @@
           </div>
         </div>
       </div>
+      }
 
       <!-- Split 2-Column Layout -->
-      <div class="jobs-split-layout">
+      <div class="jobs-split-layout" [class.active-job-list]="view() !== 'job-detail' && isActiveJobsRoute()">
         <!-- Left Column: Job Cards List -->
+        @if (view() !== 'job-detail') {
         <div class="jobs-list-column">
           <div class="jobs-cards-stack">
             @if (visibleJobs().length === 0) {
@@ -554,14 +698,15 @@
                   <rect x="3" y="6" width="18" height="15" rx="2" />
                   <path d="M8 6V4h8v2M3 11h18" />
                 </svg>
-                <p>No assigned jobs found.</p>
+                <p>{{ isActiveJobsRoute() ? 'No active jobs found.' : 'No assigned jobs found.' }}</p>
               </div>
             } @else {
               @for (job of pagedJobs(); track job.id) {
                 <div
                   class="job-card-item"
+                  [class.active-job-row]="isActiveJobsRoute()"
                   [class.selected]="selectedJobId() === job.id"
-                  (click)="openJob(job)"
+                  (click)="viewJob(job)"
                 >
                   <!-- Appliance Thumbnail -->
                   <div class="job-card-thumb">
@@ -627,23 +772,77 @@
                   </div>
 
                   <!-- Job Info -->
-                  <div class="job-card-body">
-                    <h4 class="job-appliance-title">{{ job.appliance }}</h4>
-                    <div class="job-meta-line">
-                      <span class="job-id-tag">#{{ job.id.slice(-8).toUpperCase() }}</span>
-                      <span class="meta-dot">·</span>
-                      <span class="customer-name-tag">{{ getCustomerName(job) }}</span>
+                  @if (isActiveJobsRoute()) {
+                    <div class="active-job-info">
+                      <h4>{{ job.appliance }}</h4>
+                      <p>{{ job.brand }} {{ job.model }}</p>
+                      <div class="active-job-meta">
+                        <span>
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                          <strong>Job ID:</strong> #{{ job.id.slice(-8).toUpperCase() }}
+                        </span>
+                        <span>
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          <strong>Scheduled:</strong> {{ job.scheduledDate ? (job.scheduledDate | date: 'mediumDate') + ' · ' + (job.scheduledDate | date: 'shortTime') : 'Not scheduled' }}
+                        </span>
+                        <span>
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                          {{ job.address || 'Location not specified' }}
+                        </span>
+                      </div>
                     </div>
-                    <div class="job-schedule-line">
-                      <svg viewBox="0 0 24 24" class="cal-mini-icon" aria-hidden="true">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                      <span>{{ job.scheduledDate ? (job.scheduledDate | date: 'mediumDate') + ' · ' + (job.scheduledDate | date: 'shortTime') : 'Not scheduled' }}</span>
+                    <div class="active-job-progress" aria-label="Job progress">
+                      <div class="active-progress-step complete">
+                        <span class="active-progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        <strong>Assigned</strong>
+                        <small>{{ job.assignedAt | date: 'MMM d, h:mm a' }}</small>
+                      </div>
+                      <span class="active-progress-line complete"></span>
+                      <div
+                        class="active-progress-step"
+                        [class.complete]="getCurrentJobStep(job.status) > 2"
+                        [class.current]="getCurrentJobStep(job.status) === 2"
+                      >
+                        <span class="active-progress-node">
+                          @if (getCurrentJobStep(job.status) > 2) {
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                          } @else {
+                            <span></span>
+                          }
+                        </span>
+                        <strong>Inspection</strong>
+                        <small>{{ job.status === 'inspection_in_progress' ? 'In Progress' : (job.scheduledDate ? (job.scheduledDate | date: 'MMM d, h:mm a') : 'In Progress') }}</small>
+                      </div>
+                      <span class="active-progress-line" [class.complete]="getCurrentJobStep(job.status) > 3"></span>
+                      <div class="active-progress-step" [class.complete]="getCurrentJobStep(job.status) > 3" [class.current]="getCurrentJobStep(job.status) === 3">
+                        <span class="active-progress-node"></span>
+                        <strong>Testing</strong>
+                      </div>
+                      <span class="active-progress-line" [class.complete]="getCurrentJobStep(job.status) > 3"></span>
+                      <div class="active-progress-step" [class.complete]="getCurrentJobStep(job.status) === 4">
+                        <span class="active-progress-node"></span>
+                        <strong>Completed</strong>
+                      </div>
                     </div>
-                  </div>
+                  } @else {
+                    <div class="job-card-body">
+                      <h4 class="job-appliance-title">{{ job.appliance }}</h4>
+                      <div class="job-meta-line">
+                        <span class="job-id-tag">#{{ job.id.slice(-8).toUpperCase() }}</span>
+                        <span class="meta-dot">·</span>
+                        <span class="customer-name-tag">{{ getCustomerName(job) }}</span>
+                      </div>
+                      <div class="job-schedule-line">
+                        <svg viewBox="0 0 24 24" class="cal-mini-icon" aria-hidden="true">
+                          <rect x="3" y="4" width="18" height="18" rx="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <span>{{ job.scheduledDate ? (job.scheduledDate | date: 'mediumDate') + ' · ' + (job.scheduledDate | date: 'shortTime') : 'Not scheduled' }}</span>
+                      </div>
+                    </div>
+                  }
 
                 <!-- Status & Chevron -->
                 <div class="job-card-aside">
@@ -670,8 +869,11 @@
 
           <!-- Pagination Footer -->
           <div class="left-pagination-bar">
-            <span class="pagination-info">Showing {{ pageStart() }}–{{ pageEnd() }} of {{ visibleJobs().length }} jobs</span>
-            <div class="pagination-controls">
+            <span class="pagination-info">
+              Showing {{ pageStart() }}–{{ pageEnd() }} of {{ visibleJobs().length }}
+              {{ isActiveJobsRoute() ? (visibleJobs().length === 1 ? 'active job' : 'active jobs') : 'jobs' }}
+            </span>
+            <div class="pagination-controls" [class.active-job-pagination]="isActiveJobsRoute()">
               <button
                 type="button"
                 class="page-nav-btn"
@@ -695,6 +897,7 @@
             </div>
           </div>
         </div>
+        }
 
         <!-- Right Column: Job Details Panel -->
         <div class="jobs-detail-column">
@@ -715,7 +918,7 @@
                   [class.pending]="repair.status === 'pending' || repair.status === 'on_hold'"
                   [class.completed]="repair.status === 'completed' || repair.status === 'repair_completed'"
                 >
-                  {{ repair.status === 'in_progress' ? 'In Progress' : (repair.status.replace('_', ' ') | titlecase) }}
+                  {{ repair.status === 'in_progress' || repair.status === 'inspection_in_progress' ? 'In Progress' : (repair.status.replace('_', ' ') | titlecase) }}
                 </span>
               </div>
 
@@ -738,73 +941,158 @@
                 </div>
 
                 <div class="detail-header-info">
+                  @if (isActiveJobsRoute() || isCompletedJobsRoute()) {
+                    <span class="request-eyebrow">REPAIR REQUEST #{{ repair.id ? repair.id.slice(-8).toUpperCase() : '' }}</span>
+                  }
                   <h2 class="detail-appliance-title">{{ repair.appliance }}</h2>
                   <p class="detail-model-subtitle">{{ repair.brand }} {{ repair.model || '' }}</p>
 
                   <div class="detail-meta-tags">
                     <span class="meta-tag">
-                      <svg viewBox="0 0 24 24" class="meta-icon" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      <strong>Customer:</strong> {{ getCustomerName(repair) }}
+                      <svg viewBox="0 0 24 24" class="meta-icon" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <strong>Job ID:</strong> #{{ repair.id.slice(-8).toUpperCase() }}
                     </span>
-                    <a class="meta-tag phone-tag" [href]="'tel:' + getCustomerPhone(repair)">
-                      <svg viewBox="0 0 24 24" class="meta-icon phone-icon" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      <span>{{ getCustomerPhone(repair) }}</span>
-                    </a>
+                    <span class="meta-tag">
+                      <svg viewBox="0 0 24 24" class="meta-icon" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      <strong>Scheduled:</strong>
+                      {{ repair.scheduledDate ? ((repair.scheduledDate | date: 'mediumDate') + ' · ' + (repair.scheduledDate | date: 'shortTime')) : 'Not scheduled' }}
+                    </span>
                     <span class="meta-tag">
                       <svg viewBox="0 0 24 24" class="meta-icon" aria-hidden="true"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
                       <span>{{ getCustomerAddress(repair) }}</span>
                     </span>
                   </div>
                 </div>
+
+                @if (isActiveJobsRoute()) {
+                  <span
+                    class="detail-status-pill active-detail-status"
+                    [class.in-progress]="repair.status === 'in_progress' || repair.status === 'inspection_in_progress'"
+                    [class.scheduled]="repair.status === 'scheduled' || repair.status === 'confirmed'"
+                    [class.pending]="repair.status === 'pending' || repair.status === 'on_hold'"
+                    [class.completed]="repair.status === 'completed' || repair.status === 'repair_completed'"
+                  >
+                    {{ repair.status === 'in_progress' || repair.status === 'inspection_in_progress' ? 'In Progress' : (repair.status.replace('_', ' ') | titlecase) }}
+                  </span>
+                } @else if (isCompletedJobsRoute()) {
+                  <span class="detail-status-pill completed completed-detail-status">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    Completed
+                  </span>
+                }
+
+                <div class="job-progress-stepper" aria-label="Job progress">
+                  <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) > 1" [class.active]="getCurrentJobStep(repair.status) === 1">
+                    <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span>Assigned</span>
+                  </div>
+                  <span class="progress-line" [class.complete]="getCurrentJobStep(repair.status) > 1"></span>
+                  <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) > 2" [class.active]="getCurrentJobStep(repair.status) === 2">
+                    <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></span>
+                    <span>{{ isActiveJobsRoute() ? 'Inspection' : 'In Progress' }}</span>
+                    @if (isActiveJobsRoute() && getCurrentJobStep(repair.status) === 2) {
+                      <small class="step-status-pill">
+                        {{ repair.status === 'on_hold' ? 'On Hold' : 'In Progress' }}
+                      </small>
+                    }
+                  </div>
+                  <span class="progress-line" [class.complete]="getCurrentJobStep(repair.status) > 2"></span>
+                  <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) > 3" [class.active]="getCurrentJobStep(repair.status) === 3">
+                    <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 12 11 14 15 10"/><circle cx="12" cy="12" r="9"/></svg></span>
+                    <span>Testing</span>
+                  </div>
+                  <span class="progress-line" [class.complete]="getCurrentJobStep(repair.status) > 3"></span>
+                  <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) === 4">
+                    <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
+                    <span>Completed</span>
+                  </div>
+                </div>
               </div>
 
               <!-- Action Buttons Row -->
               <div class="detail-actions-bar">
-                <button
-                  type="button"
-                  class="action-btn btn-update-progress"
-                  (click)="openProgressModal()"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                  <span>Update Progress</span>
-                  <svg viewBox="0 0 20 20" class="btn-chevron" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
-                </button>
+                @if (repair.status === 'confirmed' || repair.status === 'inspection_pending') {
+                  <button
+                    type="button"
+                    class="action-btn btn-primary-green"
+                    (click)="confirmStartInspection(repair.id, repair.appliance)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>Start Inspection / Checking</span>
+                  </button>
+                } @else if (repair.status === 'awaiting_customer_approval') {
+                  <button
+                    type="button"
+                    class="action-btn btn-amber-pill"
+                    (click)="detailTab.set('inspection')"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>Awaiting Customer Approval</span>
+                  </button>
+                } @else if (repair.status === 'inspection_approved') {
+                  <button
+                    type="button"
+                    class="action-btn btn-primary-green"
+                    (click)="confirmStartApprovedRepair(repair.id, repair.appliance)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+                    <span>Start Customer-Approved Repair</span>
+                  </button>
+                } @else if (repair.status === 'in_progress') {
+                  <button
+                    type="button"
+                    class="action-btn btn-update-progress"
+                    (click)="openProgressModal()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span>Update Progress</span>
+                    <svg viewBox="0 0 20 20" class="btn-chevron" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                  </button>
 
-                <button
-                  type="button"
-                  class="action-btn btn-outline"
-                  (click)="confirmHoldJob()"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                  <span>Place on Hold</span>
-                </button>
+                  <button
+                    type="button"
+                    class="action-btn btn-outline"
+                    (click)="confirmHoldJob()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    <span>Place on Hold</span>
+                  </button>
 
-                <button
-                  type="button"
-                  class="action-btn btn-light-green"
-                  (click)="openCompletionModal()"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                  <span>Complete Job</span>
-                </button>
+                  <button
+                    type="button"
+                    class="action-btn btn-light-green"
+                    (click)="openCompletionModal()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Complete Job</span>
+                  </button>
+                } @else if (repair.status === 'on_hold') {
+                  <button
+                    type="button"
+                    class="action-btn btn-primary-green"
+                    (click)="confirmStartJob()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+                    <span>Resume Repair</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn btn-update-progress"
+                    (click)="openProgressModal()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span>Update Progress</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn btn-light-green"
+                    (click)="openCompletionModal()"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>Complete Job</span>
+                  </button>
+                }
 
-                <button
-                  type="button"
-                  class="action-btn btn-outline"
-                  (click)="messageCustomer()"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <span>Message Customer</span>
-                </button>
-
-                <button
-                  type="button"
-                  class="action-btn btn-outline"
-                  (click)="messageShop()"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-                  <span>Message Shop</span>
-                </button>
               </div>
 
               <!-- Sub-navigation Tabs Row -->
@@ -821,20 +1109,20 @@
                 <button
                   type="button"
                   class="subtab-btn"
+                  [class.active]="detailTab() === 'inspection'"
+                  (click)="detailTab.set('inspection')"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  Inspection &amp; Diagnosis
+                </button>
+                <button
+                  type="button"
+                  class="subtab-btn"
                   [class.active]="detailTab() === 'timeline'"
                   (click)="detailTab.set('timeline')"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                   Progress &amp; Timeline
-                </button>
-                <button
-                  type="button"
-                  class="subtab-btn"
-                  [class.active]="detailTab() === 'messages'"
-                  (click)="detailTab.set('messages')"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  Messages <span class="tab-sub-badge">2</span>
                 </button>
                 <button
                   type="button"
@@ -942,8 +1230,45 @@
                     </div>
                   </div>
 
+                  <!-- Card 3: Repair Timeline & Activity -->
+                  <div class="inner-info-card detail-activity-card">
+                    <div class="inner-card-title">
+                      <svg viewBox="0 0 24 24" class="title-svg green-svg" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                      <h3>Repair Timeline &amp; Activity</h3>
+                    </div>
+                    @if (repair.timeline?.length) {
+                      <ol class="detail-activity-list">
+                        @for (event of (repair.timeline || []).slice(-3); track $index) {
+                          <li class="detail-activity-item">
+                            <span class="activity-check" aria-hidden="true">
+                              <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            <div class="activity-copy">
+                              <div class="activity-title-row">
+                                <strong>{{ event.action.replace('_', ' ') | titlecase }}</strong>
+                                <time>{{ event.at | date: 'MMM d, h:mm a' }}</time>
+                              </div>
+                              <span class="activity-author">by {{ event.actorName }} ({{ event.actorRole | titlecase }})</span>
+                              @if (event.notes) {
+                                <p>{{ event.notes }}</p>
+                              }
+                            </div>
+                          </li>
+                        }
+                      </ol>
+                    } @else {
+                      <p class="detail-activity-empty">No activity has been recorded yet.</p>
+                    }
+                    @if (getCurrentJobStep(repair.status) < 3) {
+                      <div class="activity-pending-step"><span></span><strong>Testing</strong><em>Pending</em></div>
+                    }
+                    @if (getCurrentJobStep(repair.status) < 4) {
+                      <div class="activity-pending-step"><span></span><strong>Completed</strong><em>Pending</em></div>
+                    }
+                  </div>
+
                   <!-- Card 3: Reported Issue -->
-                  <div class="inner-info-card">
+                  <div class="inner-info-card active-detail-hide">
                     <div class="inner-card-title">
                       <svg viewBox="0 0 24 24" class="title-svg amber-svg" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                       <h3>Reported Issue</h3>
@@ -952,7 +1277,7 @@
                   </div>
 
                   <!-- Card 4: Assigned Details -->
-                  <div class="inner-info-card">
+                  <div class="inner-info-card active-detail-hide">
                     <div class="inner-card-title">
                       <svg viewBox="0 0 24 24" class="title-svg green-svg" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                       <h3>Assigned Details</h3>
@@ -971,12 +1296,468 @@
                 </div>
               }
 
+              <!-- Subtab: Inspection & Diagnosis -->
+              @if (detailTab() === 'inspection') {
+                <div class="inspection-subtab-view">
+                  @if (repair.status === 'confirmed' || repair.status === 'inspection_pending') {
+                    <div class="inspection-callout-card">
+                      <div class="callout-icon-col">
+                        <svg viewBox="0 0 24 24" class="callout-svg" aria-hidden="true">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/>
+                          <line x1="16" y1="17" x2="8" y2="17"/>
+                          <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                      </div>
+                      <div class="callout-text-col">
+                        <h4>Pre-Repair Inspection Required</h4>
+                        <p>Perform an initial physical diagnosis before beginning any repair work on this appliance. Once started, you can record problems, findings, parts, estimated charges, and submit for customer approval.</p>
+                        <button
+                          type="button"
+                          class="action-btn btn-primary-green callout-btn"
+                          (click)="confirmStartInspection(repair.id, repair.appliance)"
+                          [disabled]="updating()"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                          <span>{{ updating() ? 'Starting…' : 'Start Inspection / Checking' }}</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+
+                  @if (repair.status === 'inspection_in_progress') {
+                    <form class="inspection-editor-layout" (ngSubmit)="saveInspection('submit')">
+                      <section class="inspection-editor-card" aria-labelledby="inspection-editor-title">
+                        <header class="inspection-editor-heading">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                          <div>
+                            <h4 id="inspection-editor-title">Inspection &amp; Diagnosis Report</h4>
+                            <p>Record your inspection findings, attach photos, and provide the estimated repair cost.</p>
+                          </div>
+                        </header>
+
+                        <div class="inspection-editor-fields">
+                          <label class="inspection-field">
+                            <span>Identified Problem</span>
+                            <span class="inspection-required-mark" aria-hidden="true">*</span>
+                            <textarea
+                              rows="2"
+                              maxlength="2000"
+                              required
+                              placeholder="Describe the problem observed..."
+                              [ngModel]="identifiedProblem()"
+                              (ngModelChange)="identifiedProblem.set($event)"
+                              name="inlineIdentifiedProblem"
+                            ></textarea>
+                          </label>
+                          <label class="inspection-field">
+                            <span>Inspection Findings</span>
+                            <span class="inspection-required-mark" aria-hidden="true">*</span>
+                            <textarea
+                              rows="2"
+                              maxlength="2000"
+                              required
+                              placeholder="Enter your inspection findings..."
+                              [ngModel]="findings()"
+                              (ngModelChange)="findings.set($event)"
+                              name="inlineInspectionFindings"
+                            ></textarea>
+                          </label>
+                          <label class="inspection-field">
+                            <span>Required Repair Work</span>
+                            <span class="inspection-required-mark" aria-hidden="true">*</span>
+                            <textarea
+                              rows="2"
+                              maxlength="2000"
+                              required
+                              placeholder="Describe the repair work required..."
+                              [ngModel]="requiredRepairWork()"
+                              (ngModelChange)="requiredRepairWork.set($event)"
+                              name="inlineRequiredRepairWork"
+                            ></textarea>
+                          </label>
+                          <div class="inspection-time-warranty">
+                            <label class="inspection-field">
+                              <span>Estimated Repair Time</span>
+                              <span class="inspection-required-mark" aria-hidden="true">*</span>
+                              <span class="inspection-time-controls">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  step="0.5"
+                                  required
+                                  placeholder="e.g. 2"
+                                  [ngModel]="inspectionTime()"
+                                  (ngModelChange)="inspectionTime.set($event === '' ? null : +$event)"
+                                  name="inlineInspectionTime"
+                                />
+                                <select
+                                  [ngModel]="inspectionTimeUnit()"
+                                  (ngModelChange)="inspectionTimeUnit.set($event)"
+                                  name="inlineInspectionTimeUnit"
+                                  aria-label="Estimated repair time unit"
+                                >
+                                  <option value="hours">Hours</option>
+                                  <option value="days">Days</option>
+                                </select>
+                              </span>
+                            </label>
+                            <label class="inspection-field">
+                              Warranty Offered
+                              <select
+                                [ngModel]="inspectionWarranty()"
+                                (ngModelChange)="inspectionWarranty.set($event)"
+                                name="inlineInspectionWarranty"
+                              >
+                                <option [value]="inspectionWarranty()">{{ inspectionWarranty() || 'Standard Warranty' }}</option>
+                                <option value="30 Days">30 Days</option>
+                                <option value="90 Days">90 Days</option>
+                                <option value="6 Months">6 Months</option>
+                                <option value="1 Year">1 Year</option>
+                              </select>
+                            </label>
+                          </div>
+                        </div>
+
+                        <details class="inspection-optional-details">
+                          <summary>Parts estimate (optional)</summary>
+                          <div class="inspection-parts-list">
+                            @for (part of inspectionParts(); track $index; let idx = $index) {
+                              <div class="inspection-part-row">
+                                <label>
+                                  Part name
+                                  <input
+                                    [ngModel]="part.name"
+                                    (ngModelChange)="updateInspectionPart(idx, 'name', $event)"
+                                    [name]="'inlinePartName' + idx"
+                                    maxlength="120"
+                                    placeholder="e.g. Replacement cable"
+                                  />
+                                </label>
+                                <label>
+                                  Qty
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    [ngModel]="part.quantity"
+                                    (ngModelChange)="updateInspectionPart(idx, 'quantity', $event)"
+                                    [name]="'inlinePartQuantity' + idx"
+                                  />
+                                </label>
+                                <label>
+                                  Price each
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    [ngModel]="part.unitPrice"
+                                    (ngModelChange)="updateInspectionPart(idx, 'unitPrice', $event)"
+                                    [name]="'inlinePartPrice' + idx"
+                                    placeholder="0.00"
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  class="inspection-remove-part"
+                                  (click)="removeInspectionPart(idx)"
+                                  [disabled]="inspectionParts().length <= 1"
+                                  aria-label="Remove part"
+                                >×</button>
+                              </div>
+                            }
+                            <button type="button" class="inspection-add-part" (click)="addInspectionPart()">+ Add part</button>
+                          </div>
+                        </details>
+
+                        <section class="inspection-photos-section" aria-label="Diagnostic photos">
+                          <h5>Diagnostic Photos</h5>
+                          <div class="inspection-photo-grid">
+                            @if (repair.inspection || repair.repairJobDetails?.inspection; as savedInspection) {
+                              @for (image of (savedInspection.images || []); track $index) {
+                                <button
+                                  type="button"
+                                  class="inspection-photo"
+                                  (click)="openLightbox(image.data)"
+                                  [attr.aria-label]="'View saved diagnostic photo ' + ($index + 1)"
+                                >
+                                  <img [src]="image.data" alt="Saved diagnostic photo" />
+                                </button>
+                              }
+                            }
+                            @for (preview of inspectionImagePreviews(); track preview.url; let idx = $index) {
+                              <div class="inspection-photo">
+                                <img [src]="preview.url" [alt]="preview.name" />
+                                <button
+                                  type="button"
+                                  class="inspection-remove-photo"
+                                  (click)="removeInspectionImage(idx)"
+                                  [attr.aria-label]="'Remove ' + preview.name"
+                                >×</button>
+                              </div>
+                            }
+                            <label class="inspection-upload-tile">
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                multiple
+                                (change)="chooseInspectionImages($event)"
+                              />
+                              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>
+                              <strong>Upload Photos</strong>
+                              <span>PNG, JPG, WEBP (Max 1.2 MB total)</span>
+                            </label>
+                          </div>
+                          @if (inspectionImagesError()) {
+                            <p class="inspection-form-error" role="alert">{{ inspectionImagesError() }}</p>
+                          }
+                        </section>
+
+                        <details class="inspection-optional-details">
+                          <summary>Optional message to customer</summary>
+                          <label class="inspection-field">
+                            Message to Customer
+                            <textarea
+                              rows="2"
+                              maxlength="2000"
+                              placeholder="Add an optional message for the customer..."
+                              [ngModel]="inspectionMessage()"
+                              (ngModelChange)="inspectionMessage.set($event)"
+                              name="inlineInspectionMessage"
+                            ></textarea>
+                          </label>
+                        </details>
+                        <details class="inspection-optional-details">
+                          <summary>Additional charges (optional)</summary>
+                          <div class="inspection-parts-list">
+                            <label class="inspection-field">
+                              Labour Charges (₹)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                [ngModel]="inspectionLabour()"
+                                (ngModelChange)="inspectionLabour.set(+$event || 0)"
+                                name="inlineInspectionLabour"
+                                placeholder="0.00"
+                              />
+                            </label>
+                            <label class="inspection-field">
+                              Inspection Charges (₹)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                [ngModel]="inspectionCharge()"
+                                (ngModelChange)="inspectionCharge.set(+$event || 0)"
+                                name="inlineInspectionCharge"
+                                placeholder="0.00"
+                              />
+                            </label>
+                            <label class="inspection-field">
+                              Other Charges (₹)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                [ngModel]="inspectionOtherCharges()"
+                                (ngModelChange)="inspectionOtherCharges.set(+$event || 0)"
+                                name="inlineInspectionOtherCharges"
+                                placeholder="0.00"
+                              />
+                            </label>
+                          </div>
+                        </details>
+                      </section>
+
+                      <aside class="inspection-cost-card" aria-label="Estimated repair cost">
+                        <header>
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                          <h4>Estimated Repair Cost</h4>
+                        </header>
+                        <div class="inspection-cost-row">
+                          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0"/></svg>Parts Subtotal</span>
+                          <strong>₹{{ inspectionPartsTotal() | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="inspection-cost-row">
+                          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.7 6.3 3 3M5 21l4.5-1 9.8-9.8a2.1 2.1 0 0 0-3-3L6.5 17 5 21z"/></svg>Labour Charges</span>
+                          <strong>₹{{ inspectionLabour() | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="inspection-cost-row">
+                          <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Inspection &amp; Other Charges</span>
+                          <strong>₹{{ (inspectionCharge() + inspectionOtherCharges()) | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="inspection-cost-total">
+                          <strong>Total Estimated Cost</strong>
+                          <strong>₹{{ inspectionTotal() | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="inspection-cost-note">
+                          <strong><span aria-hidden="true">ⓘ</span> Note</strong>
+                          <p>After submitting, the shop will review the inspection and provide approval to proceed with the repair.</p>
+                        </div>
+                      </aside>
+
+                      @if (error()) {
+                        <p class="inspection-form-error" role="alert">{{ error() }}</p>
+                      }
+
+                      <footer class="inspection-form-footer">
+                        <button type="button" class="inspection-save-draft" (click)="saveInspection('draft')" [disabled]="submittingInspection()">
+                          <span aria-hidden="true">▣</span> {{ submittingInspection() ? 'Saving…' : 'Save as Draft' }}
+                        </button>
+                        <span class="inspection-footer-spacer"></span>
+                        <button type="button" class="inspection-cancel" (click)="cancelInspectionForm(repair)" [disabled]="submittingInspection()">Cancel</button>
+                        <button type="submit" class="inspection-submit" [disabled]="submittingInspection()">
+                          {{ submittingInspection() ? 'Submitting…' : '➤ Submit Inspection &amp; Request Approval' }}
+                        </button>
+                      </footer>
+                    </form>
+                  }
+
+                  @if (repair.status !== 'inspection_in_progress' && (repair.inspection || repair.repairJobDetails?.inspection); as insp) {
+                    <div class="inspection-report-view-card">
+                      <header class="report-card-header">
+                        <div class="report-title-group">
+                          <svg viewBox="0 0 24 24" class="report-svg" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                          <div>
+                            <h4>Inspection &amp; Diagnosis Report</h4>
+                            <span class="report-meta">Submitted on {{ (insp.submittedAt | date: 'medium') || (repair.assignedAt | date: 'medium') }}</span>
+                          </div>
+                        </div>
+
+                        <div class="report-status-pill" [class]="'pill-' + insp.status">
+                          @if (insp.status === 'awaiting_approval' || repair.status === 'awaiting_customer_approval') {
+                            <span class="pill-dot amber"></span>
+                            <span>Awaiting Customer Approval</span>
+                          } @else if (insp.status === 'approved' || repair.status === 'inspection_approved') {
+                            <span class="pill-dot green"></span>
+                            <span>Customer Approved</span>
+                          } @else if (insp.status === 'declined' || repair.status === 'repair_declined') {
+                            <span class="pill-dot red"></span>
+                            <span>Customer Declined</span>
+                          } @else {
+                            <span>{{ insp.status | titlecase }}</span>
+                          }
+                        </div>
+                      </header>
+
+                      <!-- Diagnosis Grid -->
+                      <div class="report-diagnosis-grid">
+                        <div class="report-diag-item">
+                          <span class="diag-label">Identified Problem</span>
+                          <p class="diag-text">{{ insp.identifiedProblem || 'None specified' }}</p>
+                        </div>
+                        <div class="report-diag-item">
+                          <span class="diag-label">Inspection Findings</span>
+                          <p class="diag-text">{{ insp.findings || 'None specified' }}</p>
+                        </div>
+                        <div class="report-diag-item full-width">
+                          <span class="diag-label">Required Repair Work</span>
+                          <p class="diag-text">{{ insp.requiredRepairWork || 'None specified' }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Parts Breakdown -->
+                      @if (insp.parts && insp.parts.length) {
+                        <div class="report-parts-section">
+                          <h5>Required Parts</h5>
+                          <table class="report-parts-table">
+                            <thead>
+                              <tr>
+                                <th>Part Name</th>
+                                <th>Qty</th>
+                                <th>Price Each</th>
+                                <th>Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (p of insp.parts; track $index) {
+                                <tr>
+                                  <td class="font-medium">{{ p.name }}</td>
+                                  <td>{{ p.quantity }}</td>
+                                  <td>₹{{ p.unitPrice | number: '1.2-2' }}</td>
+                                  <td class="font-semibold">₹{{ (p.total || (p.quantity * p.unitPrice)) | number: '1.2-2' }}</td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
+
+                      <!-- Cost Breakdown -->
+                      <div class="report-cost-breakdown">
+                        <div class="cost-row">
+                          <span>Parts Subtotal</span>
+                          <strong>₹{{ (insp.partsTotal || 0) | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="cost-row">
+                          <span>Labour Charges</span>
+                          <strong>₹{{ (insp.labourCharge || 0) | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="cost-row">
+                          <span>Inspection &amp; Other Charges</span>
+                          <strong>₹{{ ((insp.inspectionCharges || 0) + (insp.otherCharges || 0)) | number: '1.2-2' }}</strong>
+                        </div>
+                        <div class="cost-row total-row">
+                          <span>Total Estimated Cost</span>
+                          <strong class="total-amount">₹{{ (insp.estimatedTotal || 0) | number: '1.2-2' }}</strong>
+                        </div>
+                      </div>
+
+                      <!-- Warranty & Time -->
+                      <div class="report-meta-grid">
+                        <div class="meta-item">
+                          <span class="meta-label">Estimated Repair Time</span>
+                          <strong>{{ insp.estimatedTimeValue ? insp.estimatedTimeValue + ' ' + (insp.estimatedTimeUnit || 'days') : 'Not specified' }}</strong>
+                        </div>
+                        <div class="meta-item">
+                          <span class="meta-label">Warranty Offered</span>
+                          <strong>{{ insp.warranty || 'Standard Warranty' }}</strong>
+                        </div>
+                      </div>
+
+                      <!-- Photos -->
+                      @if (insp.images && insp.images.length) {
+                        <div class="report-photos-section">
+                          <h5>Diagnostic Photos ({{ insp.images.length }})</h5>
+                          <div class="report-photos-grid">
+                            @for (img of insp.images; track $index) {
+                              <button
+                                type="button"
+                                class="photo-thumb-btn"
+                                (click)="openLightbox(img.data)"
+                              >
+                                <img [src]="img.data" alt="Diagnostic photo" loading="lazy" />
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+
+                      @if (repair.status === 'inspection_approved') {
+                        <div class="approved-action-banner">
+                          <p>Customer has approved this estimate! You can begin repair work now.</p>
+                          <button
+                            type="button"
+                            class="action-btn btn-primary-green"
+                            (click)="confirmStartApprovedRepair(repair.id, repair.appliance)"
+                          >
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>
+                            <span>Start Repair Work</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
               <!-- Subtab 2: Progress & Timeline -->
               @if (detailTab() === 'timeline') {
                 <div class="timeline-subtab-view">
                   <header class="subtab-header">
                     <h4>Repair History &amp; Events</h4>
-                    <button type="button" class="btn-primary-action mini" (click)="openProgressModal()">
+                    <button type="button" class="timeline-add-note-btn" (click)="openProgressModal()">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                       Add Note
                     </button>
@@ -1001,22 +1782,7 @@
                 </div>
               }
 
-              <!-- Subtab 3: Messages -->
-              @if (detailTab() === 'messages') {
-                <div class="messages-subtab-view">
-                  <div class="chat-prompt-card">
-                    <svg viewBox="0 0 24 24" class="chat-icon-large" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                    <h4>Direct Communication</h4>
-                    <p>Contact the customer or your repair shop coordinator regarding this job.</p>
-                    <div class="chat-actions-row">
-                      <button type="button" class="btn-primary-action" (click)="messageCustomer()">Chat with Customer</button>
-                      <button type="button" class="btn-outline-action" (click)="messageShop()">Chat with Shop</button>
-                    </div>
-                  </div>
-                </div>
-              }
-
-              <!-- Subtab 4: Files & Photos -->
+              <!-- Files & Photos -->
               @if (detailTab() === 'photos') {
                 <div class="photos-subtab-view">
                   @if (repair.photos && repair.photos.length) {
@@ -1037,7 +1803,7 @@
                 </div>
               }
 
-              <!-- Subtab 5: Notes -->
+              <!-- Notes -->
               @if (detailTab() === 'notes') {
                 <div class="notes-subtab-view">
                   <div class="note-item-card">
@@ -1059,50 +1825,6 @@
                 </div>
               }
 
-              <!-- Bottom 5-Step Horizontal Stepper (Always Visible at bottom of right card) -->
-              <div class="detail-bottom-stepper">
-                <!-- Step 1: Assigned (Completed) -->
-                <div class="stepper-step completed">
-                  <div class="stepper-circle">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <span class="step-title">Assigned</span>
-                  <span class="step-sub">{{ getStepperAssignedDate(repair) }}</span>
-                </div>
-                <div class="stepper-bar completed"></div>
-
-                <!-- Step 2: Inspection (Completed) -->
-                <div class="stepper-step completed">
-                  <div class="stepper-circle">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <span class="step-title">Inspection</span>
-                  <span class="step-sub">{{ getStepperInspectionDate(repair) }}</span>
-                </div>
-                <div class="stepper-bar completed"></div>
-
-                <!-- Step 3: In Progress (Active pill) -->
-                <div class="stepper-step active">
-                  <div class="stepper-pill-node">
-                    <span class="node-dot"></span>
-                    <span>In Progress</span>
-                  </div>
-                </div>
-                <div class="stepper-bar"></div>
-
-                <!-- Step 4: Testing -->
-                <div class="stepper-step">
-                  <div class="stepper-circle hollow"></div>
-                  <span class="step-title">Testing</span>
-                </div>
-                <div class="stepper-bar"></div>
-
-                <!-- Step 5: Completed -->
-                <div class="stepper-step">
-                  <div class="stepper-circle hollow"></div>
-                  <span class="step-title">Completed</span>
-                </div>
-              </div>
             </article>
           } @else {
             <div class="dash-empty-box detail-empty">
@@ -1232,6 +1954,288 @@
       <div class="lightbox-content" (click)="$event.stopPropagation()">
         <button type="button" class="lightbox-close" (click)="closeLightbox()" aria-label="Close image">✕</button>
         <img [src]="img" alt="Device preview high resolution" />
+      </div>
+    </div>
+  }
+
+  <!-- Inspection Diagnosis & Estimate Modal -->
+  @if (inspectionModalOpen()) {
+    <div class="modal-backdrop" (click)="closeInspectionModal()">
+      <div class="modal-dialog modal-dialog-lg" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="inspection-modal-title">
+        <header class="modal-header">
+          <div>
+            <h3 id="inspection-modal-title">Inspection Checking &amp; Diagnosis</h3>
+            <p class="modal-subtitle">Job #{{ (inspectionTargetId() || details()?.id || '').slice(-8).toUpperCase() }} • {{ inspectionTargetName() || details()?.appliance }}</p>
+          </div>
+          <button type="button" class="close-btn" (click)="closeInspectionModal()" aria-label="Close">✕</button>
+        </header>
+
+        <form class="modal-body inspection-modal-body" (ngSubmit)="saveInspection('submit')">
+          <!-- Diagnosis Section -->
+          <div class="form-section-title">
+            <svg viewBox="0 0 24 24" class="section-svg" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <h4>1. Physical Diagnosis &amp; Findings</h4>
+          </div>
+
+          <label class="modal-label">
+            Identified Problem *
+            <textarea
+              rows="2"
+              maxlength="2000"
+              required
+              [ngModel]="identifiedProblem()"
+              (ngModelChange)="identifiedProblem.set($event)"
+              name="modalIdentifiedProblem"
+              placeholder="e.g. Compressor capacitor failed, causing motor overheating"
+            ></textarea>
+          </label>
+
+          <label class="modal-label">
+            Inspection Findings *
+            <textarea
+              rows="3"
+              maxlength="2000"
+              required
+              [ngModel]="findings()"
+              (ngModelChange)="findings.set($event)"
+              name="modalFindings"
+              placeholder="Detail observations found during inspection..."
+            ></textarea>
+          </label>
+
+          <label class="modal-label">
+            Required Repair Work *
+            <textarea
+              rows="2"
+              maxlength="2000"
+              required
+              [ngModel]="requiredRepairWork()"
+              (ngModelChange)="requiredRepairWork.set($event)"
+              name="modalRequiredRepairWork"
+              placeholder="e.g. Replace 45uF capacitor and check refrigerant pressure"
+            ></textarea>
+          </label>
+
+          <!-- Parts Required Section -->
+          <div class="form-section-title">
+            <svg viewBox="0 0 24 24" class="section-svg" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <h4>2. Parts Required</h4>
+          </div>
+
+          <div class="parts-container">
+            @for (part of inspectionParts(); track $index; let idx = $index) {
+              <div class="part-item-row">
+                <div class="part-field part-name-field">
+                  <span class="part-field-label">Part Name</span>
+                  <input
+                    type="text"
+                    [ngModel]="part.name"
+                    (ngModelChange)="updateInspectionPart(idx, 'name', $event)"
+                    [name]="'part-name-' + idx"
+                    placeholder="e.g. Capacitor 45uF"
+                    maxlength="120"
+                  />
+                </div>
+                <div class="part-field part-qty-field">
+                  <span class="part-field-label">Qty</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    [ngModel]="part.quantity"
+                    (ngModelChange)="updateInspectionPart(idx, 'quantity', $event)"
+                    [name]="'part-qty-' + idx"
+                  />
+                </div>
+                <div class="part-field part-price-field">
+                  <span class="part-field-label">Price Each (₹)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="part.unitPrice"
+                    (ngModelChange)="updateInspectionPart(idx, 'unitPrice', $event)"
+                    [name]="'part-price-' + idx"
+                  />
+                </div>
+                <div class="part-field part-total-field">
+                  <span class="part-field-label">Total</span>
+                  <span class="part-total-val">₹{{ (part.quantity * part.unitPrice) | number: '1.2-2' }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-part-remove"
+                  (click)="removeInspectionPart(idx)"
+                  [disabled]="inspectionParts().length <= 1"
+                  title="Remove part"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            }
+            <button type="button" class="btn-add-part" (click)="addInspectionPart()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>Add Part</span>
+            </button>
+          </div>
+
+          <!-- Charges and Time Estimates -->
+          <div class="form-section-title">
+            <svg viewBox="0 0 24 24" class="section-svg" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <h4>3. Charges &amp; Timeline</h4>
+          </div>
+
+          <div class="charges-form-grid">
+            <label class="modal-label">
+              Labour Charges (₹)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="inspectionLabour()"
+                (ngModelChange)="inspectionLabour.set(+$event || 0)"
+                name="modalInspectionLabour"
+              />
+            </label>
+            <label class="modal-label">
+              Inspection Charges (₹)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="inspectionCharge()"
+                (ngModelChange)="inspectionCharge.set(+$event || 0)"
+                name="modalInspectionCharge"
+              />
+            </label>
+            <label class="modal-label">
+              Other Charges (₹)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="inspectionOtherCharges()"
+                (ngModelChange)="inspectionOtherCharges.set(+$event || 0)"
+                name="modalInspectionOtherCharges"
+              />
+            </label>
+            <label class="modal-label">
+              Estimated Repair Time
+              <input
+                type="number"
+                min="0.5"
+                step="0.5"
+                [ngModel]="inspectionTime()"
+                (ngModelChange)="inspectionTime.set($event === '' ? null : +$event)"
+                name="modalInspectionTime"
+                placeholder="e.g. 2"
+              />
+            </label>
+            <label class="modal-label">
+              Time Unit
+              <select
+                [ngModel]="inspectionTimeUnit()"
+                (ngModelChange)="inspectionTimeUnit.set($event)"
+                name="modalInspectionTimeUnit"
+              >
+                <option value="hours">Hours</option>
+                <option value="days">Days</option>
+              </select>
+            </label>
+            <label class="modal-label">
+              Repair Warranty
+              <input
+                type="text"
+                maxlength="1000"
+                [ngModel]="inspectionWarranty()"
+                (ngModelChange)="inspectionWarranty.set($event)"
+                name="modalInspectionWarranty"
+                placeholder="e.g. 90 Days Service Warranty"
+              />
+            </label>
+          </div>
+
+          <!-- Diagnostic Photos & Customer Note -->
+          <div class="form-section-title">
+            <svg viewBox="0 0 24 24" class="section-svg" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <h4>4. Diagnostic Photos &amp; Customer Note</h4>
+          </div>
+
+          <label class="modal-label">
+            Diagnostic Photos
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              (change)="chooseInspectionImages($event)"
+            />
+          </label>
+          @if (inspectionImagesError()) {
+            <p class="modal-error-text">{{ inspectionImagesError() }}</p>
+          }
+          @if (inspectionImages().length) {
+            <p class="file-picked-note">{{ inspectionImages().length }} diagnostic image(s) selected.</p>
+          }
+
+          <label class="modal-label">
+            Message to Customer
+            <textarea
+              rows="2"
+              maxlength="2000"
+              [ngModel]="inspectionMessage()"
+              (ngModelChange)="inspectionMessage.set($event)"
+              name="modalInspectionMessage"
+              placeholder="Explain the estimate and problem to customer..."
+            ></textarea>
+          </label>
+
+          <!-- Cost Summary Card -->
+          <div class="modal-cost-summary">
+            <div class="summary-line">
+              <span>Parts Total:</span>
+              <strong>₹{{ inspectionPartsTotal() | number: '1.2-2' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Labour Charges:</span>
+              <strong>₹{{ (inspectionLabour() || 0) | number: '1.2-2' }}</strong>
+            </div>
+            <div class="summary-line">
+              <span>Inspection &amp; Other:</span>
+              <strong>₹{{ ((inspectionCharge() || 0) + (inspectionOtherCharges() || 0)) | number: '1.2-2' }}</strong>
+            </div>
+            <div class="summary-line summary-total">
+              <span>Estimated Repair Total:</span>
+              <span class="total-badge">₹{{ inspectionTotal() | number: '1.2-2' }}</span>
+            </div>
+          </div>
+
+          @if (error()) {
+            <div class="modal-error-box" role="alert">
+              {{ error() }}
+            </div>
+          }
+
+          <footer class="modal-footer">
+            <button type="button" class="btn-cancel" (click)="closeInspectionModal()" [disabled]="submittingInspection()">
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn-draft"
+              (click)="saveInspection('draft')"
+              [disabled]="submittingInspection()"
+            >
+              {{ submittingInspection() ? 'Saving…' : 'Save as Draft' }}
+            </button>
+            <button
+              type="submit"
+              class="btn-submit"
+              [disabled]="submittingInspection() || inspectionTotal() <= 0"
+            >
+              {{ submittingInspection() ? 'Submitting…' : 'Submit Inspection & Request Approval' }}
+            </button>
+          </footer>
+        </form>
       </div>
     </div>
   }

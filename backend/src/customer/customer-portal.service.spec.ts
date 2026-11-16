@@ -1599,6 +1599,7 @@ describe('CustomerPortalService', () => {
   it('only approves a submitted inspection and stores its customer-approved amount', async () => {
     const customerId = new Types.ObjectId();
     const shopId = new Types.ObjectId();
+    const technicianId = new Types.ObjectId();
     const requestId = new Types.ObjectId();
     const quotationId = new Types.ObjectId();
     const submittedRequest = {
@@ -1606,7 +1607,10 @@ describe('CustomerPortalService', () => {
       customerId,
       appliance: 'Washing machine',
       acceptedQuotationId: quotationId,
-      repairJob: { status: 'inspection_approved' },
+      repairJob: {
+        status: 'inspection_approved',
+        activeAssignment: { shopId, technicianId },
+      },
     };
     userModel.findById.mockReturnValue(
       createQuery({
@@ -1646,7 +1650,7 @@ describe('CustomerPortalService', () => {
       'repairJob.approvedAdditionalCharges': 0,
     });
     expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
-      [shopId],
+      [shopId, technicianId],
       expect.objectContaining({ type: 'repair_inspection_approved' }),
     );
   });

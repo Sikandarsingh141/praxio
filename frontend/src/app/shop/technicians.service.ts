@@ -4,6 +4,7 @@ import { map, Observable } from 'rxjs';
 import { ApiEnvelope } from '../core/auth/auth.models';
 import { environment } from '../../environments/environment';
 import {
+  InspectionReportInput,
   Technician,
   TechnicianAssignment,
   TechnicianDashboardData,
@@ -184,6 +185,33 @@ export class TechniciansService {
       .patch<ApiEnvelope<unknown>>(
         `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/complete`,
         input,
+      )
+      .pipe(map(() => undefined));
+  }
+
+  startInspection(id: string): Observable<void> {
+    return this.http
+      .post<ApiEnvelope<unknown>>(
+        `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/start-inspection`,
+        {},
+      )
+      .pipe(map(() => undefined));
+  }
+
+  saveInspection(id: string, input: InspectionReportInput): Observable<void> {
+    return this.http
+      .post<ApiEnvelope<unknown>>(
+        `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/inspection-report`,
+        input,
+      )
+      .pipe(map(() => undefined));
+  }
+
+  startApprovedRepair(id: string): Observable<void> {
+    return this.http
+      .post<ApiEnvelope<unknown>>(
+        `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/start-repair`,
+        {},
       )
       .pipe(map(() => undefined));
   }

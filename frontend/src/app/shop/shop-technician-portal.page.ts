@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -10,7 +10,11 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogConfig,
 } from '../shared/confirmation-dialog.component';
+import { AdminPageHeaderComponent } from '../admin/admin-page-header.component';
 import {
+  InspectionReportInput,
+  RepairEstimatePartInput,
+  RepairInspectionReport,
   Technician,
   TechnicianDashboardData,
   TechnicianJob,
@@ -36,16 +40,23 @@ const EMPTY_SUMMARY: TechnicianJobSummary = {
 @Component({
   selector: 'app-shop-technician-portal-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ConfirmationDialogComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    ConfirmationDialogComponent,
+    AdminPageHeaderComponent,
+  ],
   templateUrl: './shop-technician-portal.page.html',
   styleUrl: './shop-technician-portal.page.scss',
 })
-export class ShopTechnicianPortalPage implements OnInit {
+export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
   private readonly service = inject(TechniciansService);
   private readonly chat = inject(ChatService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
+  private focusFirstJobOnLoad = false;
 
   readonly view = signal<TechnicianPageView>('dashboard');
   readonly technician = signal<Technician | null>(null);
@@ -65,11 +76,11 @@ export class ShopTechnicianPortalPage implements OnInit {
   readonly filter = signal<JobFilter>('all');
   readonly searchText = signal('');
   readonly sortBy = signal<'assigned' | 'scheduled' | 'appliance'>('assigned');
-  readonly detailTab = signal<'details' | 'timeline' | 'messages' | 'photos' | 'notes'>('details');
+  readonly detailTab = signal<'details' | 'inspection' | 'timeline' | 'photos' | 'notes'>('details');
 
   // Modals & Confirmation Dialogs
   readonly confirmation = signal<ConfirmationDialogConfig | null>(null);
-  private pendingAction?: () => void;
+  private pendingAction?: (reason?: string) => void;
   readonly progressModalOpen = signal(false);
   readonly progressNote = signal('');
   readonly completionModalOpen = signal(false);
@@ -78,6 +89,37 @@ export class ShopTechnicianPortalPage implements OnInit {
   readonly partsReplaced = signal('');
   readonly finalNotes = signal('');
   readonly lightboxImage = signal<string | null>(null);
+
+  // Inspection & Checking Form State
+  readonly inspectionModalOpen = signal(false);
+  readonly inspectionTargetId = signal('');
+  readonly inspectionTargetName = signal('');
+  readonly identifiedProblem = signal('');
+  readonly findings = signal('');
+  readonly requiredRepairWork = signal('');
+  readonly inspectionParts = signal<RepairEstimatePartInput[]>([
+    { name: '', quantity: 1, unitPrice: 0 },
+  ]);
+  readonly inspectionLabour = signal(0);
+  readonly inspectionCharge = signal(0);
+  readonly inspectionOtherCharges = signal(0);
+  readonly inspectionTime = signal<number | null>(null);
+  readonly inspectionTimeUnit = signal<'hours' | 'days'>('days');
+  readonly inspectionWarranty = signal('');
+  readonly inspectionMessage = signal('');
+  readonly inspectionImages = signal<File[]>([]);
+  readonly inspectionImagePreviews = signal<Array<{ name: string; url: string }>>([]);
+  readonly inspectionImagesError = signal('');
+  readonly submittingInspection = signal(false);
+
+  readonly inspectionPartsTotal = computed(() => this.partsTotal(this.inspectionParts()));
+  readonly inspectionTotal = computed(
+    () =>
+      this.inspectionPartsTotal() +
+      (Math.max(0, +this.inspectionLabour() || 0)) +
+      (Math.max(0, +this.inspectionCharge() || 0)) +
+      (Math.max(0, +this.inspectionOtherCharges() || 0)),
+  );
 
   readonly filterOptions: Array<{ key: JobFilter; label: string }> = [
     { key: 'all', label: 'All Jobs' },
@@ -138,12 +180,16 @@ export class ShopTechnicianPortalPage implements OnInit {
   });
 
   getCurrentJobStep(status?: string): number {
-    if (!status) return 2;
-    if (status === 'confirmed' || status === 'inspection_pending') return 1;
-    if (status === 'in_progress' || status === 'inspection_in_progress' || status === 'on_hold') return 2;
-    if (status === 'inspection_approved' || status === 'testing') return 3;
-    if (status === 'repair_completed' || status === 'ready_for_pickup' || status === 'picked_up' || status === 'completed') return 4;
-    return 2;
+    if (
+      status === 'inspection_approved' ||
+      status === 'inspection_in_progress' ||
+      status === 'awaiting_customer_approval' ||
+      status === 'in_progress' ||
+      status === 'on_hold'
+    ) return 2;
+    if (status === 'repair_completed' || status === 'ready_for_pickup' || status === 'picked_up') return 3;
+    if (status === 'completed') return 4;
+    return 1;
   }
 
   readonly visibleJobs = computed(() => {
@@ -201,6 +247,14 @@ export class ShopTechnicianPortalPage implements OnInit {
     if (!repair) return 'Customer';
     if (typeof repair.customer === 'string' && repair.customer) return repair.customer;
     return (repair.customer as { name?: string })?.name || (repair as { customerName?: string }).customerName || 'Customer';
+  }
+
+  isActiveJobsRoute(): boolean {
+    return this.route.snapshot.data['technicianView'] === 'active';
+  }
+
+  isCompletedJobsRoute(): boolean {
+    return this.route.snapshot.data['technicianView'] === 'completed';
   }
 
   getCustomerPhone(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
@@ -275,6 +329,7 @@ export class ShopTechnicianPortalPage implements OnInit {
     const routeView = this.route.snapshot.data['technicianView'] as TechnicianPageView;
     if (routeView) {
       this.view.set(routeView);
+      this.focusFirstJobOnLoad = routeView === 'jobs';
       if (routeView === 'active') this.filter.set('active');
       if (routeView === 'completed') this.filter.set('completed');
     }
@@ -296,16 +351,24 @@ export class ShopTechnicianPortalPage implements OnInit {
     this.route.paramMap.subscribe((params) => {
       const jobId = params.get('id');
       if (jobId) {
+        this.view.set('job-detail');
         this.openJobById(jobId);
       }
     });
 
     this.route.queryParamMap.subscribe((params) => {
       const jobId = params.get('jobId');
-      if (jobId && !this.selectedJobId()) {
+      if (jobId) {
+        this.view.set('job-detail');
+      }
+      if (jobId && this.selectedJobId() !== jobId) {
         this.openJobById(jobId);
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearInspectionImagePreviews();
   }
 
   loadDashboard(): void {
@@ -343,8 +406,23 @@ export class ShopTechnicianPortalPage implements OnInit {
   }
 
   viewJob(job: TechnicianJob): void {
-    this.view.set('jobs');
+    if (this.isActiveJobsRoute()) this.detailTab.set('details');
+    this.view.set('job-detail');
     this.openJob(job);
+  }
+
+  backToJobs(): void {
+    if (this.isActiveJobsRoute()) {
+      this.view.set('active');
+      return;
+    }
+    if (this.isCompletedJobsRoute()) {
+      this.view.set('completed');
+      this.router.navigate(['/technician/completed-jobs']);
+      return;
+    }
+    this.view.set('jobs');
+    this.router.navigate(['/technician/jobs']);
   }
 
   loadJobs(filter: JobFilter | 'history'): void {
@@ -358,11 +436,19 @@ export class ShopTechnicianPortalPage implements OnInit {
           const list = result.jobs || [];
           this.jobs.set(list);
           this.summary.set(result.summary || EMPTY_SUMMARY);
+          const shouldFocusFirstJob = this.focusFirstJobOnLoad;
+          this.focusFirstJobOnLoad = false;
           const targetId = this.selectedJobId();
           const target = list.find((j) => j.id === targetId);
-          if (target) {
+          if (this.isActiveJobsRoute() && this.view() !== 'job-detail') {
+            this.details.set(null);
+            this.selectedJobId.set(list[0]?.id || '');
+          } else if (target) {
             this.openJob(target);
           } else if (list.length > 0) {
+            if (shouldFocusFirstJob) {
+              this.view.set('job-detail');
+            }
             this.openJob(list[0]);
           } else {
             this.details.set(null);
@@ -392,6 +478,7 @@ export class ShopTechnicianPortalPage implements OnInit {
     this.service.myJobDetails(jobId).subscribe({
       next: (details) => {
         this.details.set(details);
+        this.populateInspectionForm(details.inspection || details.repairJobDetails?.inspection);
         this.detailLoading.set(false);
       },
       error: (error: HttpErrorResponse) => {
@@ -617,5 +704,354 @@ export class ShopTechnicianPortalPage implements OnInit {
 
   closeLightbox(): void {
     this.lightboxImage.set(null);
+  }
+
+  // =========================================================================
+  // INSPECTION & CHECKING WORKFLOW
+  // =========================================================================
+
+  partsTotal(parts: RepairEstimatePartInput[]): number {
+    return Math.round(
+      parts.reduce(
+        (sum, p) =>
+          sum + Math.max(1, +p.quantity || 1) * Math.max(0, +p.unitPrice || 0),
+        0,
+      ) * 100,
+    ) / 100;
+  }
+
+  nonEmptyParts(parts: RepairEstimatePartInput[]): RepairEstimatePartInput[] {
+    return parts
+      .filter((p) => p.name.trim().length > 0)
+      .map((p) => ({
+        name: p.name.trim(),
+        quantity: Math.max(1, Math.round(+p.quantity || 1)),
+        unitPrice: Math.max(0, Math.round((+p.unitPrice || 0) * 100) / 100),
+      }));
+  }
+
+  addInspectionPart(): void {
+    this.inspectionParts.update((list) => [
+      ...list,
+      { name: '', quantity: 1, unitPrice: 0 },
+    ]);
+  }
+
+  removeInspectionPart(index: number): void {
+    this.inspectionParts.update((list) => {
+      if (list.length <= 1) return [{ name: '', quantity: 1, unitPrice: 0 }];
+      return list.filter((_, i) => i !== index);
+    });
+  }
+
+  updateInspectionPart(
+    index: number,
+    field: 'name' | 'quantity' | 'unitPrice',
+    value: string | number,
+  ): void {
+    this.inspectionParts.update((list) =>
+      list.map((part, i) => {
+        if (i !== index) return part;
+        if (field === 'name') return { ...part, name: String(value) };
+        if (field === 'quantity') return { ...part, quantity: Math.max(1, +value || 1) };
+        if (field === 'unitPrice') return { ...part, unitPrice: Math.max(0, +value || 0) };
+        return part;
+      }),
+    );
+  }
+
+  chooseInspectionImages(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    this.inspectionImagesError.set('');
+    if (!files.length) return;
+    if (
+      files.some(
+        (file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
+      )
+    ) {
+      this.inspectionImagesError.set('Please select JPEG, PNG, or WebP images only.');
+      input.value = '';
+      return;
+    }
+    if (files.some((file) => file.size > 2_000_000)) {
+      this.inspectionImagesError.set('Each image must be smaller than 2 MB.');
+      input.value = '';
+      return;
+    }
+    if (files.reduce((total, file) => total + file.size, 0) > 1_200_000) {
+      this.inspectionImagesError.set('The selected images must total no more than 1.2 MB.');
+      input.value = '';
+      return;
+    }
+    this.clearInspectionImagePreviews();
+    this.inspectionImages.set(files);
+    this.inspectionImagePreviews.set(
+      files.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
+    );
+  }
+
+  removeInspectionImage(index: number): void {
+    const preview = this.inspectionImagePreviews()[index];
+    if (preview) URL.revokeObjectURL(preview.url);
+    this.inspectionImages.update((files) => files.filter((_, fileIndex) => fileIndex !== index));
+    this.inspectionImagePreviews.update((previews) =>
+      previews.filter((_, previewIndex) => previewIndex !== index),
+    );
+  }
+
+  cancelInspectionForm(repair: TechnicianRepairDetails): void {
+    this.populateInspectionForm(repair.inspection || repair.repairJobDetails?.inspection);
+    this.error.set('');
+    this.detailTab.set('details');
+  }
+
+  private clearInspectionImagePreviews(): void {
+    this.inspectionImagePreviews().forEach((preview) => URL.revokeObjectURL(preview.url));
+    this.inspectionImagePreviews.set([]);
+  }
+
+  async encodeImages(
+    files: File[],
+  ): Promise<Array<{ mimeType: string; data: string }>> {
+    return Promise.all(
+      files.map(
+        (file) =>
+          new Promise<{ mimeType: string; data: string }>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({
+                mimeType: file.type,
+                data: String(reader.result || ''),
+              });
+            };
+            reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+            reader.readAsDataURL(file);
+          }),
+      ),
+    );
+  }
+
+  populateInspectionForm(inspection?: RepairInspectionReport | null): void {
+    this.clearInspectionImagePreviews();
+    if (inspection) {
+      this.identifiedProblem.set(inspection.identifiedProblem ?? '');
+      this.findings.set(inspection.findings ?? '');
+      this.requiredRepairWork.set(inspection.requiredRepairWork ?? '');
+      const parts = inspection.parts ?? [];
+      this.inspectionParts.set(
+        parts.length
+          ? parts.map(({ name, quantity, unitPrice }) => ({
+              name,
+              quantity,
+              unitPrice,
+            }))
+          : [{ name: '', quantity: 1, unitPrice: 0 }],
+      );
+      this.inspectionLabour.set(inspection.labourCharge ?? 0);
+      this.inspectionCharge.set(inspection.inspectionCharges ?? 0);
+      this.inspectionOtherCharges.set(inspection.otherCharges ?? 0);
+      this.inspectionTime.set(inspection.estimatedTimeValue ?? null);
+      this.inspectionTimeUnit.set(inspection.estimatedTimeUnit ?? 'days');
+      this.inspectionWarranty.set(inspection.warranty ?? '');
+      this.inspectionMessage.set(inspection.message ?? '');
+    } else {
+      this.identifiedProblem.set('');
+      this.findings.set('');
+      this.requiredRepairWork.set('');
+      this.inspectionParts.set([{ name: '', quantity: 1, unitPrice: 0 }]);
+      this.inspectionLabour.set(0);
+      this.inspectionCharge.set(0);
+      this.inspectionOtherCharges.set(0);
+      this.inspectionTime.set(null);
+      this.inspectionTimeUnit.set('days');
+      this.inspectionWarranty.set('');
+      this.inspectionMessage.set('');
+    }
+    this.inspectionImages.set([]);
+    this.inspectionImagesError.set('');
+  }
+
+  openInspectionModal(targetId?: string, applianceName?: string): void {
+    const id = targetId || this.details()?.id || '';
+    const name = applianceName || this.details()?.appliance || 'Device';
+    this.inspectionTargetId.set(id);
+    this.inspectionTargetName.set(name);
+    if (this.details()?.id === id) {
+      this.populateInspectionForm(
+        this.details()?.inspection || this.details()?.repairJobDetails?.inspection,
+      );
+    } else if (id) {
+      this.service.myJobDetails(id).subscribe({
+        next: (d) => {
+          this.populateInspectionForm(
+            d.inspection || d.repairJobDetails?.inspection,
+          );
+        },
+      });
+    }
+    this.inspectionModalOpen.set(true);
+  }
+
+  closeInspectionModal(): void {
+    this.inspectionModalOpen.set(false);
+    this.inspectionImagesError.set('');
+    this.clearInspectionImagePreviews();
+  }
+
+  confirmStartInspection(targetId?: string, targetName?: string): void {
+    const repair = this.details();
+    const id = targetId || repair?.id;
+    const name = targetName || repair?.appliance || 'this appliance';
+    if (!id) return;
+
+    this.confirmation.set({
+      title: 'Start Inspection & Checking',
+      message: `Begin diagnosis and physical inspection of ${name}? This updates the job to Inspection In Progress and notifies the customer.`,
+      confirmLabel: 'Start Inspection',
+      cancelLabel: 'Cancel',
+    });
+    this.pendingAction = () => {
+      this.updating.set(true);
+      this.service.startInspection(id).subscribe({
+        next: () => {
+          this.updating.set(false);
+          this.toast.show({
+            title: 'Inspection Started',
+            message: `Inspection in progress for ${name}.`,
+            type: 'success',
+          });
+          if (this.view() === 'dashboard') {
+            this.loadDashboard();
+            this.openInspectionModal(id, name);
+          } else {
+            this.openJobById(id);
+            this.loadJobs(this.filter());
+            this.detailTab.set('inspection');
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          this.updating.set(false);
+          this.error.set(
+            err.error?.message || 'Could not start inspection for this repair.',
+          );
+        },
+      });
+    };
+  }
+
+  async saveInspection(action: 'draft' | 'submit'): Promise<void> {
+    const targetId = this.inspectionTargetId() || this.details()?.id;
+    if (!targetId || this.submittingInspection()) return;
+
+    if (
+      action === 'submit' &&
+      (!this.identifiedProblem().trim() ||
+        !this.findings().trim() ||
+        !this.requiredRepairWork().trim() ||
+        this.inspectionTotal() <= 0)
+    ) {
+      this.error.set(
+        'Please complete all required diagnosis fields and enter a valid repair estimate greater than zero.',
+      );
+      return;
+    }
+
+    try {
+      this.submittingInspection.set(true);
+      this.error.set('');
+
+      const input: InspectionReportInput = {
+        action,
+        identifiedProblem: this.identifiedProblem().trim(),
+        findings: this.findings().trim(),
+        requiredRepairWork: this.requiredRepairWork().trim(),
+        parts: this.nonEmptyParts(this.inspectionParts()),
+        labourCharge: Math.max(0, +this.inspectionLabour() || 0),
+        inspectionCharges: Math.max(0, +this.inspectionCharge() || 0),
+        otherCharges: Math.max(0, +this.inspectionOtherCharges() || 0),
+        estimatedTimeValue: this.inspectionTime() ?? undefined,
+        estimatedTimeUnit: this.inspectionTimeUnit(),
+        warranty: this.inspectionWarranty().trim() || undefined,
+        images: this.inspectionImages().length
+          ? await this.encodeImages(this.inspectionImages())
+          : undefined,
+        message: this.inspectionMessage().trim() || undefined,
+      };
+
+      this.service.saveInspection(targetId, input).subscribe({
+        next: () => {
+          this.submittingInspection.set(false);
+          this.closeInspectionModal();
+          this.toast.show({
+            title:
+              action === 'submit'
+                ? 'Inspection Report Submitted'
+                : 'Inspection Draft Saved',
+            message:
+              action === 'submit'
+                ? 'Report has been sent to customer for review and approval.'
+                : 'Inspection draft has been saved successfully.',
+            type: 'success',
+          });
+          if (this.view() === 'dashboard') {
+            this.loadDashboard();
+          } else {
+            this.openJobById(targetId);
+            this.loadJobs(this.filter());
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submittingInspection.set(false);
+          this.error.set(
+            err.error?.message || 'Failed to save inspection report.',
+          );
+        },
+      });
+    } catch (err) {
+      this.submittingInspection.set(false);
+      this.error.set(
+        err instanceof Error
+          ? err.message
+          : 'Error processing inspection images.',
+      );
+    }
+  }
+
+  confirmStartApprovedRepair(targetId?: string, targetName?: string): void {
+    const repair = this.details();
+    const id = targetId || repair?.id;
+    const name = targetName || repair?.appliance || 'this appliance';
+    if (!id) return;
+
+    this.confirmation.set({
+      title: 'Start Customer-Approved Repair',
+      message: `Customer has approved the inspection estimate. Start repair work on ${name} now?`,
+      confirmLabel: 'Start Repair',
+      cancelLabel: 'Cancel',
+    });
+    this.pendingAction = () => {
+      this.updating.set(true);
+      this.service.startApprovedRepair(id).subscribe({
+        next: () => {
+          this.updating.set(false);
+          this.toast.show({
+            title: 'Repair Started',
+            message: `Work has begun on ${name}.`,
+            type: 'success',
+          });
+          if (this.view() === 'dashboard') {
+            this.loadDashboard();
+          } else {
+            this.openJobById(id);
+            this.loadJobs(this.filter());
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          this.updating.set(false);
+          this.error.set(err.error?.message || 'Could not start repair.');
+        },
+      });
+    };
   }
 }

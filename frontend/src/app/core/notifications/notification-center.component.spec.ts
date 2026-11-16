@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
 import { FirebaseMessagingService } from './firebase-messaging.service';
+import { NotificationRealtimeService } from './notification-realtime.service';
 import { NotificationCenterComponent } from './notification-center.component';
 
 describe('NotificationCenterComponent', () => {
@@ -46,6 +47,33 @@ describe('NotificationCenterComponent', () => {
     expect(fixture.componentInstance.notifications()).toEqual([]);
     fixture.destroy();
   }));
+
+  it('keeps a realtime job notification received before the initial fetch completes', () => {
+    const fixture = TestBed.createComponent(NotificationCenterComponent);
+    fixture.detectChanges();
+
+    TestBed.inject(NotificationRealtimeService).publishNotification({
+      id: 'job-notice',
+      title: 'Customer approved the repair estimate',
+      message: 'The repair can now start.',
+      type: 'repair_inspection_approved',
+      isRead: false,
+      createdAt: '2026-11-16T10:00:00.000Z',
+      relatedEntityId: 'repair-1',
+      relatedEntityType: 'repair_request',
+      link: '/shop/repair-requests/repair-1',
+    });
+    http.expectOne(`${environment.apiBaseUrl}/notifications/my`).flush({
+      data: { notifications: [] },
+    });
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.notifications().map((item) => item.id)).toEqual([
+      'job-notice',
+    ]);
+    expect(fixture.componentInstance.unreadCount()).toBe(1);
+    fixture.destroy();
+  });
 
   it('lists the signed-in user notifications and marks an item read', () => {
     const fixture = TestBed.createComponent(NotificationCenterComponent);

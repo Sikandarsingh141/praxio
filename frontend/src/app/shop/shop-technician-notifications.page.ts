@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { environment } from '../../environments/environment';
 import { ApiEnvelope, RegistrationNotification } from '../core/auth/auth.models';
 import { AuthService } from '../core/auth/auth.service';
+import { NotificationRealtimeService } from '../core/notifications/notification-realtime.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-shop-technician-notifications-page',
@@ -16,7 +18,7 @@ import { AuthService } from '../core/auth/auth.service';
         <div>
           <p class="eyebrow">TECHNICIAN ALERTS</p>
           <h1>Notifications</h1>
-          <p>Stay informed about your job assignments, schedule changes, and messages.</p>
+          <p>Stay updated about job assignments, customer decisions, and repair progress.</p>
         </div>
         <div class="heading-actions">
           @if (unreadCount() > 0) {
@@ -81,8 +83,8 @@ import { AuthService } from '../core/auth/auth.service';
                 </div>
                 <p>{{ item.message }}</p>
                 <div class="notif-actions">
-                  @if (item.link) {
-                    <a class="view-link" [routerLink]="getNavigationLink(item.link)" (click)="markRead(item)">
+                  @if (getNavigationLink(item); as navigationLink) {
+                    <a class="view-link" [routerLink]="navigationLink" (click)="markRead(item)">
                       View details →
                     </a>
                   }
@@ -136,10 +138,11 @@ import { AuthService } from '../core/auth/auth.service';
     .message.error { padding: 0.7rem 0.9rem; border-radius: 0.55rem; border: 1px solid #f2cfcb; background: #fff5f4; color: #9c3b33; font-size: 0.78rem; }
   `,
 })
-export class ShopTechnicianNotificationsPage implements OnInit {
+export class ShopTechnicianNotificationsPage implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
+  private readonly realtime = inject(NotificationRealtimeService);
+  private realtimeSubscription?: Subscription;
 
   readonly notifications = signal<RegistrationNotification[]>([]);
   readonly loading = signal(true);
@@ -158,6 +161,17 @@ export class ShopTechnicianNotificationsPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.realtimeSubscription = this.realtime.notifications$.subscribe((notification) => {
+      const notifications = [
+        notification,
+        ...this.notifications().filter((item) => item.id !== notification.id),
+      ].slice(0, 100);
+      this.setNotifications(notifications);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.realtimeSubscription?.unsubscribe();
   }
 
   load(): void {
@@ -169,7 +183,12 @@ export class ShopTechnicianNotificationsPage implements OnInit {
       )
       .subscribe({
         next: (response) => {
-          this.notifications.set(response.data.notifications || []);
+          const currentIds = new Set(this.notifications().map((item) => item.id));
+          const notifications = [
+            ...this.notifications(),
+            ...(response.data.notifications || []).filter((item) => !currentIds.has(item.id)),
+          ].slice(0, 100);
+          this.setNotifications(notifications);
           this.loading.set(false);
         },
         error: () => {
@@ -183,12 +202,13 @@ export class ShopTechnicianNotificationsPage implements OnInit {
     if (!notification.isRead) {
       this.auth.markNotificationRead(notification.id).subscribe({
         next: () => {
-          this.notifications.update((items) =>
-            items.map((item) =>
+          this.setNotifications(
+            this.notifications().map((item) =>
               item.id === notification.id ? { ...item, isRead: true } : item,
             ),
           );
         },
+        error: () => this.error.set('Could not update the notification. Please try again.'),
       });
     }
   }
@@ -196,20 +216,26 @@ export class ShopTechnicianNotificationsPage implements OnInit {
   markAllRead(): void {
     this.auth.markAllNotificationsRead().subscribe({
       next: () => {
-        this.notifications.update((items) =>
-          items.map((item) => ({ ...item, isRead: true })),
+        this.setNotifications(
+          this.notifications().map((item) => ({ ...item, isRead: true })),
         );
       },
+      error: () => this.error.set('Could not mark notifications as read. Please try again.'),
     });
   }
 
-  getNavigationLink(link?: string): string[] {
-    if (!link) return ['/technician'];
-    if (link.startsWith('/customer/repair-requests/') || link.startsWith('/shop/repair-requests/')) {
-      const parts = link.split('/');
-      const id = parts[parts.length - 1];
-      return ['/technician/jobs', id];
+  getNavigationLink(notification: RegistrationNotification): string[] | null {
+    if (notification.relatedEntityType === 'repair_request' && notification.relatedEntityId) {
+      return ['/technician/jobs', notification.relatedEntityId];
     }
-    return [link];
+    if (!notification.link) return null;
+    return [notification.link];
+  }
+
+  private setNotifications(notifications: RegistrationNotification[]): void {
+    this.notifications.set(notifications);
+    this.realtime.publishUnreadCount(
+      notifications.filter((notification) => !notification.isRead).length,
+    );
   }
 }

@@ -1,3 +1,17 @@
+import {
+  RepairEstimatePart,
+  RepairEstimatePartInput,
+  RepairInspectionReport,
+  InspectionReportInput,
+} from '../shared/repair-workflow.models';
+
+export type {
+  RepairEstimatePart,
+  RepairEstimatePartInput,
+  RepairInspectionReport,
+  InspectionReportInput,
+};
+
 export type TechnicianAvailability = 'available' | 'busy' | 'on_leave' | 'inactive';
 export type TechnicianStatus = 'active' | 'inactive';
 export type TechnicianEmploymentType = 'full_time' | 'part_time' | 'contract';
@@ -224,6 +238,10 @@ export interface TechnicianRepairDetails extends TechnicianJob {
     partsReplaced?: string;
     finalNotes?: string;
     pickupInstructions?: string;
+    inspection?: RepairInspectionReport | null;
+    approvedRepairAmount?: number | null;
   };
+  inspection?: RepairInspectionReport | null;
+  approvedRepairAmount?: number | null;
   timeline?: TechnicianTimelineEvent[];
 }

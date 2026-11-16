@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RegistrationNotification } from '../auth/auth.models';
 
@@ -8,7 +8,13 @@ import { RegistrationNotification } from '../auth/auth.models';
 export class NotificationRealtimeService {
   private socket: Socket | null = null;
   private readonly incoming = new Subject<RegistrationNotification>();
+  private readonly unreadCount = new BehaviorSubject(0);
   readonly notifications$ = this.incoming.asObservable();
+  readonly unreadCount$ = this.unreadCount.asObservable();
+
+  publishUnreadCount(count: number): void {
+    this.unreadCount.next(count);
+  }
 
   connect(): void {
     if (this.socket) {
@@ -26,9 +32,13 @@ export class NotificationRealtimeService {
       auth: token ? { token } : undefined,
       transports: ['websocket', 'polling'],
     });
-    this.socket.on('notification:new', (notification: RegistrationNotification) => {
-      this.incoming.next(notification);
-    });
+    this.socket.on('notification:new', (notification: RegistrationNotification) =>
+      this.publishNotification(notification),
+    );
+  }
+
+  publishNotification(notification: RegistrationNotification): void {
+    this.incoming.next(notification);
   }
 
   disconnect(): void {

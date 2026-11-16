@@ -32,6 +32,18 @@ import { ToastService } from '../toast/toast.service';
         }
       </button>
 
+      @if (liveMessage(); as message) {
+        <div class="live-notice" role="status" aria-live="polite">
+          <div>
+            <strong>{{ message.title }}</strong>
+            <span>{{ message.body }}</span>
+          </div>
+          <button type="button" aria-label="Dismiss notification" (click)="dismissLiveMessage()">
+            ×
+          </button>
+        </div>
+      }
+
       @if (isOpen()) {
         <section class="notification-panel" aria-label="Notifications">
           <header class="notification-heading">
@@ -751,6 +763,15 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
   }
 
   private handleIncomingNotification(notification: RegistrationNotification): void {
+    this.liveMessage.set({
+      title: notification.title,
+      body: notification.message,
+    });
+    if (this.liveMessageTimeout) {
+      clearTimeout(this.liveMessageTimeout);
+    }
+    this.liveMessageTimeout = setTimeout(() => this.dismissLiveMessage(), 6000);
+
     let toastType: 'success' | 'error' | 'warning' | 'info' = 'info';
     if (
       notification.type === 'registration_approved' ||
@@ -787,7 +808,7 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
     const isShop = notification.title.startsWith('Shop ');
     const approved = notification.type === 'registration_approved';
     const link =
-      notification.link ??
+      this.getNavigationLink(notification) ??
       (approved
         ? isShop
           ? '/shop'
@@ -837,7 +858,19 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
     }
     this.knownNotificationIds.add(notification.id);
     this.notifications.update((items) => [notification, ...items].slice(0, 100));
+    this.realtime.publishUnreadCount(this.unreadCount());
     this.handleIncomingNotification(notification);
+  }
+
+  private getNavigationLink(notification: RegistrationNotification): string | undefined {
+    if (
+      this.auth.currentUser()?.accountType === 'technician' &&
+      notification.relatedEntityType === 'repair_request' &&
+      notification.relatedEntityId
+    ) {
+      return `/technician/jobs/${encodeURIComponent(notification.relatedEntityId)}`;
+    }
+    return notification.link;
   }
 
   dismissLiveMessage(): void {
@@ -875,7 +908,14 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
         }
         notifications.forEach((notification) => this.knownNotificationIds.add(notification.id));
         this.hasLoadedNotifications = true;
-        this.notifications.set(notifications);
+        const serverIds = new Set(notifications.map((notification) => notification.id));
+        const realtimeNotifications = this.notifications().filter(
+          (notification) => !serverIds.has(notification.id),
+        );
+        this.notifications.set(
+          [...realtimeNotifications, ...notifications].slice(0, 100),
+        );
+        this.realtime.publishUnreadCount(this.unreadCount());
       },
       error: (error: unknown) => {
         this.errorMessage.set(
@@ -925,26 +965,33 @@ export class NotificationCenterComponent implements OnInit, OnDestroy {
   markRead(notification: RegistrationNotification): void {
     if (!notification.isRead) {
       this.auth.markNotificationRead(notification.id).subscribe({
-        next: () =>
+        next: () => {
           this.notifications.update((items) =>
             items.map((item) => (item.id === notification.id ? { ...item, isRead: true } : item)),
-          ),
+          );
+          this.realtime.publishUnreadCount(this.unreadCount());
+        },
         error: (error: unknown) =>
           this.errorMessage.set(
             getAuthErrorMessage(error, 'Unable to update this notification. Please try again.'),
           ),
       });
     }
-    if (notification.link) {
+    const link = this.getNavigationLink(notification);
+    if (link) {
       this.close();
-      void this.router.navigateByUrl(notification.link);
+      void this.router.navigateByUrl(link);
     }
   }
 
   markAllRead(): void {
     this.auth.markAllNotificationsRead().subscribe({
-      next: () =>
-        this.notifications.update((items) => items.map((item) => ({ ...item, isRead: true }))),
+      next: () => {
+        this.notifications.update((items) =>
+          items.map((item) => ({ ...item, isRead: true })),
+        );
+        this.realtime.publishUnreadCount(this.unreadCount());
+      },
       error: (error: unknown) =>
         this.errorMessage.set(
           getAuthErrorMessage(error, 'Unable to mark all notifications as read.'),

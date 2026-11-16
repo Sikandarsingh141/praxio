@@ -552,7 +552,7 @@ export class TechniciansService {
             : 'technician_reassignment',
         relatedEntityId: updated._id,
         relatedEntityType: 'repair_request',
-        link: '/technician',
+        link: `/technician/jobs/${updated._id.toString()}`,
       });
     }
     const workloads = await this.getWorkloadCounts(shopObjectId, [targetId]);
@@ -628,7 +628,7 @@ export class TechniciansService {
         type: 'technician_unassignment',
         relatedEntityId: updated._id,
         relatedEntityType: 'repair_request',
-        link: '/technician',
+        link: `/technician/jobs/${updated._id.toString()}`,
       });
     }
     return { unassigned: true };
@@ -824,7 +824,7 @@ export class TechniciansService {
     const summary = {
       assigned: jobs.length,
       pending: jobs.filter((job) =>
-        ['confirmed', 'inspection_pending', 'inspection_approved'].includes(job.status),
+        ['confirmed', 'inspection_pending', 'awaiting_customer_approval', 'inspection_approved'].includes(job.status),
       ).length,
       active: jobs.filter((job) =>
         ['in_progress', 'inspection_in_progress', 'on_hold'].includes(job.status),
@@ -852,7 +852,7 @@ export class TechniciansService {
 
     const filteredJobs = jobs.filter((job) => {
       if (filter === 'pending') {
-        return ['confirmed', 'inspection_pending', 'inspection_approved'].includes(job.status);
+        return ['confirmed', 'inspection_pending', 'awaiting_customer_approval', 'inspection_approved'].includes(job.status);
       }
       if (filter === 'active') {
         return ['in_progress', 'inspection_in_progress', 'on_hold'].includes(job.status);
@@ -953,7 +953,7 @@ export class TechniciansService {
 
     const totalAssigned = jobs.length;
     const pendingJobs = jobs.filter((job) =>
-      ['confirmed', 'inspection_pending', 'inspection_approved'].includes(job.status),
+      ['confirmed', 'inspection_pending', 'awaiting_customer_approval', 'inspection_approved'].includes(job.status),
     );
     const activeJobs = jobs.filter((job) =>
       ['in_progress', 'inspection_in_progress', 'on_hold'].includes(job.status),
@@ -970,6 +970,7 @@ export class TechniciansService {
     // Currently Active Job: job in in_progress or inspection_in_progress
     const currentlyActiveJob =
       jobs.find((job) => job.status === 'in_progress' || job.status === 'inspection_in_progress') ||
+      jobs.find((job) => ['confirmed', 'inspection_pending', 'inspection_approved'].includes(job.status)) ||
       activeJobs[0] ||
       null;
 
@@ -1228,7 +1229,10 @@ export class TechniciansService {
         partsReplaced: request.repairJob?.partsReplaced ?? '',
         finalNotes: request.repairJob?.finalNotes ?? '',
         pickupInstructions: request.repairJob?.pickupInstructions ?? '',
+        inspection: request.repairJob?.inspection ?? null,
+        approvedRepairAmount: request.repairJob?.approvedRepairAmount ?? null,
       },
+      inspection: request.repairJob?.inspection ?? null,
       timeline,
       phone: customer?.mobileNumber
         ? `${customer.countryCode ?? ''} ${customer.mobileNumber}`.trim()

@@ -17,6 +17,7 @@ import {
   CompleteRepairDto,
   RepairProgressDto,
 } from '../customer/customer-portal.dto';
+import { InspectionReportDto } from '../customer/repair-workflow.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ShopPortalGuard } from './shop-portal.guard';
 import { TechnicianPortalGuard } from './technician-portal.guard';
@@ -272,6 +273,59 @@ export class TechnicianPortalController {
         request: await this.technicians.technicianJobDetails(
           this.userId(request),
           requestId,
+        ),
+      },
+    };
+  }
+
+  @Post('jobs/:id/start-inspection')
+  async startInspection(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+  ) {
+    const technicianId = this.userId(request);
+    return {
+      data: {
+        repairJob: await this.customerPortal.startRepairInspection(
+          await this.technicians.technicianShopId(technicianId),
+          requestId,
+          technicianId,
+        ),
+      },
+    };
+  }
+
+  @Post('jobs/:id/inspection-report')
+  async saveInspection(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() input: InspectionReportDto,
+  ) {
+    const technicianId = this.userId(request);
+    return {
+      data: {
+        repairJob: await this.customerPortal.saveRepairInspection(
+          await this.technicians.technicianShopId(technicianId),
+          requestId,
+          input,
+          technicianId,
+        ),
+      },
+    };
+  }
+
+  @Post('jobs/:id/start-repair')
+  async startRepair(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+  ) {
+    const technicianId = this.userId(request);
+    return {
+      data: {
+        repairJob: await this.customerPortal.startApprovedRepair(
+          await this.technicians.technicianShopId(technicianId),
+          requestId,
+          technicianId,
         ),
       },
     };

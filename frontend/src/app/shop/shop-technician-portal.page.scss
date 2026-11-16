@@ -1,3 +1,534 @@
 :host {
   display: block;
 }
+
+.job-detail-focused {
+  gap: 0.8rem;
+
+  .detail-back-link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.35rem;
+    padding: 0;
+    color: #334155;
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    svg {
+      width: 0.95rem;
+      height: 0.95rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    &:hover {
+      color: #087c3b;
+    }
+  }
+
+  .jobs-header-row {
+    margin-bottom: 0.15rem;
+  }
+
+  .page-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 1rem;
+    color: #087c3b;
+    background: #e8f8ec;
+    border: 1px solid #d5f1dc;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 750;
+    box-shadow: 0 2px 6px rgba(8, 124, 59, 0.08);
+
+    &.scheduled {
+      color: #0284c7;
+      background: #e0f2fe;
+      border-color: #bae6fd;
+    }
+
+    &.pending {
+      color: #b45309;
+      background: #fef3c7;
+      border-color: #fde68a;
+    }
+
+    &.completed {
+      color: #047857;
+      background: #d1fae5;
+      border-color: #a7f3d0;
+    }
+
+    .status-pulse {
+      width: 0.55rem;
+      height: 0.55rem;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+    }
+  }
+
+  .jobs-split-layout {
+    display: block;
+  }
+
+  .jobs-detail-column {
+    width: 100%;
+  }
+
+  .job-detail-card {
+    gap: 0.85rem;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .detail-top-bar {
+    display: none;
+  }
+
+  .detail-header-row {
+    display: grid;
+    grid-template-columns: 7.25rem minmax(15rem, 1fr) minmax(24rem, 1.35fr);
+    align-items: center;
+    gap: 1rem;
+    min-height: 6rem;
+    padding: 0.85rem 1rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.8rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+
+    .detail-thumb-box {
+      width: 7.25rem;
+      height: 4.5rem;
+      border-radius: 0.6rem;
+    }
+
+    .detail-header-info {
+      gap: 0.35rem;
+    }
+
+    .detail-appliance-title {
+      font-size: 1.05rem;
+    }
+
+    .detail-model-subtitle {
+      display: none;
+    }
+
+    .detail-meta-tags {
+      gap: 0.3rem 0.8rem;
+      font-size: 0.71rem;
+
+      .meta-tag {
+        gap: 0.25rem;
+      }
+
+      .meta-icon {
+        flex: 0 0 auto;
+      }
+    }
+  }
+
+  .job-progress-stepper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 0.4rem 0;
+  }
+
+  .progress-step {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 600;
+    white-space: nowrap;
+
+    .progress-node {
+      display: grid;
+      width: 1.45rem;
+      height: 1.45rem;
+      place-items: center;
+      color: #94a3b8;
+      background: #fff;
+      border: 2px solid #cbd5e1;
+      border-radius: 50%;
+
+      svg {
+        width: 0.8rem;
+        height: 0.8rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.5;
+      }
+    }
+
+    &.complete,
+    &.active {
+      color: #17211b;
+      font-weight: 750;
+    }
+
+    &.complete .progress-node,
+    &.active .progress-node {
+      color: #fff;
+      background: #07873b;
+      border-color: #07873b;
+    }
+
+    &.active .progress-node {
+      color: #07873b;
+      background: #fff;
+      box-shadow: 0 0 0 3px #e1f4e7;
+    }
+  }
+
+  .progress-line {
+    flex: 1 1 1rem;
+    min-width: 0.6rem;
+    height: 2px;
+    margin: 0.68rem 0.2rem 0;
+    background: #d7dee7;
+
+    &.complete {
+      background: #07873b;
+    }
+  }
+
+  .detail-actions-bar {
+    gap: 0.55rem;
+    padding: 0.1rem 0.55rem;
+
+    .action-btn {
+      justify-content: center;
+      flex: 1 1 auto;
+      min-width: max-content;
+      height: 2.45rem;
+      font-size: 0.74rem;
+    }
+
+    .btn-primary-green {
+      background: linear-gradient(110deg, #00813d, #006b36);
+    }
+  }
+
+  .detail-subtabs-nav {
+    gap: 0.15rem;
+    padding-bottom: 0;
+
+    .subtab-btn {
+      position: relative;
+      padding: 0.65rem 0.8rem;
+      border-radius: 0;
+      font-size: 0.74rem;
+
+      &.active {
+        color: #087c3b;
+        background: transparent;
+
+        &::after {
+          position: absolute;
+          right: 0;
+          bottom: -1px;
+          left: 0;
+          height: 2px;
+          background: #087c3b;
+          content: '';
+        }
+      }
+    }
+  }
+
+  .details-2x2-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.15fr);
+    gap: 0.75rem;
+
+    .inner-info-card {
+      min-width: 0;
+      padding: 0.85rem 0.95rem;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+    }
+
+    .inner-card-title h3 {
+      font-size: 0.8rem;
+    }
+  }
+
+  .detail-activity-card {
+    gap: 0.55rem !important;
+  }
+
+  .detail-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .detail-activity-item {
+    display: flex;
+    gap: 0.5rem;
+    min-width: 0;
+
+    .activity-check {
+      display: grid;
+      flex: 0 0 1rem;
+      width: 1rem;
+      height: 1rem;
+      margin-top: 0.08rem;
+      place-items: center;
+      color: #fff;
+      background: #07873b;
+      border-radius: 50%;
+
+      svg {
+        width: 0.65rem;
+        height: 0.65rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 3;
+      }
+    }
+
+    .activity-copy {
+      flex: 1;
+      min-width: 0;
+      padding-bottom: 0.35rem;
+    }
+
+    .activity-title-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 0.4rem;
+
+      strong {
+        color: #1e293b;
+        font-size: 0.69rem;
+      }
+
+      time {
+        flex-shrink: 0;
+        color: #64748b;
+        font-size: 0.6rem;
+      }
+    }
+
+    .activity-author {
+      display: block;
+      margin-top: 0.1rem;
+      color: #64748b;
+      font-size: 0.62rem;
+    }
+
+    p {
+      margin: 0.25rem 0 0;
+      padding: 0.4rem 0.5rem;
+      color: #334155;
+      background: #f5f7f9;
+      border-radius: 0.4rem;
+      font-size: 0.64rem;
+      line-height: 1.4;
+    }
+  }
+
+  .detail-activity-empty {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.72rem;
+  }
+
+  .activity-pending-step {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid #f1f5f9;
+
+    > span {
+      width: 0.75rem;
+      height: 0.75rem;
+      border: 2px solid #cbd5e1;
+      border-radius: 50%;
+    }
+
+    strong {
+      flex: 1;
+      color: #1e293b;
+      font-size: 0.68rem;
+    }
+
+    em {
+      padding: 0.2rem 0.5rem;
+      color: #b45309;
+      background: #fff4d6;
+      border-radius: 999px;
+      font-size: 0.6rem;
+      font-style: normal;
+      font-weight: 700;
+    }
+  }
+}
+
+.completed-job-details {
+  .completed-back-button {
+    display: inline-flex;
+    min-height: 2.35rem;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0 0.85rem;
+    color: #334155;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.55rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+
+    svg {
+      width: 0.9rem;
+      height: 0.9rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    &:hover {
+      border-color: #a7dfb7;
+      color: #087c3b;
+    }
+  }
+
+  .job-detail-card {
+    gap: 0.65rem;
+  }
+
+  .detail-header-row {
+    grid-template-columns: 7.25rem minmax(0, 1fr) auto;
+
+    .detail-model-subtitle {
+      display: block;
+    }
+
+    .completed-detail-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      align-self: start;
+      margin-top: 0.1rem;
+      white-space: nowrap;
+
+      svg {
+        width: 0.85rem;
+        height: 0.85rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.5;
+      }
+    }
+  }
+
+  .job-progress-stepper,
+  .detail-actions-bar {
+    display: none;
+  }
+
+  .details-2x2-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    .detail-activity-card {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+@media (max-width: 850px) {
+  .job-detail-focused {
+    .detail-header-row {
+      grid-template-columns: 6rem minmax(0, 1fr);
+    }
+
+    .detail-thumb-box {
+      grid-row: span 2;
+    }
+
+    .job-progress-stepper {
+      grid-column: 1 / -1;
+    }
+
+    .details-2x2-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (max-width: 700px) {
+  .job-detail-focused {
+    .detail-header-row {
+      grid-template-columns: 4.5rem minmax(0, 1fr);
+      padding: 0.7rem;
+
+      .detail-thumb-box {
+        width: 4.5rem;
+        height: 4rem;
+      }
+
+      .detail-meta-tags {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    &.completed-job-details {
+      .detail-header-row {
+        grid-template-columns: 4.5rem minmax(0, 1fr);
+
+        .detail-thumb-box {
+          grid-row: span 2;
+        }
+
+        .completed-detail-status {
+          grid-column: 2;
+          grid-row: 2;
+          justify-self: start;
+        }
+      }
+    }
+
+    .details-2x2-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .detail-actions-bar {
+      padding: 0;
+
+      .action-btn {
+        flex: 1 1 calc(50% - 0.55rem);
+      }
+    }
+
+    .detail-subtabs-nav .subtab-btn {
+      padding: 0.6rem 0.55rem;
+    }
+  }
+}

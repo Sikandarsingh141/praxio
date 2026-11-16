@@ -140,6 +140,7 @@ export interface RegistrationNotification {
     | 'account_deactivated'
     | 'account_suspended'
     | 'repair_started'
+    | 'repair_on_hold'
     | 'repair_marked_complete'
     | 'repair_ready_for_pickup'
     | 'repair_picked_up'
@@ -175,7 +176,8 @@ export interface RegistrationNotification {
     | 'dispute_customer_confirmed'
     | 'dispute_issue_unresolved'
     | 'technician_assignment'
-    | 'technician_reassignment';
+    | 'technician_reassignment'
+    | 'technician_unassignment';
   isRead: boolean;
   createdAt: string;
   relatedEntityId?: string;

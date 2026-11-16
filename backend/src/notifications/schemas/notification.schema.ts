@@ -16,6 +16,7 @@ export const NOTIFICATION_TYPES = [
   'account_deactivated',
   'account_suspended',
   'repair_started',
+  'repair_on_hold',
   'repair_marked_complete',
   'repair_ready_for_pickup',
   'repair_picked_up',

@@ -14,7 +14,10 @@ import { isObjectIdOrHexString, Model, Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { User } from '../users/schemas/user.schema';
 import { formatUserName, userNameParts } from '../users/user-name';
-import { NotificationsService } from '../notifications/notifications.service';
+import {
+  NotificationsService,
+  type CreateUserNotification,
+} from '../notifications/notifications.service';
 import {
   CreateQuotationDto,
   CreateRepairRequestDto,
@@ -221,6 +224,26 @@ export class CustomerPortalService {
     private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  private notifyRepairRequestParticipants(
+    request: Pick<RepairRequest, 'repairJob'>,
+    recipientIds: Types.ObjectId[],
+    notification: CreateUserNotification,
+    actorId?: Types.ObjectId,
+  ): Promise<void> {
+    const assignment = request.repairJob?.activeAssignment;
+    const recipients = [...recipientIds];
+    if (assignment) {
+      const technicianId = assignment.technicianId;
+      if (
+        !technicianId.equals(assignment.shopId) &&
+        (!actorId || !technicianId.equals(actorId))
+      ) {
+        recipients.push(technicianId);
+      }
+    }
+    return this.notifications.notifyUsers(recipients, notification);
+  }
 
   private async getShopRatings(shopIds: Types.ObjectId[]) {
     if (!shopIds.length) {
@@ -2775,10 +2798,37 @@ export class CustomerPortalService {
   async startRepairInspection(
     shopId: string,
     requestId: string,
+    actorId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const actorObjectId = isObjectIdOrHexString(actorId)
+      ? new Types.ObjectId(actorId)
+      : shop._id;
+    const isTechnician = !actorObjectId.equals(shop._id);
+    if (isTechnician) {
+      const technician = await this.users
+        .findOne({
+          _id: actorObjectId,
+          accountType: 'technician',
+          accountLifecycleStatus: 'active',
+          'technicianDetails.shopId': shop._id,
+          'technicianDetails.availabilityPreference': { $ne: 'on_leave' },
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!technician) {
+        throw new NotFoundException('Assigned repair job was not found');
+      }
+    }
+    const assignmentFilter = isTechnician
+      ? {
+          'repairJob.activeAssignment.shopId': shop._id,
+          'repairJob.activeAssignment.technicianId': actorObjectId,
+        }
+      : {};
     const assigned = await this.repairRequests
-      .findOne({ _id: requestId, shopIds: shop._id })
+      .findOne({ _id: requestId, shopIds: shop._id, ...assignmentFilter })
       .select('acceptedQuotationId')
       .lean()
       .exec();
@@ -2800,6 +2850,7 @@ export class CustomerPortalService {
           _id: requestId,
           shopIds: shop._id,
           acceptedQuotationId: assigned.acceptedQuotationId,
+          ...assignmentFilter,
           'repairJob.status': { $in: ['confirmed', 'inspection_pending'] },
         },
         {
@@ -2807,11 +2858,13 @@ export class CustomerPortalService {
             'repairJob.status': 'inspection_in_progress',
             'repairJob.inspection.status': 'in_progress',
             'repairJob.inspectionStartedAt': now,
-            'repairJob.inspectionStartedBy': shop._id,
+            'repairJob.inspectionStartedBy': isTechnician
+              ? actorObjectId
+              : shop._id,
           },
           $push: {
             'repairJob.history': {
-              actorId: shop._id,
+              actorId: isTechnician ? actorObjectId : shop._id,
               action: 'inspection_started',
               at: now,
             },
@@ -2826,14 +2879,19 @@ export class CustomerPortalService {
       );
     }
 
-    await this.notifications.notifyUsers([request.customerId], {
-      title: 'Device inspection started',
-      message: `${shop.shopDetails?.shopName ?? 'The repair shop'} has started inspecting your ${request.appliance}.`,
-      type: 'repair_inspection_started',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/customer/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [request.customerId],
+      {
+        title: 'Device inspection started',
+        message: `${shop.shopDetails?.shopName ?? 'The repair shop'} has started inspecting your ${request.appliance}.`,
+        type: 'repair_inspection_started',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/customer/repair-requests/${request._id.toString()}`,
+      },
+      actorObjectId,
+    );
     return request.repairJob;
   }
 
@@ -2841,8 +2899,35 @@ export class CustomerPortalService {
     shopId: string,
     requestId: string,
     input: import('./repair-workflow.dto').InspectionReportDto,
+    actorId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const actorObjectId = isObjectIdOrHexString(actorId)
+      ? new Types.ObjectId(actorId)
+      : shop._id;
+    const isTechnician = !actorObjectId.equals(shop._id);
+    if (isTechnician) {
+      const technician = await this.users
+        .findOne({
+          _id: actorObjectId,
+          accountType: 'technician',
+          accountLifecycleStatus: 'active',
+          'technicianDetails.shopId': shop._id,
+          'technicianDetails.availabilityPreference': { $ne: 'on_leave' },
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!technician) {
+        throw new NotFoundException('Assigned repair job was not found');
+      }
+    }
+    const assignmentFilter = isTechnician
+      ? {
+          'repairJob.activeAssignment.shopId': shop._id,
+          'repairJob.activeAssignment.technicianId': actorObjectId,
+        }
+      : {};
 
     const parts = this.normalizeRepairParts(input.parts);
     const partsTotal = this.roundRepairAmount(
@@ -2892,7 +2977,10 @@ export class CustomerPortalService {
         : { images: this.validateRepairImages(input.images) }),
       message: input.message?.trim(),
       ...(input.action === 'submit'
-        ? { submittedBy: shop._id, submittedAt: now }
+        ? {
+            submittedBy: isTechnician ? actorObjectId : shop._id,
+            submittedAt: now,
+          }
         : {}),
     };
     const request = await this.repairRequests
@@ -2900,6 +2988,7 @@ export class CustomerPortalService {
         {
           _id: requestId,
           shopIds: shop._id,
+          ...assignmentFilter,
           'repairJob.status': 'inspection_in_progress',
         },
         {
@@ -2913,7 +3002,7 @@ export class CustomerPortalService {
             ? {
                 $push: {
                   'repairJob.history': {
-                    actorId: shop._id,
+                    actorId: isTechnician ? actorObjectId : shop._id,
                     action: 'inspection_report_submitted',
                     at: now,
                   },
@@ -2931,15 +3020,20 @@ export class CustomerPortalService {
     }
 
     if (input.action === 'submit') {
-      await this.notifications.notifyUsers([request.customerId], {
-        title: 'Your device inspection is complete',
-        message:
-          'The repair shop has submitted its diagnosis and estimated repair cost. Review the report and approve or decline the repair.',
-        type: 'repair_inspection_submitted',
-        relatedEntityId: request._id,
-        relatedEntityType: 'repair_request',
-        link: `/customer/repair-requests/${request._id.toString()}`,
-      });
+      await this.notifyRepairRequestParticipants(
+        request,
+        [request.customerId],
+        {
+          title: 'Your device inspection is complete',
+          message:
+            'The repair shop has submitted its diagnosis and estimated repair cost. Review the report and approve or decline the repair.',
+          type: 'repair_inspection_submitted',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/customer/repair-requests/${request._id.toString()}`,
+        },
+        actorObjectId,
+      );
     }
     return request.repairJob;
   }
@@ -3023,34 +3117,67 @@ export class CustomerPortalService {
         'The repair shop for this request was not found.',
       );
     }
-    await this.notifications.notifyUsers([shopId], {
-      title: approved
-        ? 'Customer approved the repair estimate'
-        : 'Customer declined the repair',
-      message: approved
-        ? `The customer approved the inspection estimate for ${request.appliance}. You can now start the repair.`
-        : `The customer declined the inspection estimate for ${request.appliance}.${reason?.trim() ? ` Reason: ${reason.trim()}` : ''}`,
-      type: approved
-        ? 'repair_inspection_approved'
-        : 'repair_inspection_declined',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/shop/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [shopId],
+      {
+        title: approved
+          ? 'Customer approved the repair estimate'
+          : 'Customer declined the repair',
+        message: approved
+          ? `The customer approved the inspection estimate for ${request.appliance}. You can now start the repair.`
+          : `The customer declined the inspection estimate for ${request.appliance}.${reason?.trim() ? ` Reason: ${reason.trim()}` : ''}`,
+        type: approved
+          ? 'repair_inspection_approved'
+          : 'repair_inspection_declined',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/shop/repair-requests/${request._id.toString()}`,
+      },
+      customer._id,
+    );
     return request.repairJob;
   }
 
   async startApprovedRepair(
     shopId: string,
     requestId: string,
+    actorId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const actorObjectId = isObjectIdOrHexString(actorId)
+      ? new Types.ObjectId(actorId)
+      : shop._id;
+    const isTechnician = !actorObjectId.equals(shop._id);
+    if (isTechnician) {
+      const technician = await this.users
+        .findOne({
+          _id: actorObjectId,
+          accountType: 'technician',
+          accountLifecycleStatus: 'active',
+          'technicianDetails.shopId': shop._id,
+          'technicianDetails.availabilityPreference': { $ne: 'on_leave' },
+        })
+        .select('_id')
+        .lean()
+        .exec();
+      if (!technician) {
+        throw new NotFoundException('Assigned repair job was not found');
+      }
+    }
+    const assignmentFilter = isTechnician
+      ? {
+          'repairJob.activeAssignment.shopId': shop._id,
+          'repairJob.activeAssignment.technicianId': actorObjectId,
+        }
+      : {};
     const now = new Date();
     const request = await this.repairRequests
       .findOneAndUpdate(
         {
           _id: requestId,
           shopIds: shop._id,
+          ...assignmentFilter,
           'repairJob.status': 'inspection_approved',
           'repairJob.inspection.status': 'approved',
           'repairJob.inspection.decidedBy': { $exists: true },
@@ -3059,11 +3186,13 @@ export class CustomerPortalService {
           $set: {
             'repairJob.status': 'in_progress',
             'repairJob.startedAt': now,
-            'repairJob.repairStartedBy': shop._id,
+            'repairJob.repairStartedBy': isTechnician
+              ? actorObjectId
+              : shop._id,
           },
           $push: {
             'repairJob.history': {
-              actorId: shop._id,
+              actorId: isTechnician ? actorObjectId : shop._id,
               action: 'repair_started',
               at: now,
             },
@@ -3077,14 +3206,19 @@ export class CustomerPortalService {
         'Repair can only start after the customer approves the inspection estimate.',
       );
     }
-    await this.notifications.notifyUsers([request.customerId], {
-      title: 'Repair started',
-      message: `${shop.shopDetails?.shopName ?? 'The repair shop'} has started repairing your ${request.appliance}.`,
-      type: 'repair_started',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/customer/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [request.customerId],
+      {
+        title: 'Repair started',
+        message: `${shop.shopDetails?.shopName ?? 'The repair shop'} has started repairing your ${request.appliance}.`,
+        type: 'repair_started',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/customer/repair-requests/${request._id.toString()}`,
+      },
+      actorObjectId,
+    );
     return request.repairJob;
   }
 
@@ -3207,16 +3341,21 @@ export class CustomerPortalService {
       (item) => item._id?.toString() === input.draftId,
     );
     if (input.action === 'submit') {
-      await this.notifications.notifyUsers([request.customerId], {
-        title: 'Additional repair charges requested',
-        message: input.blocksRepair
-          ? `The repair shop found an additional issue with your ${request.appliance} that requires work to pause. Review the additional work and cost before approving it.`
-          : `The repair shop found an additional issue with your ${request.appliance}. Review the new repair work and cost before approving it.`,
-        type: 'additional_charges_requested',
-        relatedEntityId: request._id,
-        relatedEntityType: 'repair_request',
-        link: `/customer/repair-requests/${request._id.toString()}`,
-      });
+      await this.notifyRepairRequestParticipants(
+        request,
+        [request.customerId],
+        {
+          title: 'Additional repair charges requested',
+          message: input.blocksRepair
+            ? `The repair shop found an additional issue with your ${request.appliance} that requires work to pause. Review the additional work and cost before approving it.`
+            : `The repair shop found an additional issue with your ${request.appliance}. Review the new repair work and cost before approving it.`,
+          type: 'additional_charges_requested',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/customer/repair-requests/${request._id.toString()}`,
+        },
+        shop._id,
+      );
     }
     return savedCharge ?? request.repairJob?.additionalChargeRequests?.at(-1);
   }
@@ -3293,20 +3432,25 @@ export class CustomerPortalService {
     if (!charge) {
       throw new NotFoundException('Additional charge request was not found');
     }
-    await this.notifications.notifyUsers([charge.shopId], {
-      title: accepted
-        ? 'Customer approved additional charges'
-        : 'Customer declined additional charges',
-      message: accepted
-        ? `The customer approved the additional work for ${request.appliance}.`
-        : `The customer declined the additional work for ${request.appliance}.${reason?.trim() ? ` Reason: ${reason.trim()}` : ''}`,
-      type: accepted
-        ? 'additional_charges_approved'
-        : 'additional_charges_declined',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/shop/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [charge.shopId],
+      {
+        title: accepted
+          ? 'Customer approved additional charges'
+          : 'Customer declined additional charges',
+        message: accepted
+          ? `The customer approved the additional work for ${request.appliance}.`
+          : `The customer declined the additional work for ${request.appliance}.${reason?.trim() ? ` Reason: ${reason.trim()}` : ''}`,
+        type: accepted
+          ? 'additional_charges_approved'
+          : 'additional_charges_declined',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/shop/repair-requests/${request._id.toString()}`,
+      },
+      customer._id,
+    );
     return charge;
   }
 
@@ -3505,14 +3649,19 @@ export class CustomerPortalService {
       );
     }
     if (action === 'start') {
-      await this.notifications.notifyUsers([request.customerId], {
-        title: 'Repair Started',
-        message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} has started repairing your ${request.appliance}.`,
-        type: 'repair_started',
-        relatedEntityId: request._id,
-        relatedEntityType: 'repair_request',
-        link: `/customer/repair-requests/${request._id.toString()}`,
-      });
+      await this.notifyRepairRequestParticipants(
+        request,
+        [request.customerId],
+        {
+          title: 'Repair Started',
+          message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} has started repairing your ${request.appliance}.`,
+          type: 'repair_started',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/customer/repair-requests/${request._id.toString()}`,
+        },
+        actorObjectId,
+      );
       if (isTechnician) {
         await this.notifications.notifyUsers([shop._id], {
           title: 'Technician Started Work',
@@ -3523,15 +3672,31 @@ export class CustomerPortalService {
           link: `/shop/repair-requests/${request._id.toString()}`,
         });
       }
-    } else if (action === 'hold' && isTechnician) {
-      await this.notifications.notifyUsers([shop._id], {
-        title: 'Technician Paused Work',
-        message: `Technician placed ${request.appliance} on hold.${input.notes?.trim() ? ` Reason: ${input.notes.trim()}` : ''}`,
-        type: 'repair_marked_complete',
-        relatedEntityId: request._id,
-        relatedEntityType: 'repair_request',
-        link: `/shop/repair-requests/${request._id.toString()}`,
-      });
+    } else if (action === 'hold') {
+      const message = `Repair work on ${request.appliance} was paused.${input.notes?.trim() ? ` Reason: ${input.notes.trim()}` : ''}`;
+      await this.notifyRepairRequestParticipants(
+        request,
+        [request.customerId],
+        {
+          title: 'Repair work paused',
+          message,
+          type: 'repair_on_hold',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/customer/repair-requests/${request._id.toString()}`,
+        },
+        actorObjectId,
+      );
+      if (isTechnician) {
+        await this.notifications.notifyUsers([shop._id], {
+          title: 'Technician Paused Work',
+          message,
+          type: 'repair_on_hold',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/shop/repair-requests/${request._id.toString()}`,
+        });
+      }
     }
     return request.repairJob;
   }
@@ -3623,14 +3788,19 @@ export class CustomerPortalService {
         'This repair job cannot be marked repaired from its current status.',
       );
     }
-    await this.notifications.notifyUsers([request.customerId], {
-      title: 'Repair Work Completed',
-      message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} has completed the repair of your ${request.appliance}. The shop will notify you when it is ready for pickup.`,
-      type: 'repair_marked_complete',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/customer/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [request.customerId],
+      {
+        title: 'Repair Work Completed',
+        message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} has completed the repair of your ${request.appliance}. The shop will notify you when it is ready for pickup.`,
+        type: 'repair_marked_complete',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/customer/repair-requests/${request._id.toString()}`,
+      },
+      actorObjectId,
+    );
     if (isTechnician) {
       await this.notifications.notifyUsers([shop._id], {
         title: 'Technician Completed Repair',
@@ -3709,14 +3879,19 @@ export class CustomerPortalService {
         'This repair is not ready to be marked for pickup.',
       );
     }
-    await this.notifications.notifyUsers([request.customerId], {
-      title: 'Your Item Is Ready for Pickup',
-      message: `Good news! Your ${request.appliance} has been repaired and is ready for pickup at ${shop.shopDetails?.shopName ?? 'the repair shop'}${address ? `, ${address}` : ''}. ${input.message?.trim() || 'Please inspect your item before confirming receipt.'}`,
-      type: 'repair_ready_for_pickup',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/customer/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [request.customerId],
+      {
+        title: 'Your Item Is Ready for Pickup',
+        message: `Good news! Your ${request.appliance} has been repaired and is ready for pickup at ${shop.shopDetails?.shopName ?? 'the repair shop'}${address ? `, ${address}` : ''}. ${input.message?.trim() || 'Please inspect your item before confirming receipt.'}`,
+        type: 'repair_ready_for_pickup',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/customer/repair-requests/${request._id.toString()}`,
+      },
+      shop._id,
+    );
     return request.repairJob;
   }
 
@@ -3792,14 +3967,19 @@ export class CustomerPortalService {
           .exec()
       : null;
     if (quotation) {
-      await this.notifications.notifyUsers([quotation.shopId], {
-        title: 'Customer Confirmed Pickup',
-        message: `The customer confirmed receiving their repaired ${request.appliance}.`,
-        type: 'repair_picked_up',
-        relatedEntityId: request._id,
-        relatedEntityType: 'repair_request',
-        link: `/shop/repair-requests/${request._id.toString()}`,
-      });
+      await this.notifyRepairRequestParticipants(
+        request,
+        [quotation.shopId],
+        {
+          title: 'Customer Confirmed Pickup',
+          message: `The customer confirmed receiving their repaired ${request.appliance}.`,
+          type: 'repair_picked_up',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/shop/repair-requests/${request._id.toString()}`,
+        },
+        customer._id,
+      );
     }
     return request.repairJob;
   }
@@ -3926,14 +4106,19 @@ export class CustomerPortalService {
       relatedEntityType: 'repair_review',
       link: '/shop/reviews',
     });
-    await this.notifications.notifyUsers([customer._id, quotation.shopId], {
-      title: 'Repair Job Completed',
-      message: `The ${request.appliance} repair has been completed and reviewed.`,
-      type: 'repair_job_completed',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/customer/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifyRepairRequestParticipants(
+      request,
+      [customer._id, quotation.shopId],
+      {
+        title: 'Repair Job Completed',
+        message: `The ${request.appliance} repair has been completed and reviewed.`,
+        type: 'repair_job_completed',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/customer/repair-requests/${request._id.toString()}`,
+      },
+      customer._id,
+    );
     return review;
   }
 

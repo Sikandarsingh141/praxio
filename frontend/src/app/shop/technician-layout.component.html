@@ -14,6 +14,10 @@
     >
       <label class="visually-hidden" for="technician-global-search">Search jobs</label>
       <span class="inline-search-input">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-4-4" />
+        </svg>
         <input
           id="technician-global-search"
           type="search"
@@ -25,7 +29,7 @@
           <span class="inline-search-spinner" role="status" aria-label="Searching assigned jobs"></span>
         }
       </span>
-      <button type="submit" [disabled]="searchLoading()">Search</button>
+      <span class="search-shortcut" aria-hidden="true">Ctrl + K</span>
 
       @if (searchResults() !== null || searchLoading() || searchError()) {
         <div class="global-search-results">
@@ -77,7 +81,10 @@
               {{ getUserInitial() }}
             </span>
           }
-          <span class="account-name">{{ getUserDisplayName() }}</span>
+          <span class="account-identity">
+            <span class="account-name">{{ getUserDisplayName() }}</span>
+            <span class="account-role">Technician</span>
+          </span>
           <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="m5 7.5 5 5 5-5" />
           </svg>
@@ -206,6 +213,23 @@
       </a>
       <a
         class="portal-nav"
+        routerLink="/technician/notifications"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+          <path d="M10 21h4" />
+        </svg>
+        Notifications
+        @if (unreadNotificationCount() > 0) {
+          <span class="nav-notification-count" [attr.aria-label]="unreadNotificationCount() + ' unread notifications'">
+            {{ unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount() }}
+          </span>
+        }
+      </a>
+      <a
+        class="portal-nav"
         routerLink="/technician/profile"
         routerLinkActive="active"
         [routerLinkActiveOptions]="{ exact: true }"
@@ -216,6 +240,29 @@
         </svg>
         My Profile
       </a>
+
+      <section class="sidebar-support-card" aria-label="Technician support">
+        <svg class="support-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 13v-2a9 9 0 0 1 18 0v2" />
+          <rect x="2" y="12" width="4" height="7" rx="2" />
+          <rect x="18" y="12" width="4" height="7" rx="2" />
+          <path d="M20 19a4 4 0 0 1-4 3h-2" />
+        </svg>
+        <strong>Need Help?</strong>
+        <p>Contact shop admin or Fixora support.</p>
+        <a routerLink="/technician/messages" class="support-link">
+          Get Support
+          <span aria-hidden="true">→</span>
+        </a>
+      </section>
+
+      <button type="button" class="portal-nav portal-logout-btn" (click)="signOut()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10 17l5-5-5-5M15 12H3" />
+          <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7" />
+        </svg>
+        Sign Out
+      </button>
     </aside>
 
     <!-- Main Content Area -->
