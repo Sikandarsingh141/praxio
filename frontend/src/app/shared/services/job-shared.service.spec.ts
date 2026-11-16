@@ -78,6 +78,42 @@ describe('JobSharedService', () => {
     });
   });
 
+  it('exposes only actionable customer quotations for pending job responses', (done) => {
+    const request = customerRequest('pending-quotation');
+    request.shops = [{ id: 'shop-1', name: 'Repair shop' }];
+    request.quotations = [
+      {
+        _id: 'quote-1',
+        repairRequestId: request._id,
+        shopId: 'shop-1',
+        amount: 125,
+        currency: 'USD',
+        message: 'Screen replacement',
+        status: 'sent',
+        createdAt: '2025-01-01T00:00:00.000Z',
+      },
+      {
+        _id: 'quote-2',
+        repairRequestId: request._id,
+        shopId: 'shop-2',
+        amount: 80,
+        currency: 'USD',
+        message: 'Declined offer',
+        status: 'declined',
+        createdAt: '2025-01-02T00:00:00.000Z',
+      },
+    ];
+    customerApi.getRepairRequests.and.returnValue(of([request]));
+
+    service.customerJobs('pending').subscribe((items) => {
+      expect(items.length).toBe(1);
+      expect(items[0].pendingQuotations).toEqual([
+        { id: 'quote-1', shopName: 'Repair shop', amount: 125, currency: 'USD' },
+      ]);
+      done();
+    });
+  });
+
   it('loads shop request pages beyond the first page before categorizing jobs', (done) => {
     const firstPageItems = Array.from({ length: 50 }, (_, index) =>
       shopRequest(`new-${index}`, 'new'),

@@ -11,6 +11,13 @@ export type CustomerJobCategory =
 export type ShopJobCategory = CustomerJobCategory;
 export type TechnicianJobCategory = 'assigned' | 'active' | 'completed';
 
+export interface PendingJobQuotation {
+  id: string;
+  shopName: string;
+  amount: number;
+  currency: string;
+}
+
 export interface JobListItem {
   id: string;
   title: string;
@@ -28,6 +35,7 @@ export interface JobListItem {
   amount?: number | null;
   currency?: string;
   quotationSubmitted?: boolean;
+  pendingQuotations?: PendingJobQuotation[];
 }
 
 export interface JobTimelineEntry {

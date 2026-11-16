@@ -231,13 +231,33 @@ export class JobSharedService {
   }
 
   private customerListItem(request: CustomerRepairRequest): JobListItem {
+    const firstPendingQuotation = request.quotations.find(
+      (quotation) => quotation.status === 'pending' || quotation.status === 'sent',
+    );
+    const pendingQuotations = request.quotations
+      .filter((quotation) => quotation.status === 'pending' || quotation.status === 'sent')
+      .map((quotation) => ({
+        id: quotation._id,
+        shopName:
+          request.shops?.find((shop) => shop.id === quotation.shopId)?.name ?? 'Repair shop',
+        amount: quotation.amount,
+        currency: quotation.currency,
+      }));
+
     return {
       id: request._id,
       title: request.appliance,
       status: request.repairJob?.status ?? request.status,
       description: request.description,
-      shopName: request.shop?.name ?? request.shops?.[0]?.name,
-      shopLogoUrl: request.shop?.logoUrl ?? request.shops?.[0]?.logoUrl ?? null,
+      shopName:
+        pendingQuotations[0]?.shopName ??
+        request.shop?.name ??
+        request.shops?.[0]?.name,
+      shopLogoUrl:
+        request.shops?.find((shop) => shop.id === firstPendingQuotation?.shopId)?.logoUrl ??
+        request.shop?.logoUrl ??
+        request.shops?.[0]?.logoUrl ??
+        null,
       brand: request.brand,
       model: request.model,
       imageData: request.photos?.[0]?.data ?? null,
@@ -252,6 +272,7 @@ export class JobSharedService {
             shop.responseStatus ?? '',
           ),
         ) === true,
+      ...(pendingQuotations.length ? { pendingQuotations } : {}),
     };
   }
 

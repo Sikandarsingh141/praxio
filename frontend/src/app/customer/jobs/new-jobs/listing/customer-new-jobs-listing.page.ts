@@ -10,7 +10,7 @@ import {
   FilterConfig,
   FilterValues,
 } from '../../../../shared/components/filters/common-filter.component';
-import { JobListItem } from '../../../../shared/models/job.models';
+import { CustomerJobCategory, JobListItem } from '../../../../shared/models/job.models';
 
 @Component({
   selector: 'app-customer-new-jobs-listing-page',
@@ -27,10 +27,10 @@ import { JobListItem } from '../../../../shared/models/job.models';
   styleUrl: './customer-new-jobs-listing.page.scss',
 })
 export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
-  protected override readonly category = 'new' as const;
-  readonly title = 'New Jobs';
-  readonly description = 'Review newly submitted repair requests and manage incoming jobs.';
-  readonly detailRoute = '/customer/jobs/new-jobs';
+  protected override readonly category: CustomerJobCategory = 'new';
+  readonly title: string = 'New Jobs';
+  readonly description: string = 'Review newly submitted repair requests and manage incoming jobs.';
+  readonly detailRoute: string = '/customer/jobs/new-jobs';
   readonly appliedFilters = signal<FilterValues>({});
   readonly failedImages = signal<Set<string>>(new Set<string>());
 

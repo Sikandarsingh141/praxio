@@ -1,14 +1,350 @@
-<main class="job-detail-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb"><a [routerLink]="backRoute">{{ backLabel }}</a><span aria-hidden="true">/</span><span aria-current="page">Job details</span></nav>
-  @if (loading()) { <p class="state" role="status">Loading job details...</p> }
-  @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
-  @else if (record(); as job) {
-    <header class="detail-heading"><div><p class="eyebrow">CUSTOMER JOB ? #{{ job._id.slice(-8).toUpperCase() }}</p><h1>{{ pageTitle }}</h1><p>{{ job.appliance }} {{ job.brand }} {{ job.model }}</p></div><app-job-status-badge [status]="job.repairJob?.status ?? job.status" /></header>
-    <section class="detail-grid"><article class="detail-section"><h2>Device and request</h2><dl><div><dt>Device</dt><dd>{{ job.appliance }}</dd></div><div><dt>Brand and model</dt><dd>{{ job.brand || 'Not specified' }} {{ job.model }}</dd></div><div><dt>Service type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div><div><dt>Preferred date</dt><dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'mediumDate') : 'Not specified' }}</dd></div><div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'mediumDate' }}</dd></div></dl><p>{{ job.description }}</p></article>
-      <article class="detail-section"><h2>Repair shop</h2>@if (job.shop; as shop) { <p class="shop-name">{{ shop.name }}</p><p>{{ shop.address }}</p>@if (shop.phone) { <p>{{ shop.phone }}</p> } } @else { <p>Shop responses are still being collected.</p> }</article>
-      <article class="detail-section"><h2>Quotation and payment</h2>@if (job.acceptedQuotation; as quotation) { <p class="price">{{ quotation.amount | currency: quotation.currency }}</p><p>{{ quotation.message }}</p>@if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }@if (quotation.warrantyInformation) { <p><strong>Warranty:</strong> {{ quotation.warrantyInformation }}</p> } } @else { <p>No accepted quotation is available yet.</p> }</article>
-      <article class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="jobs.photoAttachments(job.photos ?? [])" /></article></section>
-    <section class="detail-section"><h2>Repair progress and inspection</h2><app-job-timeline [items]="jobs.customerTimeline(job)" />@if (job.repairJob) { <app-customer-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" /> }</section>
-    <a class="job-button secondary" [routerLink]="legacyDetailRoute(job._id)">Open full repair controls</a>
+<main class="job-detail-page customer-pending-job-detail-page">
+  @if (loading()) {
+    <p class="state" role="status">Loading job details...</p>
+  } @else if (error()) {
+    <p class="state error" role="alert">{{ error() }}</p>
+  } @else if (record(); as job) {
+    <a class="detail-back-link" [routerLink]="backRoute">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+      Back to Pending Jobs
+    </a>
+    <h1 class="detail-page-title">{{ pageTitle }}</h1>
+
+    <section class="request-hero" aria-label="Repair request summary">
+      <div class="request-hero-photo">
+        @if (job.photos?.[0]; as photo) {
+          @if (!heroImageUnavailable()) {
+            <img
+              [src]="photoSource(photo)"
+              [alt]="job.appliance + ' photo'"
+              (error)="heroImageUnavailable.set(true)"
+            />
+          } @else {
+            <span class="hero-image-placeholder" role="img" aria-label="No image available">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <circle cx="8.5" cy="9" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </span>
+          }
+        } @else {
+          <span class="hero-image-placeholder" role="img" aria-label="No image available">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="8.5" cy="9" r="1.5" />
+              <path d="m21 15-5-5L5 21" />
+            </svg>
+          </span>
+        }
+      </div>
+      <div class="request-hero-copy">
+        <h2>{{ job.appliance }}</h2>
+        <span class="request-id">
+          Request ID: <strong>#{{ job._id.slice(-8).toUpperCase() }}</strong>
+        </span>
+      </div>
+      <span class="detail-status" [attr.data-status]="job.repairJob?.status ?? job.status">
+        <span class="status-dot" aria-hidden="true"></span>{{ statusLabel(job) }}
+      </span>
+    </section>
+
+    <ol class="request-progress" aria-label="Repair request progress">
+      @for (step of progressSteps; track step; let index = $index) {
+        <li
+          [class.completed]="isRepairComplete(job) || index + 1 < currentProgressStep(job)"
+          [class.current]="!isRepairComplete(job) && index + 1 === currentProgressStep(job)"
+          [attr.aria-current]="
+            !isRepairComplete(job) && index + 1 === currentProgressStep(job) ? 'step' : null
+          "
+        >
+          <span class="progress-marker" aria-hidden="true">
+            @if (isRepairComplete(job) || index + 1 < currentProgressStep(job)) {
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <strong>{{ step }}</strong>
+          @if (progressDate(job, index); as stepDate) {
+            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
+          }
+        </li>
+      }
+    </ol>
+
+    <div class="customer-detail-layout">
+      <div class="customer-detail-main">
+        <section
+          class="detail-section customer-detail-main-card"
+          aria-label="Customer repair request details"
+        >
+          <section class="customer-detail-block customer-information-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
+              Customer Information
+            </h2>
+            @if (authService.currentUser(); as customer) {
+              <div class="customer-information-row">
+                <div class="customer-identity">
+                  <span class="customer-avatar" aria-hidden="true">{{ customerInitials(customer) }}</span>
+                  <strong>{{ customerName(customer) }}</strong>
+                </div>
+                <dl class="customer-facts">
+                  <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
+                  <div><dt>Phone</dt><dd>{{ customerPhone(customer) }}</dd></div>
+                  <div><dt>Location</dt><dd>{{ customerLocation(customer) }}</dd></div>
+                </dl>
+              </div>
+            } @else {
+              <p class="muted-copy">Customer information is not available.</p>
+            }
+          </section>
+
+          <section class="customer-detail-block problem-description-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8m-8 4h8" /></svg>
+              Problem Description
+            </h2>
+            <p>{{ job.description || 'No issue details provided.' }}</p>
+          </section>
+
+          <section class="customer-detail-block route-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+              Location and Route
+            </h2>
+            @if (shopDetails(job); as shop) {
+              @if (hasRouteCoordinates(job)) {
+                <app-shop-repair-route
+                  [requestId]="job._id"
+                  [shopLocation]="shopLocation()"
+                  [customerLocation]="customerCoordinates(job)"
+                  [directionsLoader]="customerDirectionsLoader"
+                  heading="Route to Repair Shop"
+                  description="Driving directions from your location to the repair shop."
+                  originLabel="Your location"
+                  destinationLabel="Repair shop"
+                  [reverseDirections]="true"
+                />
+              } @else {
+                <div class="route-empty" role="status">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                  <p>{{ shopLocationLoading() ? 'Loading location details…' : shopLocationError() || 'Location details are not available yet.' }}</p>
+                </div>
+              }
+              <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
+            } @else {
+              <div class="route-empty" role="status">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                <p>Location details are not available yet.</p>
+              </div>
+            }
+          </section>
+
+          <section class="customer-detail-block quotation-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" /><path d="M8 2v3m8-3v3" /></svg>
+              Quotation and Payment
+            </h2>
+            @if (job.acceptedQuotation; as quotation) {
+              <article class="quotation-entry">
+                <div class="quotation-heading">
+                  <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                  <span class="quotation-status accepted">Accepted</span>
+                </div>
+                <p>{{ quotation.message }}</p>
+                @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+              </article>
+            } @else if (job.quotations.length) {
+              <div class="quotation-list">
+                @for (quotation of job.quotations; track quotation._id) {
+                  <article class="quotation-entry">
+                    <div class="quotation-heading">
+                      <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                      <span class="quotation-status" [attr.data-status]="quotation.status">{{ formatStatus(quotation.status) }}</span>
+                    </div>
+                    <p>{{ quotation.message }}</p>
+                    @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+                    @if (canRespondToQuotation(job, quotation)) {
+                      <div class="quotation-response-buttons">
+                        <button
+                          type="button"
+                          class="quotation-accept-button"
+                          (click)="prepareQuotationResponse(job, quotation, 'accepted')"
+                        >
+                          Accept Quotation
+                        </button>
+                        <button
+                          type="button"
+                          class="quotation-decline-button"
+                          (click)="prepareQuotationResponse(job, quotation, 'declined')"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    }
+                  </article>
+                }
+              </div>
+              <a class="review-quotation" [routerLink]="legacyDetailRoute(job._id)">Open full quotation details</a>
+            } @else {
+              <div class="quotation-empty">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" /><path d="M8 2v3m8-3v3" /></svg>
+                <strong>No quotation yet</strong>
+                <span>No quotation has been submitted.</span>
+              </div>
+            }
+          </section>
+
+          <section class="customer-detail-block timeline-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+              Repair Progress and Inspection
+            </h2>
+            @if (jobs.customerTimeline(job).length) {
+              <app-job-timeline [items]="jobs.customerTimeline(job)" />
+            } @else {
+              <div class="timeline-empty">
+                <span class="timeline-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                </span>
+                <div>
+                  <strong>No repair history yet</strong>
+                  <p>Repair activity will appear here once the shop starts working on your request.</p>
+                </div>
+              </div>
+            }
+            @if (job.repairJob) {
+              <app-customer-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" />
+              <a class="job-button secondary" [routerLink]="legacyDetailRoute(job._id)">Open full repair controls</a>
+            }
+          </section>
+        </section>
+      </div>
+
+      <aside class="customer-detail-sidebar">
+        <section
+          class="detail-section customer-detail-sidebar-card"
+          aria-label="Device and repair shop information"
+        >
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>
+              Device Information
+            </h2>
+            <dl class="sidebar-facts">
+              <div><dt>Device</dt><dd>{{ job.appliance }}</dd></div>
+              <div><dt>Brand</dt><dd>{{ job.brand || 'Not specified' }}</dd></div>
+              <div><dt>Model</dt><dd>{{ job.model || 'Not specified' }}</dd></div>
+              <div><dt>Category</dt><dd>{{ job.appliance }}</dd></div>
+              <div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'MMM d, y' }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" /><path d="m14 14 6 6M17 13l3-3" /></svg>
+              Service Details
+            </h2>
+            <dl class="sidebar-facts">
+              <div><dt>Service Type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Repair' }}</dd></div>
+              <div><dt>Preferred Date</dt><dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'MMM d, y') : 'Not specified' }}</dd></div>
+              <div><dt>Visit Type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="customer-detail-block uploaded-photos-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+              Uploaded Photos <small>({{ job.photos?.length || 0 }})</small>
+            </h2>
+            <app-job-attachments
+              [items]="jobs.photoAttachments(job.photos ?? [])"
+              [showViewAllAction]="true"
+            />
+          </section>
+
+          @if (shopDetails(job); as shop) {
+            <section class="customer-detail-block repair-shop-section">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" /></svg>
+                Repair Shop
+              </h2>
+              <div class="shop-summary">
+                <span class="shop-logo">
+                  @if (shop.logoUrl && shopLogoUnavailable() !== shop.logoUrl) {
+                    <img [src]="shop.logoUrl" [alt]="shop.name" (error)="shopLogoUnavailable.set(shop.logoUrl)" />
+                  }
+                  @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" /></svg> }
+                </span>
+                <div class="shop-copy"><strong>{{ shop.name }}</strong><span>{{ shop.address || 'Address not available' }}</span></div>
+              </div>
+              <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
+            </section>
+          }
+        </section>
+      </aside>
+    </div>
+
+    @if (quotationResponse(); as response) {
+      <div class="quotation-response-backdrop" role="presentation">
+        <section
+          class="quotation-response-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quotation-response-title"
+          [attr.aria-busy]="respondingQuotationId() === response.quotation._id"
+        >
+          <h2 id="quotation-response-title">
+            {{ response.status === 'accepted' ? 'Accept this quotation?' : 'Decline this quotation?' }}
+          </h2>
+          <p class="response-quote-summary">
+            {{ response.shopName }} ·
+            {{ response.quotation.amount | currency: response.quotation.currency }}
+          </p>
+          @if (response.status === 'accepted') {
+            <p class="response-explanation">
+              Accepting selects this shop for your repair request. Other pending quotations for this request will become unavailable.
+            </p>
+          } @else {
+            <label class="rejection-reason">
+              Reason (optional)
+              <textarea
+                [value]="quotationRejectionReason()"
+                (input)="quotationRejectionReason.set($any($event.target).value)"
+                maxlength="500"
+              ></textarea>
+            </label>
+          }
+          @if (quotationResponseError()) {
+            <p class="response-error" role="alert">{{ quotationResponseError() }}</p>
+          }
+          <div class="quotation-response-actions">
+            <button
+              type="button"
+              class="response-cancel"
+              [disabled]="respondingQuotationId() === response.quotation._id"
+              (click)="cancelQuotationResponse()"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              [class.response-accept]="response.status === 'accepted'"
+              [class.response-decline]="response.status === 'declined'"
+              [disabled]="respondingQuotationId() === response.quotation._id"
+              (click)="submitQuotationResponse()"
+            >
+              @if (respondingQuotationId() === response.quotation._id) {
+                {{ response.status === 'accepted' ? 'Accepting…' : 'Saving…' }}
+              } @else {
+                {{ response.status === 'accepted' ? 'Yes, Accept Quotation' : 'Confirm Decline' }}
+              }
+            </button>
+          </div>
+        </section>
+      </div>
+    }
   }
 </main>
