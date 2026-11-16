@@ -10,7 +10,7 @@ import {
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from '../../../environments/environment';
-import { LoaderService } from '../../loaders/overlay/local/loader.service';
+import { LoaderService } from './overlay/local/loader.service';
 import { SKIP_GLOBAL_LOADER } from './global-loader.context';
 import { globalLoaderInterceptor } from './global-loader.interceptor';
 

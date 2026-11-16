@@ -1,17 +1,21 @@
-@use './app/admin/admin-repair-monitor.page' as repairMonitor;
-@use './app/admin/admin-overview.page' as adminOverview;
-@use './app/admin/admin-map-view.page' as adminMapView;
+@use './app/design-tokens' as fixoraTokens;
+@use './app/admin/repair-requests/admin-repair-monitor.page' as repairMonitor;
+@use './app/admin/dashboard/admin-overview.page' as adminOverview;
+@use './app/admin/map-view/admin-map-view.page' as adminMapView;
 @use './app/admin/admin-design-system' as adminDesignSystem;
 @use './app/shop/shop-design-system' as shopDesignSystem;
-@use './app/auth/customer-registration.global' as customerRegistration;
-@use './app/auth/shop-registration.global' as shopRegistration;
-@use './app/shared/chat-center.component' as chatCenter;
+@use './app/customer/shop-details/customer-shop-details.design-system' as customerShopDetails;
+@use './app/auth/register/customer-registration.global' as customerRegistration;
+@use './app/auth/register/shop-registration.global' as shopRegistration;
+@use './app/shared/components/chat-center/chat-center.component' as chatCenter;
 
+@include fixoraTokens.globalDesignTokens;
 @include repairMonitor.repairMonitorStyles;
 @include adminOverview.adminOverviewStyles;
 @include adminMapView.adminMapViewStyles;
 @include adminDesignSystem.adminDesignSystemStyles;
 @include shopDesignSystem.shopPortalLayoutStyles;
+@include customerShopDetails.customerShopDetailsStyles;
 @include customerRegistration.customerRegistrationStyles;
 @include shopRegistration.shopRegistrationStyles;
 
@@ -2924,20 +2928,15 @@
 html {
   min-width: 320px;
   min-height: 100%;
-  background: #f7f8f6;
+  background: var(--fixora-color-background);
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  color: #20302b;
-  font-family:
-    Inter,
-    'Segoe UI',
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  color: var(--fixora-color-text);
+  font-family: var(--fixora-font-family);
   -webkit-font-smoothing: antialiased;
 }
 

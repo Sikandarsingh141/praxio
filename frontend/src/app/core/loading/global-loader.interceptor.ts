@@ -2,7 +2,7 @@ import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LoaderService } from '../../loaders/overlay/local/loader.service';
+import { LoaderService } from './overlay/local/loader.service';
 import { SKIP_GLOBAL_LOADER } from './global-loader.context';
 
 export const globalLoaderInterceptor: HttpInterceptorFn = (request, next) => {

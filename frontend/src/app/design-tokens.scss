@@ -1,0 +1,48 @@
+$breakpoint-mobile: 40rem;
+$breakpoint-tablet: 48rem;
+$breakpoint-desktop: 64rem;
+
+@mixin globalDesignTokens {
+  :root {
+    --fixora-color-primary: #087c3b;
+    --fixora-color-primary-strong: #075d35;
+    --fixora-color-primary-hover: #176b34;
+    --fixora-color-background: #f7f8f6;
+    --fixora-color-surface: #fff;
+    --fixora-color-text: #20302b;
+    --fixora-color-heading: #17211b;
+    --fixora-color-muted: #647169;
+    --fixora-color-border: #e3e9e4;
+    --fixora-color-success: #176b34;
+    --fixora-color-success-background: #e7f5eb;
+    --fixora-color-warning: #9a5b10;
+    --fixora-color-warning-background: #fff3dc;
+    --fixora-color-danger: #a34842;
+    --fixora-color-danger-background: #fff1ef;
+
+    --fixora-font-family:
+      Inter, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    --fixora-font-size-xs: 0.7rem;
+    --fixora-font-size-sm: 0.8rem;
+    --fixora-font-size-base: 0.95rem;
+    --fixora-font-size-lg: 1.15rem;
+    --fixora-font-size-xl: 1.5rem;
+    --fixora-font-weight-normal: 400;
+    --fixora-font-weight-medium: 600;
+    --fixora-font-weight-bold: 700;
+
+    --fixora-space-1: 0.25rem;
+    --fixora-space-2: 0.5rem;
+    --fixora-space-3: 0.75rem;
+    --fixora-space-4: 1rem;
+    --fixora-space-6: 1.5rem;
+    --fixora-space-8: 2rem;
+
+    --fixora-radius-control: 0.6rem;
+    --fixora-radius-card: 0.85rem;
+    --fixora-radius-pill: 999px;
+    --fixora-shadow-card: 0 2px 10px rgb(20 40 28 / 5%);
+    --fixora-control-height: 2.75rem;
+    --fixora-button-height: 2.75rem;
+  }
+}

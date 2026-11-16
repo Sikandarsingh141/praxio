@@ -1,0 +1,291 @@
+<section class="shop-details-page" aria-label="Repair shop details">
+  <a class="back-link" routerLink="/customer/shops">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m15 18-6-6 6-6M20 12H9" />
+    </svg>
+    Back to shop search
+  </a>
+
+  @if (loading()) {
+    <div class="state-card loading-state" role="status" aria-live="polite">
+      <span class="loading-spinner" aria-hidden="true"></span>
+      <span>Loading shop details…</span>
+    </div>
+  } @else if (error()) {
+    <div class="state-card error-state" role="alert">
+      <span class="state-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18.5A1.7 1.7 0 0 0 3.3 21h17.4a1.7 1.7 0 0 0 1.5-2.5L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+        </svg>
+      </span>
+      <h1>Shop details unavailable</h1>
+      <p>{{ error() }}</p>
+      <div class="state-actions">
+        <button type="button" class="button button-secondary" (click)="retryLoad()">
+          Try again
+        </button>
+        <a class="button button-primary" routerLink="/customer/shops">Return to shop search</a>
+      </div>
+    </div>
+  } @else if (shop(); as shop) {
+    <div class="shop-profile">
+      <header class="shop-hero">
+        <div class="hero-cover" aria-hidden="true"></div>
+        <div class="shop-hero-content">
+          <div class="shop-logo">
+            @if (shop.logoUrl && !logoFailed()) {
+              <img [src]="shop.logoUrl" alt="" (error)="logoFailed.set(true)" />
+            } @else {
+              <span class="shop-initials">{{ initial }}</span>
+            }
+          </div>
+
+          <div class="shop-identity">
+            <span class="approval-badge">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m5 12 4 4L19 6" />
+              </svg>
+              Approved on Fixora
+            </span>
+            <h1 id="shop-details-title">{{ shop.shopName }}</h1>
+            @if (shop.businessType) {
+              <p class="shop-category">{{ shop.businessType }}</p>
+            }
+            <div class="shop-highlights">
+              @if (shop.rating !== null) {
+                <span class="highlight-item rating-highlight">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+                  </svg>
+                  <strong>{{ shop.rating | number: '1.1-1' }}</strong>
+                  <span>/ 5</span>
+                </span>
+              }
+              @if (shop.reviewCount > 0) {
+                <span class="highlight-item">
+                  {{ shop.reviewCount }}
+                  {{ shop.reviewCount === 1 ? 'customer review' : 'customer reviews' }}
+                </span>
+              } @else {
+                <span class="highlight-item">No reviews yet</span>
+              }
+              @if (shop.distanceKm !== null) {
+                <span class="highlight-item distance-highlight">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                    <circle cx="12" cy="10" r="2.5" />
+                  </svg>
+                  {{ shop.distanceKm | number: '1.0-1' }} km away
+                </span>
+              }
+            </div>
+            @if (address) {
+              <p class="shop-address">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                {{ address }}
+              </p>
+            }
+          </div>
+
+          <a
+            class="button button-primary hero-request-button"
+            [routerLink]="['/customer/shops']"
+            [queryParams]="{ shop: shop.id }"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 5v14m-7-7h14" />
+            </svg>
+            Request a repair
+          </a>
+        </div>
+      </header>
+
+      <div class="shop-content-grid">
+        <div class="shop-main-column">
+          <section class="detail-card about-card" aria-labelledby="about-shop-title">
+            <div class="section-heading">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v5m0-8h.01" />
+                </svg>
+              </span>
+              <div>
+                <h2 id="about-shop-title">About the shop</h2>
+                <p>Business profile and experience</p>
+              </div>
+            </div>
+            <p class="shop-description">
+              {{ shop.description || 'This shop has not added a business description yet.' }}
+            </p>
+            <dl class="business-facts">
+              @if (shop.businessType) {
+                <div class="business-fact">
+                  <dt>Business type</dt>
+                  <dd>{{ shop.businessType }}</dd>
+                </div>
+              }
+              @if (shop.yearsOfExperience > 0) {
+                <div class="business-fact">
+                  <dt>Experience</dt>
+                  <dd>{{ shop.yearsOfExperience }} years</dd>
+                </div>
+              }
+              @if (shop.distanceKm !== null) {
+                <div class="business-fact">
+                  <dt>Distance</dt>
+                  <dd>{{ shop.distanceKm | number: '1.0-1' }} km</dd>
+                </div>
+              }
+            </dl>
+          </section>
+
+          <section class="detail-card services-card" aria-labelledby="services-title">
+            <div class="section-heading">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M14.7 6.3a5 5 0 0 0-6.4 6.4l-5.1 5.1a2.1 2.1 0 0 0 3 3l5.1-5.1a5 5 0 0 0 6.4-6.4L14 13l-3-3 3.7-3.7Z" />
+                </svg>
+              </span>
+              <div>
+                <h2 id="services-title">Services offered</h2>
+                <p>Repair services listed by this shop</p>
+              </div>
+            </div>
+            @if (shop.services.length) {
+              <ul class="service-list">
+                @for (service of shop.services; track service) {
+                  <li class="service-item">
+                    <span class="service-check" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+                    </span>
+                    <span>{{ service }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="empty-note">This shop has not listed its repair services yet.</p>
+            }
+          </section>
+
+          <section class="detail-card location-card" aria-labelledby="location-title">
+            <div class="section-heading">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </span>
+              <div>
+                <h2 id="location-title">Location</h2>
+                <p>Shop address and map</p>
+              </div>
+            </div>
+            @if (address) {
+              <p class="location-address">{{ address }}</p>
+            } @else {
+              <p class="empty-note">This shop has not provided an address.</p>
+            }
+            @if (shop.location) {
+              <div class="map-frame">
+                <app-shop-results-map [shops]="shopList()" />
+              </div>
+            } @else {
+              <div class="map-unavailable" role="status">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-12v15" />
+                </svg>
+                <span>Map preview is unavailable because this shop has no saved map coordinates.</span>
+              </div>
+            }
+            @if (directionsUrl; as directionsUrl) {
+              <a
+                class="text-action directions-action"
+                [href]="directionsUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Get directions
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 17 17 7M7 7h10v10" />
+                </svg>
+              </a>
+            }
+          </section>
+        </div>
+
+        <aside class="shop-side-column" aria-label="Shop contact and reviews">
+          <section class="detail-card contact-card" aria-labelledby="contact-title">
+            <div class="section-heading">
+              <span class="section-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M21 16.5v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 1.1 3.8 2 2 0 0 1 3.1 1.5h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L7 9.5a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2.1Z" />
+                </svg>
+              </span>
+              <div>
+                <h2 id="contact-title">Contact the shop</h2>
+                <p>Reach out directly</p>
+              </div>
+            </div>
+
+            @if (shop.phone) {
+              <a class="contact-row" [href]="phoneHref">
+                <span class="contact-label">Phone</span>
+                <strong>{{ shop.phone }}</strong>
+              </a>
+            }
+            @if (shop.email) {
+              <a class="contact-row" [href]="'mailto:' + shop.email">
+                <span class="contact-label">Email</span>
+                <strong>{{ shop.email }}</strong>
+              </a>
+            }
+            @if (!shop.phone && !shop.email) {
+              <p class="empty-note">Contact details have not been provided by this shop.</p>
+            }
+
+            @if (shop.phone) {
+              <a class="button button-secondary contact-action" [href]="phoneHref">Call shop</a>
+            } @else if (shop.email) {
+              <a class="button button-secondary contact-action" [href]="'mailto:' + shop.email">
+                Email shop
+              </a>
+            }
+          </section>
+
+          <section class="detail-card rating-card" aria-labelledby="rating-title">
+            <div class="section-heading">
+              <span class="section-icon rating-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+                </svg>
+              </span>
+              <div>
+                <h2 id="rating-title">Customer reviews</h2>
+                <p>Ratings from completed repair experiences</p>
+              </div>
+            </div>
+            @if (shop.reviewCount > 0) {
+              <div class="rating-summary">
+                @if (shop.rating !== null) {
+                  <strong class="rating-value">{{ shop.rating | number: '1.1-1' }}</strong>
+                  <span class="rating-out-of">/ 5</span>
+                }
+                <span class="rating-count">
+                  {{ shop.reviewCount }}
+                  {{ shop.reviewCount === 1 ? 'review' : 'reviews' }}
+                </span>
+              </div>
+              <p class="rating-note">Based on customer ratings for completed repairs.</p>
+            } @else {
+              <p class="empty-note">This shop has not received a customer review yet.</p>
+            }
+          </section>
+        </aside>
+      </div>
+    </div>
+  }
+</section>

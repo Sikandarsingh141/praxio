@@ -1,12 +1,12 @@
 @mixin adminDesignSystemStyles {
   .admin-portal {
-    --admin-primary: #087c3b;
-    --admin-primary-hover: #176b34;
+    --admin-primary: var(--fixora-color-primary);
+    --admin-primary-hover: var(--fixora-color-primary-hover);
     --admin-page-background: #f5f8f5;
-    --admin-surface: #fff;
-    --admin-border: #e3e9e4;
-    --admin-text: #17211b;
-    --admin-muted: #647169;
+    --admin-surface: var(--fixora-color-surface);
+    --admin-border: var(--fixora-color-border);
+    --admin-text: var(--fixora-color-heading);
+    --admin-muted: var(--fixora-color-muted);
     --admin-radius: 0.8rem;
     --admin-shadow: 0 2px 8px rgb(20 40 28 / 5%);
 

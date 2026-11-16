@@ -9,7 +9,7 @@ import {
   RouterOutlet,
 } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { LoaderService } from './loaders/overlay/local/loader.service';
+import { LoaderService } from './core/loading/overlay/local/loader.service';
 import { ToastContainerComponent } from './core/toast/toast-container.component';
 
 @Component({

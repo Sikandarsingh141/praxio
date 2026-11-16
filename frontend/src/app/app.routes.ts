@@ -1,18 +1,18 @@
 import { Routes } from '@angular/router';
-import { LoginPage } from './auth/login.page';
-import { AccountSelectionPage } from './auth/account-selection.page';
-import { CustomerRegisterPage } from './auth/customer-register.page';
-import { ShopRegisterPage } from './auth/shop-register.page';
-import { ShopPaymentResultPage } from './auth/shop-payment-result.page';
+import { LoginPage } from './auth/login/login.page';
+import { AccountSelectionPage } from './auth/account-selection/account-selection.page';
+import { CustomerRegisterPage } from './auth/register/customer-register.page';
+import { ShopRegisterPage } from './auth/register/shop-register.page';
+import { ShopPaymentResultPage } from './auth/register/shop-payment-result.page';
 import { authGuard } from './core/guards/auth.guard';
-import { DashboardPage } from './dashboard/dashboard.page';
-import { AuthLayout } from './shared/auth-layout.component';
-import { CustomerLayout } from './customer/customer-layout.component';
-import { ShopLayout } from './shop/shop-layout.component';
-import { AdminLayout } from './admin/admin-layout.component';
-import { AdminDashboardPage } from './admin/admin-dashboard.page';
-import { AdminOverviewPage } from './admin/admin-overview.page';
-import { AdminUserDetailsPage } from './admin/admin-user-details.page';
+import { DashboardPage } from './customer/dashboard/dashboard.page';
+import { AuthLayout } from './shared/components/layouts/auth-layout.component';
+import { CustomerLayout } from './customer/layout/customer-layout.component';
+import { ShopLayout } from './shop/layout/shop-layout.component';
+import { AdminLayout } from './admin/layout/admin-layout.component';
+import { AdminDashboardPage } from './admin/dashboard/admin-dashboard.page';
+import { AdminOverviewPage } from './admin/dashboard/admin-overview.page';
+import { AdminUserDetailsPage } from './admin/users/admin-user-details.page';
 
 export const routes: Routes = [
   {
@@ -63,13 +63,15 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () =>
-          import('./customer/customer-profile.page').then((module) => module.CustomerProfilePage),
+          import('./customer/profile/customer-profile.page').then(
+            (module) => module.CustomerProfilePage,
+          ),
         data: { accountType: 'customer', customerAccess: 'profile' },
       },
       {
         path: 'shops',
         loadComponent: () =>
-          import('./customer/customer-shop-finder.page').then(
+          import('./customer/shop-finder/customer-shop-finder.page').then(
             (module) => module.CustomerShopFinderPage,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -77,7 +79,7 @@ export const routes: Routes = [
       {
         path: 'shops/:id',
         loadComponent: () =>
-          import('./customer/customer-shop-details.page').then(
+          import('./customer/shop-details/customer-shop-details.page').then(
             (module) => module.CustomerShopDetailsPage,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -85,7 +87,7 @@ export const routes: Routes = [
       {
         path: 'repair-requests',
         loadComponent: () =>
-          import('./customer/customer-repair-requests.page').then(
+          import('./customer/repair-requests/customer-repair-requests.page').then(
             (module) => module.CustomerRepairRequestsPage,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -93,7 +95,7 @@ export const routes: Routes = [
       {
         path: 'repair-requests/completed',
         loadComponent: () =>
-          import('./customer/customer-repair-requests.page').then(
+          import('./customer/repair-requests/customer-repair-requests.page').then(
             (module) => module.CustomerRepairRequestsPage,
           ),
         data: { accountType: 'customer', customerAccess: 'portal', completedOnly: true },
@@ -101,7 +103,7 @@ export const routes: Routes = [
       {
         path: 'repair-requests/:id',
         loadComponent: () =>
-          import('./customer/customer-repair-job.page').then(
+          import('./customer/repair-job-details/customer-repair-job.page').then(
             (module) => module.CustomerRepairJobPage,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -109,7 +111,7 @@ export const routes: Routes = [
       {
         path: 'disputes/new/:repairRequestId',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -117,7 +119,7 @@ export const routes: Routes = [
       {
         path: 'disputes/:id',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -125,7 +127,7 @@ export const routes: Routes = [
       {
         path: 'disputes',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -133,7 +135,7 @@ export const routes: Routes = [
       {
         path: 'quotations',
         loadComponent: () =>
-          import('./customer/customer-quotations.page').then(
+          import('./customer/quotations/customer-quotations.page').then(
             (module) => module.CustomerQuotationsPage,
           ),
         data: { accountType: 'customer', customerAccess: 'portal' },
@@ -141,7 +143,9 @@ export const routes: Routes = [
       {
         path: 'messages',
         loadComponent: () =>
-          import('./shared/chat-center.component').then((module) => module.ChatCenterComponent),
+          import('./shared/components/chat-center/chat-center.component').then(
+            (module) => module.ChatCenterComponent,
+          ),
         data: { accountType: 'customer', customerAccess: 'portal' },
       },
     ],
@@ -153,14 +157,16 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () =>
-          import('./shop/shop-dashboard.page').then((module) => module.ShopDashboardPage),
+          import('./shop/dashboard/shop-dashboard.page').then(
+            (module) => module.ShopDashboardPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'profile',
         loadComponent: () =>
-          import('./shop/shop-registration-status.page').then(
+          import('./shop/profile/shop-registration-status.page').then(
             (module) => module.ShopRegistrationStatusPage,
           ),
         canActivate: [authGuard],
@@ -169,14 +175,16 @@ export const routes: Routes = [
       {
         path: 'payment',
         loadComponent: () =>
-          import('./shop/shop-payment.page').then((module) => module.ShopPaymentPage),
+          import('./shop/payments/shop-payment.page').then(
+            (module) => module.ShopPaymentPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'payment' },
       },
       {
         path: 'repair-requests',
         loadComponent: () =>
-          import('./shop/shop-repair-requests.page').then(
+          import('./shop/repair-requests/shop-repair-requests.page').then(
             (module) => module.ShopRepairRequestsPage,
           ),
         canActivate: [authGuard],
@@ -185,7 +193,7 @@ export const routes: Routes = [
       {
         path: 'repair-requests/completed',
         loadComponent: () =>
-          import('./shop/shop-repair-requests.page').then(
+          import('./shop/repair-requests/shop-repair-requests.page').then(
             (module) => module.ShopRepairRequestsPage,
           ),
         canActivate: [authGuard],
@@ -194,7 +202,7 @@ export const routes: Routes = [
       {
         path: 'repair-requests/:id',
         loadComponent: () =>
-          import('./shop/shop-repair-request-details.page').then(
+          import('./shop/repair-job-details/shop-repair-request-details.page').then(
             (module) => module.ShopRepairRequestDetailsPage,
           ),
         canActivate: [authGuard],
@@ -203,7 +211,7 @@ export const routes: Routes = [
       {
         path: 'disputes/:id',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
         canActivate: [authGuard],
@@ -212,7 +220,7 @@ export const routes: Routes = [
       {
         path: 'disputes',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
         canActivate: [authGuard],
@@ -221,49 +229,61 @@ export const routes: Routes = [
       {
         path: 'quotations',
         loadComponent: () =>
-          import('./shop/shop-quotations.page').then((module) => module.ShopQuotationsPage),
+          import('./shop/quotations/shop-quotations.page').then(
+            (module) => module.ShopQuotationsPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'messages',
         loadComponent: () =>
-          import('./shared/chat-center.component').then((module) => module.ChatCenterComponent),
+          import('./shared/components/chat-center/chat-center.component').then(
+            (module) => module.ChatCenterComponent,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'reviews',
         loadComponent: () =>
-          import('./shop/shop-reviews.page').then((module) => module.ShopReviewsPage),
+          import('./shop/reviews/shop-reviews.page').then(
+            (module) => module.ShopReviewsPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'technicians',
         loadComponent: () =>
-          import('./shop/shop-technicians.page').then((module) => module.ShopTechniciansPage),
+          import('./shop/technicians/shop-technicians.page').then(
+            (module) => module.ShopTechniciansPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'technicians/new',
         loadComponent: () =>
-          import('./shop/shop-technician-form.page').then((module) => module.ShopTechnicianFormPage),
+          import('./shop/technicians/shop-technician-form.page').then(
+            (module) => module.ShopTechnicianFormPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'technicians/:id/edit',
         loadComponent: () =>
-          import('./shop/shop-technician-form.page').then((module) => module.ShopTechnicianFormPage),
+          import('./shop/technicians/shop-technician-form.page').then(
+            (module) => module.ShopTechnicianFormPage,
+          ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
         path: 'technicians/:id',
         loadComponent: () =>
-          import('./shop/shop-technician-details.page').then(
+          import('./shop/technicians/shop-technician-details.page').then(
             (module) => module.ShopTechnicianDetailsPage,
           ),
         canActivate: [authGuard],
@@ -272,7 +292,7 @@ export const routes: Routes = [
       {
         path: 'technician-assignments',
         loadComponent: () =>
-          import('./shop/shop-technician-assignments.page').then(
+          import('./shop/technicians/shop-technician-assignments.page').then(
             (module) => module.ShopTechnicianAssignmentsPage,
           ),
         canActivate: [authGuard],
@@ -283,7 +303,7 @@ export const routes: Routes = [
   {
     path: 'technician',
     loadComponent: () =>
-      import('./shop/technician-layout.component').then(
+      import('./technician/layout/technician-layout.component').then(
         (module) => module.TechnicianLayoutComponent,
       ),
     canActivate: [authGuard],
@@ -293,7 +313,7 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () =>
-          import('./shop/shop-technician-portal.page').then(
+          import('./technician/assigned-jobs/shop-technician-portal.page').then(
             (module) => module.ShopTechnicianPortalPage,
           ),
         data: { accountType: 'technician', technicianView: 'dashboard' },
@@ -301,7 +321,7 @@ export const routes: Routes = [
       {
         path: 'jobs',
         loadComponent: () =>
-          import('./shop/shop-technician-portal.page').then(
+          import('./technician/assigned-jobs/shop-technician-portal.page').then(
             (module) => module.ShopTechnicianPortalPage,
           ),
         data: { accountType: 'technician', technicianView: 'jobs' },
@@ -309,7 +329,7 @@ export const routes: Routes = [
       {
         path: 'jobs/:id',
         loadComponent: () =>
-          import('./shop/shop-technician-portal.page').then(
+          import('./technician/assigned-jobs/shop-technician-portal.page').then(
             (module) => module.ShopTechnicianPortalPage,
           ),
         data: { accountType: 'technician', technicianView: 'jobs' },
@@ -317,7 +337,7 @@ export const routes: Routes = [
       {
         path: 'active-jobs',
         loadComponent: () =>
-          import('./shop/shop-technician-portal.page').then(
+          import('./technician/assigned-jobs/shop-technician-portal.page').then(
             (module) => module.ShopTechnicianPortalPage,
           ),
         data: { accountType: 'technician', technicianView: 'active' },
@@ -325,7 +345,7 @@ export const routes: Routes = [
       {
         path: 'completed-jobs',
         loadComponent: () =>
-          import('./shop/shop-technician-portal.page').then(
+          import('./technician/assigned-jobs/shop-technician-portal.page').then(
             (module) => module.ShopTechnicianPortalPage,
           ),
         data: { accountType: 'technician', technicianView: 'completed' },
@@ -333,7 +353,7 @@ export const routes: Routes = [
       {
         path: 'history',
         loadComponent: () =>
-          import('./shop/shop-technician-portal.page').then(
+          import('./technician/assigned-jobs/shop-technician-portal.page').then(
             (module) => module.ShopTechnicianPortalPage,
           ),
         data: { accountType: 'technician', technicianView: 'history' },
@@ -341,7 +361,7 @@ export const routes: Routes = [
       {
         path: 'messages',
         loadComponent: () =>
-          import('./shared/chat-center.component').then(
+          import('./shared/components/chat-center/chat-center.component').then(
             (module) => module.ChatCenterComponent,
           ),
         data: { accountType: 'technician' },
@@ -349,7 +369,7 @@ export const routes: Routes = [
       {
         path: 'notifications',
         loadComponent: () =>
-          import('./shop/shop-technician-notifications.page').then(
+          import('./technician/notifications/shop-technician-notifications.page').then(
             (module) => module.ShopTechnicianNotificationsPage,
           ),
         data: { accountType: 'technician' },
@@ -357,7 +377,7 @@ export const routes: Routes = [
       {
         path: 'performance',
         loadComponent: () =>
-          import('./shop/shop-technician-account.page').then(
+          import('./technician/profile/shop-technician-account.page').then(
             (module) => module.ShopTechnicianAccountPage,
           ),
         data: { accountType: 'technician', technicianView: 'performance' },
@@ -365,7 +385,7 @@ export const routes: Routes = [
       {
         path: 'availability',
         loadComponent: () =>
-          import('./shop/shop-technician-account.page').then(
+          import('./technician/profile/shop-technician-account.page').then(
             (module) => module.ShopTechnicianAccountPage,
           ),
         data: { accountType: 'technician', technicianView: 'availability' },
@@ -373,7 +393,7 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () =>
-          import('./shop/shop-technician-account.page').then(
+          import('./technician/profile/shop-technician-account.page').then(
             (module) => module.ShopTechnicianAccountPage,
           ),
         data: { accountType: 'technician', technicianView: 'profile' },
@@ -391,38 +411,38 @@ export const routes: Routes = [
       {
         path: 'map',
         loadComponent: () =>
-          import('./admin/admin-map-view.page').then((module) => module.AdminMapViewPage),
+          import('./admin/map-view/admin-map-view.page').then((module) => module.AdminMapViewPage),
       },
       {
         path: 'profile',
         loadComponent: () =>
-          import('./admin/admin-profile.page').then((module) => module.AdminProfilePage),
+          import('./admin/profile/admin-profile.page').then((module) => module.AdminProfilePage),
       },
       {
         path: 'repair-jobs/:id',
         loadComponent: () =>
-          import('./admin/admin-repair-job-details.page').then(
+          import('./admin/repair-job-details/admin-repair-job-details.page').then(
             (module) => module.AdminRepairJobDetailsPage,
           ),
       },
       {
         path: 'repair-jobs',
         loadComponent: () =>
-          import('./admin/admin-repair-monitor.page').then(
+          import('./admin/repair-requests/admin-repair-monitor.page').then(
             (module) => module.AdminRepairMonitorPage,
           ),
       },
       {
         path: 'disputes/:id',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
       },
       {
         path: 'disputes',
         loadComponent: () =>
-          import('./shared/dispute-center.component').then(
+          import('./shared/components/dispute-center/dispute-center.component').then(
             (module) => module.DisputeCenterComponent,
           ),
       },

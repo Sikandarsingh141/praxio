@@ -1,0 +1,467 @@
+import { CommonModule } from '@angular/common';
+import { Component, computed, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import {
+  customerRepairRequestStatusLabel,
+  CustomerRepairRequest,
+  CustomerRepairRequestFilters,
+  ShopSearchResult,
+} from '../models/customer-portal.models';
+import { CustomerPortalService } from '../services/customer-portal.service';
+import { ToastService } from '../../core/toast/toast.service';
+import {
+  CommonFilterComponent,
+  FilterConfig,
+  FilterValues,
+} from '../../shared/components/filters/common-filter.component';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+
+type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed';
+
+@Component({
+  selector: 'app-customer-repair-requests',
+  standalone: true,
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    RouterLink,
+    CommonFilterComponent,
+  ],
+  templateUrl: './customer-repair-requests.page.html',
+  styleUrl: './customer-repair-requests.page.scss',
+})
+export class CustomerRepairRequestsPage implements OnInit {
+  readonly requests = signal<CustomerRepairRequest[]>([]);
+  readonly selectedStatus = signal<RequestStatusTab>('all');
+  readonly completedOnly = signal(false);
+  readonly statusTabs: Array<{ key: RequestStatusTab; label: string }> = [
+    { key: 'all', label: 'All' },
+    { key: 'open', label: 'Open' },
+    { key: 'in_progress', label: 'In Progress' },
+    { key: 'completed', label: 'Completed' },
+  ];
+  readonly sortOrder = signal<'newest' | 'oldest'>('newest');
+  readonly page = signal(1);
+  readonly pageSize = signal(10);
+  readonly visibleRequests = computed(() => {
+    const filtered = this.requests().filter((request) => {
+      switch (this.selectedStatus()) {
+        case 'open':
+          return request.status === 'open' && !request.repairJob;
+        case 'in_progress':
+          return (
+            !!request.repairJob &&
+            !['completed', 'repair_declined'].includes(request.repairJob.status)
+          );
+        case 'completed':
+          return this.requestStatusLabel(request) === 'Completed';
+        default:
+          return true;
+      }
+    });
+    const direction = this.sortOrder() === 'newest' ? -1 : 1;
+    return filtered.sort(
+      (left, right) =>
+        direction * (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()),
+    );
+  });
+  readonly pagedRequests = computed(() => {
+    const start = (this.page() - 1) * this.pageSize();
+    return this.visibleRequests().slice(start, start + this.pageSize());
+  });
+  readonly loading = signal(true);
+  readonly error = signal('');
+  readonly actionError = signal('');
+  readonly updating = signal<string | null>(null);
+  readonly editRequest = signal<CustomerRepairRequest | null>(null);
+  readonly cancelRequest = signal<CustomerRepairRequest | null>(null);
+  readonly cancellingRequestId = signal<string | null>(null);
+  readonly cancelError = signal('');
+  readonly editableShops = signal<Array<{ id: string; shopName: string }>>([]);
+  readonly selectedEditShops = signal<string[]>([]);
+  readonly editAppliance = signal('');
+  readonly editBrand = signal('');
+  readonly editModel = signal('');
+  readonly editDescription = signal('');
+  readonly editPreferredDate = signal('');
+  readonly editServiceType = signal<'shop_visit' | 'home_service'>('shop_visit');
+  readonly editPhotos = signal<File[]>([]);
+  readonly removeExistingPhotos = signal(false);
+  readonly editError = signal('');
+  readonly editPhotoError = signal('');
+  readonly savingEdit = signal(false);
+  readonly actionMessage = signal('');
+  readonly appliedFilters = signal<FilterValues>({});
+  readonly filterConfig: FilterConfig = {
+    title: 'Repair request filters',
+    fields: [
+      {
+        key: 'status',
+        label: 'Request status',
+        type: 'select',
+        placeholder: 'All requests',
+        options: [
+          { label: 'Open', value: 'open' },
+          { label: 'Cancelled', value: 'cancelled' },
+          { label: 'Completed', value: 'completed' },
+        ],
+      },
+      {
+        key: 'repairStatus',
+        label: 'Repair status',
+        type: 'select',
+        placeholder: 'Any repair status',
+        options: [
+          { label: 'Confirmed', value: 'confirmed' },
+          { label: 'Inspection pending', value: 'inspection_pending' },
+          { label: 'Inspection in progress', value: 'inspection_in_progress' },
+          { label: 'Estimate awaiting approval', value: 'awaiting_customer_approval' },
+          { label: 'Inspection approved', value: 'inspection_approved' },
+          { label: 'Repair declined', value: 'repair_declined' },
+          { label: 'In progress', value: 'in_progress' },
+          { label: 'On hold', value: 'on_hold' },
+          { label: 'Repair completed', value: 'repair_completed' },
+          { label: 'Ready for pickup', value: 'ready_for_pickup' },
+          { label: 'Picked up', value: 'picked_up' },
+          { label: 'Completed', value: 'completed' },
+        ],
+      },
+      { key: 'appliance', label: 'Device category', type: 'text' },
+      { key: 'requestDate', label: 'Request date', type: 'date-range' },
+    ],
+  };
+
+  constructor(
+    private readonly portal: CustomerPortalService,
+    private readonly route: ActivatedRoute,
+    private readonly toastService: ToastService,
+  ) {}
+
+  ngOnInit(): void {
+    if (this.route.snapshot.data['completedOnly'] === true) {
+      this.completedOnly.set(true);
+      this.selectedStatus.set('completed');
+    }
+    this.loadRequests();
+  }
+
+  loadRequests(): void {
+    this.loading.set(true);
+    const requestDate = this.appliedFilters()['requestDate'];
+    const dateRange =
+      requestDate && typeof requestDate === 'object' && 'from' in requestDate ? requestDate : {};
+    const filters = this.appliedFilters();
+    this.portal
+      .getRepairRequests({
+        status: this.requestStatus(filters['status']),
+        repairStatus: this.repairStatus(filters['repairStatus']),
+        appliance: typeof filters['appliance'] === 'string' ? filters['appliance'] : undefined,
+        from: dateRange.from,
+        to: dateRange.to,
+      })
+      .subscribe({
+        next: (requests) => {
+          this.requests.set(requests);
+          const pageCount = Math.max(1, Math.ceil(this.visibleRequests().length / this.pageSize()));
+          this.page.set(Math.min(this.page(), pageCount));
+          this.loading.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          this.error.set(error.error?.message || 'Your repair requests could not be loaded.');
+          this.loading.set(false);
+        },
+      });
+  }
+
+  applyFilters(filters: FilterValues): void {
+    if (JSON.stringify(this.appliedFilters()) === JSON.stringify(filters)) return;
+    this.appliedFilters.set(filters);
+    this.page.set(1);
+    this.loadRequests();
+  }
+
+  hasAppliedFilters(): boolean {
+    return Object.keys(this.appliedFilters()).length > 0;
+  }
+
+  statusCount(status: RequestStatusTab): number {
+    if (status === 'all') return this.requests().length;
+    return this.requests().filter((request) => {
+      switch (status) {
+        case 'open':
+          return request.status === 'open' && !request.repairJob;
+        case 'in_progress':
+          return (
+            !!request.repairJob &&
+            !['completed', 'repair_declined'].includes(request.repairJob.status)
+          );
+        case 'completed':
+          return this.requestStatusLabel(request) === 'Completed';
+      }
+    }).length;
+  }
+
+  selectStatus(status: RequestStatusTab): void {
+    this.selectedStatus.set(status);
+    this.page.set(1);
+  }
+
+  changeSortOrder(order: 'newest' | 'oldest'): void {
+    this.sortOrder.set(order);
+    this.page.set(1);
+  }
+
+  goToPage(page: number): void {
+    const pageCount = Math.ceil(this.visibleRequests().length / this.pageSize());
+    if (page < 1 || page > pageCount || page === this.page()) return;
+    this.page.set(page);
+  }
+
+  changePageSize(size: number): void {
+    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    this.pageSize.set(size);
+    this.page.set(1);
+  }
+
+  requestStatusLabel(request: CustomerRepairRequest): string {
+    return customerRepairRequestStatusLabel(request);
+  }
+
+  canEditRequest(request: CustomerRepairRequest): boolean {
+    return (
+      request.status === 'open' &&
+      !request.repairJob &&
+      request.quotations.length === 0 &&
+      !request.shops?.some((shop) =>
+        ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
+          shop.responseStatus ?? '',
+        ),
+      )
+    );
+  }
+
+  canCancelRequest(request: CustomerRepairRequest): boolean {
+    return (
+      request.status === 'open' &&
+      !request.repairJob &&
+      request.quotations.length === 0 &&
+      !request.shops?.some((shop) =>
+        ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
+          shop.responseStatus ?? '',
+        ),
+      )
+    );
+  }
+
+  openCancel(request: CustomerRepairRequest): void {
+    this.cancelError.set('');
+    this.cancelRequest.set(request);
+  }
+
+  closeCancel(): void {
+    if (this.cancellingRequestId()) return;
+    this.cancelRequest.set(null);
+    this.cancelError.set('');
+  }
+
+  confirmCancel(): void {
+    const request = this.cancelRequest();
+    if (!request || this.cancellingRequestId()) return;
+    this.cancellingRequestId.set(request._id);
+    this.cancelError.set('');
+    this.portal.cancelRepairRequest(request._id).subscribe({
+      next: () => {
+        this.cancellingRequestId.set(null);
+        this.cancelRequest.set(null);
+        this.toastService.success('Request Cancelled', 'Your repair request was cancelled.');
+        this.loadRequests();
+      },
+      error: (error: HttpErrorResponse) => {
+        const msg = error.error?.message || 'Your repair request could not be cancelled.';
+        this.cancelError.set(msg);
+        this.toastService.error('Cancellation Failed', msg);
+        this.cancellingRequestId.set(null);
+      },
+    });
+  }
+
+  openEdit(request: CustomerRepairRequest): void {
+    this.editRequest.set(request);
+    this.editError.set('');
+    this.editPhotoError.set('');
+    this.editPhotos.set([]);
+    this.removeExistingPhotos.set(false);
+    this.editAppliance.set(request.appliance);
+    this.editBrand.set(request.brand ?? '');
+    this.editModel.set(request.model ?? '');
+    this.editDescription.set(request.description);
+    this.editPreferredDate.set(request.preferredServiceDate?.slice(0, 10) ?? '');
+    this.editServiceType.set(request.serviceType ?? 'shop_visit');
+    this.selectedEditShops.set([...request.shopIds]);
+    this.editableShops.set(
+      (request.shops ?? []).map((shop) => ({ id: shop.id, shopName: shop.name })),
+    );
+
+    this.portal.searchShops({}).subscribe({
+      next: (shops) => this.mergeEditableShops(shops),
+      error: (error: HttpErrorResponse) => {
+        this.editError.set(
+          error.error?.message ||
+            'Available repair shops could not be loaded. Existing selections are still shown.',
+        );
+      },
+    });
+  }
+
+  closeEdit(): void {
+    if (this.savingEdit()) return;
+    this.editRequest.set(null);
+    this.editError.set('');
+    this.editPhotoError.set('');
+  }
+
+  toggleEditShop(shopId: string): void {
+    this.selectedEditShops.update((selected) => {
+      if (selected.includes(shopId)) return selected.filter((id) => id !== shopId);
+      if (selected.length >= 5) {
+        this.editError.set('You can select up to 5 repair shops.');
+        return selected;
+      }
+      this.editError.set('');
+      return [...selected, shopId];
+    });
+  }
+
+  onEditPhotoSelection(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    const invalid = files.find(
+      (file) =>
+        !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 1024 * 1024,
+    );
+    if (files.length > 4 || invalid) {
+      this.editPhotos.set([]);
+      this.editPhotoError.set(
+        'Choose up to 4 JPEG, PNG, or WebP photos, each no larger than 1 MB.',
+      );
+      input.value = '';
+      return;
+    }
+    this.editPhotos.set(files);
+    this.editPhotoError.set('');
+    if (files.length) this.removeExistingPhotos.set(false);
+  }
+
+  saveEdit(): void {
+    const request = this.editRequest();
+    if (!request) return;
+    if (!this.selectedEditShops().length) {
+      this.editError.set('Select at least one repair shop.');
+      return;
+    }
+    if (!this.editAppliance().trim() || !this.editDescription().trim()) {
+      this.editError.set('Enter the appliance and describe the problem.');
+      return;
+    }
+    if (this.editPhotoError()) return;
+
+    this.savingEdit.set(true);
+    this.editError.set('');
+    this.actionError.set('');
+    this.portal
+      .updateRepairRequest(request._id, {
+        shopIds: this.selectedEditShops(),
+        appliance: this.editAppliance().trim(),
+        description: this.editDescription().trim(),
+        brand: this.editBrand().trim() || undefined,
+        model: this.editModel().trim() || undefined,
+        preferredServiceDate: this.editPreferredDate() || undefined,
+        serviceType: this.editServiceType(),
+        photos: this.editPhotos(),
+        removeExistingPhotos: this.removeExistingPhotos(),
+      })
+      .subscribe({
+        next: () => {
+          this.savingEdit.set(false);
+          this.editRequest.set(null);
+          this.toastService.success('Request Updated', 'Your repair request was updated.');
+          this.loadRequests();
+        },
+        error: (error: HttpErrorResponse) => {
+          const msg = error.error?.message || 'Your repair request could not be updated.';
+          this.editError.set(msg);
+          this.toastService.error('Update Failed', msg);
+          this.savingEdit.set(false);
+        },
+      });
+  }
+
+  private mergeEditableShops(shops: ShopSearchResult[]): void {
+    const available = shops.map((shop) => ({ id: shop.id, shopName: shop.shopName }));
+    const byId = new Map(this.editableShops().map((shop) => [shop.id, shop]));
+    available.forEach((shop) => byId.set(shop.id, shop));
+    this.editableShops.set([...byId.values()]);
+  }
+
+  private requestStatus(value: FilterValues[string]): CustomerRepairRequestFilters['status'] {
+    return value === 'open' || value === 'cancelled' || value === 'completed' ? value : undefined;
+  }
+
+  private repairStatus(value: FilterValues[string]): CustomerRepairRequestFilters['repairStatus'] {
+    return typeof value === 'string' &&
+      [
+        'confirmed',
+        'inspection_pending',
+        'inspection_in_progress',
+        'awaiting_customer_approval',
+        'inspection_approved',
+        'repair_declined',
+        'in_progress',
+        'on_hold',
+        'repair_completed',
+        'ready_for_pickup',
+        'picked_up',
+        'completed',
+      ].includes(value)
+      ? (value as NonNullable<CustomerRepairRequestFilters['repairStatus']>)
+      : undefined;
+  }
+
+  setQuotationStatus(quotationId: string, status: 'accepted' | 'declined'): void {
+    this.updating.set(quotationId);
+    this.actionError.set('');
+    this.portal.updateQuotationStatus(quotationId, status).subscribe({
+      next: () => {
+        this.updating.set(null);
+        this.toastService.success(
+          'Quotation Updated',
+          status === 'accepted' ? 'Quotation accepted.' : 'Quotation declined.',
+        );
+        this.loadRequests();
+      },
+      error: (error: HttpErrorResponse) => {
+        const msg = error.error?.message || 'Quotation status could not be updated.';
+        this.actionError.set(msg);
+        this.toastService.error('Action Failed', msg);
+        this.updating.set(null);
+      },
+    });
+  }
+
+  shopName(request: CustomerRepairRequest, shopId: string): string {
+    return request.shops?.find((shop) => shop.id === shopId)?.name ?? 'Repair shop';
+  }
+
+  shopLogo(request: CustomerRepairRequest, shopId: string): string | null {
+    return request.shops?.find((shop) => shop.id === shopId)?.logoUrl ?? null;
+  }
+
+  shopInitial(request: CustomerRepairRequest, shopId: string): string {
+    return this.shopName(request, shopId).trim().charAt(0).toLocaleUpperCase() || 'S';
+  }
+}

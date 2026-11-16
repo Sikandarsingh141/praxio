@@ -1,0 +1,331 @@
+import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CustomerRepairRequest, RepairReview } from '../models/customer-portal.models';
+import { CustomerPortalService } from '../services/customer-portal.service';
+import { CustomerRepairWorkflowComponent } from '../repair-requests/components/customer-repair-workflow.component';
+import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { ToastService } from '../../core/toast/toast.service';
+
+type RepairRatingKey =
+  | 'overallRating'
+  | 'repairQuality'
+  | 'communication'
+  | 'professionalism'
+  | 'timeliness'
+  | 'valueForMoney';
+
+@Component({
+  selector: 'app-customer-repair-job-page',
+  standalone: true,
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    CustomerRepairWorkflowComponent,
+  ],
+  templateUrl: './customer-repair-job.page.html',
+  styleUrl: './customer-repair-job.page.scss',
+})
+export class CustomerRepairJobPage implements OnInit {
+  readonly job = signal<CustomerRepairRequest | null>(null);
+  readonly loading = signal(true);
+  readonly submitting = signal(false);
+  readonly error = signal('');
+  readonly notice = signal('');
+  readonly received = signal(true);
+  readonly inspected = signal(true);
+  readonly satisfaction = signal('satisfied');
+  readonly comments = signal('');
+  readonly issueDescription = signal('');
+  readonly overallRating = signal(5);
+  readonly repairQuality = signal(5);
+  readonly communication = signal(5);
+  readonly professionalism = signal(5);
+  readonly timeliness = signal(5);
+  readonly valueForMoney = signal(5);
+  readonly reviewTitle = signal('');
+  readonly reviewText = signal('');
+  readonly liked = signal('');
+  readonly improvement = signal('');
+  readonly wouldRecommend = signal(true);
+  readonly starValues = [1, 2, 3, 4, 5];
+  readonly progressSteps = [
+    'Request Submitted',
+    'Inspection Pending',
+    'Quotation',
+    'Repair & Complete',
+  ];
+  readonly ratingFields: Array<{ key: RepairRatingKey; label: string }> = [
+    { key: 'overallRating', label: 'Overall shop rating' },
+    { key: 'repairQuality', label: 'Repair quality' },
+    { key: 'communication', label: 'Service and communication' },
+    { key: 'professionalism', label: 'Professionalism' },
+    { key: 'timeliness', label: 'Timeliness' },
+    { key: 'valueForMoney', label: 'Value for money' },
+  ];
+  private requestId = '';
+
+  constructor(
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
+    private readonly portal: CustomerPortalService,
+    private readonly toastService: ToastService,
+  ) {}
+
+  ngOnInit(): void {
+    this.requestId = this.route.snapshot.paramMap.get('id') ?? '';
+    if (!this.requestId) {
+      this.error.set('Repair job was not found.');
+      this.loading.set(false);
+      return;
+    }
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.portal.getRepairJob(this.requestId).subscribe({
+      next: (job) => {
+        this.job.set(job);
+        this.loading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.error.set(error.error?.message || 'Repair job could not be loaded.');
+        this.loading.set(false);
+      },
+    });
+  }
+
+  confirmPickup(): void {
+    if (!this.received()) {
+      if (!this.issueDescription().trim()) {
+        this.error.set('Describe the collection issue before submitting.');
+        return;
+      }
+      this.reportIssue();
+      return;
+    }
+    if (!this.inspected() && !this.issueDescription().trim()) {
+      this.error.set('Describe the issue found during inspection.');
+      return;
+    }
+    this.error.set('');
+    this.submitting.set(true);
+    this.portal
+      .confirmPickup(this.requestId, {
+        received: this.received(),
+        inspected: this.inspected(),
+        satisfaction: this.satisfaction(),
+        comments: this.comments().trim() || undefined,
+        issueDescription: this.issueDescription().trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          const msg = this.inspected()
+            ? 'Pickup confirmed. Please rate your repair experience.'
+            : 'Your issue report has been sent to the shop and Admin.';
+          this.toastService.success('Pickup Status', msg);
+          this.load();
+        },
+        error: (error: HttpErrorResponse) => {
+          const msg = error.error?.message || 'Pickup confirmation could not be saved.';
+          this.error.set(msg);
+          this.toastService.error('Confirmation Failed', msg);
+          this.submitting.set(false);
+        },
+      });
+  }
+
+  reportIssue(): void {
+    if (!this.issueDescription().trim()) {
+      this.error.set('Describe the issue before submitting.');
+      return;
+    }
+    void this.router.navigate(['/customer/disputes/new', this.requestId], {
+      queryParams: { description: this.issueDescription().trim() },
+    });
+  }
+
+  submitReview(): void {
+    if (!this.reviewText().trim()) {
+      this.error.set('Please share your repair experience before submitting.');
+      return;
+    }
+    this.submitting.set(true);
+    this.error.set('');
+    const input: Omit<RepairReview, '_id' | 'repairRequestId' | 'createdAt'> = {
+      overallRating: this.overallRating(),
+      repairQuality: this.repairQuality(),
+      communication: this.communication(),
+      professionalism: this.professionalism(),
+      timeliness: this.timeliness(),
+      valueForMoney: this.valueForMoney(),
+      title: this.reviewTitle().trim() || undefined,
+      reviewText: this.reviewText().trim(),
+      liked: this.liked().trim() || undefined,
+      improvement: this.improvement().trim() || undefined,
+      wouldRecommend: this.wouldRecommend(),
+    };
+    this.portal.submitRepairReview(this.requestId, input).subscribe({
+      next: () => {
+        this.toastService.success(
+          'Review Submitted',
+          'Thank you. Your verified review has been submitted.',
+        );
+        this.submitting.set(false);
+        this.load();
+      },
+      error: (error: HttpErrorResponse) => {
+        const msg = error.error?.message || 'Your review could not be submitted.';
+        this.error.set(msg);
+        this.toastService.error('Review Failed', msg);
+        this.submitting.set(false);
+      },
+    });
+  }
+
+  ratingValue(key: RepairRatingKey): number {
+    return this[key]();
+  }
+
+  shopInitials(name: string): string {
+    return name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  get currentProgressStep(): number {
+    const repair = this.job();
+    if (!repair) return 1;
+    const status = repair.repairJob?.status;
+    if (
+      status === 'awaiting_customer_approval' ||
+      status === 'repair_declined'
+    ) {
+      return 3;
+    }
+    if (status === 'inspection_approved') return 4;
+    if (
+      status === 'in_progress' ||
+      status === 'on_hold' ||
+      status === 'repair_completed' ||
+      status === 'ready_for_pickup' ||
+      status === 'picked_up' ||
+      status === 'completed' ||
+      status === 'disputed'
+    ) {
+      return 4;
+    }
+    if (repair.repairJob) return 2;
+    return repair.quotations.length ? 3 : 2;
+  }
+
+  get isRepairComplete(): boolean {
+    return this.job()?.repairJob?.status === 'completed';
+  }
+
+  progressDate(index: number): string | undefined {
+    const repair = this.job();
+    const repairJob = repair?.repairJob;
+    const historyAt = (action: string): string | undefined =>
+      repairJob?.history?.find((event) => event.action === action)?.at;
+
+    switch (index) {
+      case 0:
+        return repair?.createdAt;
+      case 1:
+        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
+      case 2:
+        return (
+          repair?.acceptedQuotation?.respondedAt ??
+          repair?.acceptedQuotation?.createdAt ??
+          repair?.quotations[repair.quotations.length - 1]?.createdAt
+        );
+      case 3:
+        return (
+          historyAt('repair_completed') ??
+          repairJob?.repairCompletedAt ??
+          historyAt('ready_for_pickup') ??
+          repairJob?.readyForPickupAt ??
+          repairJob?.completedAt
+        );
+      default:
+        return undefined;
+    }
+  }
+
+  shopDirectionsUrl(address: string): string | null {
+    const destination = address.trim();
+    if (!destination) return null;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+  }
+
+  setRating(key: RepairRatingKey, value: number): void {
+    this[key].set(value);
+  }
+
+  get timeline(): Array<{ action: string; label: string; at?: string }> {
+    const job = this.job();
+    if (!job) return [];
+    const entries = [
+      { action: 'submitted', label: 'Request submitted', at: job.createdAt },
+      ...(job.acceptedQuotation
+        ? [
+            {
+              action: 'confirmed',
+              label: 'Quotation accepted',
+              at: job.repairJob?.confirmedAt,
+            },
+          ]
+        : []),
+      ...(job.repairJob?.startedAt
+        ? [{ action: 'in_progress', label: 'Repair in progress', at: job.repairJob.startedAt }]
+        : []),
+      ...(job.repairJob?.repairCompletedAt
+        ? [
+            {
+              action: 'repair_completed',
+              label: 'Repair work completed',
+              at: job.repairJob.repairCompletedAt,
+            },
+          ]
+        : []),
+      ...(job.repairJob?.readyForPickupAt
+        ? [
+            {
+              action: 'ready_for_pickup',
+              label: 'Ready for pickup',
+              at: job.repairJob.readyForPickupAt,
+            },
+          ]
+        : []),
+      ...(job.repairJob?.pickedUpAt
+        ? [
+            {
+              action: 'picked_up',
+              label: 'Item collected and inspected',
+              at: job.repairJob.pickedUpAt,
+            },
+          ]
+        : []),
+      ...(job.repairJob?.completedAt
+        ? [
+            {
+              action: 'completed',
+              label: 'Review submitted · job completed',
+              at: job.repairJob.completedAt,
+            },
+          ]
+        : []),
+    ];
+    return entries;
+  }
+}
