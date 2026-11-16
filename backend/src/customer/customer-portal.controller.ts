@@ -170,6 +170,21 @@ export class CustomerPortalController {
     };
   }
 
+  @Get('repair-requests/:id/directions')
+  @ApiOperation({
+    summary: 'Get driving directions for a repair request owned by the customer',
+  })
+  async getRepairRoute(
+    @Req() request: AuthenticatedCustomerRequest,
+    @Param('id') id: string,
+  ) {
+    return {
+      data: {
+        route: await this.portal.getCustomerRepairRoute(this.userId(request), id),
+      },
+    };
+  }
+
   @Patch('repair-requests/:id/confirm-pickup')
   async confirmPickup(
     @Req() request: AuthenticatedCustomerRequest,

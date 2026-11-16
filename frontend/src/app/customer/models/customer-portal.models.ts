@@ -118,6 +118,8 @@ export interface CustomerRepairRequest {
   serviceType?: 'shop_visit' | 'home_service';
   status: 'open' | 'cancelled' | 'completed';
   createdAt: string;
+  customerLatitude?: number;
+  customerLongitude?: number;
   photos?: Array<{ mimeType: string; data: string }>;
   quotations: RepairQuotation[];
   shops?: Array<{

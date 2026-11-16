@@ -185,7 +185,7 @@ export class JobSharedService {
 
     switch (category) {
       case 'new':
-        return request.status === 'open' && !request.repairJob && !hasResponse;
+        return request.status === 'open' && !request.repairJob;
       case 'pending':
         return request.status === 'open' &&
           ((!request.repairJob && hasResponse) || status === 'repair_declined');
@@ -237,6 +237,7 @@ export class JobSharedService {
       status: request.repairJob?.status ?? request.status,
       description: request.description,
       shopName: request.shop?.name ?? request.shops?.[0]?.name,
+      shopLogoUrl: request.shop?.logoUrl ?? request.shops?.[0]?.logoUrl ?? null,
       brand: request.brand,
       model: request.model,
       imageData: request.photos?.[0]?.data ?? null,
@@ -245,6 +246,12 @@ export class JobSharedService {
       createdAt: request.createdAt,
       amount: request.acceptedQuotation?.amount ?? null,
       currency: request.acceptedQuotation?.currency,
+      quotationSubmitted: request.quotations.length > 0 ||
+        request.shops?.some((shop) =>
+          ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
+            shop.responseStatus ?? '',
+          ),
+        ) === true,
     };
   }
 
@@ -264,6 +271,10 @@ export class JobSharedService {
       createdAt: request.createdAt,
       amount: request.repairJob?.approvedRepairAmount ?? null,
       currency: request.quotations.find((quotation) => quotation.status === 'accepted')?.currency,
+      quotationSubmitted: request.quotations.length > 0 ||
+        ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
+          request.shopResponse.status,
+        ),
     };
   }
 

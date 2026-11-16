@@ -4,35 +4,24 @@
       <h1>New Jobs</h1>
       <p class="description">{{ description }}</p>
     </div>
-    <span class="job-count">
-      <strong>{{ filteredItems().length }}</strong>
-      {{ filteredItems().length === 1 ? 'job' : 'jobs' }}
-    </span>
-  </header>
-
-  <div class="toolbar">
-    <label class="search-control">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
-      <input
-        type="search"
-        placeholder="Search by job ID, device, customer or issue..."
-        [value]="search()"
-        (input)="setSearch($any($event.target).value)"
+    <div class="heading-actions">
+      <label class="search-control">
+        <input
+          type="search"
+          placeholder="Search ID, device, brand, customer or issue"
+          aria-label="Search jobs by ID, device, brand, customer, or issue"
+          [value]="search()"
+          (input)="setSearch($any($event.target).value)"
+        />
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg>
+      </label>
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
       />
-    </label>
-    <app-common-filter
-      [config]="filterConfig"
-      [appliedFilters]="appliedFilters()"
-      (filtersChange)="applyFilters($event)"
-    />
-    <label class="sort-control">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16m0-16-3 3m3-3 3 3m5 13V4m0 16 3-3m-3 3-3-3" /></svg>
-      <select [value]="sort()" aria-label="Sort jobs" (change)="setSort($any($event.target).value)">
-        <option value="newest">Newest First</option>
-        <option value="oldest">Oldest First</option>
-      </select>
-    </label>
-  </div>
+    </div>
+  </header>
 
   @if (loading()) {
     <p class="loading-state" role="status">Loading new jobs...</p>
@@ -58,7 +47,6 @@
             <th scope="col">Issue / Problem</th>
             <th scope="col">Request Date</th>
             <th scope="col">Shop</th>
-            <th scope="col">Status</th>
             <th scope="col">Quotation</th>
             <th scope="col">Action</th>
           </tr>
@@ -101,8 +89,11 @@
                   <span>{{ job.shopName || shopDisplayName }}</span>
                 </div>
               </td>
-              <td><app-job-status-badge [status]="job.status === 'new' ? 'open' : job.status" /></td>
-              <td>{{ job.amount !== null && job.amount !== undefined ? (job.amount | currency: job.currency : 'symbol' : '1.0-0') : '—' }}</td>
+              <td>
+                <span class="quotation-status" [class.submitted]="job.quotationSubmitted">
+                  {{ job.quotationSubmitted ? 'Submitted' : 'Not submitted' }}
+                </span>
+              </td>
               <td>
                 <a class="action-button" [routerLink]="[detailRoute, job.id]" [attr.aria-label]="'View job ' + job.id">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>
@@ -113,13 +104,15 @@
         </tbody>
       </table>
     </section>
-    <app-job-pagination
-      variant="brand"
-      [total]="filteredItems().length"
-      [page]="page()"
-      [pageSize]="pageSize()"
-      (pageChange)="setPage($event)"
-      (pageSizeChange)="setPageSize($event)"
-    />
+    @if (filteredItems().length > pageSize()) {
+      <app-job-pagination
+        variant="brand"
+        [total]="filteredItems().length"
+        [page]="page()"
+        [pageSize]="pageSize()"
+        (pageChange)="setPage($event)"
+        (pageSizeChange)="setPageSize($event)"
+      />
+    }
   }
 </main>

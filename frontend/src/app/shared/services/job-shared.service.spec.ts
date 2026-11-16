@@ -50,7 +50,7 @@ describe('JobSharedService', () => {
     service = TestBed.inject(JobSharedService);
   });
 
-  it('separates customer jobs by status', (done) => {
+  it('keeps quoted customer requests in New Jobs while retaining other status categories', (done) => {
     customerApi.getRepairRequests.and.returnValue(of([
       customerRequest('new'),
       customerRequest('pending', undefined, true),
@@ -66,7 +66,9 @@ describe('JobSharedService', () => {
       active: service.customerJobs('active'),
       completed: service.customerJobs('completed'),
     }).subscribe((lists) => {
-      expect(lists.new.map((item) => item.id)).toEqual(['new']);
+      expect(lists.new.map((item) => item.id)).toEqual(['new', 'pending']);
+      expect(lists.new[0].quotationSubmitted).toBeFalse();
+      expect(lists.new[1].quotationSubmitted).toBeTrue();
       expect(lists.pending.map((item) => item.id)).toEqual(['pending']);
       expect(lists.assigned.map((item) => item.id)).toEqual(['assigned']);
       expect(lists.active.map((item) => item.id)).toEqual(['active']);

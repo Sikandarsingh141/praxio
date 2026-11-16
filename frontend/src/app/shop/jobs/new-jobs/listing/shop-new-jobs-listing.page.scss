@@ -3,24 +3,17 @@
 @use '../../../../shared/styles/buttons' as buttons;
 
 :host { display: block; }
-.jobs-page { @include layout.job-page; width: min(100%, 100rem); }
+.jobs-page { @include layout.job-page; width: min(100%, 100rem); gap: .75rem; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
 h1 { margin: 0; color: var(--fixora-color-heading); font-size: clamp(1.7rem, 3vw, 2.25rem); }
 .description { margin: .4rem 0 0; color: var(--fixora-color-muted); }
-.job-count { display: inline-flex; align-items: center; gap: .35rem; padding: .65rem 1rem; border-radius: .85rem; background: #edf8eb; color: #08721c; font-weight: 750; white-space: nowrap; }
-.job-count strong { font-size: 1.1rem; }
-
-.toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: .75rem; padding: .8rem; border: 1px solid var(--fixora-color-border); border-radius: .9rem; background: #fff; box-shadow: var(--fixora-shadow-card); }
-.search-control, .sort-control { display: flex; align-items: center; gap: .6rem; min-height: 2.8rem; border: 1px solid #dfe6e1; border-radius: .65rem; background: #fff; color: #43524a; }
-.search-control { min-width: 0; padding: 0 .75rem; }
-.search-control svg, .sort-control svg { width: 1.2rem; height: 1.2rem; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.search-control input, .sort-control select { min-width: 0; border: 0; outline: 0; background: transparent; color: var(--fixora-color-heading); font: inherit; }
-.search-control input { width: 100%; }
+.heading-actions { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; min-width: 0; }
+.search-control { display: flex; width: min(18rem, 30vw); min-width: 8rem; min-height: 2.5rem; align-items: center; gap: .5rem; padding: 0 .65rem; border: 1px solid #dfe6e1; border-radius: .65rem; background: #fff; color: #43524a; }
+.search-control input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--fixora-color-heading); font: inherit; font-size: .82rem; }
 .search-control input::placeholder { color: #66736b; opacity: 1; }
-.sort-control { padding: 0 .7rem; }
-.sort-control select { min-height: 2.65rem; cursor: pointer; }
-.search-control:focus-within, .sort-control:focus-within { outline: 3px solid rgb(22 125 43 / 15%); border-color: #6fae7b; }
-app-common-filter { display: flex; align-items: center; }
+.search-control svg { width: 1.15rem; height: 1.15rem; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.search-control:focus-within { outline: 3px solid rgb(22 125 43 / 15%); border-color: #6fae7b; }
+.heading-actions app-common-filter { flex: 0 0 auto; }
 
 .table-card { overflow-x: auto; border: 1px solid var(--fixora-color-border); border-radius: .9rem; background: #fff; box-shadow: var(--fixora-shadow-card); }
 .jobs-table { @include tables.job-table; min-width: 1180px; table-layout: auto; }
@@ -28,7 +21,9 @@ app-common-filter { display: flex; align-items: center; }
 .jobs-table td { padding: .65rem .7rem; color: #17231c; font-size: .78rem; }
 .jobs-table tbody tr:last-child td { border-bottom: 0; }
 .jobs-table tbody tr:hover { background: #fbfefb; }
-.job-id { color: #17231c; font-weight: 800; white-space: nowrap; }
+.job-id { color: #087c3b; font-weight: 800; white-space: nowrap; }
+.quotation-status { display: inline-flex; align-items: center; padding: .25rem .6rem; border-radius: 999px; background: #f1f5f2; color: #56645a; font-size: .75rem; font-weight: 650; white-space: nowrap; }
+.quotation-status.submitted { background: #edf8ef; color: #087c3b; }
 .device-cell, .person-cell, .shop-cell, .date-cell { display: flex; align-items: center; gap: .55rem; min-width: 0; }
 .device-thumbnail { display: grid; width: 2.8rem; height: 2.8rem; flex: 0 0 auto; overflow: hidden; place-items: center; border-radius: .55rem; background: #f3f6f3; color: #5e6e62; }
 .device-thumbnail img { width: 100%; height: 100%; object-fit: contain; }
@@ -54,15 +49,9 @@ app-common-filter { display: flex; align-items: center; }
 .error-state p { line-height: 1.5; }
 @include buttons.job-buttons;
 
-@media (max-width: 850px) {
-  .toolbar { grid-template-columns: minmax(0, 1fr) auto; }
-  .search-control { grid-column: 1 / -1; }
-}
 @media (max-width: 600px) {
   .page-heading { align-items: flex-start; flex-direction: column; }
-  .job-count { padding: .45rem .7rem; }
-  .toolbar { grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; padding: .6rem; }
-  .sort-control { padding: 0 .5rem; }
-  .sort-control select { max-width: 8.5rem; font-size: .8rem; }
+  .heading-actions { width: 100%; justify-content: space-between; }
+  .search-control { width: auto; min-width: 0; flex: 1 1 8rem; }
   .table-card { border-radius: .7rem; }
 }

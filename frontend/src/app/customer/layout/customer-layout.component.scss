@@ -327,13 +327,16 @@
 }
 
 .sidebar {
-  position: sticky;
+  position: fixed;
+  z-index: 10;
   top: 76px;
+  bottom: 0;
   display: flex;
   width: 250px;
-  height: calc(100vh - 76px);
+  height: auto;
   flex: 0 0 250px;
   flex-direction: column;
+  overflow-y: auto;
   padding: 1.7rem 1rem 1.2rem;
   border-right: 1px solid #e9ede9;
   background: #fff;
@@ -529,7 +532,7 @@ a.nav-active:hover {
 .main-content {
   width: min(100% - 250px, 1500px);
   min-width: 0;
-  margin: 0 auto;
+  margin: 0 0 0 250px;
   padding: 1.35rem clamp(1rem, 2vw, 2rem) 3rem;
 }
 
@@ -583,6 +586,7 @@ a.nav-active:hover {
 
   .main-content {
     width: 100%;
+    margin: 0;
   }
 }
 

@@ -5,7 +5,6 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { ShopJobsListingPageBase } from '../../../../shared/components/job-page-base';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { JobPaginationComponent } from '../../../../shared/components/job-pagination/job-pagination.component';
-import { JobStatusBadgeComponent } from '../../../../shared/components/job-status-badge/job-status-badge.component';
 import {
   CommonFilterComponent,
   FilterConfig,
@@ -21,7 +20,6 @@ import { JobListItem } from '../../../../shared/models/job.models';
     RouterLink,
     EmptyStateComponent,
     JobPaginationComponent,
-    JobStatusBadgeComponent,
     CommonFilterComponent,
   ],
   templateUrl: './shop-new-jobs-listing.page.html',

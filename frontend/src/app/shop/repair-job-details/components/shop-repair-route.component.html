@@ -2,8 +2,8 @@
   <header class="route-heading">
     <span class="route-icon" aria-hidden="true">⌖</span>
     <div>
-      <h2 id="route-title">Route to Customer</h2>
-      <p>Driving directions from your shop to the customer’s location.</p>
+      <h2 id="route-title">{{ heading }}</h2>
+      <p>{{ description }}</p>
     </div>
   </header>
 
@@ -13,7 +13,7 @@
         #mapElement
         class="route-map-canvas"
         role="img"
-        aria-label="Map showing the driving route from the shop to the customer"
+        [attr.aria-label]="'Map showing the driving route between ' + originLabel + ' and ' + destinationLabel"
       ></div>
     } @else {
       <div class="route-map-placeholder" role="status">

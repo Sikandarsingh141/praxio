@@ -1,12 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { AuthService } from '../../core/auth/auth.service';
+import { UserProfile } from '../../core/auth/auth.models';
+import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerRepairRequest, RepairReview } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { CustomerRepairWorkflowComponent } from '../repair-requests/components/customer-repair-workflow.component';
-import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
 import { ToastService } from '../../core/toast/toast.service';
 
 type RepairRatingKey =
@@ -21,19 +25,23 @@ type RepairRatingKey =
   selector: 'app-customer-repair-job-page',
   standalone: true,
   imports: [
-    AdminPageHeaderComponent,
     CommonModule,
     FormsModule,
     RouterLink,
+    JobAttachmentsComponent,
     CustomerRepairWorkflowComponent,
   ],
   templateUrl: './customer-repair-job.page.html',
   styleUrl: './customer-repair-job.page.scss',
 })
 export class CustomerRepairJobPage implements OnInit {
+  readonly authService = inject(AuthService);
+  readonly jobs = inject(JobSharedService);
   readonly job = signal<CustomerRepairRequest | null>(null);
   readonly loading = signal(true);
   readonly submitting = signal(false);
+  readonly heroImageUnavailable = signal(false);
+  readonly customerAvatarUnavailable = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
   readonly received = signal(true);
@@ -68,6 +76,7 @@ export class CustomerRepairJobPage implements OnInit {
     { key: 'valueForMoney', label: 'Value for money' },
   ];
   private requestId = '';
+  private readonly sanitizer = inject(DomSanitizer);
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -91,6 +100,8 @@ export class CustomerRepairJobPage implements OnInit {
     this.portal.getRepairJob(this.requestId).subscribe({
       next: (job) => {
         this.job.set(job);
+        this.heroImageUnavailable.set(false);
+        this.customerAvatarUnavailable.set(false);
         this.loading.set(false);
       },
       error: (error: HttpErrorResponse) => {
@@ -200,6 +211,61 @@ export class CustomerRepairJobPage implements OnInit {
       .slice(0, 2)
       .map((part) => part.charAt(0).toUpperCase())
       .join('');
+  }
+
+  pageTitle(repair: CustomerRepairRequest): string {
+    if (repair.repairJob) return 'Repair Job Details';
+    return repair.status === 'open' ? 'New Repair Request Detail' : 'Repair Request Details';
+  }
+
+  statusLabel(repair: CustomerRepairRequest): string {
+    const status = repair.repairJob?.status ?? repair.status;
+    if (!repair.repairJob && status === 'open') return 'New';
+    return status
+      .replace(/_/g, ' ')
+      .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  photoSource(photo: NonNullable<CustomerRepairRequest['photos']>[number]): string {
+    const data = photo.data.trim();
+    if (
+      data.startsWith('data:') ||
+      /^https?:\/\//i.test(data) ||
+      data.startsWith('/') ||
+      data.startsWith('blob:')
+    ) {
+      return data;
+    }
+    return `data:${photo.mimeType || 'image/jpeg'};base64,${data}`;
+  }
+
+  customerName(user: UserProfile): string {
+    return [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Customer';
+  }
+
+  customerInitials(user: UserProfile): string {
+    const name = this.customerName(user);
+    return name === 'Customer' ? user.email.slice(0, 1).toUpperCase() || 'C' :
+      name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
+  }
+
+  customerPhone(user: UserProfile): string {
+    return [user.countryCode, user.mobileNumber].filter(Boolean).join(' ') || 'Not provided';
+  }
+
+  customerLocation(user: UserProfile): string {
+    return user.location
+      ? `${user.location.latitude.toFixed(5)}, ${user.location.longitude.toFixed(5)}`
+      : 'Not provided';
+  }
+
+  customerMapUrl(location: NonNullable<UserProfile['location']>): string {
+    return `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
+  }
+
+  shopMapEmbedUrl(address: string): SafeResourceUrl {
+    const url = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   }
 
   get currentProgressStep(): number {

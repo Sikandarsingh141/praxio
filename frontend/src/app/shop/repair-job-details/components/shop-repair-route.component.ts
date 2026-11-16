@@ -10,8 +10,10 @@ import {
   ViewChild,
   signal,
 } from '@angular/core';
+import type { Observable } from 'rxjs';
 import * as L from 'leaflet';
-import { ShopRepairRoute } from '../../repair-requests/shop-repair-requests.models';
+import type { RepairRoute } from '../../../shared/models/repair-route.models';
+import type { ShopRepairRoute } from '../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../repair-requests/shop-repair-requests.service';
 
 type Coordinates = { latitude: number; longitude: number };
@@ -29,6 +31,12 @@ export class ShopRepairRouteComponent
   @Input() requestId = '';
   @Input() shopLocation: Coordinates | null | undefined;
   @Input() customerLocation: Coordinates | null | undefined;
+  @Input() directionsLoader: ((requestId: string) => Observable<RepairRoute>) | null = null;
+  @Input() heading = 'Route to Customer';
+  @Input() description = 'Driving directions from your shop to the customer’s location.';
+  @Input() originLabel = 'Your shop';
+  @Input() destinationLabel = 'Customer location';
+  @Input() reverseDirections = false;
   private mapElement?: ElementRef<HTMLDivElement>;
   @ViewChild('mapElement')
   set mapElementRef(element: ElementRef<HTMLDivElement> | undefined) {
@@ -115,9 +123,11 @@ export class ShopRepairRouteComponent
     const shop = this.shopLocation;
     const customer = this.customerLocation;
     if (!this.isValidCoordinates(shop) || !this.isValidCoordinates(customer)) return null;
+    const origin = this.reverseDirections ? customer : shop;
+    const destination = this.reverseDirections ? shop : customer;
     return (
-      `https://www.google.com/maps/dir/?api=1&origin=${shop.latitude},${shop.longitude}` +
-      `&destination=${customer.latitude},${customer.longitude}&travelmode=driving`
+      `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}` +
+      `&destination=${destination.latitude},${destination.longitude}&travelmode=driving`
     );
   }
 
@@ -138,7 +148,7 @@ export class ShopRepairRouteComponent
     );
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 5,
+      maxZoom: 19,
     }).addTo(this.map);
     L.circleMarker([shop.latitude, shop.longitude], {
       radius: 8,
@@ -147,7 +157,7 @@ export class ShopRepairRouteComponent
       fillColor: '#087c3b',
       fillOpacity: 1,
     })
-      .bindTooltip('Your shop')
+      .bindTooltip(this.reverseDirections ? this.destinationLabel : this.originLabel)
       .addTo(this.map);
     L.circleMarker([customer.latitude, customer.longitude], {
       radius: 8,
@@ -156,7 +166,7 @@ export class ShopRepairRouteComponent
       fillColor: '#d4473e',
       fillOpacity: 1,
     })
-      .bindTooltip('Customer location')
+      .bindTooltip(this.reverseDirections ? this.originLabel : this.destinationLabel)
       .addTo(this.map);
     requestAnimationFrame(() => this.map?.invalidateSize());
   }
@@ -180,7 +190,10 @@ export class ShopRepairRouteComponent
     const sequence = ++this.requestSequence;
     this.directionsLoading.set(true);
     this.directionsError.set('');
-    this.requestsService.getDirections(this.requestId).subscribe({
+    const directionsRequest = this.directionsLoader
+      ? this.directionsLoader(this.requestId)
+      : this.requestsService.getDirections(this.requestId);
+    directionsRequest.subscribe({
       next: (route) => {
         if (sequence !== this.requestSequence) return;
         if (!this.isValidRoute(route)) {

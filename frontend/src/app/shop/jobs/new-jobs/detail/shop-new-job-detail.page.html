@@ -1,16 +1,289 @@
-<main class="job-detail-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb"><a [routerLink]="backRoute">{{ backLabel }}</a><span aria-hidden="true">/</span><span aria-current="page">Job details</span></nav>
-  @if (loading()) { <p class="state" role="status">Loading job details...</p> }
-  @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
-  @else if (record(); as job) {
-    <header class="detail-heading"><div><p class="eyebrow">SHOP JOB ? #{{ job._id.slice(-8).toUpperCase() }}</p><h1>{{ pageTitle }}</h1><p>{{ job.appliance }} {{ job.brand }} {{ job.model }}</p></div><app-job-status-badge [status]="job.repairJob?.status ?? job.shopResponse.status" /></header>
-    <section class="detail-grid"><article class="detail-section"><h2>Device and repair request</h2><dl><div><dt>Device</dt><dd>{{ job.appliance }}</dd></div><div><dt>Brand and model</dt><dd>{{ job.brand || 'Not specified' }} {{ job.model }}</dd></div><div><dt>Service type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div><div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'mediumDate' }}</dd></div></dl><p>{{ job.description }}</p></article>
-      <article class="detail-section"><h2>Customer</h2><p class="shop-name">{{ job.customer.displayName || (job.customer.firstName + ' ' + job.customer.lastName) }}</p>@if (job.customer.phone) { <p>{{ job.customer.phone }}</p> }@if (job.customer.email) { <p>{{ job.customer.email }}</p> }</article>
-      <article class="detail-section"><h2>Quotation and payment</h2>@if (job.quotations.length) { @for (quotation of job.quotations; track quotation._id) { <div class="quotation-row"><strong>{{ quotation.amount | currency: quotation.currency }}</strong><app-job-status-badge [status]="quotation.status" /><p>{{ quotation.message }}</p></div> } } @else { <p>No quotation has been submitted.</p> }</article>
-      <article class="detail-section"><h2>Assigned technician</h2>@if (job.technicianAssignment?.current; as assignment) { <p class="shop-name">{{ assignment.technicianName }}</p><p>Assigned {{ assignment.assignedAt | date: 'mediumDate' }}</p>@if (assignment.note) { <p>{{ assignment.note }}</p> } } @else { <p>No technician has been assigned.</p> }</article>
-      <article class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="jobs.photoAttachments(job.photos)" /></article></section>
-    <section class="detail-section"><h2>Repair history</h2><app-job-timeline [items]="jobs.shopTimeline(job)" /></section>
-    @if (job.repairJob) { <section class="detail-section"><h2>Inspection and repair workflow</h2><app-shop-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" /></section> }
-    <a class="job-button secondary" [routerLink]="legacyDetailRoute(job._id)">Open full repair controls</a>
+<main class="job-detail-page new-repair-detail-page">
+  <a class="back-link" [routerLink]="backRoute">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+    Back to repair requests
+  </a>
+  <h1 class="page-title">{{ pageTitle }}</h1>
+
+  @if (loading()) {
+    <p class="state" role="status">Loading repair request…</p>
+  } @else if (error()) {
+    <p class="state error" role="alert">{{ error() }}</p>
+  } @else if (record(); as request) {
+    <section class="request-hero" aria-label="Repair request summary">
+      <div class="hero-status-row">
+        <span class="new-badge">{{ request.shopResponse.status === 'new' ? 'New' : statusLabel(request) }}</span>
+        <span class="request-type">Request Type: Repair</span>
+      </div>
+      <div class="hero-main">
+        <div class="device-thumbnail">
+          @if (request.photos.length && !heroImageUnavailable()) {
+            <img
+              [src]="photoSource(0, request)"
+              [alt]="request.appliance + ' photo'"
+              (error)="heroImageUnavailable.set(true)"
+            />
+          } @else {
+            <span class="image-fallback" role="img" aria-label="No image available">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+            </span>
+          }
+        </div>
+        <div class="hero-device-copy">
+          <h2>{{ request.appliance }}</h2>
+          <button type="button" class="request-id" (click)="copyRequestId(request._id)">
+            Request ID: <strong>{{ request._id.slice(-8).toUpperCase() }}</strong>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></svg>
+          </button>
+        </div>
+        <span class="current-status">{{ statusLabel(request) }}</span>
+      </div>
+      <div class="hero-meta">
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+          <strong>Requested On:</strong> {{ request.createdAt | date: 'MMM d, y, h:mm a' }}
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
+          <strong>Customer:</strong> {{ customerName(request) }}
+        </span>
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+          <strong>Address:</strong> {{ customerAddress() }}
+        </span>
+      </div>
+    </section>
+
+    <ol class="request-progress" aria-label="Request progress">
+      @for (step of progressSteps; track step; let index = $index) {
+        <li
+          [class.completed]="index + 1 < currentProgressStep()"
+          [class.current]="index + 1 === currentProgressStep()"
+          [attr.aria-current]="index + 1 === currentProgressStep() ? 'step' : null"
+        >
+          <span class="progress-marker" aria-hidden="true">
+            @if (index + 1 < currentProgressStep()) {
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <strong>{{ step }}</strong>
+          @if (progressDate(index); as date) {
+            <time>{{ date | date: 'MMM d, y, h:mm a' }}</time>
+          }
+        </li>
+      }
+    </ol>
+
+    <div class="request-content">
+      <div class="main-column">
+        <section class="detail-card customer-card">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
+            Customer Information
+          </h2>
+          <div class="customer-contact-row">
+            <strong class="customer-name">{{ customerName(request) }}</strong>
+            @if (request.customer.phone) {
+              <a [href]="'tel:' + request.customer.phone">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h4l2 5-2.5 2a15 15 0 0 0 5.5 5.5l2-2.5 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2Z" /></svg>
+                {{ request.customer.phone }}
+              </a>
+            } @else {
+              <span class="muted-value">Phone not provided</span>
+            }
+            @if (request.customer.email) {
+              <a [href]="'mailto:' + request.customer.email">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
+                {{ request.customer.email }}
+              </a>
+            } @else {
+              <span class="muted-value">Email not provided</span>
+            }
+            @if (customerMapUrl(); as mapUrl) {
+              <a class="map-link" [href]="mapUrl" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+                View on Map
+              </a>
+            }
+          </div>
+        </section>
+
+        <section class="detail-card problem-card">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8m-8 4h8" /></svg>
+            Problem Description
+          </h2>
+          <p>{{ request.description || 'No issue details were provided.' }}</p>
+        </section>
+
+        <section class="detail-card photos-card">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+            Uploaded Photos <small>({{ request.photos.length }})</small>
+          </h2>
+          @if (request.photos.length) {
+            <div class="photo-gallery" aria-label="Uploaded request photos">
+              @for (photo of request.photos; track $index) {
+                @if (unavailablePhotos().has($index)) {
+                  <span class="photo-placeholder" role="img" aria-label="No image available">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+                    <span>No image available</span>
+                  </span>
+                } @else {
+                  <button type="button" class="photo-thumbnail" (click)="openPhoto($index)" [attr.aria-label]="'Preview photo ' + ($index + 1)">
+                    <img [src]="photoSource($index, request)" [alt]="'Repair request photo ' + ($index + 1)" (error)="markPhotoUnavailable($index)" />
+                  </button>
+                }
+              }
+              <button type="button" class="view-all-photos" (click)="openPhoto(0)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                View All ({{ request.photos.length }})
+              </button>
+            </div>
+          } @else {
+            <div class="photos-empty">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+              <span>No photos were uploaded with this request.</span>
+            </div>
+          }
+        </section>
+
+        <section class="detail-card diagnosis-card">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8m0-12.8L5.6 18.4" /></svg>
+            Initial Diagnosis <small>(by Shop)</small>
+          </h2>
+          @if (request.repairJob?.inspection; as inspection) {
+            <div class="diagnosis-note">
+              <strong>{{ inspection.identifiedProblem || 'Inspection in progress' }}</strong>
+              @if (inspection.findings) { <p>{{ inspection.findings }}</p> }
+              @if (inspection.requiredRepairWork) { <p><b>Recommended repair:</b> {{ inspection.requiredRepairWork }}</p> }
+            </div>
+          } @else {
+            <div class="diagnosis-note pending">
+              <strong>Pending Inspection</strong>
+              <p>Our technician will inspect the device and share a detailed diagnosis and quotation.</p>
+            </div>
+          }
+        </section>
+
+        @if (request.repairJob) {
+          <section class="detail-card">
+            <h2 class="section-heading">Inspection and Repair Workflow</h2>
+            <app-shop-repair-workflow [request]="request" (requestUpdated)="refreshRecord($event)" />
+          </section>
+        }
+
+        @if (jobs.shopTimeline(request).length) {
+          <section class="detail-card">
+            <h2 class="section-heading">Repair History</h2>
+            <app-job-timeline [items]="jobs.shopTimeline(request)" />
+          </section>
+        }
+
+        @if (canRespond()) {
+          <div class="primary-actions">
+            <button type="button" class="primary-button" (click)="quotationOpen.set(true)">
+              <span aria-hidden="true">✓</span> Accept &amp; Submit Quotation
+            </button>
+            <button type="button" class="decline-button" (click)="declineOpen.set(true)">
+              <span aria-hidden="true">×</span> Decline Request
+            </button>
+          </div>
+        } @else if (request.shopResponse.status === 'declined') {
+          <p class="response-note">Request declined: {{ request.shopResponse.declineReason || 'No reason provided.' }}</p>
+        } @else if (request.shopResponse.status === 'expired') {
+          <p class="response-note">This request has expired and can no longer be answered.</p>
+        }
+      </div>
+
+      <aside class="sidebar-column">
+        <section class="detail-card">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>
+            Device Information
+          </h2>
+          <dl class="info-list">
+            <div><dt>Device</dt><dd>{{ request.appliance }}</dd></div>
+            <div><dt>Brand</dt><dd>{{ request.brand || 'Not provided' }}</dd></div>
+            <div><dt>Model</dt><dd>{{ request.model || 'Not provided' }}</dd></div>
+            <div><dt>Category</dt><dd>{{ request.appliance || 'Not provided' }}</dd></div>
+            <div><dt>Approx. Purchase Date</dt><dd>Not provided</dd></div>
+          </dl>
+        </section>
+
+        <section class="detail-card">
+          <h2 class="section-heading">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" /><path d="m14 14 6 6M17 13l3-3" /></svg>
+            Service Details
+          </h2>
+          <dl class="info-list">
+            <div><dt>Service Type</dt><dd>Repair</dd></div>
+            <div><dt>Preferred Date</dt><dd>{{ request.preferredServiceDate ? (request.preferredServiceDate | date: 'MMM d, y') : 'Not specified' }}</dd></div>
+            <div><dt>Preferred Time</dt><dd>Not provided</dd></div>
+            <div><dt>Visit Type</dt><dd>{{ request.serviceType === 'home_service' ? 'Home Service' : request.serviceType === 'shop_visit' ? 'Shop Visit' : 'Not specified' }}</dd></div>
+          </dl>
+        </section>
+
+        <app-shop-repair-route
+          [requestId]="request._id"
+          [shopLocation]="shopProfile()?.location"
+          [customerLocation]="customerCoordinates()"
+        />
+      </aside>
+    </div>
+  }
+
+  @if (quotationOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="quotation-title">
+        <header><div><span class="section-kicker">SHOP RESPONSE</span><h2 id="quotation-title">Submit quotation</h2></div><button type="button" class="dialog-close" aria-label="Close quotation form" (click)="quotationOpen.set(false)">×</button></header>
+        <form class="form-grid" novalidate (ngSubmit)="submitQuotation()">
+          <label><span>Total estimated amount (₹) <b>*</b></span><input type="number" name="quotationAmount" min="0.01" step="0.01" required [ngModel]="quotationAmount()" (ngModelChange)="quotationAmount.set($event)" />@if (quotationAttempted() && (quotationAmount() === null || quotationAmount()! <= 0)) { <small class="field-error">Enter an amount greater than ₹0.</small> }</label>
+          <label><span>Estimated completion time (days) <b>*</b></span><input type="number" name="completionDays" min="1" step="1" required [ngModel]="completionDays()" (ngModelChange)="completionDays.set($event)" />@if (quotationAttempted() && (completionDays() === null || completionDays()! < 1 || completionDays()! % 1 !== 0)) { <small class="field-error">Enter a positive whole number of days.</small> }</label>
+          <label><span>Quotation validity (days) <b>*</b></span><input type="number" name="validityDays" min="1" max="365" step="1" required [ngModel]="validityDays()" (ngModelChange)="validityDays.set($event)" />@if (quotationAttempted() && (validityDays() === null || validityDays()! < 1 || validityDays()! > 365 || validityDays()! % 1 !== 0)) { <small class="field-error">Enter validity from 1 to 365 days.</small> }</label>
+          <label class="full-width"><span>Quotation summary / repair details <b>*</b></span><textarea name="quotationMessage" rows="4" maxlength="1000" required [ngModel]="quotationMessage()" (ngModelChange)="quotationMessage.set($event)" placeholder="Explain the estimated repair work"></textarea>@if (quotationAttempted() && !quotationMessage().trim()) { <small class="field-error">Describe the estimated repair work.</small> }</label>
+          @if (formError()) { <p class="form-error full-width" role="alert">{{ formError() }}</p> }
+          <footer class="full-width"><button type="button" class="secondary-button" (click)="quotationOpen.set(false)">Cancel</button><button type="submit" class="primary-button" [disabled]="submitting()">{{ submitting() ? 'Submitting…' : 'Submit quotation' }}</button></footer>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (declineOpen()) {
+    <div class="modal-backdrop" role="presentation">
+      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="decline-title">
+        <header><div><span class="section-kicker">REQUEST RESPONSE</span><h2 id="decline-title">Decline request</h2></div><button type="button" class="dialog-close" aria-label="Close decline form" (click)="declineOpen.set(false)">×</button></header>
+        <p>Choose a reason. The customer will be notified.</p>
+        <label class="reason-control"><span>Reason <b>*</b></span><select [ngModel]="declineReason()" (ngModelChange)="declineReason.set($event)"><option value="">Select a reason</option>@for (reason of reasons; track reason) { <option [value]="reason">{{ reason }}</option> }</select></label>
+        @if (declineReason() === 'Other') { <label class="reason-control"><span>Custom reason</span><textarea rows="3" maxlength="500" [ngModel]="customDeclineReason()" (ngModelChange)="customDeclineReason.set($event)"></textarea></label> }
+        @if (formError()) { <p class="form-error" role="alert">{{ formError() }}</p> }
+        <footer><button type="button" class="secondary-button" (click)="declineOpen.set(false)">Cancel</button><button type="button" class="decline-button" [disabled]="submitting()" (click)="declineRequest()">{{ submitting() ? 'Declining…' : 'Confirm decline' }}</button></footer>
+      </section>
+    </div>
+  }
+
+  @if (selectedPhoto() !== null && record(); as request) {
+    <div class="photo-lightbox" role="presentation" (click)="selectedPhoto.set(null)">
+      <button type="button" class="lightbox-close" aria-label="Close photo preview" (click)="selectedPhoto.set(null)">×</button>
+      @if (request.photos.length > 1) {
+        <button type="button" class="lightbox-nav previous" aria-label="Previous photo" (click)="$event.stopPropagation(); changePhoto(-1)">‹</button>
+        <button type="button" class="lightbox-nav next" aria-label="Next photo" (click)="$event.stopPropagation(); changePhoto(1)">›</button>
+      }
+      @if (selectedPhoto() !== null && !unavailablePhotos().has(selectedPhoto()!)) {
+        <img
+          class="lightbox-image"
+          [src]="photoSource(selectedPhoto()!, request)"
+          [alt]="'Repair request photo ' + (selectedPhoto()! + 1)"
+          (click)="$event.stopPropagation()"
+          (error)="markPhotoUnavailable(selectedPhoto()!)"
+        />
+      } @else {
+        <p class="lightbox-empty">No image available</p>
+      }
+      <span class="lightbox-count">{{ selectedPhoto()! + 1 }} / {{ request.photos.length }}</span>
+    </div>
   }
 </main>

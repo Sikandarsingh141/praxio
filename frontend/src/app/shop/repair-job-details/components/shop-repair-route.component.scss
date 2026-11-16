@@ -50,6 +50,8 @@
 
 .route-map {
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   min-height: 18rem;
   flex: 1;
   overflow: hidden;

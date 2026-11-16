@@ -1,12 +1,34 @@
 import { ActivatedRoute, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
+import { AuthService } from '../../core/auth/auth.service';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { CustomerRepairJobPage } from './customer-repair-job.page';
 
 import { CustomerRepairRequest } from '../models/customer-portal.models';
 
 describe('CustomerRepairJobPage', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [{
+        provide: AuthService,
+        useValue: {
+          currentUser: () => ({
+            id: 'customer-id',
+            email: 'nancy@example.test',
+            firstName: 'Nancy',
+            lastName: 'Sharma',
+            createdAt: '2026-11-09T15:00:00.000Z',
+          }),
+        },
+      }, {
+        provide: JobSharedService,
+        useValue: { photoAttachments: () => [] },
+      }],
+    });
+  });
+
   it('moves an approved inspection estimate into the repair step', async () => {
     const requestId = 'request-id';
     const portal = jasmine.createSpyObj<CustomerPortalService>(
@@ -235,7 +257,7 @@ describe('CustomerRepairJobPage', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(portal.getRepairJob).toHaveBeenCalledWith(request._id);
     expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain(
-      'Repair request details',
+      'New Repair Request Detail',
     );
     expect(text).not.toContain('REPAIR REQUEST DETAILS');
     expect(text).toContain('Request ID:');
@@ -252,7 +274,7 @@ describe('CustomerRepairJobPage', () => {
     expect(text).toContain('Repair Information');
     expect(text).toContain('Route to Repair Shop');
     expect(text).toContain('Pending Inspection');
-    expect(fixture.nativeElement.querySelector('.status-badge')?.textContent).toContain('Open');
+    expect(fixture.nativeElement.querySelector('.status-badge')?.textContent).toContain('New');
   });
 
   it('creates a driving directions link for the assigned shop', async () => {

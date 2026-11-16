@@ -834,6 +834,70 @@ describe('CustomerPortalService', () => {
     }
   });
 
+  it('returns a route for the customer’s own request using its responding shop', async () => {
+    const customerId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById.mockReturnValueOnce(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValueOnce(
+      createQuery({
+        _id: requestId,
+        shopIds: [shopId],
+        shopResponses: [{ shopId, status: 'quotation_submitted' }],
+      }),
+    );
+    const route = {
+      distanceMeters: 2400,
+      durationSeconds: 300,
+      description: 'Fastest route',
+      path: [
+        { latitude: 30.72, longitude: 76.72 },
+        { latitude: 30.7, longitude: 76.7 },
+      ],
+    };
+    const getShopRepairRoute = jest
+      .spyOn(service, 'getShopRepairRoute')
+      .mockResolvedValue(route);
+
+    await expect(
+      service.getCustomerRepairRoute(customerId.toString(), requestId.toString()),
+    ).resolves.toEqual(route);
+    expect(repairRequestModel.findOne).toHaveBeenCalledWith({
+      _id: requestId.toString(),
+      customerId,
+    });
+    expect(getShopRepairRoute).toHaveBeenCalledWith(
+      shopId.toString(),
+      requestId.toString(),
+      true,
+    );
+  });
+
+  it('does not return a route for a request owned by another customer', async () => {
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById.mockReturnValueOnce(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValueOnce(createQuery(null));
+    const getShopRepairRoute = jest.spyOn(service, 'getShopRepairRoute');
+
+    await expect(
+      service.getCustomerRepairRoute(customerId.toString(), requestId.toString()),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(getShopRepairRoute).not.toHaveBeenCalled();
+  });
+
   it('calculates the fastest authorized shop route with the server-side Google API key', async () => {
     const shopId = new Types.ObjectId();
     const customerId = new Types.ObjectId();

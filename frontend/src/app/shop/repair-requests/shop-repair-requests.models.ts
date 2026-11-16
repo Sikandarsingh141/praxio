@@ -1,3 +1,6 @@
+import type { RepairRoute } from '../../shared/models/repair-route.models';
+import type { RepairWorkflowJob } from '../../shared/models/repair-workflow.models';
+
 export type ShopRequestStatus =
   | 'new'
   | 'pending'
@@ -12,14 +15,7 @@ export interface ShopRepairPhoto {
   data: string;
 }
 
-export interface ShopRepairRoute {
-  distanceMeters: number;
-  durationSeconds: number;
-  description: string;
-  path: Array<{ latitude: number; longitude: number }>;
-}
-
-import { RepairWorkflowJob } from '../../shared/models/repair-workflow.models';
+export type ShopRepairRoute = RepairRoute;
 
 export interface ShopRepairRequest {
   _id: string;

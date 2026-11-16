@@ -5,6 +5,7 @@
 @use './app/admin/admin-design-system' as adminDesignSystem;
 @use './app/shop/shop-design-system' as shopDesignSystem;
 @use './app/customer/shop-details/customer-shop-details.design-system' as customerShopDetails;
+@use './app/customer/repair-job-details/customer-repair-job.global' as customerRepairJob;
 @use './app/auth/register/customer-registration.global' as customerRegistration;
 @use './app/auth/register/shop-registration.global' as shopRegistration;
 @use './app/shared/components/chat-center/chat-center.component' as chatCenter;
@@ -16,6 +17,7 @@
 @include adminDesignSystem.adminDesignSystemStyles;
 @include shopDesignSystem.shopPortalLayoutStyles;
 @include customerShopDetails.customerShopDetailsStyles;
+@include customerRepairJob.customerRepairJobStyles;
 @include customerRegistration.customerRegistrationStyles;
 @include shopRegistration.shopRegistrationStyles;
 

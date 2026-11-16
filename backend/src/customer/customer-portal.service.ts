@@ -153,7 +153,7 @@ interface GoogleDirectionsRoute {
   overview_polyline?: { points?: string };
 }
 
-interface ShopRepairRouteResult {
+export interface ShopRepairRouteResult {
   distanceMeters: number;
   durationSeconds: number;
   description: string;
@@ -4209,6 +4209,7 @@ export class CustomerPortalService {
   async getShopRepairRoute(
     shopId: string,
     requestId: string,
+    reverseDirection = false,
   ): Promise<{
     distanceMeters: number;
     durationSeconds: number;
@@ -4235,8 +4236,8 @@ export class CustomerPortalService {
     if (!customer) {
       throw new NotFoundException('Customer account was not found');
     }
-    const origin = shop.shopDetails?.location;
-    const destination =
+    const shopLocation = shop.shopDetails?.location;
+    const customerLocation =
       typeof request.customerLatitude === 'number' &&
       typeof request.customerLongitude === 'number'
         ? {
@@ -4244,16 +4245,18 @@ export class CustomerPortalService {
             longitude: request.customerLongitude,
           }
         : customer.location;
-    if (!this.isValidRouteCoordinate(origin)) {
+    if (!this.isValidRouteCoordinate(shopLocation)) {
       throw new BadRequestException(
         'Add a valid shop location before requesting directions.',
       );
     }
-    if (!this.isValidRouteCoordinate(destination)) {
+    if (!this.isValidRouteCoordinate(customerLocation)) {
       throw new BadRequestException(
         'The customer has not provided a valid location for this request.',
       );
     }
+    const origin = reverseDirection ? customerLocation : shopLocation;
+    const destination = reverseDirection ? shopLocation : customerLocation;
 
     const apiKey = this.config.get<string>('GOOGLE_APIKEY')?.trim();
     if (!apiKey) {
@@ -4403,6 +4406,47 @@ export class CustomerPortalService {
       description: fastest.route.description?.trim() || 'Fastest driving route',
       path: decodeGooglePolyline(fastest.route.polyline!.encodedPolyline!),
     };
+  }
+
+  async getCustomerRepairRoute(
+    customerId: string,
+    requestId: string,
+  ): Promise<ShopRepairRouteResult> {
+    const customer = await this.requireActiveCustomer(customerId);
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair request was not found');
+    }
+
+    const request = await this.repairRequests
+      .findOne({ _id: requestId, customerId: customer._id })
+      .select('shopIds shopResponses acceptedQuotationId')
+      .lean()
+      .exec();
+    if (!request) {
+      throw new NotFoundException('Repair request was not found');
+    }
+
+    const acceptedQuotation = request.acceptedQuotationId
+      ? await this.quotations
+          .findOne({
+            _id: request.acceptedQuotationId,
+            repairRequestId: request._id,
+          })
+          .select('shopId')
+          .lean()
+          .exec()
+      : null;
+    const shopId =
+      acceptedQuotation?.shopId ??
+      request.shopResponses?.find(
+        (response) => response.status === 'quotation_submitted',
+      )?.shopId ??
+      request.shopIds?.[0];
+    if (!shopId) {
+      throw new NotFoundException('No repair shop is available for this request');
+    }
+
+    return this.getShopRepairRoute(shopId.toString(), requestId, true);
   }
 
   async getAdminRepairRoute(requestId: string): Promise<ShopRepairRouteResult> {

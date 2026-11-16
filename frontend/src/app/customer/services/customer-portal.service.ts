@@ -5,6 +5,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../../core/auth/auth.models';
 import { SKIP_GLOBAL_LOADER } from '../../core/loading/global-loader.context';
+import type { RepairRoute } from '../../shared/models/repair-route.models';
 import {
   AddressSuggestion,
   CustomerRepairRequest,
@@ -151,6 +152,14 @@ export class CustomerPortalService {
         params,
       })
       .pipe(map((response) => response.data.requests));
+  }
+
+  getRepairRoute(id: string): Observable<RepairRoute> {
+    return this.http
+      .get<ApiEnvelope<{ route: RepairRoute }>>(
+        `${this.baseUrl}/repair-requests/${encodeURIComponent(id)}/directions`,
+      )
+      .pipe(map((response) => response.data.route));
   }
 
   cancelRepairRequest(id: string): Observable<void> {

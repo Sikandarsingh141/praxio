@@ -18,6 +18,7 @@ export interface JobListItem {
   description: string;
   customerName?: string;
   shopName?: string;
+  shopLogoUrl?: string | null;
   brand?: string;
   model?: string;
   imageData?: string | null;
@@ -26,6 +27,7 @@ export interface JobListItem {
   createdAt: string;
   amount?: number | null;
   currency?: string;
+  quotationSubmitted?: boolean;
 }
 
 export interface JobTimelineEntry {

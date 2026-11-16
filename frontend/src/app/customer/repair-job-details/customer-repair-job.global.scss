@@ -1,0 +1,1294 @@
+@mixin customerRepairJobStyles {
+  .portal .repair-job-page {
+    .detail-breadcrumb {
+      margin-bottom: 0.25rem;
+    }
+
+    .detail-breadcrumb a {
+      gap: 0.45rem;
+      color: #176b34;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .detail-breadcrumb a svg {
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .detail-page-title {
+      margin: 0 0 0.65rem;
+      color: #17231c;
+      font-size: clamp(1.35rem, 2.5vw, 1.65rem);
+      font-weight: 750;
+      letter-spacing: -0.035em;
+      line-height: 1.2;
+    }
+
+    .request-hero {
+      display: grid;
+      grid-template-columns: 6rem minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.85rem;
+      min-width: 0;
+      margin-bottom: 0.6rem;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #e2e8e4;
+      border-radius: 0.85rem;
+      background: #fff;
+      box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+    }
+
+    .request-hero-photo {
+      display: grid;
+      width: 6rem;
+      height: 4.5rem;
+      overflow: hidden;
+      place-items: center;
+      border-radius: 0.55rem;
+      background: #f3f6f3;
+    }
+
+    .request-hero-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .hero-image-placeholder {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      color: #708077;
+    }
+
+    .hero-image-placeholder svg {
+      width: 1.8rem;
+      height: 1.8rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.6;
+    }
+
+    .request-hero-copy {
+      display: grid;
+      min-width: 0;
+      gap: 0.4rem;
+    }
+
+    .request-hero-copy h2 {
+      overflow: hidden;
+      margin: 0;
+      color: #17212b;
+      font-size: 1.25rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .request-header-meta {
+      display: flex;
+      align-items: center;
+    }
+
+    .request-id {
+      display: inline-flex;
+      min-height: 2rem;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      background: #e8f7eb;
+      color: #176b34;
+      font-size: 0.72rem;
+    }
+
+    .request-id strong {
+      color: #176b34;
+      font-size: 0.77rem;
+      font-weight: 750;
+    }
+
+    .job-header-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.45rem;
+    }
+
+    .job-header-actions .status-badge {
+      min-height: 2rem;
+      margin: 0;
+      padding: 0.35rem 0.8rem;
+      background: #e8f7eb;
+      color: #176b34;
+      font-size: 0.77rem;
+    }
+
+    .job-header-actions .status-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      background: currentColor;
+      box-shadow: none;
+    }
+
+    .request-progress {
+      margin: 0.25rem 0 0.7rem;
+      padding: 0.4rem 0.8rem;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .request-progress li:not(:last-child)::after {
+      top: 1.05rem;
+      height: 2px;
+      background: #dce5de;
+    }
+
+    .request-progress li.completed::after {
+      background: #16842e;
+    }
+
+    .progress-marker {
+      width: 2.15rem;
+      height: 2.15rem;
+      border: 1px solid #cbd6cf;
+      border-radius: 50%;
+      background: #fff;
+      color: #56665c;
+      font-size: 0.8rem;
+      font-weight: 750;
+    }
+
+    .progress-marker svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      stroke: currentColor;
+      stroke-width: 2.5;
+    }
+
+    .request-progress li.completed .progress-marker,
+    .request-progress li.current .progress-marker {
+      border-color: #16842e;
+      background: #16842e;
+      color: #fff;
+    }
+
+    .request-progress li.current .progress-marker {
+      box-shadow: 0 0 0 3px rgb(8 124 59 / 12%);
+    }
+
+    .request-progress li strong {
+      font-size: 0.74rem;
+    }
+
+    .request-progress li.current strong {
+      display: inline-flex;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #e8f7eb;
+      color: #176b34;
+    }
+
+    .request-progress time {
+      font-size: 0.68rem;
+    }
+
+    .customer-detail-grid {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.95fr) minmax(0, 1.25fr);
+      grid-template-areas:
+        'customer repair route'
+        'photos diagnosis route'
+        'shop quote quote';
+      align-items: stretch;
+      gap: 0.65rem;
+    }
+
+    .customer-info-card { grid-area: customer; }
+    .repair-information-card { grid-area: repair; }
+    .photos-summary-card { grid-area: photos; }
+    .diagnosis-summary-card { grid-area: diagnosis; }
+    .route-summary-card { grid-area: route; }
+    .shop-summary-card { grid-area: shop; }
+    .customer-quotations-card { grid-area: quote; }
+
+    .request-summary-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      padding: 0.65rem;
+      border-radius: 0.85rem;
+    }
+
+    .request-summary-card .panel-heading {
+      min-height: 2.25rem;
+      gap: 0.5rem;
+      margin: 0;
+      padding: 0.35rem 0.55rem;
+      border-radius: 0.5rem;
+      background: #edf8ef;
+      color: #173c26;
+      font-size: 0.87rem;
+      font-weight: 750;
+    }
+
+    .request-summary-card .summary-icon {
+      width: 1.65rem;
+      height: 1.65rem;
+      border-radius: 0.45rem;
+      background: transparent;
+      color: #087c3b;
+    }
+
+    .request-summary-card .summary-icon svg {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    .customer-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: #17212b;
+      font-size: 0.87rem;
+      font-weight: 750;
+    }
+
+    .customer-identity img,
+    .customer-avatar-fallback {
+      display: grid;
+      width: 2.15rem;
+      height: 2.15rem;
+      flex: 0 0 auto;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 50%;
+      background: #e3f2e7;
+      color: #087c3b;
+      font-size: 0.8rem;
+      font-weight: 750;
+      object-fit: cover;
+    }
+
+    .customer-details {
+      gap: 0.35rem;
+    }
+
+    .customer-details .detail-row {
+      min-height: 1.8rem;
+      grid-template-columns: minmax(5rem, 0.65fr) minmax(0, 1fr);
+      gap: 0.4rem;
+      border: 0;
+    }
+
+    .customer-details .detail-row dt {
+      gap: 0.35rem;
+      font-size: 0.7rem;
+    }
+
+    .customer-details .detail-row dt svg {
+      width: 0.95rem;
+      height: 0.95rem;
+    }
+
+    .customer-details .detail-row dd {
+      font-size: 0.7rem;
+    }
+
+    .customer-map-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: #176b34;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    .detail-photos {
+      margin-top: 0;
+    }
+
+    app-job-attachments {
+      display: block;
+    }
+
+    .route-caption {
+      margin: 0;
+      color: #536158;
+      font-size: 0.7rem;
+      text-align: center;
+    }
+
+    .route-map-frame {
+      display: block;
+      width: 100%;
+      min-height: 11rem;
+      flex: 1 1 auto;
+      border: 0;
+      border-radius: 0.65rem;
+      background: #eef4ed;
+    }
+
+    .route-summary-card .map-directions-button {
+      align-self: flex-end;
+      min-height: 2.1rem;
+      gap: 0.35rem;
+      margin: 0;
+      padding: 0.45rem 0.7rem;
+      border-color: #087c3b;
+      border-radius: 0.5rem;
+      background: #087c3b;
+      color: #fff;
+      font-size: 0.72rem;
+    }
+
+    .route-preview {
+      display: flex;
+      min-height: 11rem;
+      flex: 1 1 auto;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      padding: 1rem;
+      border: 1px dashed #d6e2d8;
+      border-radius: 0.65rem;
+      background: #f4f8f5;
+      color: #66746b;
+      text-align: center;
+    }
+
+    .route-preview p {
+      margin: 0;
+      font-size: 0.75rem;
+    }
+
+    .route-pin svg {
+      width: 1.8rem;
+      height: 1.8rem;
+      fill: none;
+      stroke: #087c3b;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+  }
+
+  .portal .customer-new-job-detail-page {
+    max-width: 100%;
+    gap: 0.75rem;
+
+    .detail-back-link {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 0.4rem;
+      color: #176b34;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .detail-back-link svg {
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2;
+    }
+
+    .detail-page-title {
+      margin: 0.1rem 0 0.4rem;
+      color: #17212b;
+      font-size: clamp(1.3rem, 2.3vw, 1.65rem);
+      font-weight: 750;
+      letter-spacing: -0.035em;
+      line-height: 1.2;
+    }
+
+    .request-hero {
+      display: grid;
+      grid-template-columns: 6rem minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 0;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #e2e8e4;
+      border-radius: 0.85rem;
+      background: #fff;
+      box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+    }
+
+    .request-hero-photo {
+      display: grid;
+      width: 6rem;
+      height: 4.5rem;
+      overflow: hidden;
+      place-items: center;
+      border-radius: 0.55rem;
+      background: #f3f6f3;
+    }
+
+    .request-hero-photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .hero-image-placeholder {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      color: #708077;
+    }
+
+    .hero-image-placeholder svg {
+      width: 1.8rem;
+      height: 1.8rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.6;
+    }
+
+    .request-hero-copy {
+      display: grid;
+      min-width: 0;
+      gap: 0.4rem;
+    }
+
+    .request-hero-copy h2 {
+      overflow: hidden;
+      margin: 0;
+      color: #17212b;
+      font-size: 1.25rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .request-id {
+      width: fit-content;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      background: #e8f7eb;
+      color: #176b34;
+      font-size: 0.72rem;
+      font-weight: 650;
+    }
+
+    .request-id strong {
+      color: #176b34;
+      font-weight: 800;
+    }
+
+    .detail-status {
+      display: inline-flex;
+      min-height: 2rem;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: #e8f7eb;
+      color: #176b34;
+      font-size: 0.75rem;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .detail-status[data-status='open'] {
+      background: #e4f0ff;
+      color: #1754a0;
+    }
+
+    .status-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .request-progress {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.35rem;
+      margin: 0.1rem 0 0;
+      padding: 0.35rem 0.6rem 0.5rem;
+      list-style: none;
+    }
+
+    .request-progress::before {
+      position: absolute;
+      top: 1.4rem;
+      right: 12.5%;
+      left: 12.5%;
+      height: 2px;
+      background: #dce5de;
+      content: '';
+    }
+
+    .request-progress li {
+      z-index: 1;
+      display: grid;
+      justify-items: center;
+      gap: 0.25rem;
+      min-width: 0;
+      color: #5b665f;
+      text-align: center;
+    }
+
+    .progress-marker {
+      display: grid;
+      width: 1.9rem;
+      height: 1.9rem;
+      place-items: center;
+      border: 1px solid #cbd6cf;
+      border-radius: 50%;
+      background: #fff;
+      color: #56665c;
+      font-size: 0.75rem;
+      font-weight: 750;
+    }
+
+    .progress-marker svg {
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 2.5;
+    }
+
+    .request-progress li.completed .progress-marker,
+    .request-progress li.current .progress-marker {
+      border-color: #16842e;
+      background: #16842e;
+      color: #fff;
+    }
+
+    .request-progress li strong {
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .request-progress li.current strong {
+      padding: 0.22rem 0.5rem;
+      border-radius: 999px;
+      background: #e8f7eb;
+      color: #176b34;
+    }
+
+    .request-progress time {
+      color: #68756d;
+      font-size: 0.63rem;
+    }
+
+    .customer-detail-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.8fr) minmax(17rem, 0.9fr);
+      align-items: start;
+      gap: 1rem;
+    }
+
+    .customer-detail-main,
+    .customer-detail-sidebar {
+      display: grid;
+      min-width: 0;
+      gap: 1rem;
+    }
+
+    .customer-detail-main-card,
+    .customer-detail-sidebar-card {
+      display: grid;
+      gap: 0;
+    }
+
+    .customer-detail-main-card > .customer-detail-block,
+    .customer-detail-sidebar-card > .customer-detail-block {
+      display: grid;
+      min-width: 0;
+      gap: 0.55rem;
+      padding: 0.8rem 0;
+    }
+
+    .customer-detail-main-card > .customer-detail-block + .customer-detail-block,
+    .customer-detail-sidebar-card > .customer-detail-block + .customer-detail-block {
+      border-top: 1px solid #e8eee9;
+    }
+
+    .customer-detail-main-card > .customer-detail-block:first-child,
+    .customer-detail-sidebar-card > .customer-detail-block:first-child {
+      padding-top: 0;
+    }
+
+    .customer-detail-main-card > .customer-detail-block:last-child,
+    .customer-detail-sidebar-card > .customer-detail-block:last-child {
+      padding-bottom: 0;
+    }
+
+    .customer-detail-main-card .route-section app-shop-repair-route .route-card {
+      gap: 0.65rem;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .customer-detail-main-card .route-section .route-heading {
+      display: none;
+    }
+
+    .detail-section {
+      min-width: 0;
+      gap: 0.55rem;
+      padding: 0.8rem;
+      border: 1px solid #e2e8e4;
+      border-radius: 0.85rem;
+      background: #fff;
+      box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+    }
+
+    .section-heading {
+      display: flex;
+      min-height: 2.2rem;
+      align-items: center;
+      gap: 0.5rem;
+      margin: 0;
+      padding: 0.35rem 0.55rem;
+      border-radius: 0.5rem;
+      background: #edf8ef;
+      color: #173c26;
+      font-size: 0.86rem;
+      font-weight: 750;
+    }
+
+    .section-heading svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: #087c3b;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .section-heading small {
+      color: #617067;
+      font-size: 0.68rem;
+      font-weight: 500;
+    }
+
+    .customer-identity {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      color: #17212b;
+      font-size: 0.85rem;
+    }
+
+    .customer-information-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .customer-information-row .customer-identity {
+      min-width: 0;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+    }
+
+    .customer-information-row .customer-identity strong {
+      white-space: nowrap;
+    }
+
+    .customer-information-row .customer-facts {
+      display: contents;
+    }
+
+    .customer-information-row .customer-facts > div {
+      display: flex;
+      min-width: 0;
+      min-height: 0;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 0.15rem;
+      padding-left: 0.6rem;
+      border: 0;
+      border-left: 1px solid #edf1ee;
+    }
+
+    .customer-information-row .customer-facts dt {
+      font-size: 0.67rem;
+    }
+
+    .customer-information-row .customer-facts dd {
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 0.65rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .customer-information-row .customer-avatar {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    .customer-avatar {
+      display: grid;
+      width: 2rem;
+      height: 2rem;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: #e3f2e7;
+      color: #087c3b;
+      font-size: 0.75rem;
+      font-weight: 750;
+    }
+
+    .customer-facts,
+    .sidebar-facts {
+      display: grid;
+      gap: 0;
+      margin: 0;
+    }
+
+    .customer-facts > div,
+    .sidebar-facts > div {
+      display: grid;
+      grid-template-columns: minmax(6rem, 0.7fr) minmax(0, 1fr);
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 1.8rem;
+      border-bottom: 1px solid #edf1ee;
+    }
+
+    .customer-facts dt,
+    .sidebar-facts dt {
+      color: #536158;
+      font-size: 0.7rem;
+    }
+
+    .customer-facts dd,
+    .sidebar-facts dd {
+      margin: 0;
+      color: #17212b;
+      font-size: 0.71rem;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .customer-map-link,
+    .shop-link {
+      width: fit-content;
+      color: #176b34;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    .problem-description-card > p,
+    .muted-copy {
+      margin: 0;
+      color: #43564a;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .uploaded-photos-card app-job-attachments {
+      display: block;
+    }
+
+    .quotation-section {
+      min-height: 0;
+    }
+
+    .quotation-empty {
+      display: grid;
+      justify-items: center;
+      gap: 0.25rem;
+      padding: 0.6rem 0.2rem;
+      text-align: center;
+    }
+
+    .quotation-empty svg {
+      width: 1.5rem;
+      height: 1.5rem;
+      margin-bottom: 0.1rem;
+      fill: none;
+      stroke: #17643b;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .quotation-empty strong {
+      color: #17212b;
+      font-size: 0.8rem;
+    }
+
+    .quotation-empty span,
+    .quotation-entry p {
+      color: #66746b;
+      font-size: 0.72rem;
+    }
+
+    .quotation-list {
+      display: grid;
+      gap: 0.5rem;
+    }
+
+    .quotation-entry {
+      padding: 0.6rem 0.7rem;
+      border: 1px solid #e4ebe5;
+      border-radius: 0.65rem;
+    }
+
+    .quotation-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .quotation-heading > strong {
+      color: #17643b;
+      font-size: 0.95rem;
+    }
+
+    .quotation-status {
+      padding: 0.22rem 0.5rem;
+      border-radius: 999px;
+      background: #edf8ef;
+      color: #087c3b;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    .quotation-status[data-status='pending'],
+    .quotation-status[data-status='sent'] {
+      background: #e4f0ff;
+      color: #1754a0;
+    }
+
+    .quotation-status[data-status='rejected'],
+    .quotation-status[data-status='declined'] {
+      background: #fff1ef;
+      color: #a34842;
+    }
+
+    .quotation-status[data-status='expired'],
+    .quotation-status[data-status='withdrawn'] {
+      background: #f1f3f2;
+      color: #59665d;
+    }
+
+    .quotation-entry p {
+      margin: 0.35rem 0 0;
+      line-height: 1.4;
+    }
+
+    .review-quotation {
+      width: fit-content;
+      color: #087c3b;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .route-section {
+      min-height: 0;
+    }
+
+    .route-empty {
+      display: flex;
+      min-height: 3.5rem;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.55rem 0.25rem;
+      color: #66746b;
+    }
+
+    .route-empty svg {
+      width: 1.4rem;
+      height: 1.4rem;
+      flex: 0 0 auto;
+      fill: none;
+      stroke: #087c3b;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .route-empty p {
+      margin: 0;
+      font-size: 0.76rem;
+    }
+
+    .route-caption {
+      margin: 0;
+      color: #536158;
+      font-size: 0.68rem;
+      text-align: center;
+    }
+
+    .route-map-frame {
+      display: block;
+      width: 100%;
+      min-height: 13rem;
+      flex: 1 1 auto;
+      border: 0;
+      border-radius: 0.65rem;
+      background: #eef4ed;
+    }
+
+    .map-directions-button {
+      align-self: flex-end;
+      width: fit-content;
+      padding: 0.45rem 0.7rem;
+      border: 1px solid #087c3b;
+      border-radius: 0.5rem;
+      background: #087c3b;
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .shop-summary {
+      display: grid;
+      grid-template-columns: 2.5rem minmax(0, 1fr);
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem;
+      border-radius: 0.65rem;
+      background: #f3f8f3;
+    }
+
+    .shop-logo {
+      display: grid;
+      width: 2.5rem;
+      height: 2.5rem;
+      overflow: hidden;
+      place-items: center;
+      border-radius: 50%;
+      background: #e5f1e7;
+      color: #087c3b;
+    }
+
+    .shop-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .shop-copy {
+      display: grid;
+      min-width: 0;
+      gap: 0.2rem;
+    }
+
+    .shop-copy strong,
+    .shop-copy span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .shop-copy strong {
+      color: #17212b;
+      font-size: 0.8rem;
+    }
+
+    .shop-copy span {
+      color: #66746b;
+      font-size: 0.68rem;
+    }
+
+    .repair-shop-section .shop-link {
+      align-self: flex-start;
+      padding: 0.4rem 0.7rem;
+      border: 1px solid #b7d6bf;
+      border-radius: 0.55rem;
+      background: #fff;
+      text-decoration: none;
+    }
+
+    .timeline-section {
+      min-width: 0;
+    }
+
+    .timeline-empty {
+      display: flex;
+      min-height: 5rem;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 0.65rem 0;
+      color: #66746b;
+      font-size: 0.75rem;
+    }
+
+    .timeline-empty-icon {
+      display: grid;
+      width: 2.5rem;
+      height: 2.5rem;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 50%;
+      background: #f0f7f1;
+      color: #087c3b;
+    }
+
+    .timeline-empty-icon svg {
+      width: 1.35rem;
+      height: 1.35rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+    }
+
+    .timeline-empty > div {
+      max-width: 24rem;
+    }
+
+    .timeline-empty strong {
+      display: block;
+      color: #17212b;
+      font-size: 0.8rem;
+    }
+
+    .timeline-empty p {
+      margin: 0.2rem 0 0;
+      line-height: 1.4;
+    }
+  }
+
+  @media (max-width: 1020px) {
+    .portal .customer-new-job-detail-page .customer-detail-layout {
+      grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 1fr);
+    }
+
+    .portal .customer-new-job-detail-page .customer-information-row {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem 0.5rem;
+    }
+
+    .portal .customer-new-job-detail-page .customer-information-row .customer-facts > div {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .portal .repair-job-page .customer-detail-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas:
+        'customer repair'
+        'photos diagnosis'
+        'route route'
+        'shop quote';
+    }
+  }
+
+  @media (max-width: 700px) {
+    .portal .customer-new-job-detail-page {
+      .request-hero {
+        grid-template-columns: 4.5rem minmax(0, 1fr);
+        gap: 0.6rem;
+      }
+
+      .request-hero-photo {
+        width: 4.5rem;
+        height: 4rem;
+      }
+
+      .request-hero-copy h2 {
+        font-size: 1rem;
+      }
+
+      .detail-status {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      .request-progress {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+      }
+
+      .request-progress::before {
+        top: 1.5rem;
+        right: auto;
+        bottom: 1.5rem;
+        left: 1.55rem;
+        width: 2px;
+        height: auto;
+      }
+
+      .request-progress li {
+        grid-template-columns: 2rem minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        align-items: center;
+        justify-items: start;
+        gap: 0.1rem 0.65rem;
+        padding: 0.4rem 0;
+        text-align: left;
+      }
+
+      .request-progress .progress-marker {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+      }
+
+      .request-progress li strong,
+      .request-progress time {
+        grid-column: 2;
+      }
+
+      .customer-detail-layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .portal .repair-job-page {
+      .request-hero {
+        grid-template-columns: 4.5rem minmax(0, 1fr);
+        gap: 0.65rem;
+      }
+
+      .request-hero-photo {
+        width: 4.5rem;
+        height: 4rem;
+      }
+
+      .request-hero-copy h2 {
+        font-size: 1rem;
+      }
+
+      .job-header-actions {
+        grid-column: 2;
+        grid-row: 2;
+        align-items: flex-start;
+      }
+
+      .customer-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          'customer'
+          'repair'
+          'photos'
+          'diagnosis'
+          'route'
+          'shop'
+          'quote';
+      }
+
+      .request-progress {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+      }
+
+      .request-progress li {
+        grid-template-columns: 2.15rem minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        align-items: center;
+        justify-items: start;
+        gap: 0.1rem 0.7rem;
+        padding: 0.45rem 0;
+        text-align: left;
+      }
+
+      .request-progress li:not(:last-child)::after {
+        top: 2.6rem;
+        right: auto;
+        bottom: -0.45rem;
+        left: 1.05rem;
+        width: 2px;
+        height: auto;
+      }
+
+      .request-progress .progress-marker {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+      }
+
+      .request-progress li strong,
+      .request-progress li.current strong {
+        grid-column: 2;
+        justify-self: start;
+      }
+
+      .request-progress time {
+        grid-column: 2;
+        display: block;
+      }
+    }
+  }
+
+  @media (max-width: 480px) {
+    .portal .customer-new-job-detail-page {
+      .customer-information-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .request-hero {
+        grid-template-columns: 3.75rem minmax(0, 1fr);
+        padding: 0.55rem;
+      }
+
+      .request-hero-photo {
+        width: 3.75rem;
+        height: 3.5rem;
+      }
+
+      .request-id {
+        font-size: 0.65rem;
+      }
+    }
+
+    .portal .repair-job-page {
+      .request-hero {
+        grid-template-columns: 3.75rem minmax(0, 1fr);
+        padding: 0.55rem;
+      }
+
+      .request-hero-photo {
+        width: 3.75rem;
+        height: 3.5rem;
+      }
+
+      .request-id {
+        min-height: 1.8rem;
+        font-size: 0.65rem;
+      }
+
+      .request-id strong {
+        font-size: 0.7rem;
+      }
+    }
+  }
+}
