@@ -56,7 +56,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
     { label: 'Dashboard', icon: 'grid', route: '/customer', available: true },
     { label: 'Find repair shops', icon: 'search', route: '/customer/shops', available: true },
     {
-      label: 'My repair requests',
+      label: 'Open Request',
       icon: 'tool',
       route: '/customer/jobs/new-jobs',
       available: true,

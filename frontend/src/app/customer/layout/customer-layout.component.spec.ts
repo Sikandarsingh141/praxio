@@ -83,7 +83,8 @@ describe('CustomerLayout', () => {
       'data:image/png;base64,abc',
     );
     expect(fixture.nativeElement.textContent).toContain('Find repair shops');
-    expect(fixture.nativeElement.textContent).toContain('My repair requests');
+    expect(fixture.nativeElement.textContent).toContain('Open Request');
+    expect(fixture.nativeElement.textContent).not.toContain('My repair requests');
     expect(fixture.nativeElement.textContent).toContain('My quotations');
     expect(fixture.nativeElement.textContent).not.toContain('Disputes');
     expect(fixture.nativeElement.textContent).toContain('Disputed Jobs');

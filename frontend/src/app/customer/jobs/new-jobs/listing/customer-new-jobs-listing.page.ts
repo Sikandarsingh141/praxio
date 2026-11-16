@@ -30,7 +30,7 @@ import { CustomerJobCategory, JobListItem } from '../../../../shared/models/job.
 })
 export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
   protected override readonly category: CustomerJobCategory = 'new';
-  readonly title: string = 'New Jobs';
+  readonly title: string = 'Open Request';
   readonly description: string = 'Review newly submitted repair requests and manage incoming jobs.';
   readonly detailRoute: string = '/customer/jobs/new-jobs';
   readonly appliedFilters = signal<FilterValues>({});
