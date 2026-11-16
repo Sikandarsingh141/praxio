@@ -2,10 +2,20 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CustomerRepairRequest } from '../../models/customer-portal.models';
+import { Router } from '@angular/router';
+import { switchMap, tap } from 'rxjs';
+import { CustomerRepairRequest, RepairReview } from '../../models/customer-portal.models';
 import { CustomerPortalService } from '../../services/customer-portal.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { AdditionalChargeRequest } from '../../../shared/models/repair-workflow.models';
+
+type RepairRatingKey =
+  | 'overallRating'
+  | 'repairQuality'
+  | 'communication'
+  | 'professionalism'
+  | 'timeliness'
+  | 'valueForMoney';
 
 @Component({
   selector: 'app-customer-repair-workflow',
@@ -26,10 +36,36 @@ export class CustomerRepairWorkflowComponent {
   readonly decisionReason = signal('');
   readonly confirmingCharge = signal<AdditionalChargeRequest | null>(null);
   readonly chargeDecision = signal<'accept' | 'decline'>('accept');
+  readonly received = signal(true);
+  readonly inspected = signal(true);
+  readonly satisfaction = signal('satisfied');
+  readonly pickupComments = signal('');
+  readonly pickupIssueDescription = signal('');
+  readonly overallRating = signal(5);
+  readonly repairQuality = signal(5);
+  readonly communication = signal(5);
+  readonly professionalism = signal(5);
+  readonly timeliness = signal(5);
+  readonly valueForMoney = signal(5);
+  readonly reviewTitle = signal('');
+  readonly reviewText = signal('');
+  readonly liked = signal('');
+  readonly improvement = signal('');
+  readonly wouldRecommend = signal(true);
+  readonly starValues = [1, 2, 3, 4, 5];
+  readonly ratingFields: Array<{ key: RepairRatingKey; label: string }> = [
+    { key: 'overallRating', label: 'Overall shop rating' },
+    { key: 'repairQuality', label: 'Repair quality' },
+    { key: 'communication', label: 'Service and communication' },
+    { key: 'professionalism', label: 'Professionalism' },
+    { key: 'timeliness', label: 'Timeliness' },
+    { key: 'valueForMoney', label: 'Value for money' },
+  ];
 
   constructor(
     private readonly portal: CustomerPortalService,
     private readonly toastService: ToastService,
+    private readonly router: Router,
   ) {}
 
   get job() {
@@ -62,6 +98,128 @@ export class CustomerRepairWorkflowComponent {
 
   get hasReviewedAdditionalCharges(): boolean {
     return (this.job?.additionalChargeRequests ?? []).some((charge) => charge.status !== 'draft');
+  }
+
+  confirmPickup(): void {
+    if (!this.received()) {
+      if (!this.pickupIssueDescription().trim()) {
+        this.error.set('Describe the collection issue before submitting.');
+        return;
+      }
+      this.reportPickupIssue();
+      return;
+    }
+    if (!this.inspected() && !this.pickupIssueDescription().trim()) {
+      this.error.set('Describe the issue found during inspection.');
+      return;
+    }
+
+    this.error.set('');
+    this.submitting.set(true);
+    let pickupConfirmed = false;
+    this.portal
+      .confirmPickup(this.request._id, {
+        received: this.received(),
+        inspected: this.inspected(),
+        satisfaction: this.satisfaction(),
+        comments: this.pickupComments().trim() || undefined,
+        issueDescription: this.pickupIssueDescription().trim() || undefined,
+      })
+      .pipe(
+        tap(() => {
+          pickupConfirmed = true;
+        }),
+        switchMap(() => this.portal.getRepairJob(this.request._id)),
+      )
+      .subscribe({
+        next: (request) => {
+          this.requestUpdated.emit(request);
+          this.toastService.success(
+            'Pickup Status',
+            this.inspected()
+              ? 'Pickup confirmed. Please rate your repair experience.'
+              : 'Your issue report has been sent to the shop and Admin.',
+          );
+          this.submitting.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          const fallback = pickupConfirmed
+            ? 'Pickup was confirmed, but the updated repair details could not be loaded.'
+            : 'Pickup confirmation could not be saved.';
+          const message = error.error?.message || fallback;
+          this.error.set(message);
+          this.toastService.error(
+            pickupConfirmed ? 'Refresh Failed' : 'Confirmation Failed',
+            message,
+          );
+          this.submitting.set(false);
+        },
+      });
+  }
+
+  private reportPickupIssue(): void {
+    void this.router.navigate(['/customer/disputes/new', this.request._id], {
+      queryParams: { description: this.pickupIssueDescription().trim() },
+    });
+  }
+
+  submitReview(): void {
+    if (!this.reviewText().trim()) {
+      this.error.set('Please share your repair experience before submitting.');
+      return;
+    }
+
+    this.error.set('');
+    this.submitting.set(true);
+    const input: Omit<RepairReview, '_id' | 'repairRequestId' | 'createdAt'> = {
+      overallRating: this.overallRating(),
+      repairQuality: this.repairQuality(),
+      communication: this.communication(),
+      professionalism: this.professionalism(),
+      timeliness: this.timeliness(),
+      valueForMoney: this.valueForMoney(),
+      title: this.reviewTitle().trim() || undefined,
+      reviewText: this.reviewText().trim(),
+      liked: this.liked().trim() || undefined,
+      improvement: this.improvement().trim() || undefined,
+      wouldRecommend: this.wouldRecommend(),
+    };
+    let reviewSubmitted = false;
+    this.portal
+      .submitRepairReview(this.request._id, input)
+      .pipe(
+        tap(() => {
+          reviewSubmitted = true;
+        }),
+        switchMap(() => this.portal.getRepairJob(this.request._id)),
+      )
+      .subscribe({
+        next: (request) => {
+          this.requestUpdated.emit(request);
+          this.toastService.success(
+            'Review Submitted',
+            'Thank you. Your verified review has been submitted.',
+          );
+          this.submitting.set(false);
+        },
+        error: (error: HttpErrorResponse) => {
+          const fallback = reviewSubmitted
+            ? 'Your review was submitted, but the updated repair details could not be loaded.'
+            : 'Your review could not be submitted.';
+          const message = error.error?.message || fallback;
+          this.error.set(message);
+          this.toastService.error(reviewSubmitted ? 'Refresh Failed' : 'Review Failed', message);
+          this.submitting.set(false);
+        },
+      });
+  }
+
+  ratingValue(key: RepairRatingKey): number {
+    return this[key]();
+  }
+
+  setRating(key: RepairRatingKey, value: number): void {
+    this[key].set(value);
   }
 
   approveInspection(): void {

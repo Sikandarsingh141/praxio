@@ -435,6 +435,172 @@
         }
       </section>
     }
+
+    @if (job.status === 'ready_for_pickup') {
+      <section class="workflow-card pickup-confirmation" aria-labelledby="pickup-confirmation-title">
+        <header class="workflow-heading">
+          <h2 id="pickup-confirmation-title">Confirm item received</h2>
+        </header>
+        <p>Confirm only after you have collected and inspected your item.</p>
+        <label class="pickup-check-row">
+          <input
+            type="checkbox"
+            [ngModel]="received()"
+            (ngModelChange)="received.set($event)"
+          />
+          Yes, I received my item
+        </label>
+        <label class="pickup-check-row">
+          <input
+            type="checkbox"
+            [ngModel]="inspected()"
+            (ngModelChange)="inspected.set($event)"
+          />
+          Yes, I inspected the repair
+        </label>
+        @if (inspected() && received()) {
+          <label>
+            <span>Repair satisfaction</span>
+            <select
+              [ngModel]="satisfaction()"
+              (ngModelChange)="satisfaction.set($event)"
+            >
+              <option value="very_satisfied">Very satisfied</option>
+              <option value="satisfied">Satisfied</option>
+              <option value="neutral">Neutral</option>
+              <option value="dissatisfied">Dissatisfied</option>
+              <option value="very_dissatisfied">Very dissatisfied</option>
+            </select>
+          </label>
+        } @else {
+          <label>
+            <span>Describe the issue</span>
+            <textarea
+              rows="3"
+              maxlength="1000"
+              [ngModel]="pickupIssueDescription()"
+              (ngModelChange)="pickupIssueDescription.set($event)"
+            ></textarea>
+          </label>
+        }
+        <label>
+          <span>Additional comments (optional)</span>
+          <textarea
+            rows="2"
+            maxlength="1000"
+            [ngModel]="pickupComments()"
+            (ngModelChange)="pickupComments.set($event)"
+          ></textarea>
+        </label>
+        <div class="decision-actions">
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="submitting()"
+            (click)="confirmPickup()"
+          >
+            {{ inspected() && received() ? 'Confirm item received' : 'Report issue' }}
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (job.status === 'picked_up' && !request.review) {
+      <section class="workflow-card" aria-labelledby="review-title">
+        <h2 id="review-title">Rate your repair experience</h2>
+        <p>Your review is tied to this verified repair and cannot be submitted twice.</p>
+        <div class="rating-grid">
+          @for (field of ratingFields; track field.key) {
+            <div class="rating-control">
+              <span class="rating-label" [id]="'rating-' + field.key">
+                {{ field.label }} <span aria-hidden="true">*</span>
+              </span>
+              <div class="star-rating" role="group" [attr.aria-labelledby]="'rating-' + field.key">
+                @for (star of starValues; track star) {
+                  <button
+                    type="button"
+                    class="star-button"
+                    [class.filled]="star <= ratingValue(field.key)"
+                    [attr.aria-label]="star + ' out of 5 stars'"
+                    [attr.aria-pressed]="ratingValue(field.key) === star"
+                    (click)="setRating(field.key, star)"
+                  >
+                    ★
+                  </button>
+                }
+                <span class="rating-value">{{ ratingValue(field.key) }}/5</span>
+              </div>
+            </div>
+          }
+        </div>
+        <div class="review-form">
+          <label>
+            <span>Review title (optional)</span>
+            <input
+              maxlength="120"
+              [ngModel]="reviewTitle()"
+              (ngModelChange)="reviewTitle.set($event)"
+            />
+          </label>
+          <label>
+            <span>Your experience *</span>
+            <textarea
+              rows="4"
+              maxlength="2000"
+              required
+              [ngModel]="reviewText()"
+              (ngModelChange)="reviewText.set($event)"
+            ></textarea>
+          </label>
+          <label>
+            <span>What did you like? (optional)</span>
+            <textarea
+              rows="2"
+              maxlength="1000"
+              [ngModel]="liked()"
+              (ngModelChange)="liked.set($event)"
+            ></textarea>
+          </label>
+          <label>
+            <span>What could be improved? (optional)</span>
+            <textarea
+              rows="2"
+              maxlength="1000"
+              [ngModel]="improvement()"
+              (ngModelChange)="improvement.set($event)"
+            ></textarea>
+          </label>
+          <label class="review-recommendation">
+            <input
+              type="checkbox"
+              [ngModel]="wouldRecommend()"
+              (ngModelChange)="wouldRecommend.set($event)"
+            />
+            I would recommend this shop
+          </label>
+          <div class="decision-actions">
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="submitting()"
+              (click)="submitReview()"
+            >
+              {{ submitting() ? 'Submitting…' : 'Submit review and complete repair' }}
+            </button>
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (request.review; as review) {
+      <section class="workflow-card review-card" aria-labelledby="verified-review-title">
+        <h2 id="verified-review-title">Verified review submitted</h2>
+        <p>
+          <strong>{{ review.overallRating }}/5</strong> · {{ review.title || 'Your review' }}
+        </p>
+        <p>{{ review.reviewText }}</p>
+      </section>
+    }
   }
 
   @if (confirmingCharge(); as charge) {

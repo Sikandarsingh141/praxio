@@ -387,7 +387,9 @@
   }
 
   .portal .customer-new-job-detail-page,
-  .portal .customer-pending-job-detail-page {
+  .portal .customer-pending-job-detail-page,
+  .portal .customer-active-job-detail-page,
+  .portal .customer-completed-job-detail-page {
     max-width: 100%;
     gap: 0.75rem;
 
@@ -1092,18 +1094,24 @@
 
   @media (max-width: 1020px) {
     .portal .customer-new-job-detail-page .customer-detail-layout,
-    .portal .customer-pending-job-detail-page .customer-detail-layout {
+    .portal .customer-pending-job-detail-page .customer-detail-layout,
+    .portal .customer-active-job-detail-page .customer-detail-layout,
+    .portal .customer-completed-job-detail-page .customer-detail-layout {
       grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 1fr);
     }
 
     .portal .customer-new-job-detail-page .customer-information-row,
-    .portal .customer-pending-job-detail-page .customer-information-row {
+    .portal .customer-pending-job-detail-page .customer-information-row,
+    .portal .customer-active-job-detail-page .customer-information-row,
+    .portal .customer-completed-job-detail-page .customer-information-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem 0.5rem;
     }
 
     .portal .customer-new-job-detail-page .customer-information-row .customer-facts > div,
-    .portal .customer-pending-job-detail-page .customer-information-row .customer-facts > div {
+    .portal .customer-pending-job-detail-page .customer-information-row .customer-facts > div,
+    .portal .customer-active-job-detail-page .customer-information-row .customer-facts > div,
+    .portal .customer-completed-job-detail-page .customer-information-row .customer-facts > div {
       padding-left: 0;
       border-left: 0;
     }
@@ -1120,7 +1128,9 @@
 
   @media (max-width: 700px) {
     .portal .customer-new-job-detail-page,
-    .portal .customer-pending-job-detail-page {
+    .portal .customer-pending-job-detail-page,
+    .portal .customer-active-job-detail-page,
+    .portal .customer-completed-job-detail-page {
       .request-hero {
         grid-template-columns: 4.5rem minmax(0, 1fr);
         gap: 0.6rem;
@@ -1256,7 +1266,9 @@
 
   @media (max-width: 480px) {
     .portal .customer-new-job-detail-page,
-    .portal .customer-pending-job-detail-page {
+    .portal .customer-pending-job-detail-page,
+    .portal .customer-active-job-detail-page,
+    .portal .customer-completed-job-detail-page {
       .customer-information-row {
         grid-template-columns: minmax(0, 1fr);
       }

@@ -8,18 +8,10 @@ import { AuthService } from '../../core/auth/auth.service';
 import { UserProfile } from '../../core/auth/auth.models';
 import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
 import { JobSharedService } from '../../shared/services/job-shared.service';
-import { CustomerRepairRequest, RepairReview } from '../models/customer-portal.models';
+import { CustomerRepairRequest } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { CustomerRepairWorkflowComponent } from '../repair-requests/components/customer-repair-workflow.component';
 import { ToastService } from '../../core/toast/toast.service';
-
-type RepairRatingKey =
-  | 'overallRating'
-  | 'repairQuality'
-  | 'communication'
-  | 'professionalism'
-  | 'timeliness'
-  | 'valueForMoney';
 
 @Component({
   selector: 'app-customer-repair-job-page',
@@ -44,36 +36,12 @@ export class CustomerRepairJobPage implements OnInit {
   readonly customerAvatarUnavailable = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
-  readonly received = signal(true);
-  readonly inspected = signal(true);
-  readonly satisfaction = signal('satisfied');
-  readonly comments = signal('');
   readonly issueDescription = signal('');
-  readonly overallRating = signal(5);
-  readonly repairQuality = signal(5);
-  readonly communication = signal(5);
-  readonly professionalism = signal(5);
-  readonly timeliness = signal(5);
-  readonly valueForMoney = signal(5);
-  readonly reviewTitle = signal('');
-  readonly reviewText = signal('');
-  readonly liked = signal('');
-  readonly improvement = signal('');
-  readonly wouldRecommend = signal(true);
-  readonly starValues = [1, 2, 3, 4, 5];
   readonly progressSteps = [
     'Request Submitted',
     'Inspection Pending',
     'Quotation',
     'Repair & Complete',
-  ];
-  readonly ratingFields: Array<{ key: RepairRatingKey; label: string }> = [
-    { key: 'overallRating', label: 'Overall shop rating' },
-    { key: 'repairQuality', label: 'Repair quality' },
-    { key: 'communication', label: 'Service and communication' },
-    { key: 'professionalism', label: 'Professionalism' },
-    { key: 'timeliness', label: 'Timeliness' },
-    { key: 'valueForMoney', label: 'Value for money' },
   ];
   private requestId = '';
   private readonly sanitizer = inject(DomSanitizer);
@@ -111,47 +79,6 @@ export class CustomerRepairJobPage implements OnInit {
     });
   }
 
-  confirmPickup(): void {
-    if (!this.received()) {
-      if (!this.issueDescription().trim()) {
-        this.error.set('Describe the collection issue before submitting.');
-        return;
-      }
-      this.reportIssue();
-      return;
-    }
-    if (!this.inspected() && !this.issueDescription().trim()) {
-      this.error.set('Describe the issue found during inspection.');
-      return;
-    }
-    this.error.set('');
-    this.submitting.set(true);
-    this.portal
-      .confirmPickup(this.requestId, {
-        received: this.received(),
-        inspected: this.inspected(),
-        satisfaction: this.satisfaction(),
-        comments: this.comments().trim() || undefined,
-        issueDescription: this.issueDescription().trim() || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.submitting.set(false);
-          const msg = this.inspected()
-            ? 'Pickup confirmed. Please rate your repair experience.'
-            : 'Your issue report has been sent to the shop and Admin.';
-          this.toastService.success('Pickup Status', msg);
-          this.load();
-        },
-        error: (error: HttpErrorResponse) => {
-          const msg = error.error?.message || 'Pickup confirmation could not be saved.';
-          this.error.set(msg);
-          this.toastService.error('Confirmation Failed', msg);
-          this.submitting.set(false);
-        },
-      });
-  }
-
   reportIssue(): void {
     if (!this.issueDescription().trim()) {
       this.error.set('Describe the issue before submitting.');
@@ -160,48 +87,6 @@ export class CustomerRepairJobPage implements OnInit {
     void this.router.navigate(['/customer/disputes/new', this.requestId], {
       queryParams: { description: this.issueDescription().trim() },
     });
-  }
-
-  submitReview(): void {
-    if (!this.reviewText().trim()) {
-      this.error.set('Please share your repair experience before submitting.');
-      return;
-    }
-    this.submitting.set(true);
-    this.error.set('');
-    const input: Omit<RepairReview, '_id' | 'repairRequestId' | 'createdAt'> = {
-      overallRating: this.overallRating(),
-      repairQuality: this.repairQuality(),
-      communication: this.communication(),
-      professionalism: this.professionalism(),
-      timeliness: this.timeliness(),
-      valueForMoney: this.valueForMoney(),
-      title: this.reviewTitle().trim() || undefined,
-      reviewText: this.reviewText().trim(),
-      liked: this.liked().trim() || undefined,
-      improvement: this.improvement().trim() || undefined,
-      wouldRecommend: this.wouldRecommend(),
-    };
-    this.portal.submitRepairReview(this.requestId, input).subscribe({
-      next: () => {
-        this.toastService.success(
-          'Review Submitted',
-          'Thank you. Your verified review has been submitted.',
-        );
-        this.submitting.set(false);
-        this.load();
-      },
-      error: (error: HttpErrorResponse) => {
-        const msg = error.error?.message || 'Your review could not be submitted.';
-        this.error.set(msg);
-        this.toastService.error('Review Failed', msg);
-        this.submitting.set(false);
-      },
-    });
-  }
-
-  ratingValue(key: RepairRatingKey): number {
-    return this[key]();
   }
 
   shopInitials(name: string): string {
@@ -332,10 +217,6 @@ export class CustomerRepairJobPage implements OnInit {
     const destination = address.trim();
     if (!destination) return null;
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-  }
-
-  setRating(key: RepairRatingKey, value: number): void {
-    this[key].set(value);
   }
 
   get timeline(): Array<{ action: string; label: string; at?: string }> {

@@ -1,32 +1,26 @@
-@use '../../../../shared/styles/job-layout' as layout;
 @use '../../../../shared/styles/buttons' as buttons;
 
-:host { display: block; }
-.job-detail-page { @include layout.job-page; }
-.breadcrumbs { display: flex; gap: .55rem; align-items: center; color: var(--fixora-color-muted); font-size: .82rem; }
-.breadcrumbs a { color: var(--fixora-color-primary); text-decoration: none; }
-.detail-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: .35rem; }
-.eyebrow { margin: 0 0 .35rem; color: var(--fixora-color-primary); font-size: .72rem; font-weight: 800; letter-spacing: .12em; }
-h1 { margin: 0; color: var(--fixora-color-heading); font-size: clamp(1.6rem, 3vw, 2.2rem); }
-.detail-heading p:last-child { margin: .4rem 0 0; color: var(--fixora-color-muted); }
-.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
-.detail-section { @include layout.job-section; min-width: 0; }
-.detail-section h2 { margin: 0 0 .85rem; color: var(--fixora-color-heading); font-size: 1rem; }
-.detail-section p { color: #536159; line-height: 1.55; }
-dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin: 0; }
-dt { color: var(--fixora-color-muted); font-size: .75rem; }
-dd { margin: .2rem 0 0; color: var(--fixora-color-text); font-size: .88rem; font-weight: 650; }
-.shop-name { color: var(--fixora-color-heading) !important; font-weight: 700; }
-.price { color: var(--fixora-color-primary) !important; font-size: 1.3rem; font-weight: 750; }
-.quotation-row { padding: .75rem 0; border-top: 1px solid var(--fixora-color-border); }
-.quotation-row:first-of-type { border-top: 0; }
-.quotation-row p { margin-bottom: 0; }
-.state { padding: 1rem; border: 1px solid var(--fixora-color-border); border-radius: .75rem; background: #fff; }
-.state.error { color: var(--fixora-color-danger); }
-.message { padding: .7rem 0; border-top: 1px solid var(--fixora-color-border); }
-.message time { float: right; color: var(--fixora-color-muted); font-size: .76rem; }
-.message p { margin: .35rem 0 0; }
-.readonly-note { padding: .85rem 1rem; border-radius: .65rem; background: var(--fixora-color-success-background); color: var(--fixora-color-success); font-weight: 650; }
+:host {
+  display: block;
+  width: 100%;
+}
+
+.job-detail-page {
+  width: 100%;
+}
+
+.state {
+  padding: 1rem;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #536159;
+}
+
+.state.error {
+  border-color: #f0c6c1;
+  color: #a34842;
+}
+
 @include buttons.job-buttons;
-@media (max-width: 680px) { .detail-grid { grid-template-columns: 1fr; } .detail-heading { flex-direction: column; } }
 

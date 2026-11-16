@@ -1,20 +1,182 @@
 <main class="jobs-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb"><a routerLink="/customer">Dashboard</a><span aria-hidden="true">/</span><span aria-current="page">Completed Jobs</span></nav>
-  <header class="page-heading"><div><p class="eyebrow">CUSTOMER JOBS</p><h1>Completed Jobs</h1><p class="description">{{ description }}</p></div><span class="job-count">{{ filteredItems().length }} jobs</span></header>
-  <app-job-filters [search]="search()" [sort]="sort()" [statusFilter]="statusFilter()" [statusOptions]="statusOptions()" (searchChange)="setSearch($event)" (sortChange)="setSort($event)" (statusFilterChange)="setStatusFilter($event)" />
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="customer-jobs-title">{{ title }}</h1>
+    <p adminPageDescription class="admin-page-description">{{ description }}</p>
+    <div adminPageActions class="header-actions">
+      <label class="search-control">
+        <input
+          type="search"
+          placeholder="Search ID, device, brand, shop or issue"
+          aria-label="Search completed jobs by ID, device, brand, shop, or issue"
+          [value]="search()"
+          (input)="setSearch($any($event.target).value)"
+        />
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.8" cy="10.8" r="6.3" />
+          <path d="m16 16 4 4" />
+        </svg>
+      </label>
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
+      />
+    </div>
+  </app-admin-page-header>
+
   @if (loading()) {
-    <p class="loading-state" role="status">Loading Customer completed jobs...</p>
+    <p class="loading-state" role="status">Loading completed jobs...</p>
   } @else if (error()) {
-    <section class="error-state" role="alert"><h2>Completed Jobs could not be loaded</h2><p>{{ error() }}</p><button class="job-button" type="button" (click)="reload()">Try again</button></section>
-  } @else if (!filteredItems().length) {
-    <app-empty-state [title]="search() ? 'No matching jobs' : 'No completed jobs'" [description]="search() ? 'Try another device, customer, or job ID.' : 'Jobs will appear here when they match this status.'" />
-  } @else {
-    <section class="job-list" aria-label="Completed Jobs">
-      @for (job of pageItems(); track job.id) {
-        <app-job-card [job]="job" [detailLink]="[detailRoute, job.id]" />
-      }
+    <section class="error-state" role="alert">
+      <h2>Completed Jobs could not be loaded</h2>
+      <p>{{ error() }}</p>
+      <button class="job-button" type="button" (click)="reload()">Try again</button>
     </section>
-    <app-job-pagination [total]="filteredItems().length" [page]="page()" [pageSize]="pageSize()" (pageChange)="setPage($event)" (pageSizeChange)="setPageSize($event)" />
+  } @else if (!filteredItems().length) {
+    <app-empty-state
+      [title]="search() ? 'No matching jobs' : 'No completed jobs'"
+      [description]="
+        search()
+          ? 'Try another device, shop, or job ID.'
+          : 'Finished repairs will appear here.'
+      "
+    />
+  } @else {
+    <section class="table-card" aria-label="Completed Jobs">
+      <table class="jobs-table">
+        <thead>
+          <tr>
+            <th scope="col" class="th-device">Device &amp; Brand</th>
+            <th scope="col" class="th-issue">Issue / Problem</th>
+            <th scope="col" class="th-date">Request Date</th>
+            <th scope="col" class="th-shop">Shop</th>
+            <th scope="col" class="th-status">Status</th>
+            <th scope="col" class="th-action">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (job of pageItems(); track job.id) {
+            <tr class="job-table-row">
+              <td class="td-device">
+                <div class="device-cell">
+                  <div class="device-thumbnail">
+                    @if (hasValidImage(job)) {
+                      <img
+                        [src]="getDeviceImageSrc(job)"
+                        [alt]="job.title"
+                        (error)="onImageError(job.id)"
+                      />
+                    } @else {
+                      <svg viewBox="0 0 40 40" aria-hidden="true">
+                        <rect x="5" y="5" width="30" height="30" rx="5" />
+                        <circle cx="20" cy="20" r="6" />
+                      </svg>
+                    }
+                  </div>
+                  <div class="device-copy">
+                    <strong class="device-title">{{ job.title }}</strong>
+                    <span class="device-brand-model">{{ formatBrandModel(job) }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="td-issue">
+                <div class="issue-cell" [title]="job.description || 'No issue details'">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  <span>{{ job.description || 'No issue details' }}</span>
+                </div>
+              </td>
+              <td class="td-date">
+                <div class="date-cell">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span>{{ job.createdAt | date: 'MMM d, y, h:mm a' }}</span>
+                </div>
+              </td>
+              <td class="td-shop">
+                <div class="shop-cell">
+                  @if (job.shopLogoUrl) {
+                    <img [src]="job.shopLogoUrl" [alt]="job.shopName || 'Repair shop'" />
+                  } @else {
+                    <span class="shop-store-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 10V20h16V10M3 9l2-5h14l2 5M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0M9 20v-6h6v6" />
+                      </svg>
+                    </span>
+                  }
+                  <span class="shop-name-text">{{ job.shopName || 'Repair shop' }}</span>
+                </div>
+              </td>
+              <td class="td-status">
+                <span class="job-status" [attr.data-status]="job.status">
+                  {{ formatStatus(job.status) }}
+                </span>
+              </td>
+              <td class="td-action">
+                <div class="action-menu-anchor">
+                  <button
+                    type="button"
+                    class="action-btn-icon action-btn-more"
+                    cdkOverlayOrigin
+                    #jobMenuOrigin="cdkOverlayOrigin"
+                    [attr.aria-label]="'Job actions for job ' + job.id"
+                    [attr.aria-expanded]="openActionsJobId() === job.id"
+                    (click)="toggleActions(job.id)"
+                    title="Job actions"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+                      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                      <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <ng-template
+                    cdkConnectedOverlay
+                    [cdkConnectedOverlayOrigin]="jobMenuOrigin"
+                    [cdkConnectedOverlayOpen]="openActionsJobId() === job.id"
+                    [cdkConnectedOverlayPositions]="actionMenuPositions"
+                    [cdkConnectedOverlayPush]="true"
+                    (overlayOutsideClick)="closeActions()"
+                  >
+                    <div class="job-action-menu" role="group" [attr.aria-label]="'Actions for job ' + job.id">
+                      <a
+                        class="job-action-menu-link"
+                        [routerLink]="[detailRoute, job.id]"
+                        (click)="closeActions()"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        View Details
+                      </a>
+                    </div>
+                  </ng-template>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+    @if (filteredItems().length > pageSize()) {
+      <app-job-pagination
+        variant="brand"
+        [total]="filteredItems().length"
+        [page]="page()"
+        [pageSize]="pageSize()"
+        (pageChange)="setPage($event)"
+        (pageSizeChange)="setPageSize($event)"
+      />
+    }
   }
 </main>
-
