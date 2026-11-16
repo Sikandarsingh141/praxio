@@ -57,11 +57,19 @@
           <button type="button" class="primary-button" (click)="openAssignment()">＋ {{ request.technicianAssignment?.current ? 'Reassign Technician' : 'Assign Technician' }}</button>
         </header>
         @if (request.technicianAssignment?.current; as assignment) {
-          <div class="assigned-technician">
-            @if (assignment.profileImageData) { <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" /> }
-            @else { <span class="assignment-avatar" aria-hidden="true">{{ assignment.technicianName.slice(0, 1) }}</span> }
-            <div><strong>{{ assignment.technicianName }} {{ assignment.isOwner ? '(You)' : '' }}</strong><small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>@if (assignment.note) { <small>{{ assignment.note }}</small> }</div>
-          </div>
+          @if (!assignment.isOwner && assignment.technicianId) {
+            <a class="assigned-technician assigned-technician-link" [routerLink]="['/shop/technicians', assignment.technicianId]" [attr.aria-label]="'View ' + assignment.technicianName + ' profile'">
+              @if (assignment.profileImageData) { <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" /> }
+              @else { <span class="assignment-avatar" aria-hidden="true">{{ assignment.technicianName.slice(0, 1) }}</span> }
+              <div><strong>{{ assignment.technicianName }}</strong><small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>@if (assignment.note) { <small>{{ assignment.note }}</small> }</div>
+            </a>
+          } @else {
+            <div class="assigned-technician">
+              @if (assignment.profileImageData) { <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" /> }
+              @else { <span class="assignment-avatar" aria-hidden="true">{{ assignment.technicianName.slice(0, 1) }}</span> }
+              <div><strong>{{ assignment.technicianName }} {{ assignment.isOwner ? '(You)' : '' }}</strong><small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>@if (assignment.note) { <small>{{ assignment.note }}</small> }</div>
+            </div>
+          }
         } @else {
           <p class="unassigned-message">No technician assigned yet. Assign to yourself or a technician to start the repair.</p>
         }

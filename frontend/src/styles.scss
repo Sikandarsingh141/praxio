@@ -3770,3 +3770,128 @@ a {
     }
   }
 }
+
+/* Technician Portal Global Overlays */
+.technician-portal {
+  .modal-backdrop,
+  .lightbox-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    background: rgba(15, 30, 20, 0.45);
+  }
+
+  .lightbox-backdrop {
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 1100;
+  }
+
+  .modal-dialog {
+    background: #fff;
+    border-radius: 0.75rem;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .modal-header {
+    padding: 0.85rem 1.15rem;
+    border-bottom: 1px solid #edf2ee;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+    }
+  }
+
+  .close-btn,
+  .lightbox-close {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: #718377;
+    cursor: pointer;
+  }
+
+  .modal-body {
+    padding: 1rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+
+    p {
+      margin: 0;
+      font-size: 0.8rem;
+      color: #55675c;
+    }
+  }
+
+  .modal-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #2b3d32;
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border: 1px solid #cedcd2;
+      border-radius: 0.4rem;
+      font: inherit;
+      font-size: 0.8rem;
+      outline: none;
+
+      &:focus {
+        border-color: #087c3b;
+      }
+    }
+  }
+
+  .modal-footer {
+    padding: 0.75rem 1.15rem;
+    border-top: 1px solid #edf2ee;
+    background: #fafcfb;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+  }
+
+  .lightbox-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 85vh;
+
+    img {
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 0.5rem;
+    }
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: -1.2rem;
+    right: -1.2rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: #fff;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

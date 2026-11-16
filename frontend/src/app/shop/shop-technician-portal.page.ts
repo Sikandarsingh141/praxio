@@ -1,171 +1,353 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { ToastService } from '../core/toast/toast.service';
 import { ChatService } from '../shared/chat.service';
 import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogConfig,
+} from '../shared/confirmation-dialog.component';
+import {
   Technician,
+  TechnicianDashboardData,
   TechnicianJob,
   TechnicianJobSummary,
   TechnicianRepairDetails,
 } from './technicians.models';
 import { TechniciansService } from './technicians.service';
 
-type JobFilter = 'all' | 'today' | 'in_progress' | 'completed' | 'on_hold';
-type TechnicianView = 'dashboard' | 'jobs' | 'history';
+export type JobFilter = 'all' | 'pending' | 'active' | 'completed' | 'today';
+export type TechnicianPageView = 'dashboard' | 'jobs' | 'active' | 'completed' | 'history' | 'job-detail';
 
 const EMPTY_SUMMARY: TechnicianJobSummary = {
   assigned: 0,
+  pending: 0,
+  active: 0,
   inProgress: 0,
   completed: 0,
   onHold: 0,
   today: 0,
 };
 
+
 @Component({
   selector: 'app-shop-technician-portal-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ConfirmationDialogComponent],
   templateUrl: './shop-technician-portal.page.html',
   styleUrl: './shop-technician-portal.page.scss',
 })
 export class ShopTechnicianPortalPage implements OnInit {
+  private readonly service = inject(TechniciansService);
+  private readonly chat = inject(ChatService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
+
+  readonly view = signal<TechnicianPageView>('dashboard');
   readonly technician = signal<Technician | null>(null);
+  readonly dashboard = signal<TechnicianDashboardData | null>(null);
   readonly jobs = signal<TechnicianJob[]>([]);
   readonly summary = signal<TechnicianJobSummary>(EMPTY_SUMMARY);
-  readonly selectedJobId = signal('');
+  readonly selectedJobId = signal<string>('');
   readonly details = signal<TechnicianRepairDetails | null>(null);
-  readonly loading = signal(true);
+
+  readonly loading = signal(false);
   readonly detailLoading = signal(false);
   readonly updating = signal(false);
   readonly messaging = signal(false);
   readonly error = signal('');
   readonly success = signal('');
+
   readonly filter = signal<JobFilter>('all');
   readonly searchText = signal('');
-  readonly notes = signal('');
-  readonly completionOpen = signal(false);
+  readonly sortBy = signal<'assigned' | 'scheduled' | 'appliance'>('assigned');
+  readonly detailTab = signal<'details' | 'timeline' | 'messages' | 'photos' | 'notes'>('details');
+
+  // Modals & Confirmation Dialogs
+  readonly confirmation = signal<ConfirmationDialogConfig | null>(null);
+  private pendingAction?: () => void;
+  readonly progressModalOpen = signal(false);
+  readonly progressNote = signal('');
+  readonly completionModalOpen = signal(false);
   readonly completionDescription = signal('');
   readonly workPerformed = signal('');
   readonly partsReplaced = signal('');
-  readonly view = signal<TechnicianView>('dashboard');
-  readonly visibleJobs = computed(() => {
-    const query = this.searchText().trim().toLocaleLowerCase();
-    const matches = this.jobs().filter((job) =>
-      !query ||
-      [job.id, job.appliance, job.brand, job.model, job.customer]
-        .join(' ')
-        .toLocaleLowerCase()
-        .includes(query),
-    );
-    return this.view() === 'dashboard' ? matches.slice(0, 5) : matches;
-  });
+  readonly finalNotes = signal('');
+  readonly lightboxImage = signal<string | null>(null);
+
   readonly filterOptions: Array<{ key: JobFilter; label: string }> = [
-    { key: 'all', label: 'My Assigned Jobs' },
-    { key: 'today', label: "Today's Jobs" },
-    { key: 'in_progress', label: 'In Progress' },
+    { key: 'all', label: 'All Jobs' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'active', label: 'Active Jobs' },
     { key: 'completed', label: 'Completed' },
-    { key: 'on_hold', label: 'On Hold' },
+    { key: 'today', label: "Today's Schedule" },
   ];
 
-  constructor(
-    private readonly service: TechniciansService,
-    private readonly chat: ChatService,
-    private readonly router: Router,
-    private readonly route: ActivatedRoute,
-  ) {}
+  readonly counts = computed(() => {
+    const sum = this.summary();
+    const kpis = this.dashboard()?.kpis;
+    return {
+      all: sum.assigned ?? kpis?.totalAssigned ?? 0,
+      pending: sum.pending ?? kpis?.pendingJobs ?? 0,
+      active: sum.active ?? kpis?.activeJobs ?? 0,
+      completed: sum.completed ?? kpis?.completedJobs ?? 0,
+      today: sum.today ?? kpis?.todayJobs ?? 0,
+    };
+  });
+
+  readonly currentPage = signal(1);
+  readonly pageSize = signal(5);
+  readonly overviewFilter = signal<'this_week' | 'today' | 'this_month' | 'all'>('this_week');
+
+  readonly donutStats = computed(() => {
+    const dash = this.dashboard();
+    const sum = this.summary();
+    const total = dash?.kpis?.totalAssigned ?? sum.assigned ?? 0;
+    const completed = dash?.kpis?.completedJobs ?? sum.completed ?? 0;
+    const active = dash?.kpis?.activeJobs ?? (sum.inProgress + sum.onHold);
+    const pending = dash?.kpis?.pendingJobs ?? (sum.pending ?? 0);
+
+    const cPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const aPct = total > 0 ? Math.round((active / total) * 100) : 0;
+    const pPct = total > 0 ? Math.max(0, 100 - cPct - aPct) : 0;
+
+    const C = 238.76;
+    const cLen = (cPct / 100) * C;
+    const aLen = (aPct / 100) * C;
+    const pLen = (pPct / 100) * C;
+
+    return {
+      total,
+      completed,
+      active,
+      pending,
+      completedPct: cPct,
+      activePct: aPct,
+      pendingPct: pPct,
+      completedDash: `${cLen} ${C}`,
+      completedOffset: 0,
+      activeDash: `${aLen} ${C}`,
+      activeOffset: -cLen,
+      pendingDash: `${pLen} ${C}`,
+      pendingOffset: -(cLen + aLen),
+    };
+  });
+
+  getCurrentJobStep(status?: string): number {
+    if (!status) return 2;
+    if (status === 'confirmed' || status === 'inspection_pending') return 1;
+    if (status === 'in_progress' || status === 'inspection_in_progress' || status === 'on_hold') return 2;
+    if (status === 'inspection_approved' || status === 'testing') return 3;
+    if (status === 'repair_completed' || status === 'ready_for_pickup' || status === 'picked_up' || status === 'completed') return 4;
+    return 2;
+  }
+
+  readonly visibleJobs = computed(() => {
+    const query = this.searchText().trim().toLocaleLowerCase();
+    let list = this.jobs().filter((job) => {
+      if (!query) return true;
+      return [job.id, job.appliance, job.brand, job.model, job.customer || '']
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(query);
+    });
+
+    if (this.sortBy() === 'scheduled') {
+      list = [...list].sort((a, b) => {
+        if (!a.scheduledDate) return 1;
+        if (!b.scheduledDate) return -1;
+        return new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime();
+      });
+    } else if (this.sortBy() === 'appliance') {
+      list = [...list].sort((a, b) => a.appliance.localeCompare(b.appliance));
+    } else {
+      list = [...list].sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime());
+    }
+
+    return list;
+  });
+
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.visibleJobs().length / this.pageSize())));
+
+  readonly pagesArray = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
+
+  readonly pageStart = computed(() => {
+    const len = this.visibleJobs().length;
+    if (!len) return 0;
+    return (this.currentPage() - 1) * this.pageSize() + 1;
+  });
+
+  readonly pageEnd = computed(() => {
+    const len = this.visibleJobs().length;
+    return Math.min(this.currentPage() * this.pageSize(), len);
+  });
+
+  readonly pagedJobs = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return this.visibleJobs().slice(start, start + this.pageSize());
+  });
+
+  setPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
+  }
+
+  getCustomerName(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
+    if (!repair) return 'Customer';
+    if (typeof repair.customer === 'string' && repair.customer) return repair.customer;
+    return (repair.customer as { name?: string })?.name || (repair as { customerName?: string }).customerName || 'Customer';
+  }
+
+  getCustomerPhone(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
+    if (!repair) return 'Not provided';
+    if (repair.phone) return repair.phone;
+    if (typeof repair.customer === 'object' && (repair.customer as { phone?: string })?.phone) {
+      return (repair.customer as { phone?: string }).phone || 'Not provided';
+    }
+    return 'Not provided';
+  }
+
+  onViewActiveJob(): void {
+    const job = this.dashboard()?.currentlyActiveJob;
+    if (job) {
+      this.viewJob(job);
+    } else {
+      this.setFilter('active');
+      this.view.set('jobs');
+    }
+  }
+
+  getCustomerAddress(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
+    if (!repair) return 'Not provided';
+    if (repair.address) return repair.address;
+    const loc = (repair as TechnicianRepairDetails)?.location || (typeof repair.customer === 'object' && (repair.customer as { location?: { latitude?: number; longitude?: number } })?.location);
+    if (loc && typeof loc.latitude === 'number') {
+      return `${loc.latitude.toFixed(4)}, ${loc.longitude?.toFixed(4)}`;
+    }
+    return 'Not provided';
+  }
+
+  getQuotationCurrency(repair?: TechnicianRepairDetails | null): string {
+    const cur = repair?.quotation?.currency;
+    if (!cur || cur === 'INR') return '₹';
+    return cur;
+  }
+
+  getStepperAssignedDate(repair?: TechnicianRepairDetails | null): string {
+    const assigned = repair?.assignedAt || repair?.assignmentDetails?.assignedAt;
+    if (assigned) {
+      const d = new Date(assigned);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+               d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+    }
+    return 'Assigned';
+  }
+
+  getStepperInspectionDate(repair?: TechnicianRepairDetails | null): string {
+    const timeline = repair?.timeline || [];
+    const inspectEvent = timeline.find((t) => t.action === 'inspection_started' || t.action === 'inspection');
+    if (inspectEvent?.at) {
+      const d = new Date(inspectEvent.at);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+               d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+    }
+    const started = repair?.repairJobDetails?.startedAt;
+    if (started) {
+      const d = new Date(started);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+               d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      }
+    }
+    return 'Inspection';
+  }
 
   ngOnInit(): void {
-    const view = this.route.snapshot.data['technicianView'];
-    if (view === 'jobs' || view === 'history') this.view.set(view);
+    const routeView = this.route.snapshot.data['technicianView'] as TechnicianPageView;
+    if (routeView) {
+      this.view.set(routeView);
+      if (routeView === 'active') this.filter.set('active');
+      if (routeView === 'completed') this.filter.set('completed');
+    }
+
     this.service.myProfile().subscribe({
       next: (profile) => this.technician.set(profile),
       error: (error: HttpErrorResponse) =>
         this.error.set(error.error?.message || 'Technician profile could not be loaded.'),
     });
-    this.loadJobs(this.view() === 'history' ? 'history' : 'all');
+
+    if (this.view() === 'dashboard') {
+      this.loadDashboard();
+    } else {
+      const initialFilter = this.view() === 'history' ? 'history' : this.filter();
+      this.loadJobs(initialFilter);
+    }
+
+    // Handle query param or route param for job selection
+    this.route.paramMap.subscribe((params) => {
+      const jobId = params.get('id');
+      if (jobId) {
+        this.openJobById(jobId);
+      }
+    });
+
+    this.route.queryParamMap.subscribe((params) => {
+      const jobId = params.get('jobId');
+      if (jobId && !this.selectedJobId()) {
+        this.openJobById(jobId);
+      }
+    });
   }
 
-  counts(): Record<JobFilter, number> {
-    const summary = this.summary();
-    return {
-      all: summary.assigned,
-      today: summary.today,
-      in_progress: summary.inProgress,
-      completed: summary.completed,
-      on_hold: summary.onHold,
-    };
+  loadDashboard(): void {
+    this.loading.set(true);
+    this.error.set('');
+    this.service
+      .dashboard()
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (data) => {
+          this.dashboard.set(data);
+          this.technician.set(data.technician);
+          if (data.kpis) {
+            this.summary.set({
+              assigned: data.kpis.totalAssigned ?? 0,
+              pending: data.kpis.pendingJobs ?? 0,
+              active: data.kpis.activeJobs ?? 0,
+              inProgress: data.kpis.activeJobs ?? 0,
+              completed: data.kpis.completedJobs ?? 0,
+              onHold: 0,
+              today: data.kpis.todayJobs ?? 0,
+            });
+          }
+        },
+        error: (error: HttpErrorResponse) => {
+          this.error.set(error.error?.message || 'Dashboard data could not be loaded.');
+        },
+      });
   }
 
   setFilter(filter: JobFilter): void {
     this.filter.set(filter);
+    this.currentPage.set(1);
     this.loadJobs(filter);
   }
 
-  openJob(job: TechnicianJob): void {
-    this.selectedJobId.set(job.id);
-    this.detailLoading.set(true);
-    this.details.set(null);
-    this.error.set('');
-    this.service.myJobDetails(job.id).subscribe({
-      next: (details) => {
-        this.details.set(details);
-        this.detailLoading.set(false);
-      },
-      error: (error: HttpErrorResponse) => {
-        this.error.set(error.error?.message || 'Repair details could not be loaded.');
-        this.detailLoading.set(false);
-      },
-    });
+  viewJob(job: TechnicianJob): void {
+    this.view.set('jobs');
+    this.openJob(job);
   }
 
-  messageCustomer(): void {
-    const repair = this.details();
-    if (!repair || this.messaging()) return;
-    this.messaging.set(true);
-    this.chat.createConversation(repair.id, repair.shopId).subscribe({
-      next: (conversation) =>
-        void this.router.navigate(['/technician/messages'], {
-          queryParams: { conversationId: conversation.id },
-        }),
-      error: (error: HttpErrorResponse) => {
-        this.error.set(error.error?.message || 'A message conversation could not be opened.');
-        this.messaging.set(false);
-      },
-      complete: () => this.messaging.set(false),
-    });
-  }
-
-  startJob(): void {
-    const details = this.details();
-    if (!details) return;
-    this.runAction(this.service.startJob(details.id, this.notes()));
-  }
-
-  holdJob(): void {
-    const details = this.details();
-    if (!details) return;
-    this.runAction(this.service.holdJob(details.id, this.notes()));
-  }
-
-  completeJob(): void {
-    const details = this.details();
-    if (!details || !this.completionDescription().trim() || !this.workPerformed().trim()) {
-      this.error.set('Enter a completion summary and describe the work performed.');
-      return;
-    }
-    this.runAction(
-      this.service.completeJob(details.id, {
-        completionDescription: this.completionDescription().trim(),
-        workPerformed: this.workPerformed().trim(),
-        partsReplaced: this.partsReplaced().trim() || undefined,
-      }),
-    );
-  }
-
-  private loadJobs(filter: JobFilter | 'history'): void {
+  loadJobs(filter: JobFilter | 'history'): void {
     this.loading.set(true);
     this.error.set('');
     this.service
@@ -173,34 +355,267 @@ export class ShopTechnicianPortalPage implements OnInit {
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: (result) => {
-          this.jobs.set(result.jobs);
-          this.summary.set(result.summary);
-          const selected =
-            result.jobs.find((job) => job.id === this.selectedJobId()) ?? result.jobs[0];
-          if (selected) {
-            this.openJob(selected);
+          const list = result.jobs || [];
+          this.jobs.set(list);
+          this.summary.set(result.summary || EMPTY_SUMMARY);
+          const targetId = this.selectedJobId();
+          const target = list.find((j) => j.id === targetId);
+          if (target) {
+            this.openJob(target);
+          } else if (list.length > 0) {
+            this.openJob(list[0]);
           } else {
-            this.selectedJobId.set('');
             this.details.set(null);
+            this.selectedJobId.set('');
           }
         },
-        error: (error: HttpErrorResponse) =>
-          this.error.set(error.error?.message || 'Assigned jobs could not be loaded.'),
+        error: (error: HttpErrorResponse) => {
+          this.jobs.set([]);
+          this.summary.set(EMPTY_SUMMARY);
+          this.details.set(null);
+          this.selectedJobId.set('');
+          this.error.set(error.error?.message || 'Failed to load assigned jobs.');
+        },
       });
   }
 
-  private runAction(request: ReturnType<TechniciansService['startJob']>): void {
-    this.updating.set(true);
+  openJob(job: TechnicianJob): void {
+    this.selectedJobId.set(job.id);
+    this.openJobById(job.id);
+  }
+
+  openJobById(jobId: string): void {
+    if (!jobId) return;
+    this.selectedJobId.set(jobId);
+    this.detailLoading.set(true);
     this.error.set('');
-    this.success.set('');
-    request.pipe(finalize(() => this.updating.set(false))).subscribe({
-      next: () => {
-        this.success.set('Repair progress updated.');
-        this.completionOpen.set(false);
-        this.loadJobs(this.view() === 'history' ? 'history' : this.filter());
+    this.service.myJobDetails(jobId).subscribe({
+      next: (details) => {
+        this.details.set(details);
+        this.detailLoading.set(false);
       },
-      error: (error: HttpErrorResponse) =>
-        this.error.set(error.error?.message || 'Repair progress could not be updated.'),
+      error: (error: HttpErrorResponse) => {
+        this.details.set(null);
+        this.detailLoading.set(false);
+        this.error.set(error.error?.message || 'Failed to load job details.');
+      },
     });
+  }
+
+  closeDetails(): void {
+    this.details.set(null);
+    this.selectedJobId.set('');
+  }
+
+  confirmStartJob(targetId?: string, targetName?: string): void {
+    const repair = this.details();
+    const id = targetId || repair?.id;
+    const name = targetName || repair?.appliance || 'this appliance';
+    if (!id) return;
+    this.confirmation.set({
+      title: 'Start Repair Work',
+      message: `Are you ready to begin work on ${name}? This will update the job to In Progress and notify both the shop and customer.`,
+      confirmLabel: 'Start Job',
+      cancelLabel: 'Cancel',
+    });
+    this.pendingAction = () => {
+      this.updating.set(true);
+      this.service.startJob(id, 'Technician began repair work.').subscribe({
+        next: () => {
+          this.updating.set(false);
+          this.toast.show({
+            title: 'Repair Started',
+            message: `Work has begun on ${name}.`,
+            type: 'success',
+          });
+          if (this.view() === 'dashboard') {
+            this.loadDashboard();
+          } else {
+            this.openJobById(id);
+            this.loadJobs(this.filter());
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          this.updating.set(false);
+          this.error.set(err.error?.message || 'Could not start this repair job.');
+        },
+      });
+    };
+  }
+
+  confirmHoldJob(targetId?: string, targetName?: string): void {
+    const repair = this.details();
+    const id = targetId || repair?.id;
+    const name = targetName || repair?.appliance || 'this appliance';
+    if (!id) return;
+    this.confirmation.set({
+      title: 'Place Repair On Hold',
+      message: `Place work on hold for ${name}? You can resume work at any time.`,
+      confirmLabel: 'Place On Hold',
+      cancelLabel: 'Cancel',
+      reasonLabel: 'Reason for pause (e.g. waiting for parts, shop confirmation)',
+      reasonPlaceholder: 'Enter reason for placing on hold…',
+      reasonRequired: true,
+    });
+    this.pendingAction = (reason?: string) => {
+      this.updating.set(true);
+      this.service.holdJob(id, reason || 'Placed on hold by technician.').subscribe({
+        next: () => {
+          this.updating.set(false);
+          this.toast.show({
+            title: 'Job Placed On Hold',
+            message: `Repair on ${name} has been paused.`,
+            type: 'info',
+          });
+          if (this.view() === 'dashboard') {
+            this.loadDashboard();
+          } else {
+            this.openJobById(id);
+            this.loadJobs(this.filter());
+          }
+        },
+        error: (err: HttpErrorResponse) => {
+          this.updating.set(false);
+          this.error.set(err.error?.message || 'Could not place this job on hold.');
+        },
+      });
+    };
+  }
+
+  openProgressModal(): void {
+    this.progressNote.set('');
+    this.progressModalOpen.set(true);
+  }
+
+  closeProgressModal(): void {
+    this.progressModalOpen.set(false);
+    this.progressNote.set('');
+  }
+
+  submitProgress(): void {
+    const repair = this.details();
+    const note = this.progressNote().trim();
+    if (!repair || !note) return;
+    this.updating.set(true);
+    this.service.updateProgress(repair.id, note).subscribe({
+      next: () => {
+        this.updating.set(false);
+        this.closeProgressModal();
+        this.toast.show({
+          title: 'Progress Updated',
+          message: 'Your progress note has been recorded.',
+          type: 'success',
+        });
+        this.openJobById(repair.id);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.updating.set(false);
+        this.error.set(err.error?.message || 'Could not save progress note.');
+      },
+    });
+  }
+
+  openCompletionModal(): void {
+    this.completionDescription.set('');
+    this.workPerformed.set('');
+    this.partsReplaced.set('');
+    this.finalNotes.set('');
+    this.completionModalOpen.set(true);
+  }
+
+  closeCompletionModal(): void {
+    this.completionModalOpen.set(false);
+  }
+
+  submitCompletion(): void {
+    const repair = this.details();
+    const summary = this.completionDescription().trim();
+    const work = this.workPerformed().trim();
+    if (!repair || !summary || !work) {
+      this.error.set('Please provide both completion summary and work performed description.');
+      return;
+    }
+    this.updating.set(true);
+    this.service
+      .completeJob(repair.id, {
+        completionDescription: summary,
+        workPerformed: work,
+        partsReplaced: this.partsReplaced().trim() || undefined,
+        finalNotes: this.finalNotes().trim() || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.updating.set(false);
+          this.closeCompletionModal();
+          this.toast.show({
+            title: 'Repair Completed',
+            message: `Repair on ${repair.appliance} marked completed. The shop has been notified for pickup verification.`,
+            type: 'success',
+          });
+          this.openJobById(repair.id);
+          this.loadJobs(this.filter());
+        },
+        error: (err: HttpErrorResponse) => {
+          this.updating.set(false);
+          this.error.set(err.error?.message || 'Could not complete this repair job.');
+        },
+      });
+  }
+
+  onDialogConfirmed(reason?: string): void {
+    this.confirmation.set(null);
+    if (this.pendingAction) {
+      (this.pendingAction as (r?: string) => void)(reason);
+      this.pendingAction = undefined;
+    }
+  }
+
+  onDialogCancelled(): void {
+    this.confirmation.set(null);
+    this.pendingAction = undefined;
+  }
+
+  messageCustomer(): void {
+    const repair = this.details();
+    if (!repair || this.messaging()) return;
+    this.messaging.set(true);
+    this.chat.createConversation(repair.id, repair.shopId).subscribe({
+      next: (conversation) => {
+        this.messaging.set(false);
+        void this.router.navigate(['/technician/messages'], {
+          queryParams: { conversationId: conversation.id },
+        });
+      },
+      error: (error: HttpErrorResponse) => {
+        this.messaging.set(false);
+        this.error.set(error.error?.message || 'Could not open conversation with customer.');
+      },
+    });
+  }
+
+  messageShop(): void {
+    const repair = this.details();
+    if (!repair || this.messaging()) return;
+    this.messaging.set(true);
+    this.chat.createConversation(repair.id, repair.shopId).subscribe({
+      next: (conversation) => {
+        this.messaging.set(false);
+        void this.router.navigate(['/technician/messages'], {
+          queryParams: { conversationId: conversation.id },
+        });
+      },
+      error: (error: HttpErrorResponse) => {
+        this.messaging.set(false);
+        this.error.set(error.error?.message || 'Could not open conversation with shop.');
+      },
+    });
+  }
+
+  openLightbox(photoUrl: string): void {
+    this.lightboxImage.set(photoUrl);
+  }
+
+  closeLightbox(): void {
+    this.lightboxImage.set(null);
   }
 }

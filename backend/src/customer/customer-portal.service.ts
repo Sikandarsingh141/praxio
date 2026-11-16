@@ -3513,6 +3513,25 @@ export class CustomerPortalService {
         relatedEntityType: 'repair_request',
         link: `/customer/repair-requests/${request._id.toString()}`,
       });
+      if (isTechnician) {
+        await this.notifications.notifyUsers([shop._id], {
+          title: 'Technician Started Work',
+          message: `Technician has begun repair work on ${request.appliance}.`,
+          type: 'repair_started',
+          relatedEntityId: request._id,
+          relatedEntityType: 'repair_request',
+          link: `/shop/repair-requests/${request._id.toString()}`,
+        });
+      }
+    } else if (action === 'hold' && isTechnician) {
+      await this.notifications.notifyUsers([shop._id], {
+        title: 'Technician Paused Work',
+        message: `Technician placed ${request.appliance} on hold.${input.notes?.trim() ? ` Reason: ${input.notes.trim()}` : ''}`,
+        type: 'repair_marked_complete',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/shop/repair-requests/${request._id.toString()}`,
+      });
     }
     return request.repairJob;
   }
@@ -3612,6 +3631,16 @@ export class CustomerPortalService {
       relatedEntityType: 'repair_request',
       link: `/customer/repair-requests/${request._id.toString()}`,
     });
+    if (isTechnician) {
+      await this.notifications.notifyUsers([shop._id], {
+        title: 'Technician Completed Repair',
+        message: `Technician has finished repair work for ${request.appliance}. Please inspect and mark ready for customer pickup.`,
+        type: 'repair_marked_complete',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/shop/repair-requests/${request._id.toString()}`,
+      });
+    }
     return request.repairJob;
   }
 

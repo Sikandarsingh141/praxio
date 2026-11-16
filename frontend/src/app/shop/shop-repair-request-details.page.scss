@@ -13,8 +13,9 @@
 }
 .request-hero { min-height: 5.2rem; border-radius: 0.9rem; }
 
-.appliance-icon, .card-icon { display: grid; place-items: center; background: #e2f5e7; color: #176b34; }
-.appliance-icon { width: 3.5rem; height: 3.5rem; flex: 0 0 auto; border-radius: 0.8rem; background: #dff5e5; color: #087c3b; font-size: 1.5rem; font-weight: 750; }
+.appliance-icon, .card-icon { display: grid; place-items: center; flex: 0 0 auto; }
+.card-icon { width: 1.8rem; height: 1.8rem; border-radius: 50%; background: #e2f5e7; color: #176b34; font-size: 0.95rem; }
+.appliance-icon { width: 3.5rem; height: 3.5rem; border-radius: 0.8rem; background: #dff5e5; color: #087c3b; font-size: 1.5rem; font-weight: 750; }
 
 .eyebrow, .section-kicker { color: #688271; font-size: 0.64rem; font-weight: 760; letter-spacing: 0.12em; }
 
@@ -150,7 +151,9 @@ button:disabled { cursor: wait; opacity: 0.6; }
   color: #405347;
   font: inherit;
   font-size: 0.73rem;
-  &[aria-invalid='true'] { border-color: #b34d45; }
+}
+input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='true'] {
+  border-color: #b34d45;
 }
 
 .reason-control {
@@ -252,6 +255,12 @@ button:disabled { cursor: wait; opacity: 0.6; }
   img { width: 2.45rem; height: 2.45rem; border-radius: 50%; object-fit: cover; }
   strong { color: #26372c; font-size: 0.75rem; }
   small { color: #718078; font-size: 0.65rem; }
+}
+
+.assigned-technician-link {
+  text-decoration: none;
+  cursor: pointer;
+  &:hover strong { color: #087c3b; text-decoration: underline; }
 }
 
 .assigned-technician > div, .technician-option > span:nth-child(2), .self-assignment > span:nth-child(2) {

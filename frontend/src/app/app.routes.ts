@@ -307,6 +307,30 @@ export const routes: Routes = [
         data: { accountType: 'technician', technicianView: 'jobs' },
       },
       {
+        path: 'jobs/:id',
+        loadComponent: () =>
+          import('./shop/shop-technician-portal.page').then(
+            (module) => module.ShopTechnicianPortalPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'jobs' },
+      },
+      {
+        path: 'active-jobs',
+        loadComponent: () =>
+          import('./shop/shop-technician-portal.page').then(
+            (module) => module.ShopTechnicianPortalPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'active' },
+      },
+      {
+        path: 'completed-jobs',
+        loadComponent: () =>
+          import('./shop/shop-technician-portal.page').then(
+            (module) => module.ShopTechnicianPortalPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'completed' },
+      },
+      {
         path: 'history',
         loadComponent: () =>
           import('./shop/shop-technician-portal.page').then(
@@ -319,6 +343,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./shared/chat-center.component').then(
             (module) => module.ChatCenterComponent,
+          ),
+        data: { accountType: 'technician' },
+      },
+      {
+        path: 'notifications',
+        loadComponent: () =>
+          import('./shop/shop-technician-notifications.page').then(
+            (module) => module.ShopTechnicianNotificationsPage,
           ),
         data: { accountType: 'technician' },
       },

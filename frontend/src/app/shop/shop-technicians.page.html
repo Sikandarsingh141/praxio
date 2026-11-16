@@ -75,14 +75,14 @@
             @for (technician of visibleTechnicians(); track technician.id) {
               <tr>
                 <td>
-                  <div class="person-cell">
+                  <a class="person-cell" [routerLink]="['/shop/technicians', technician.id]" [attr.aria-label]="'View ' + technician.name + ' profile'">
                     @if (technician.profileImageData) {
                       <img [src]="technician.profileImageData" [alt]="technician.name + ' profile photo'" />
                     } @else {
                       <span class="avatar-placeholder" aria-hidden="true">{{ technician.name.slice(0, 1) }}</span>
                     }
                     <span><strong>{{ technician.name }}</strong><small>Technician</small></span>
-                  </div>
+                  </a>
                 </td>
                 <td class="employee-id">{{ technician.employeeId }}</td>
                 <td>

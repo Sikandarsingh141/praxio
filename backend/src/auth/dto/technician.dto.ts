@@ -151,3 +151,16 @@ export class AssignTechnicianDto {
   @MaxLength(500)
   reason?: string;
 }
+
+export class TechnicianProgressDto {
+  @ApiProperty({ required: false, maxLength: 1000 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  status?: string;
+}

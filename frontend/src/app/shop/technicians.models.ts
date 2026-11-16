@@ -51,6 +51,13 @@ export interface TechnicianJob {
   model: string;
   status: string;
   customer?: string;
+  phone?: string | null;
+  address?: string | null;
+  photo?: string | null;
+  description?: string;
+  shopName?: string;
+  quotationAmount?: number | null;
+  quotationCurrency?: string;
   assignedAt: string;
   scheduledDate?: string | null;
   completedAt?: string | null;
@@ -58,10 +65,68 @@ export interface TechnicianJob {
 
 export interface TechnicianJobSummary {
   assigned: number;
+  pending?: number;
+  active?: number;
   inProgress: number;
   completed: number;
   onHold: number;
   today: number;
+}
+
+export interface TechnicianDashboardData {
+  kpis: {
+    totalAssigned: number;
+    pendingJobs: number;
+    activeJobs: number;
+    completedJobs: number;
+    todayJobs: number;
+  };
+  currentlyActiveJob: TechnicianJob | null;
+  todaySchedule: TechnicianJob[];
+  recentlyAssigned: TechnicianJob[];
+  upcomingJobs: TechnicianJob[];
+  recentMessages: Array<{
+    id: string;
+    requestId: string;
+    appliance: string;
+    customerName: string;
+    lastMessage: string;
+    lastMessageAt: string;
+    unreadCount: number;
+  }>;
+  recentNotifications: Array<{
+    id: string;
+    title: string;
+    message: string;
+    type: string;
+    isRead: boolean;
+    createdAt: string;
+    link?: string;
+  }>;
+  recentActivity?: Array<{
+    type: string;
+    title: string;
+    subtitle: string;
+    at: string;
+  }>;
+  technician: Technician;
+}
+
+export interface TechnicianSearchResult {
+  id: string;
+  title: string;
+  details: string;
+  status: string;
+  route: string[];
+  queryParams: Record<string, string>;
+}
+
+export interface TechnicianTimelineEvent {
+  action: string;
+  notes: string;
+  at: string;
+  actorName: string;
+  actorRole: string;
 }
 
 export interface TechnicianActivity {
@@ -118,4 +183,47 @@ export interface TechnicianRepairDetails extends TechnicianJob {
   phone: string | null;
   location: { latitude: number; longitude: number } | null;
   serviceType: 'shop_visit' | 'home_service' | null;
+  customerInfo?: {
+    name: string;
+    phone: string | null;
+    email: string | null;
+    location: { latitude: number; longitude: number } | null;
+  };
+  shop?: {
+    id?: string;
+    name: string;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    city: string | null;
+  };
+  quotation?: {
+    id: string;
+    amount: number;
+    currency: string;
+    inspectionFee: number;
+    labourFee: number;
+    partsFee: number;
+    notes: string;
+    proposedSolution?: string;
+    warrantyInformation?: string;
+    estimatedDays?: number | null;
+    approvedAt?: string | null;
+  } | null;
+  assignmentDetails?: {
+    assignedAt: string;
+    note: string;
+    technicianName?: string;
+  };
+  repairJobDetails?: {
+    status: string;
+    startedAt?: string | null;
+    repairCompletedAt?: string | null;
+    completionDescription?: string;
+    workPerformed?: string;
+    partsReplaced?: string;
+    finalNotes?: string;
+    pickupInstructions?: string;
+  };
+  timeline?: TechnicianTimelineEvent[];
 }

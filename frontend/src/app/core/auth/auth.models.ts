@@ -173,7 +173,9 @@ export interface RegistrationNotification {
     | 'dispute_rework_progress'
     | 'dispute_rework_completed'
     | 'dispute_customer_confirmed'
-    | 'dispute_issue_unresolved';
+    | 'dispute_issue_unresolved'
+    | 'technician_assignment'
+    | 'technician_reassignment';
   isRead: boolean;
   createdAt: string;
   relatedEntityId?: string;

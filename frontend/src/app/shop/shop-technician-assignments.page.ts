@@ -23,7 +23,7 @@ import { TechniciansService } from './technicians.service';
         @else if (filtered().length) {
           <div class="table-wrap"><table><thead><tr><th>Repair Request</th><th>Customer</th><th>Technician</th><th>Repair Status</th><th>Assigned On</th><th></th></tr></thead><tbody>
             @for (assignment of filtered(); track assignment.requestId) {
-              <tr><td><strong>{{ assignment.appliance }}</strong><small>{{ assignment.requestId.slice(-8).toUpperCase() }} · {{ assignment.brand }} {{ assignment.model }}</small></td><td>{{ assignment.customer }}</td><td><span class="tech-name">{{ assignment.technician?.name || 'Unknown technician' }}</span><small>{{ assignment.technician?.availability | titlecase }} · {{ assignment.technician?.workload }} active jobs</small></td><td><span class="status">{{ assignment.repairStatus.replace('_', ' ') | titlecase }}</span></td><td>{{ assignment.assignment.assignedAt | date: 'mediumDate' }}</td><td><a [routerLink]="['/shop/repair-requests', assignment.requestId]">Manage</a></td></tr>
+              <tr><td><strong>{{ assignment.appliance }}</strong><small>{{ assignment.requestId.slice(-8).toUpperCase() }} · {{ assignment.brand }} {{ assignment.model }}</small></td><td>{{ assignment.customer }}</td><td>@if (assignment.technician; as tech) { <a class="tech-link" [routerLink]="['/shop/technicians', tech.id]" [attr.aria-label]="'View ' + tech.name + ' profile'"><strong class="tech-name">{{ tech.name }}</strong></a> } @else { <strong class="tech-name">Unknown technician</strong> }<small>{{ assignment.technician?.availability | titlecase }} · {{ assignment.technician?.workload }} active jobs</small></td><td><span class="status">{{ assignment.repairStatus.replace('_', ' ') | titlecase }}</span></td><td>{{ assignment.assignment.assignedAt | date: 'mediumDate' }}</td><td><a [routerLink]="['/shop/repair-requests', assignment.requestId]">Manage</a></td></tr>
             }
           </tbody></table></div>
         } @else { <div class="state"><strong>No active assignments</strong><p>Assign a repair to yourself or a technician from its request details.</p></div> }
@@ -49,6 +49,8 @@ import { TechniciansService } from './technicians.service';
     td a { color:#087c3b;font-weight:700;text-decoration:none }
     .status { padding:.25rem .45rem;border-radius:99px;background:#eef4ef;font-size:.63rem }
     .tech-name { font-weight:700 }
+    .tech-link { display:inline-block;color:inherit;text-decoration:none;cursor:pointer }
+    .tech-link:hover .tech-name { color:#087c3b;text-decoration:underline }
     .state { display:grid;min-height:12rem;align-content:center;justify-items:center;gap:.4rem;padding:1rem;color:#718078;font-size:.75rem;text-align:center }
     .state p { margin:0 }
     .state strong { color:#34443a }

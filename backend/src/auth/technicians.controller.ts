@@ -24,6 +24,7 @@ import type { AuthenticatedRequest } from './interfaces/authenticated-request.in
 import {
   AssignTechnicianDto,
   CreateTechnicianDto,
+  TechnicianProgressDto,
   UpdateTechnicianDto,
   UpdateTechnicianAvailabilityDto,
   UpdateTechnicianStatusDto,
@@ -205,12 +206,36 @@ export class TechnicianPortalController {
     };
   }
 
+  @Get('dashboard')
+  async dashboard(@Req() request: AuthenticatedRequest) {
+    return {
+      data: await this.technicians.technicianDashboard(this.userId(request)),
+    };
+  }
+
+  @Get('search')
+  async search(
+    @Req() request: AuthenticatedRequest,
+    @Query('query') query?: string,
+  ) {
+    return {
+      data: {
+        results: await this.technicians.searchTechnicianActivity(
+          this.userId(request),
+          query,
+        ),
+      },
+    };
+  }
+
   @Get('jobs')
   async jobs(
     @Req() request: AuthenticatedRequest,
     @Query('filter')
     filter:
       | 'all'
+      | 'pending'
+      | 'active'
       | 'today'
       | 'in_progress'
       | 'completed'
@@ -269,6 +294,21 @@ export class TechnicianPortalController {
           technicianId,
         ),
       },
+    };
+  }
+
+  @Patch('jobs/:id/progress')
+  async progress(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() input: TechnicianProgressDto,
+  ) {
+    return {
+      data: await this.technicians.updateProgress(
+        this.userId(request),
+        requestId,
+        input,
+      ),
     };
   }
 

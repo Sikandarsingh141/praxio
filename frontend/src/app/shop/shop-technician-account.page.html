@@ -1,22 +1,50 @@
 <section class="account-page">
   <header class="page-heading">
     <div>
-      <p class="eyebrow">MY ACCOUNT</p>
+      <p class="eyebrow">TECHNICIAN ACCOUNT</p>
       <h1>
         @switch (view()) {
-          @case ('performance') { My Performance }
-          @case ('availability') { Availability }
-          @default { My Profile }
+          @case ('performance') { Performance & Quality }
+          @case ('availability') { Availability & Workload }
+          @default { Technician Profile }
         }
       </h1>
       <p>
         @switch (view()) {
-          @case ('performance') { A summary of your repair work based on your job history. }
-          @case ('availability') { Manage when your shop can assign new repair work to you. }
-          @default { Your technician account and work details. }
+          @case ('performance') { Comprehensive record of your completed repairs and service performance. }
+          @case ('availability') { Manage your working status and preference for receiving repair assignments. }
+          @default { Your verified technician account profile, work skills, and employment details. }
         }
       </p>
     </div>
+
+    <!-- Tab Navigation -->
+    <nav class="account-nav-tabs" aria-label="Account views">
+      <button
+        type="button"
+        class="tab-link"
+        [class.active]="view() === 'profile'"
+        (click)="view.set('profile')"
+      >
+        Profile
+      </button>
+      <button
+        type="button"
+        class="tab-link"
+        [class.active]="view() === 'availability'"
+        (click)="view.set('availability')"
+      >
+        Availability
+      </button>
+      <button
+        type="button"
+        class="tab-link"
+        [class.active]="view() === 'performance'"
+        (click)="view.set('performance')"
+      >
+        Performance
+      </button>
+    </nav>
   </header>
 
   @if (error()) {
@@ -27,9 +55,192 @@
   }
 
   @if (loading()) {
-    <section class="account-card state" role="status">Loading your account…</section>
+    <section class="account-card state" role="status">Loading account details…</section>
   } @else if (technician(); as profile) {
     @switch (view()) {
+      <!-- =================================================================== -->
+      <!-- TAB 1: PROFILE DETAILS                                              -->
+      <!-- =================================================================== -->
+      @case ('profile') {
+        <!-- Profile Hero Identity Card -->
+        <section class="account-card profile-hero">
+          <div class="hero-avatar">
+            @if (profile.profileImageData) {
+              <img [src]="profile.profileImageData" [alt]="profile.name + ' avatar'" />
+            } @else {
+              <div class="avatar-fallback">{{ profile.firstName.slice(0, 1) || 'T' }}{{ profile.lastName.slice(0, 1) || '' }}</div>
+            }
+          </div>
+          <div class="hero-info">
+            <div class="hero-name-row">
+              <h2>{{ profile.firstName }} {{ profile.lastName }}</h2>
+              <span class="status-badge" [attr.data-status]="profile.status">{{ profile.status | titlecase }}</span>
+            </div>
+            <p class="hero-meta">
+              <span>Employee ID: <strong>{{ profile.employeeId }}</strong></span>
+              <span>•</span>
+              <span>{{ profile.specialization }}</span>
+            </p>
+            <div class="hero-badges">
+              <span class="availability-badge" [attr.data-status]="profile.availability">
+                <span class="dot"></span>
+                Status: {{ profile.availability.replace('_', ' ') | titlecase }}
+              </span>
+              <span class="workload-badge">Active Workload: {{ profile.workload }} jobs</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Information Cards Grid -->
+        <div class="profile-details-grid">
+          <!-- Personal & Contact Card -->
+          <article class="account-card">
+            <h3 class="card-title">Personal & Contact Information</h3>
+            <dl class="details-list">
+              <div>
+                <dt>First Name</dt>
+                <dd><strong>{{ profile.firstName }}</strong></dd>
+              </div>
+              <div>
+                <dt>Last Name</dt>
+                <dd><strong>{{ profile.lastName }}</strong></dd>
+              </div>
+              <div>
+                <dt>Email Address</dt>
+                <dd>{{ profile.email }}</dd>
+              </div>
+              <div>
+                <dt>Phone Number</dt>
+                <dd>
+                  @if (profile.phone || profile.mobileNumber) {
+                    <a [href]="'tel:' + (profile.phone || (profile.countryCode + ' ' + profile.mobileNumber))">
+                      {{ profile.phone || (profile.countryCode + ' ' + profile.mobileNumber) }}
+                    </a>
+                  } @else {
+                    <span class="muted">Not provided</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+          </article>
+
+          <!-- Employment & Work Details Card -->
+          <article class="account-card">
+            <h3 class="card-title">Employment & Qualifications</h3>
+            <dl class="details-list">
+              <div>
+                <dt>Specialization</dt>
+                <dd><strong>{{ profile.specialization }}</strong></dd>
+              </div>
+              <div>
+                <dt>Experience</dt>
+                <dd>{{ profile.experienceYears }} years</dd>
+              </div>
+              <div>
+                <dt>Employment Type</dt>
+                <dd>{{ profile.employmentType.replace('_', ' ') | titlecase }}</dd>
+              </div>
+              <div>
+                <dt>Joining Date</dt>
+                <dd>{{ profile.joiningDate ? (profile.joiningDate | date: 'mediumDate') : 'Not provided' }}</dd>
+              </div>
+              <div class="full-row">
+                <dt>Skills & Expertise</dt>
+                <dd class="skills-wrap">
+                  @for (skill of profile.skills; track skill) {
+                    <span class="skill-pill">{{ skill }}</span>
+                  } @empty {
+                    <span class="muted">No skills listed</span>
+                  }
+                </dd>
+              </div>
+            </dl>
+          </article>
+        </div>
+
+        <!-- Availability Preference Control -->
+        <article class="account-card availability-toggle-card">
+          <div class="toggle-info">
+            <h3>Assignment Availability</h3>
+            <p>Control whether your shop can assign new repair work to you. Setting your status to "On Leave" will prevent new assignments.</p>
+          </div>
+          <div class="toggle-action">
+            <label class="select-label">
+              <span>Your Preference:</span>
+              <select
+                [value]="profile.availabilityPreference || 'available'"
+                [disabled]="updatingAvailability()"
+                (change)="updateAvailability($event)"
+              >
+                <option value="available">Available for new assignments</option>
+                <option value="on_leave">On leave (do not assign)</option>
+              </select>
+            </label>
+          </div>
+        </article>
+      }
+
+      <!-- =================================================================== -->
+      <!-- TAB 2: AVAILABILITY & WORKLOAD                                      -->
+      <!-- =================================================================== -->
+      @case ('availability') {
+        <section class="account-card availability-card">
+          <div class="availability-summary">
+            <span class="status-dot-large" [attr.data-status]="profile.availability"></span>
+            <div>
+              <p class="eyebrow">CURRENT REAL-TIME STATUS</p>
+              <h2>{{ profile.availability.replace('_', ' ') | titlecase }}</h2>
+              <p class="status-explanation">
+                @if (profile.availability === 'busy') {
+                  You currently have {{ profile.workload }} active repair {{ profile.workload === 1 ? 'job' : 'jobs' }} in progress.
+                } @else if (profile.availability === 'inactive') {
+                  Your technician account is currently inactive. Contact your shop manager.
+                } @else if (profile.availability === 'on_leave') {
+                  Your shop will not assign new repair work while you are set to on leave.
+                } @else {
+                  You are fully available to receive new repair assignments from your shop.
+                }
+              </p>
+            </div>
+          </div>
+
+          @if (profile.status === 'active') {
+            <div class="availability-control-box">
+              <label class="control-group">
+                <strong>Availability Preference</strong>
+                <select
+                  [value]="profile.availabilityPreference || 'available'"
+                  [disabled]="updatingAvailability()"
+                  (change)="updateAvailability($event)"
+                >
+                  <option value="available">Available for assignments</option>
+                  <option value="on_leave">On leave</option>
+                </select>
+                <small>Updates your availability for future job dispatching.</small>
+              </label>
+            </div>
+          }
+
+          <div class="availability-stats-grid">
+            <div class="stat-box">
+              <span>Active Workload</span>
+              <strong>{{ profile.workload }}</strong>
+            </div>
+            <div class="stat-box">
+              <span>Employment Type</span>
+              <strong>{{ profile.employmentType.replace('_', ' ') | titlecase }}</strong>
+            </div>
+            <div class="stat-box">
+              <span>Account Status</span>
+              <strong>{{ profile.status | titlecase }}</strong>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- =================================================================== -->
+      <!-- TAB 3: PERFORMANCE METRICS                                          -->
+      <!-- =================================================================== -->
       @case ('performance') {
         @if (profile.performance; as performance) {
           <section class="performance-grid" aria-label="Performance metrics">
@@ -40,39 +251,54 @@
                   <path d="M8 6V4h8v2M3 11h18" />
                 </svg>
               </span>
-              <span><strong>{{ performance.totalJobs }}</strong><small>Total Assigned Jobs</small></span>
+              <div>
+                <strong>{{ performance.totalJobs }}</strong>
+                <small>Total Assigned Jobs</small>
+              </div>
             </article>
+
             <article class="metric-card">
               <span class="metric-icon completed">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="m5 12 4 4L19 6" />
                 </svg>
               </span>
-              <span><strong>{{ performance.completedJobs }}</strong><small>Completed Repairs</small></span>
+              <div>
+                <strong>{{ performance.completedJobs }}</strong>
+                <small>Completed Repairs</small>
+              </div>
             </article>
+
             <article class="metric-card">
               <span class="metric-icon progress">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="m8 5 11 7-11 7z" />
                 </svg>
               </span>
-              <span><strong>{{ performance.inProgressJobs }}</strong><small>In Progress</small></span>
+              <div>
+                <strong>{{ performance.inProgressJobs }}</strong>
+                <small>In Progress</small>
+              </div>
             </article>
+
             <article class="metric-card">
               <span class="metric-icon reassigned">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 7h15l-3-3M20 17H5l3 3" />
                 </svg>
               </span>
-              <span><strong>{{ performance.reassignedJobs }}</strong><small>Reassigned Jobs</small></span>
+              <div>
+                <strong>{{ performance.reassignedJobs }}</strong>
+                <small>Reassigned Jobs</small>
+              </div>
             </article>
           </section>
 
           <section class="account-card performance-detail">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">WORK QUALITY</p>
-                <h2>Repair completion</h2>
+                <p class="eyebrow">QUALITY OF WORK</p>
+                <h2>Repair Completion Rate</h2>
               </div>
               @if (completionRate() !== null) {
                 <strong class="completion-rate">{{ completionRate() }}%</strong>
@@ -80,6 +306,7 @@
                 <span class="muted">No completed repairs yet</span>
               }
             </div>
+
             @if (completionRate() !== null) {
               <div
                 class="progress-track"
@@ -92,97 +319,19 @@
                 <span [style.width.%]="completionRate()"></span>
               </div>
             }
+
             <p class="average-time">
-              Average completion time:
+              Average completion turnaround time:
               <strong>
                 {{ performance.averageCompletionTimeHours === null ? 'Not available' : (performance.averageCompletionTimeHours + ' hours') }}
               </strong>
             </p>
-            <a class="text-link" routerLink="/technician/history">View job history</a>
+
+            <a class="text-link" routerLink="/technician/history">View Assignment History →</a>
           </section>
         } @else {
-          <section class="account-card state">Performance metrics are not available yet.</section>
+          <section class="account-card state">Performance metrics will appear once repair jobs are assigned and completed.</section>
         }
-      }
-
-      @case ('availability') {
-        <section class="account-card availability-card">
-          <div class="availability-summary">
-            <span class="status-dot" [attr.data-status]="profile.availability"></span>
-            <div>
-              <p class="eyebrow">CURRENT STATUS</p>
-              <h2>{{ profile.availability.replace('_', ' ') | titlecase }}</h2>
-              <p>
-                @if (profile.availability === 'busy') {
-                  You have {{ profile.workload }} active {{ profile.workload === 1 ? 'job' : 'jobs' }}.
-                } @else if (profile.availability === 'inactive') {
-                  Your technician account is inactive. Contact your shop manager for help.
-                } @else if (profile.availability === 'on_leave') {
-                  Your shop will not assign new repair work while you are on leave.
-                } @else {
-                  You are available to receive new assignments from your shop.
-                }
-              </p>
-            </div>
-          </div>
-          @if (profile.status === 'active') {
-            <label class="availability-control">
-              Availability preference
-              <select
-                [value]="profile.availabilityPreference || 'available'"
-                [disabled]="updatingAvailability()"
-                (change)="updateAvailability($event)"
-              >
-                <option value="available">Available for assignments</option>
-                <option value="on_leave">On leave</option>
-              </select>
-              <small>Changing this preference affects future assignments only.</small>
-            </label>
-          }
-          <div class="availability-stats">
-            <div><span>Active workload</span><strong>{{ profile.workload }}</strong></div>
-            <div><span>Employment type</span><strong>{{ profile.employmentType.replace('_', ' ') | titlecase }}</strong></div>
-          </div>
-        </section>
-      }
-
-      @default {
-        <section class="account-card profile-card">
-          <div class="profile-identity">
-            @if (profile.profileImageData) {
-              <img [src]="profile.profileImageData" [alt]="profile.name + ' profile photo'" />
-            } @else {
-              <span class="profile-placeholder">{{ profile.name.slice(0, 1) || 'T' }}</span>
-            }
-            <div>
-              <h2>{{ profile.name }}</h2>
-              <p>{{ profile.employeeId }}</p>
-            </div>
-            <span class="status-badge" [attr.data-status]="profile.status">{{ profile.status | titlecase }}</span>
-          </div>
-
-          <div class="profile-grid">
-            <div><span>Email</span><strong>{{ profile.email }}</strong></div>
-            <div><span>Phone</span><strong>{{ profile.phone || 'Not provided' }}</strong></div>
-            <div><span>Specialization</span><strong>{{ profile.specialization }}</strong></div>
-            <div><span>Experience</span><strong>{{ profile.experienceYears }} years</strong></div>
-            <div><span>Employment type</span><strong>{{ profile.employmentType.replace('_', ' ') | titlecase }}</strong></div>
-            <div>
-              <span>Joining date</span>
-              <strong>{{ profile.joiningDate ? (profile.joiningDate | date: 'mediumDate') : 'Not provided' }}</strong>
-            </div>
-            <div class="skills-row">
-              <span>Skills</span>
-              <div class="skills">
-                @for (skill of profile.skills; track skill) {
-                  <span>{{ skill }}</span>
-                } @empty {
-                  <strong>No skills listed</strong>
-                }
-              </div>
-            </div>
-          </div>
-        </section>
       }
     }
   }

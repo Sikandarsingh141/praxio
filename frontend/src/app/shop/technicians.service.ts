@@ -6,11 +6,13 @@ import { environment } from '../../environments/environment';
 import {
   Technician,
   TechnicianAssignment,
+  TechnicianDashboardData,
   TechnicianInput,
   TechnicianJob,
   TechnicianJobSummary,
   TechnicianListResponse,
   TechnicianRepairDetails,
+  TechnicianSearchResult,
 } from './technicians.models';
 
 @Injectable({ providedIn: 'root' })
@@ -92,6 +94,24 @@ export class TechniciansService {
       .pipe(map(() => undefined));
   }
 
+  dashboard(): Observable<TechnicianDashboardData> {
+    return this.http
+      .get<ApiEnvelope<TechnicianDashboardData>>(
+        `${environment.apiBaseUrl}/technician/dashboard`,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  search(query: string): Observable<TechnicianSearchResult[]> {
+    const params = new HttpParams().set('query', query);
+    return this.http
+      .get<ApiEnvelope<{ results: TechnicianSearchResult[] }>>(
+        `${environment.apiBaseUrl}/technician/search`,
+        { params },
+      )
+      .pipe(map((response) => response.data.results));
+  }
+
   myJobs(
     filter: string = 'all',
   ): Observable<{ jobs: TechnicianJob[]; summary: TechnicianJobSummary }> {
@@ -142,6 +162,15 @@ export class TechniciansService {
     return this.http
       .patch<ApiEnvelope<unknown>>(
         `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/hold`,
+        { notes },
+      )
+      .pipe(map(() => undefined));
+  }
+
+  updateProgress(id: string, notes: string): Observable<void> {
+    return this.http
+      .patch<ApiEnvelope<unknown>>(
+        `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/progress`,
         { notes },
       )
       .pipe(map(() => undefined));

@@ -1,108 +1,224 @@
-<div class="technician-portal">
+<div class="role-portal technician-portal">
+  <!-- Top Header Bar matching Shop Portal -->
   <header class="portal-header">
-    <a class="brand" routerLink="/technician" aria-label="Fixora Technician Portal">
-      <img src="/fixroa-logo.png" alt="Fixora" />
-      <span>TECHNICIAN PORTAL</span>
+    <a class="portal-brand" routerLink="/technician" aria-label="Fixora technician portal">
+      <span class="brand-mark"><img src="/fixroa-logo.png" alt="Fixroa" /></span>
+      <small>TECHNICIAN PORTAL</small>
     </a>
 
-    <div class="header-actions">
-      <label class="availability-picker">
-        <span class="availability-dot" [attr.data-status]="technician()?.availability"></span>
-        <select
-          aria-label="Set your availability"
-          [value]="technician()?.availabilityPreference || 'available'"
-          [disabled]="loadingAvailability()"
-          (change)="updateAvailability($event)"
-        >
-          <option value="available">Available</option>
-          <option value="on_leave">On Leave</option>
-        </select>
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="m5 7.5 5 5 5-5" />
-        </svg>
-      </label>
+    <!-- Center Search Bar -->
+    <form
+      class="global-search"
+      role="search"
+      (submit)="$event.preventDefault(); searchJobs()"
+    >
+      <label class="visually-hidden" for="technician-global-search">Search jobs</label>
+      <span class="inline-search-input">
+        <input
+          id="technician-global-search"
+          type="search"
+          placeholder="Search jobs, requests, customers, or devices..."
+          [value]="searchQuery()"
+          (input)="updateSearchQuery($event)"
+        />
+        @if (searchLoading()) {
+          <span class="inline-search-spinner" role="status" aria-label="Searching assigned jobs"></span>
+        }
+      </span>
+      <button type="submit" [disabled]="searchLoading()">Search</button>
 
-      <app-notification-center />
-
-      <div class="account">
-        <a class="account-link" routerLink="/technician/profile">
-          @if (auth.currentUser()?.profileImageUrl; as profileImageUrl) {
-            <img class="avatar" [src]="profileImageUrl" alt="" />
+      @if (searchResults() !== null || searchLoading() || searchError()) {
+        <div class="global-search-results">
+          @if (searchLoading()) {
+            <p role="status">Searching assigned jobs…</p>
+          } @else if (searchError()) {
+            <p class="search-error" role="alert">{{ searchError() }}</p>
+          } @else if (searchResults()?.length) {
+            <div role="list" aria-label="Search results">
+              @for (result of searchResults(); track result.id) {
+                <a
+                  role="listitem"
+                  [routerLink]="result.route"
+                  [queryParams]="result.queryParams"
+                  (click)="closeGlobalSearch()"
+                >
+                  <strong>{{ result.title }}</strong>
+                  <span>{{ result.details }}</span>
+                  <small class="search-status-tag" [attr.data-status]="result.status">
+                    {{ result.status.replace('_', ' ') | titlecase }}
+                  </small>
+                </a>
+              }
+            </div>
           } @else {
-            <span class="avatar avatar-placeholder">
-              {{ technician()?.name?.slice(0, 1) || 'T' }}
+            <p>No matching assigned jobs found.</p>
+          }
+          <button type="button" class="close-search" (click)="closeGlobalSearch()">Close</button>
+        </div>
+      }
+    </form>
+
+    <!-- Header Right Area -->
+    <div class="header-account">
+      <app-notification-center (opened)="closeAccountMenu()" />
+
+      <div class="account-menu">
+        <button
+          class="account-menu-trigger"
+          type="button"
+          [attr.aria-expanded]="accountMenuOpen()"
+          aria-haspopup="menu"
+          (click)="toggleAccountMenu()"
+        >
+          @if (technician()?.profileImageData || auth.currentUser()?.profileImageUrl; as avatarUrl) {
+            <img class="profile-avatar" [src]="avatarUrl" alt="" />
+          } @else {
+            <span class="profile-avatar avatar-placeholder" aria-hidden="true">
+              {{ getUserInitial() }}
             </span>
           }
-          <span class="account-info">
-            <strong>{{ technician()?.name || 'Technician' }}</strong>
-            <small>{{ technician()?.employeeId || 'Technician' }}</small>
-          </span>
+          <span class="account-name">{{ getUserDisplayName() }}</span>
           <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="m5 7.5 5 5 5-5" />
           </svg>
-        </a>
-        <button class="sign-out" type="button" (click)="signOut()">Sign out</button>
+        </button>
+
+        @if (accountMenuOpen()) {
+          <div class="account-dropdown" role="menu">
+            <div class="dropdown-identity">
+              <strong>{{ getUserDisplayName() }}</strong>
+              <span>{{ technician()?.employeeId || 'Technician' }}</span>
+              <span>{{ auth.currentUser()?.email || technician()?.email }}</span>
+              <div class="dropdown-availability">
+                <span class="avail-badge" [attr.data-status]="technician()?.availability">
+                  {{ technician()?.availability?.replace('_', ' ') | titlecase }}
+                </span>
+                <select
+                  [value]="technician()?.availabilityPreference || 'available'"
+                  [disabled]="loadingAvailability()"
+                  (change)="updateAvailability($event)"
+                  aria-label="Change availability preference"
+                >
+                  <option value="available">Available</option>
+                  <option value="on_leave">On Leave</option>
+                </select>
+              </div>
+            </div>
+
+            <a
+              class="dropdown-item"
+              routerLink="/technician/profile"
+              role="menuitem"
+              (click)="closeAccountMenu()"
+            >
+              My profile
+            </a>
+
+            <a
+              class="dropdown-item"
+              routerLink="/technician/jobs"
+              role="menuitem"
+              (click)="closeAccountMenu()"
+            >
+              My assigned jobs
+            </a>
+
+            <button
+              class="dropdown-item sign-out-menu-item"
+              type="button"
+              role="menuitem"
+              (click)="closeAccountMenu(); signOut()"
+            >
+              Sign out
+            </button>
+          </div>
+        }
       </div>
     </div>
   </header>
 
+  <!-- Portal Body -->
   <div class="portal-body">
+    <!-- Left Sidebar matching Shop Portal -->
     <aside class="portal-sidebar" aria-label="Technician portal navigation">
-      <nav>
-        @for (item of navigation; track item.route) {
-          <a
-            class="portal-nav"
-            [routerLink]="item.route"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: item.exact || false }"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              @switch (item.icon) {
-                @case ('dashboard') {
-                  <path d="M3 3h8v8H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 13h8v8H3z" />
-                }
-                @case ('jobs') {
-                  <rect x="3" y="6" width="18" height="15" rx="2" />
-                  <path d="M8 6V4h8v2M3 11h18M10 11v2h4v-2" />
-                }
-                @case ('history') {
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3 2M4 5v4h4" />
-                }
-                @case ('messages') {
-                  <path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5" />
-                }
-                @case ('performance') {
-                  <path d="M4 20V12M10 20V5M16 20V9M22 20V3" />
-                }
-                @case ('availability') {
-                  <rect x="3" y="5" width="18" height="16" rx="2" />
-                  <path d="M7 3v4M17 3v4M3 10h18M8 14l2 2 5-5" />
-                }
-                @case ('profile') {
-                  <circle cx="12" cy="8" r="4" />
-                  <path d="M4 21a8 8 0 0 1 16 0" />
-                }
-              }
-            </svg>
-            <span>{{ item.label }}</span>
-            @if (item.icon === 'messages' && chat.unreadMessageCount() > 0) {
-              <span class="unread-count">
-                {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
-              </span>
-            }
-          </a>
-        }
-      </nav>
-      <a class="help-link" href="mailto:support@fixroa.com">
+      <a
+        class="portal-nav"
+        routerLink="/technician"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M9.5 9a2.5 2.5 0 1 1 4.3 1.7c-1.1 1-1.8 1.3-1.8 2.8M12 17h.01" />
+          <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
         </svg>
-        Help &amp; Support
+        Dashboard
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/technician/jobs"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
+        </svg>
+        My Assigned Jobs
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/technician/active-jobs"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m8 5 11 7-11 7z" />
+        </svg>
+        Active Jobs
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/technician/completed-jobs"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m5 12 4 4L19 6M4 3h16v18H4z" />
+        </svg>
+        Completed Jobs
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/technician/messages"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5" />
+        </svg>
+        Messages
+        @if (chat.unreadMessageCount() > 0) {
+          <span
+            class="nav-unread-count"
+            [attr.aria-label]="chat.unreadMessageCount() + ' unread messages'"
+          >
+            {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
+          </span>
+        }
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/technician/profile"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+        My Profile
       </a>
     </aside>
 
+    <!-- Main Content Area -->
     <main class="portal-content">
       @if (error()) {
         <p class="portal-error" role="alert">{{ error() }}</p>

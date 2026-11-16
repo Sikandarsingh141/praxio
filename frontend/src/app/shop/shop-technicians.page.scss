@@ -24,7 +24,8 @@ table { width: 100%; border-collapse: collapse; text-align: left; }
 th { padding: .75rem .65rem; background: #f7faf7; color: #617067; font-size: .66rem; font-weight: 750; white-space: nowrap; }
 td { padding: .62rem .65rem; border-top: 1px solid #edf1ed; color: #34443a; font-size: .72rem; white-space: nowrap; }
 tbody tr:hover { background: #fbfdfb; }
-.person-cell { display: flex; align-items: center; gap: .55rem; }
+.person-cell { display: flex; align-items: center; gap: .55rem; text-decoration: none; color: inherit; cursor: pointer; }
+.person-cell:hover strong { color: #087c3b; text-decoration: underline; }
 .person-cell img,.avatar-placeholder { width: 2.2rem; height: 2.2rem; flex: 0 0 auto; border-radius: 50%; object-fit: cover; }
 .avatar-placeholder { display: grid; place-items: center; background: #e3f2e7; color: #087c3b; font-weight: 750; }
 .person-cell > span:last-child { display: grid; gap: .1rem; }

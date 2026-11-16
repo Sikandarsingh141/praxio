@@ -20,6 +20,10 @@ import {
   RegistrationRequestSchema,
 } from '../registrations/schemas/registration-request.schema';
 import {
+  ChatConversation,
+  ChatConversationSchema,
+} from '../chat/schemas/chat.schema';
+import {
   RepairQuotation,
   RepairQuotationSchema,
   RepairReview,
@@ -54,6 +58,7 @@ import {
       { name: RepairRequest.name, schema: RepairRequestSchema },
       { name: RepairQuotation.name, schema: RepairQuotationSchema },
       { name: RepairReview.name, schema: RepairReviewSchema },
+      { name: ChatConversation.name, schema: ChatConversationSchema },
     ]),
     RegistrationsModule,
     StripePaymentsModule,
