@@ -1,0 +1,17 @@
+@use './mixins' as mixins;
+
+@mixin job-form-controls {
+  input, select, textarea {
+    width: 100%;
+    min-height: var(--fixora-control-height);
+    padding: .65rem .75rem;
+    border: 1px solid var(--fixora-color-border);
+    border-radius: var(--fixora-radius-control);
+    background: #fff;
+    color: var(--fixora-color-text);
+    font: inherit;
+    @include mixins.focus-ring;
+  }
+
+  textarea { min-height: 7rem; resize: vertical; }
+}

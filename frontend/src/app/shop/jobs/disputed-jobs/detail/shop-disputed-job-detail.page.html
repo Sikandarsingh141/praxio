@@ -1,0 +1,13 @@
+<main class="job-detail-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a [routerLink]="backRoute">{{ backLabel }}</a><span aria-hidden="true">/</span><span aria-current="page">Dispute details</span></nav>
+  @if (loading()) { <p class="state" role="status">Loading dispute details...</p> }
+  @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
+  @else if (record(); as dispute) {
+    <header class="detail-heading"><div><p class="eyebrow">DISPUTE {{ dispute.reference }}</p><h1>{{ dispute.subject }}</h1><p>Repair job #{{ dispute.repairRequestId.slice(-8).toUpperCase() }}</p></div><app-job-status-badge [status]="dispute.status" /></header>
+    <section class="detail-section"><h2>Dispute details</h2><dl><div><dt>Category</dt><dd>{{ dispute.category.replaceAll('_', ' ') | titlecase }}</dd></div><div><dt>Opened</dt><dd>{{ dispute.createdAt | date: 'medium' }}</dd></div><div><dt>Repair item</dt><dd>{{ dispute.repair?.appliance || 'Repair request' }} {{ dispute.repair?.brand }} {{ dispute.repair?.model }}</dd></div></dl><p>{{ dispute.description }}</p>@if (dispute.expectedResolution) { <p><strong>Requested resolution:</strong> {{ dispute.expectedResolution }}</p> }</section>
+    <section class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="attachments(dispute)" /></section>
+    <section class="detail-section"><h2>Dispute history</h2><app-job-timeline [items]="timeline(dispute)" /></section>
+    <section class="detail-section"><h2>Messages</h2>@if (dispute.messages.length) { @for (message of dispute.messages; track $index) { <article class="message"><strong>{{ message.authorRole | titlecase }}</strong><time>{{ message.createdAt | date: 'medium' }}</time><p>{{ message.message }}</p></article> } } @else { <p>No messages have been added to this dispute yet.</p> }</section>
+    <a class="job-button" [routerLink]="[disputeRoute, dispute._id]">Open shop dispute page for permitted actions</a>
+  }
+</main>

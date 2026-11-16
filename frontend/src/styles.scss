@@ -1,4 +1,4 @@
-@use './app/design-tokens' as fixoraTokens;
+@use './app/shared/styles/variables' as fixoraTokens;
 @use './app/admin/repair-requests/admin-repair-monitor.page' as repairMonitor;
 @use './app/admin/dashboard/admin-overview.page' as adminOverview;
 @use './app/admin/map-view/admin-map-view.page' as adminMapView;

@@ -58,9 +58,18 @@ export class CustomerLayout implements OnInit, OnDestroy {
     {
       label: 'My repair requests',
       icon: 'tool',
+      route: '/customer/jobs/new-jobs',
+      available: true,
+    },
+    {
+      label: 'All Repair Requests',
+      icon: 'tool',
       route: '/customer/repair-requests',
       available: true,
     },
+    { label: 'Pending Jobs', icon: 'tool', route: '/customer/jobs/pending-jobs', available: true },
+    { label: 'Assigned Jobs', icon: 'tool', route: '/customer/jobs/assigned-jobs', available: true },
+    { label: 'Active Jobs', icon: 'tool', route: '/customer/jobs/active-jobs', available: true },
     {
       label: 'My quotations',
       icon: 'receipt',
@@ -80,9 +89,15 @@ export class CustomerLayout implements OnInit, OnDestroy {
       available: true,
     },
     {
-      label: 'Completed Repairs',
+      label: 'Completed Jobs',
       icon: 'tool',
-      route: '/customer/repair-requests/completed',
+      route: '/customer/jobs/completed-jobs',
+      available: true,
+    },
+    {
+      label: 'Disputed Jobs',
+      icon: 'message',
+      route: '/customer/jobs/disputed-jobs',
       available: true,
     },
   ];

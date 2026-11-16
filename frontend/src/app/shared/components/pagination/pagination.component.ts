@@ -7,7 +7,12 @@ type PageToken = number | 'ellipsis-start' | 'ellipsis-end';
   standalone: true,
   template: `
     @if (total > 0 || showWhenEmpty) {
-      <nav class="pagination" [attr.aria-label]="ariaLabel" [attr.aria-busy]="disabled">
+      <nav
+        class="pagination"
+        [class.brand]="variant === 'brand'"
+        [attr.aria-label]="ariaLabel"
+        [attr.aria-busy]="disabled"
+      >
         <label class="page-size-control">
           <span>Items per page</span>
           <select
@@ -58,6 +63,8 @@ type PageToken = number | 'ellipsis-start' | 'ellipsis-end';
     .controls { gap: .3rem; }
     button { min-width: 2.35rem; padding: .35rem .55rem; cursor: pointer; }
     button.current-page { border-color: #2563eb; background: #2563eb; color: #fff; }
+    .pagination.brand button.current-page { border-color: #08721c; background: #08721c; }
+    .pagination.brand button:not(.current-page):not(:disabled):hover { border-color: #8abd94; background: #f2faf3; }
     button:focus-visible, select:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
     button:disabled, select:disabled { cursor: not-allowed; opacity: .45; }
     .ellipsis { min-width: 1.3rem; text-align: center; }
@@ -70,6 +77,7 @@ type PageToken = number | 'ellipsis-start' | 'ellipsis-end';
   `,
 })
 export class PaginationComponent {
+  @Input() variant: 'default' | 'brand' = 'default';
   @Input() total = 0;
   @Input() page = 1;
   @Input() pageSize = 10;

@@ -101,6 +101,102 @@ export const routes: Routes = [
         data: { accountType: 'customer', customerAccess: 'portal', completedOnly: true },
       },
       {
+        path: 'jobs/new-jobs',
+        loadComponent: () =>
+          import('./customer/jobs/new-jobs/listing/customer-new-jobs-listing.page').then(
+            (module) => module.CustomerNewJobsListingPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'new' },
+      },
+      {
+        path: 'jobs/new-jobs/:id',
+        loadComponent: () =>
+          import('./customer/jobs/new-jobs/detail/customer-new-job-detail.page').then(
+            (module) => module.CustomerNewJobDetailPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'new' },
+      },
+      {
+        path: 'jobs/pending-jobs',
+        loadComponent: () =>
+          import('./customer/jobs/pending-jobs/listing/customer-pending-jobs-listing.page').then(
+            (module) => module.CustomerPendingJobsListingPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'pending' },
+      },
+      {
+        path: 'jobs/pending-jobs/:id',
+        loadComponent: () =>
+          import('./customer/jobs/pending-jobs/detail/customer-pending-job-detail.page').then(
+            (module) => module.CustomerPendingJobDetailPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'pending' },
+      },
+      {
+        path: 'jobs/assigned-jobs',
+        loadComponent: () =>
+          import('./customer/jobs/assigned-jobs/listing/customer-assigned-jobs-listing.page').then(
+            (module) => module.CustomerAssignedJobsListingPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'assigned' },
+      },
+      {
+        path: 'jobs/assigned-jobs/:id',
+        loadComponent: () =>
+          import('./customer/jobs/assigned-jobs/detail/customer-assigned-job-detail.page').then(
+            (module) => module.CustomerAssignedJobDetailPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'assigned' },
+      },
+      {
+        path: 'jobs/active-jobs',
+        loadComponent: () =>
+          import('./customer/jobs/active-jobs/listing/customer-active-jobs-listing.page').then(
+            (module) => module.CustomerActiveJobsListingPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'active' },
+      },
+      {
+        path: 'jobs/active-jobs/:id',
+        loadComponent: () =>
+          import('./customer/jobs/active-jobs/detail/customer-active-job-detail.page').then(
+            (module) => module.CustomerActiveJobDetailPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'active' },
+      },
+      {
+        path: 'jobs/completed-jobs',
+        loadComponent: () =>
+          import('./customer/jobs/completed-jobs/listing/customer-completed-jobs-listing.page').then(
+            (module) => module.CustomerCompletedJobsListingPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'completed' },
+      },
+      {
+        path: 'jobs/completed-jobs/:id',
+        loadComponent: () =>
+          import('./customer/jobs/completed-jobs/detail/customer-completed-job-detail.page').then(
+            (module) => module.CustomerCompletedJobDetailPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'completed' },
+      },
+      {
+        path: 'jobs/disputed-jobs',
+        loadComponent: () =>
+          import('./customer/jobs/disputed-jobs/listing/customer-disputed-jobs-listing.page').then(
+            (module) => module.CustomerDisputedJobsListingPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'disputed' },
+      },
+      {
+        path: 'jobs/disputed-jobs/:id',
+        loadComponent: () =>
+          import('./customer/jobs/disputed-jobs/detail/customer-disputed-job-detail.page').then(
+            (module) => module.CustomerDisputedJobDetailPage,
+          ),
+        data: { accountType: 'customer', customerAccess: 'portal', jobStatus: 'disputed' },
+      },
+      {
         path: 'repair-requests/:id',
         loadComponent: () =>
           import('./customer/repair-job-details/customer-repair-job.page').then(
@@ -198,6 +294,114 @@ export const routes: Routes = [
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', completedOnly: true },
+      },
+      {
+        path: 'jobs/new-jobs',
+        loadComponent: () =>
+          import('./shop/jobs/new-jobs/listing/shop-new-jobs-listing.page').then(
+            (module) => module.ShopNewJobsListingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'new' },
+      },
+      {
+        path: 'jobs/new-jobs/:id',
+        loadComponent: () =>
+          import('./shop/jobs/new-jobs/detail/shop-new-job-detail.page').then(
+            (module) => module.ShopNewJobDetailPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'new' },
+      },
+      {
+        path: 'jobs/pending-jobs',
+        loadComponent: () =>
+          import('./shop/jobs/pending-jobs/listing/shop-pending-jobs-listing.page').then(
+            (module) => module.ShopPendingJobsListingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'pending' },
+      },
+      {
+        path: 'jobs/pending-jobs/:id',
+        loadComponent: () =>
+          import('./shop/jobs/pending-jobs/detail/shop-pending-job-detail.page').then(
+            (module) => module.ShopPendingJobDetailPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'pending' },
+      },
+      {
+        path: 'jobs/assigned-jobs',
+        loadComponent: () =>
+          import('./shop/jobs/assigned-jobs/listing/shop-assigned-jobs-listing.page').then(
+            (module) => module.ShopAssignedJobsListingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'assigned' },
+      },
+      {
+        path: 'jobs/assigned-jobs/:id',
+        loadComponent: () =>
+          import('./shop/jobs/assigned-jobs/detail/shop-assigned-job-detail.page').then(
+            (module) => module.ShopAssignedJobDetailPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'assigned' },
+      },
+      {
+        path: 'jobs/active-jobs',
+        loadComponent: () =>
+          import('./shop/jobs/active-jobs/listing/shop-active-jobs-listing.page').then(
+            (module) => module.ShopActiveJobsListingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'active' },
+      },
+      {
+        path: 'jobs/active-jobs/:id',
+        loadComponent: () =>
+          import('./shop/jobs/active-jobs/detail/shop-active-job-detail.page').then(
+            (module) => module.ShopActiveJobDetailPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'active' },
+      },
+      {
+        path: 'jobs/completed-jobs',
+        loadComponent: () =>
+          import('./shop/jobs/completed-jobs/listing/shop-completed-jobs-listing.page').then(
+            (module) => module.ShopCompletedJobsListingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'completed' },
+      },
+      {
+        path: 'jobs/completed-jobs/:id',
+        loadComponent: () =>
+          import('./shop/jobs/completed-jobs/detail/shop-completed-job-detail.page').then(
+            (module) => module.ShopCompletedJobDetailPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'completed' },
+      },
+      {
+        path: 'jobs/disputed-jobs',
+        loadComponent: () =>
+          import('./shop/jobs/disputed-jobs/listing/shop-disputed-jobs-listing.page').then(
+            (module) => module.ShopDisputedJobsListingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'disputed' },
+      },
+      {
+        path: 'jobs/disputed-jobs/:id',
+        loadComponent: () =>
+          import('./shop/jobs/disputed-jobs/detail/shop-disputed-job-detail.page').then(
+            (module) => module.ShopDisputedJobDetailPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'disputed' },
       },
       {
         path: 'repair-requests/:id',
@@ -337,18 +541,50 @@ export const routes: Routes = [
       {
         path: 'active-jobs',
         loadComponent: () =>
-          import('./technician/assigned-jobs/shop-technician-portal.page').then(
-            (module) => module.ShopTechnicianPortalPage,
+          import('./shop-technician/jobs/active-jobs/listing/technician-active-jobs-listing.page').then(
+            (module) => module.TechnicianActiveJobsListingPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'active' },
+      },
+      {
+        path: 'active-jobs/:id',
+        loadComponent: () =>
+          import('./shop-technician/jobs/active-jobs/detail/technician-active-job-detail.page').then(
+            (module) => module.TechnicianActiveJobDetailPage,
           ),
         data: { accountType: 'technician', technicianView: 'active' },
       },
       {
         path: 'completed-jobs',
         loadComponent: () =>
-          import('./technician/assigned-jobs/shop-technician-portal.page').then(
-            (module) => module.ShopTechnicianPortalPage,
+          import('./shop-technician/jobs/completed-jobs/listing/technician-completed-jobs-listing.page').then(
+            (module) => module.TechnicianCompletedJobsListingPage,
           ),
         data: { accountType: 'technician', technicianView: 'completed' },
+      },
+      {
+        path: 'completed-jobs/:id',
+        loadComponent: () =>
+          import('./shop-technician/jobs/completed-jobs/detail/technician-completed-job-detail.page').then(
+            (module) => module.TechnicianCompletedJobDetailPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'completed' },
+      },
+      {
+        path: 'assigned-jobs',
+        loadComponent: () =>
+          import('./shop-technician/jobs/assigned-jobs/listing/technician-assigned-jobs-listing.page').then(
+            (module) => module.TechnicianAssignedJobsListingPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'jobs' },
+      },
+      {
+        path: 'assigned-jobs/:id',
+        loadComponent: () =>
+          import('./shop-technician/jobs/assigned-jobs/detail/technician-assigned-job-detail.page').then(
+            (module) => module.TechnicianAssignedJobDetailPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'jobs' },
       },
       {
         path: 'history',

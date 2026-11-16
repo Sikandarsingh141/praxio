@@ -1,0 +1,58 @@
+import { RepairDispute } from './disputes.models';
+
+export type CustomerJobCategory =
+  | 'new'
+  | 'pending'
+  | 'assigned'
+  | 'active'
+  | 'completed'
+  | 'disputed';
+
+export type ShopJobCategory = CustomerJobCategory;
+export type TechnicianJobCategory = 'assigned' | 'active' | 'completed';
+
+export interface JobListItem {
+  id: string;
+  title: string;
+  status: string;
+  description: string;
+  customerName?: string;
+  shopName?: string;
+  brand?: string;
+  model?: string;
+  imageData?: string | null;
+  imageMimeType?: string;
+  serviceType?: 'shop_visit' | 'home_service';
+  createdAt: string;
+  amount?: number | null;
+  currency?: string;
+}
+
+export interface JobTimelineEntry {
+  title: string;
+  description?: string;
+  at: string;
+}
+
+export interface JobAttachment {
+  name: string;
+  mimeType: string;
+  data?: string;
+  url?: string;
+}
+
+export function disputeToJobListItem(dispute: RepairDispute): JobListItem {
+  return {
+    id: dispute._id,
+    title: dispute.repair?.appliance || dispute.subject,
+    status: dispute.status,
+    description: dispute.description,
+    customerName: dispute.parties?.customer?.name,
+    shopName: dispute.parties?.shop?.name,
+    brand: dispute.repair?.brand,
+    model: dispute.repair?.model,
+    imageData: dispute.repair?.photos[0]?.data ?? dispute.attachments[0]?.data ?? null,
+    imageMimeType: dispute.repair?.photos[0]?.mimeType ?? dispute.attachments[0]?.mimeType,
+    createdAt: dispute.createdAt,
+  };
+}

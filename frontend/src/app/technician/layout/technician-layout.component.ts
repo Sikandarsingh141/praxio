@@ -47,7 +47,7 @@ export class TechnicianLayoutComponent implements OnInit, OnDestroy {
 
   readonly navigation = [
     { label: 'Dashboard', route: '/technician', icon: 'dashboard', exact: true },
-    { label: 'My Assigned Jobs', route: '/technician/jobs', icon: 'jobs', exact: true },
+    { label: 'My Assigned Jobs', route: '/technician/assigned-jobs', icon: 'jobs', exact: true },
     { label: 'Active Jobs', route: '/technician/active-jobs', icon: 'active' },
     { label: 'Completed Jobs', route: '/technician/completed-jobs', icon: 'completed' },
     { label: 'Messages', route: '/technician/messages', icon: 'messages' },

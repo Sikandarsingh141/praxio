@@ -1,0 +1,13 @@
+@mixin job-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: .75rem;
+    border-bottom: 1px solid var(--fixora-color-border);
+    text-align: left;
+  }
+
+  th { color: var(--fixora-color-muted); font-size: .75rem; text-transform: uppercase; }
+  td { color: var(--fixora-color-text); }
+}

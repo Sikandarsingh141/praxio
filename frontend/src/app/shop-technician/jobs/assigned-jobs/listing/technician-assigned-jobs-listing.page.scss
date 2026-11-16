@@ -1,0 +1,20 @@
+@use '../../../../shared/styles/job-layout' as layout;
+@use '../../../../shared/styles/buttons' as buttons;
+
+:host { display: block; }
+.jobs-page { @include layout.job-page; }
+.breadcrumbs { display: flex; gap: .55rem; align-items: center; color: var(--fixora-color-muted); font-size: .82rem; }
+.breadcrumbs a { color: var(--fixora-color-primary); text-decoration: none; }
+.page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.eyebrow { margin: 0 0 .35rem; color: var(--fixora-color-primary); font-size: .72rem; font-weight: 800; letter-spacing: .12em; }
+h1 { margin: 0; color: var(--fixora-color-heading); font-size: clamp(1.7rem, 3vw, 2.25rem); }
+.description { margin: .4rem 0 0; color: var(--fixora-color-muted); }
+.job-count { padding: .5rem .75rem; border-radius: 999px; background: var(--fixora-color-success-background); color: var(--fixora-color-success); font-size: .82rem; font-weight: 700; white-space: nowrap; }
+.job-list { display: grid; gap: .8rem; }
+.loading-state, .error-state { padding: 1.25rem; border: 1px solid var(--fixora-color-border); border-radius: .85rem; background: #fff; color: var(--fixora-color-muted); }
+.error-state { border-color: #f0c6c1; color: var(--fixora-color-danger); }
+.error-state h2 { margin: 0; color: var(--fixora-color-heading); font-size: 1.1rem; }
+.error-state p { line-height: 1.5; }
+@include buttons.job-buttons;
+@media (max-width: 600px) { .page-heading { align-items: flex-start; flex-direction: column; } }
+

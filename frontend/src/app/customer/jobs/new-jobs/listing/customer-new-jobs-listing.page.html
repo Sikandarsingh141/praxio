@@ -1,0 +1,116 @@
+<main class="jobs-page">
+  <header class="page-heading">
+    <div>
+      <h1>New Jobs</h1>
+      <p class="description">{{ description }}</p>
+    </div>
+    <span class="job-count"><strong>{{ filteredItems().length }}</strong> jobs</span>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-control">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m16 16 4 4" /></svg>
+      <input
+        type="search"
+        placeholder="Search by job ID, device, customer or issue..."
+        [value]="search()"
+        (input)="setSearch($any($event.target).value)"
+      />
+    </label>
+    <app-common-filter
+      [config]="filterConfig"
+      [appliedFilters]="appliedFilters()"
+      (filtersChange)="applyFilters($event)"
+    />
+    <label class="sort-control">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4v16m0-16-3 3m3-3 3 3m5 13V4m0 16 3-3m-3 3-3-3" /></svg>
+      <select [value]="sort()" aria-label="Sort jobs" (change)="setSort($any($event.target).value)">
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+      </select>
+    </label>
+  </div>
+
+  @if (loading()) {
+    <p class="loading-state" role="status">Loading Customer new jobs...</p>
+  } @else if (error()) {
+    <section class="error-state" role="alert"><h2>New Jobs could not be loaded</h2><p>{{ error() }}</p><button class="job-button" type="button" (click)="reload()">Try again</button></section>
+  } @else if (!filteredItems().length) {
+    <app-empty-state [title]="search() ? 'No matching jobs' : 'No new jobs'" [description]="search() ? 'Try another device, customer, or job ID.' : 'New repair requests will appear here.'" />
+  } @else {
+    <section class="table-card" aria-label="New Jobs">
+      <table class="jobs-table">
+        <thead>
+          <tr>
+            <th scope="col">Job ID</th>
+            <th scope="col">Device &amp; Brand</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Issue / Problem</th>
+            <th scope="col">Request Date</th>
+            <th scope="col">Shop</th>
+            <th scope="col">Status</th>
+            <th scope="col">Quotation</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (job of pageItems(); track job.id) {
+            <tr>
+              <td class="job-id">#{{ job.id.slice(-8).toUpperCase() }}</td>
+              <td>
+                <div class="device-cell">
+                  <div class="device-thumbnail">
+                    @if (job.imageData && job.imageMimeType) {
+                      <img [src]="'data:' + job.imageMimeType + ';base64,' + job.imageData" [alt]="job.title" />
+                    } @else {
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="12" rx="1.5" /><path d="M2.5 20h19M9 17l-1 3m7-3 1 3" /></svg>
+                    }
+                  </div>
+                  <div class="device-copy">
+                    <strong>{{ job.title }}</strong>
+                    <span>{{ job.brand || 'Brand not specified' }}{{ job.model ? ' · ' + job.model : '' }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="person-cell">
+                  <span class="avatar" aria-hidden="true">ME</span>
+                  <span>You</span>
+                </div>
+              </td>
+              <td class="issue-cell" [title]="job.description">{{ job.description || 'No issue details' }}</td>
+              <td class="date-cell">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7.5 3v4m9-4v4M3.5 10h17" /></svg>
+                {{ job.createdAt | date: 'MMM d, y, h:mm a' }}
+              </td>
+              <td>
+                <div class="shop-cell">
+                  <span class="shop-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 10V20h16V10M3 9l2-5h14l2 5M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0M9 20v-6h6v6" /></svg>
+                  </span>
+                  <span>{{ job.shopName || 'Finding a shop' }}</span>
+                </div>
+              </td>
+              <td><app-job-status-badge [status]="job.status" /></td>
+              <td>{{ job.amount !== null && job.amount !== undefined ? (job.amount | currency: job.currency : 'symbol' : '1.0-0') : '—' }}</td>
+              <td>
+                <a class="action-button" [routerLink]="[detailRoute, job.id]" [attr.aria-label]="'View job ' + job.id">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>
+                </a>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+    <app-job-pagination
+      variant="brand"
+      [total]="filteredItems().length"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      (pageChange)="setPage($event)"
+      (pageSizeChange)="setPageSize($event)"
+    />
+  }
+</main>
+

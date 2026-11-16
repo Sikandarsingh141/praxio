@@ -1,0 +1,14 @@
+<main class="job-detail-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a [routerLink]="backRoute">{{ backLabel }}</a><span aria-hidden="true">/</span><span aria-current="page">Job details</span></nav>
+  @if (loading()) { <p class="state" role="status">Loading job details...</p> }
+  @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
+  @else if (record(); as job) {
+    <header class="detail-heading"><div><p class="eyebrow">CUSTOMER JOB ? #{{ job._id.slice(-8).toUpperCase() }}</p><h1>{{ pageTitle }}</h1><p>{{ job.appliance }} {{ job.brand }} {{ job.model }}</p></div><app-job-status-badge [status]="job.repairJob?.status ?? job.status" /></header>
+    <section class="detail-grid"><article class="detail-section"><h2>Device and request</h2><dl><div><dt>Device</dt><dd>{{ job.appliance }}</dd></div><div><dt>Brand and model</dt><dd>{{ job.brand || 'Not specified' }} {{ job.model }}</dd></div><div><dt>Service type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div><div><dt>Preferred date</dt><dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'mediumDate') : 'Not specified' }}</dd></div><div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'mediumDate' }}</dd></div></dl><p>{{ job.description }}</p></article>
+      <article class="detail-section"><h2>Repair shop</h2>@if (job.shop; as shop) { <p class="shop-name">{{ shop.name }}</p><p>{{ shop.address }}</p>@if (shop.phone) { <p>{{ shop.phone }}</p> } } @else { <p>Shop responses are still being collected.</p> }</article>
+      <article class="detail-section"><h2>Quotation and payment</h2>@if (job.acceptedQuotation; as quotation) { <p class="price">{{ quotation.amount | currency: quotation.currency }}</p><p>{{ quotation.message }}</p>@if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }@if (quotation.warrantyInformation) { <p><strong>Warranty:</strong> {{ quotation.warrantyInformation }}</p> } } @else { <p>No accepted quotation is available yet.</p> }</article>
+      <article class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="jobs.photoAttachments(job.photos ?? [])" /></article></section>
+    <section class="detail-section"><h2>Repair progress and inspection</h2><app-job-timeline [items]="jobs.customerTimeline(job)" />@if (job.repairJob) { <app-customer-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" /> }</section>
+    <a class="job-button secondary" [routerLink]="legacyDetailRoute(job._id)">Open full repair controls</a>
+  }
+</main>

@@ -1,0 +1,6 @@
+@use './mixins' as mixins;
+
+@mixin job-card-surface {
+  padding: 1rem;
+  @include mixins.card-surface;
+}

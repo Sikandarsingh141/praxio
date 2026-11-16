@@ -1,0 +1,28 @@
+@use './mixins' as mixins;
+
+@mixin job-buttons {
+  .job-button {
+    display: inline-flex;
+    min-height: var(--fixora-button-height);
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--fixora-radius-control);
+    background: var(--fixora-color-primary);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    @include mixins.focus-ring;
+  }
+
+  .job-button.secondary {
+    border-color: var(--fixora-color-border);
+    background: #fff;
+    color: var(--fixora-color-text);
+  }
+
+  .job-button:disabled { cursor: not-allowed; opacity: .6; }
+}

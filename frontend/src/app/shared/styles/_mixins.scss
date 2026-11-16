@@ -1,0 +1,21 @@
+@use './variables' as tokens;
+
+@mixin focus-ring {
+  &:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
+  }
+}
+
+@mixin respond-mobile {
+  @media (max-width: tokens.$breakpoint-mobile) {
+    @content;
+  }
+}
+
+@mixin card-surface {
+  border: 1px solid var(--fixora-color-border);
+  border-radius: var(--fixora-radius-card);
+  background: var(--fixora-color-surface);
+  box-shadow: var(--fixora-shadow-card);
+}

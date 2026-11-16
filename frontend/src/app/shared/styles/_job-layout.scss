@@ -1,0 +1,16 @@
+@use './mixins' as mixins;
+
+@mixin job-page {
+  display: grid;
+  width: min(100%, 80rem);
+  gap: 1.25rem;
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2rem);
+  color: var(--fixora-color-text);
+  font-family: var(--fixora-font-family);
+}
+
+@mixin job-section {
+  padding: 1.25rem;
+  @include mixins.card-surface;
+}

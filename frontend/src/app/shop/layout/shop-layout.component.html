@@ -129,7 +129,7 @@
       </a>
       <a
         class="portal-nav"
-        routerLink="/shop/repair-requests"
+        routerLink="/shop/jobs/new-jobs"
         routerLinkActive="active"
         [routerLinkActiveOptions]="{ exact: true }"
       >
@@ -137,6 +137,26 @@
           <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
         </svg>
         Repair requests
+      </a>
+      <a class="portal-nav" routerLink="/shop/jobs/pending-jobs" routerLinkActive="active">
+        Pending jobs
+      </a>
+      <a class="portal-nav" routerLink="/shop/jobs/assigned-jobs" routerLinkActive="active">
+        Assigned jobs
+      </a>
+      <a class="portal-nav" routerLink="/shop/jobs/active-jobs" routerLinkActive="active">
+        Active jobs
+      </a>
+      <a class="portal-nav" routerLink="/shop/jobs/disputed-jobs" routerLinkActive="active">
+        Disputed jobs
+      </a>
+      <a
+        class="portal-nav"
+        routerLink="/shop/repair-requests"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        All repair requests
       </a>
       <a class="portal-nav" routerLink="/shop/quotations" routerLinkActive="active">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -177,7 +197,7 @@
       </a>
       <a
         class="portal-nav"
-        routerLink="/shop/repair-requests/completed"
+        routerLink="/shop/jobs/completed-jobs"
         routerLinkActive="active"
         [routerLinkActiveOptions]="{ exact: true }"
       >

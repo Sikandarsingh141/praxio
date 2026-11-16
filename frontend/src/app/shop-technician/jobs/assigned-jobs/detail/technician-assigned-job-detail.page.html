@@ -1,0 +1,17 @@
+<main class="job-detail-page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a [routerLink]="backRoute">{{ backLabel }}</a><span aria-hidden="true">/</span><span aria-current="page">Job details</span></nav>
+  @if (loading()) { <p class="state" role="status">Loading job details...</p> }
+  @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
+  @else if (record(); as job) {
+    <header class="detail-heading"><div><p class="eyebrow">TECHNICIAN JOB ? #{{ job.id.slice(-8).toUpperCase() }}</p><h1>{{ pageTitle }}</h1><p>{{ job.appliance }} {{ job.brand }} {{ job.model }}</p></div><app-job-status-badge [status]="job.repairJobDetails?.status ?? job.status" /></header>
+    <section class="detail-grid"><article class="detail-section"><h2>Device and issue</h2><dl><div><dt>Device</dt><dd>{{ job.appliance }}</dd></div><div><dt>Brand and model</dt><dd>{{ job.brand || 'Not specified' }} {{ job.model }}</dd></div><div><dt>Assigned</dt><dd>{{ job.assignedAt | date: 'mediumDate' }}</dd></div><div><dt>Scheduled</dt><dd>{{ job.scheduledDate ? (job.scheduledDate | date: 'mediumDate') : 'Not specified' }}</dd></div></dl><p>{{ job.description }}</p></article>
+      <article class="detail-section"><h2>Customer</h2><p class="shop-name">{{ job.customerInfo?.name || job.customer }}</p>@if (job.customerInfo?.phone || job.phone) { <p>{{ job.customerInfo?.phone || job.phone }}</p> }@if (job.customerInfo?.email) { <p>{{ job.customerInfo?.email }}</p> }</article>
+      <article class="detail-section"><h2>Shop</h2><p class="shop-name">{{ job.shop?.name || job.shopName || 'Repair shop' }}</p>@if (job.shop?.address) { <p>{{ job.shop?.address }} {{ job.shop?.city }}</p> }</article>
+      <article class="detail-section"><h2>Quotation</h2>@if (job.quotation; as quotation) { <p class="price">{{ quotation.amount | currency: quotation.currency }}</p><p>{{ quotation.notes }}</p>@if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }@if (quotation.warrantyInformation) { <p><strong>Warranty:</strong> {{ quotation.warrantyInformation }}</p> } } @else { <p>No quotation information is available.</p> }</article>
+      <article class="detail-section"><h2>Inspection and diagnosis</h2>@if (job.inspection; as inspection) { <p><strong>Finding:</strong> {{ inspection.findings || inspection.identifiedProblem || 'No findings provided.' }}</p><p><strong>Required work:</strong> {{ inspection.requiredRepairWork || 'Not specified' }}</p> } @else { <p>No inspection report has been recorded.</p> }</article>
+      <article class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="jobs.photoAttachments(job.photos)" /></article></section>
+    <section class="detail-section"><h2>Repair timeline</h2><app-job-timeline [items]="jobs.technicianTimeline(job)" /></section>
+    @if (job.completionDescription || job.workPerformed || job.finalNotes) { <section class="detail-section"><h2>Completion notes</h2>@if (job.completionDescription) { <p>{{ job.completionDescription }}</p> }@if (job.workPerformed) { <p><strong>Work performed:</strong> {{ job.workPerformed }}</p> }@if (job.partsReplaced) { <p><strong>Parts replaced:</strong> {{ job.partsReplaced }}</p> }@if (job.finalNotes) { <p><strong>Final notes:</strong> {{ job.finalNotes }}</p> }</section> }
+    <a class="job-button secondary" [routerLink]="legacyDetailRoute(job.id)">Open job work controls</a>
+  }
+</main>
