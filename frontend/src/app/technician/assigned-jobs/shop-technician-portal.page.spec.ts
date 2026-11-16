@@ -362,31 +362,115 @@ describe('ShopTechnicianPortalPage', () => {
     expect(compiled.textContent).toContain('Back to Completed Jobs');
     expect(compiled.querySelector('.completed-detail-status')?.textContent).toContain('Completed');
     expect(compiled.querySelector('.detail-subtabs-nav')).not.toBeNull();
-    expect(compiled.textContent).toContain('Assigned Details');
+    expect(compiled.textContent).toContain('Completion Summary');
+    expect(compiled.textContent).toContain('Assigned By Shop');
 
     component.backToJobs();
     expect(component.view()).toBe('completed');
     expect(router.navigate).toHaveBeenCalledWith(['/technician/completed-jobs']);
   });
 
-  it('should open the first assigned job directly from the My Assigned Jobs route', () => {
-    TestBed.inject(ActivatedRoute).snapshot.data['technicianView'] = 'jobs';
-    techniciansService.myJobDetails.and.returnValue(
+  it('should render the redesigned completed jobs listing page and handle filters and modal', () => {
+    TestBed.inject(ActivatedRoute).snapshot.data['technicianView'] = 'completed';
+    const mockCompletedJobs = [
+      {
+        id: '4A2C2A98',
+        appliance: 'HeadPhone',
+        brand: 'Boat',
+        model: 'BOAT-3355',
+        status: 'completed',
+        customer: 'Nancy Sharma',
+        phone: '+91 8547357357',
+        assignedAt: '2026-11-16T10:00:00.000Z',
+        completedAt: '2026-11-16T16:22:00.000Z',
+        cost: 50,
+        rating: 5,
+        workPerformed: 'Replaced audio jack and audio driver tested successfully.',
+        partsReplaced: 'Audio jack 3.5mm',
+      },
+      {
+        id: '7E994E12',
+        appliance: 'AC',
+        brand: 'Voltas',
+        model: '1.5 Ton',
+        status: 'completed',
+        customer: 'Sikandar Customer',
+        phone: '+91 9876543210',
+        assignedAt: '2026-11-15T10:00:00.000Z',
+        completedAt: '2026-11-15T18:10:00.000Z',
+        cost: 2500,
+        rating: 4.8,
+        workPerformed: 'Gas refilled and compressor serviced.',
+        partsReplaced: 'Capacitor 50uF',
+      },
+    ];
+
+    techniciansService.myJobs.and.returnValue(
       of({
-        ...mockDashboardData.currentlyActiveJob,
-        photos: [],
-        location: null,
-        serviceType: 'home_service',
-        timeline: [],
-      } as any),
+        jobs: mockCompletedJobs as any,
+        summary: {
+          assigned: 2,
+          inProgress: 0,
+          completed: 2,
+          totalCompleted: 24,
+          devicesRepaired: 24,
+          averageRepairTimeHours: 2.8,
+          averageRating: 4.9,
+          onHold: 0,
+          today: 0,
+        },
+      }),
     );
 
-    const jobsFixture = TestBed.createComponent(ShopTechnicianPortalPage);
-    jobsFixture.detectChanges();
+    const compFixture = TestBed.createComponent(ShopTechnicianPortalPage);
+    compFixture.detectChanges();
+    const inst = compFixture.componentInstance;
+    const el = compFixture.nativeElement as HTMLElement;
 
-    expect(jobsFixture.componentInstance.view()).toBe('job-detail');
-    expect((jobsFixture.nativeElement as HTMLElement).textContent).toContain('Job Details');
-    expect((jobsFixture.nativeElement as HTMLElement).textContent).toContain('Back to My Assigned Jobs');
-    jobsFixture.destroy();
+    expect(inst.isCompletedJobsRoute()).toBeTrue();
+    expect(el.querySelector('.completed-title')?.textContent?.trim()).toBe('Completed Jobs');
+    expect(el.querySelector('.completed-subtitle')?.textContent?.trim()).toBe(
+      'View and manage all jobs you have completed.',
+    );
+
+    // KPI Cards
+    const kpiValues = el.querySelectorAll('.kpi-value');
+    expect(kpiValues.length).toBe(4);
+    expect(kpiValues[0].textContent?.trim()).toBe('24');
+    expect(kpiValues[1].textContent?.trim()).toBe('24');
+    expect(kpiValues[2].textContent?.trim()).toBe('2.8 hrs');
+    expect(kpiValues[3].textContent?.trim()).toBe('4.9 / 5');
+
+    // Table rows
+    const rows = el.querySelectorAll('.completed-job-row');
+    expect(rows.length).toBe(2);
+    expect(rows[0].textContent).toContain('#4A2C2A98');
+    expect(rows[0].textContent).toContain('Nancy Sharma');
+    expect(rows[0].textContent).toContain('HeadPhone');
+    expect(rows[0].textContent).toContain('₹50.00');
+
+    // Test Search Filter
+    inst.completedSearchText.set('Nancy');
+    expect(inst.filteredCompletedJobs().length).toBe(1);
+    expect(inst.filteredCompletedJobs()[0].customer).toBe('Nancy Sharma');
+
+    // Test Reset
+    inst.resetCompletedFilters();
+    expect(inst.completedSearchText()).toBe('');
+    expect(inst.filteredCompletedJobs().length).toBe(2);
+
+    // Test Open Completion Report Modal
+    inst.openCompletionReport(mockCompletedJobs[0] as any);
+    compFixture.detectChanges();
+    expect(inst.completionReportModalOpen()).toBeTrue();
+    expect(compFixture.nativeElement.querySelector('#report-title')?.textContent).toBe('Completion Report');
+    expect(compFixture.nativeElement.textContent).toContain('Replaced audio jack and audio driver tested successfully.');
+
+    // Test Close Modal
+    inst.closeCompletionReport();
+    compFixture.detectChanges();
+    expect(inst.completionReportModalOpen()).toBeFalse();
+
+    compFixture.destroy();
   });
 });

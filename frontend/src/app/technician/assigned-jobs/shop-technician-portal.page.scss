@@ -389,79 +389,6 @@
   }
 }
 
-.completed-job-details {
-  .completed-back-button {
-    display: inline-flex;
-    min-height: 2.35rem;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0 0.85rem;
-    color: #334155;
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.55rem;
-    cursor: pointer;
-    font: inherit;
-    font-size: 0.75rem;
-    font-weight: 700;
-
-    svg {
-      width: 0.9rem;
-      height: 0.9rem;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 2;
-    }
-
-    &:hover {
-      border-color: #a7dfb7;
-      color: #087c3b;
-    }
-  }
-
-  .job-detail-card {
-    gap: 0.65rem;
-  }
-
-  .detail-header-row {
-    grid-template-columns: 7.25rem minmax(0, 1fr) auto;
-
-    .detail-model-subtitle {
-      display: block;
-    }
-
-    .completed-detail-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      align-self: start;
-      margin-top: 0.1rem;
-      white-space: nowrap;
-
-      svg {
-        width: 0.85rem;
-        height: 0.85rem;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 2.5;
-      }
-    }
-  }
-
-  .job-progress-stepper,
-  .detail-actions-bar {
-    display: none;
-  }
-
-  .details-2x2-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-
-    .detail-activity-card {
-      grid-column: 1 / -1;
-    }
-  }
-}
-
 @media (max-width: 850px) {
   .job-detail-focused {
     .detail-header-row {
@@ -496,22 +423,6 @@
       .detail-meta-tags {
         flex-direction: column;
         align-items: flex-start;
-      }
-    }
-
-    &.completed-job-details {
-      .detail-header-row {
-        grid-template-columns: 4.5rem minmax(0, 1fr);
-
-        .detail-thumb-box {
-          grid-row: span 2;
-        }
-
-        .completed-detail-status {
-          grid-column: 2;
-          grid-row: 2;
-          justify-self: start;
-        }
       }
     }
 

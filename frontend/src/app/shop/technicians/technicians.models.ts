@@ -74,7 +74,18 @@ export interface TechnicianJob {
   quotationCurrency?: string;
   assignedAt: string;
   scheduledDate?: string | null;
+  startedAt?: string | null;
   completedAt?: string | null;
+  repairTimeMinutes?: number | null;
+  repairTimeFormatted?: string | null;
+  cost?: number | null;
+  rating?: number | null;
+  reviewText?: string | null;
+  completionDescription?: string | null;
+  workPerformed?: string | null;
+  partsReplaced?: string | null;
+  finalNotes?: string | null;
+  pickupInstructions?: string | null;
 }
 
 export interface TechnicianJobSummary {
@@ -83,6 +94,10 @@ export interface TechnicianJobSummary {
   active?: number;
   inProgress: number;
   completed: number;
+  totalCompleted?: number;
+  devicesRepaired?: number;
+  averageRepairTimeHours?: number | null;
+  averageRating?: number | null;
   onHold: number;
   today: number;
 }

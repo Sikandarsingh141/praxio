@@ -13,6 +13,7 @@ import { ChatConversation } from '../chat/schemas/chat.schema';
 import {
   RepairQuotation,
   RepairRequest,
+  RepairReview,
 } from '../customer/repair-request.schema';
 import { User } from '../users/schemas/user.schema';
 import {
@@ -48,6 +49,8 @@ export class TechniciansService {
     private readonly quotations: Model<RepairQuotation>,
     @InjectModel(ChatConversation.name)
     private readonly conversations: Model<ChatConversation>,
+    @InjectModel(RepairReview.name)
+    private readonly reviews: Model<RepairReview>,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -783,6 +786,18 @@ export class TechniciansService {
       quotations.map((q) => [q._id.toString(), q]),
     );
 
+    const requestIds = requests.map((r) => r._id);
+    const reviews = requestIds.length
+      ? await this.reviews
+          .find({ repairRequestId: { $in: requestIds } })
+          .select('repairRequestId overallRating reviewText')
+          .lean()
+          .exec()
+      : [];
+    const reviewByRequestId = new Map(
+      reviews.map((rev) => [rev.repairRequestId.toString(), rev]),
+    );
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -793,6 +808,23 @@ export class TechniciansService {
       const quot = request.acceptedQuotationId
         ? quotationById.get(request.acceptedQuotationId.toString())
         : null;
+      const rev = reviewByRequestId.get(request._id.toString());
+      const startedAt =
+        request.repairJob?.activeAssignment?.assignedAt ?? request.createdAt;
+      const completedAt =
+        request.repairJob?.repairCompletedAt ??
+        request.repairJob?.completedAt ??
+        null;
+      let repairTimeMinutes: number | null = null;
+      if (startedAt && completedAt) {
+        const diffMs =
+          new Date(completedAt).getTime() - new Date(startedAt).getTime();
+        if (diffMs > 0) {
+          repairTimeMinutes = Math.round(diffMs / (1000 * 60));
+        }
+      }
+      const cost =
+        request.repairJob?.approvedRepairAmount ?? quot?.amount ?? null;
       return {
         id: request._id.toString(),
         appliance: request.appliance,
@@ -801,10 +833,19 @@ export class TechniciansService {
         description: request.description ?? '',
         photo: request.photos?.[0]?.data ?? null,
         status: request.repairJob?.status ?? 'confirmed',
-        assignedAt:
-          request.repairJob?.activeAssignment?.assignedAt ?? request.createdAt,
+        assignedAt: startedAt,
         scheduledDate: request.preferredServiceDate ?? null,
-        completedAt: request.repairJob?.repairCompletedAt ?? null,
+        startedAt,
+        completedAt,
+        repairTimeMinutes,
+        cost,
+        rating: rev?.overallRating ?? null,
+        reviewText: rev?.reviewText ?? null,
+        completionDescription: request.repairJob?.completionDescription ?? '',
+        workPerformed: request.repairJob?.workPerformed ?? '',
+        partsReplaced: request.repairJob?.partsReplaced ?? '',
+        finalNotes: request.repairJob?.finalNotes ?? '',
+        pickupInstructions: request.repairJob?.pickupInstructions ?? '',
         customer:
           [cust?.firstName, cust?.lastName].filter(Boolean).join(' ') ||
           cust?.fullName ||
@@ -821,6 +862,41 @@ export class TechniciansService {
       };
     });
 
+    const completedList = jobs.filter((job) =>
+      [
+        'repair_completed',
+        'ready_for_pickup',
+        'picked_up',
+        'completed',
+      ].includes(job.status),
+    );
+    const totalCompleted = completedList.length;
+    const devicesRepaired = totalCompleted;
+    const completedWithDuration = completedList.filter(
+      (j) => j.repairTimeMinutes && j.repairTimeMinutes > 0,
+    );
+    const avgMinutes = completedWithDuration.length
+      ? completedWithDuration.reduce(
+          (acc, j) => acc + (j.repairTimeMinutes || 0),
+          0,
+        ) / completedWithDuration.length
+      : null;
+    const averageRepairTimeHours = avgMinutes
+      ? parseFloat((avgMinutes / 60).toFixed(1))
+      : null;
+
+    const ratedJobs = completedList.filter(
+      (j) => typeof j.rating === 'number' && j.rating > 0,
+    );
+    const averageRating = ratedJobs.length
+      ? parseFloat(
+          (
+            ratedJobs.reduce((acc, j) => acc + (j.rating || 0), 0) /
+            ratedJobs.length
+          ).toFixed(1),
+        )
+      : null;
+
     const summary = {
       assigned: jobs.length,
       pending: jobs.filter((job) =>
@@ -832,14 +908,11 @@ export class TechniciansService {
       inProgress: jobs.filter((job) =>
         ['in_progress', 'inspection_in_progress'].includes(job.status),
       ).length,
-      completed: jobs.filter((job) =>
-        [
-          'repair_completed',
-          'ready_for_pickup',
-          'picked_up',
-          'completed',
-        ].includes(job.status),
-      ).length,
+      completed: totalCompleted,
+      totalCompleted,
+      devicesRepaired,
+      averageRepairTimeHours,
+      averageRating,
       onHold: jobs.filter((job) => job.status === 'on_hold').length,
       today: jobs.filter((job) => {
         if (!job.scheduledDate) return false;
@@ -1161,6 +1234,12 @@ export class TechniciansService {
       };
     });
 
+    const review = await this.reviews
+      .findOne({ repairRequestId: request._id })
+      .select('overallRating reviewText title createdAt')
+      .lean()
+      .exec();
+
     return {
       id: request._id.toString(),
       shopId: technician.technicianDetails!.shopId.toString(),
@@ -1241,6 +1320,17 @@ export class TechniciansService {
         typeof latitude === 'number' && typeof longitude === 'number'
           ? { latitude, longitude }
           : null,
+      cost: request.repairJob?.approvedRepairAmount ?? quotation?.amount ?? null,
+      rating: review?.overallRating ?? null,
+      reviewText: review?.reviewText ?? null,
+      review: review
+        ? {
+            overallRating: review.overallRating,
+            reviewText: review.reviewText,
+            title: review.title,
+            createdAt: review.createdAt,
+          }
+        : null,
     };
   }
 
