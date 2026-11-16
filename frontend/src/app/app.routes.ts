@@ -291,8 +291,8 @@ export const routes: Routes = [
       {
         path: 'jobs/new-jobs/:id',
         loadComponent: () =>
-          import('./shop/jobs/new-jobs/detail/shop-new-job-detail.page').then(
-            (module) => module.ShopNewJobDetailPage,
+          import('./shop/repair-job-details/shop-repair-request-details.page').then(
+            (module) => module.ShopRepairRequestDetailsPage,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'new' },
@@ -309,8 +309,8 @@ export const routes: Routes = [
       {
         path: 'jobs/pending-jobs/:id',
         loadComponent: () =>
-          import('./shop/jobs/pending-jobs/detail/shop-pending-job-detail.page').then(
-            (module) => module.ShopPendingJobDetailPage,
+          import('./shop/repair-job-details/shop-repair-request-details.page').then(
+            (module) => module.ShopRepairRequestDetailsPage,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'pending' },
@@ -327,8 +327,8 @@ export const routes: Routes = [
       {
         path: 'jobs/assigned-jobs/:id',
         loadComponent: () =>
-          import('./shop/jobs/assigned-jobs/detail/shop-assigned-job-detail.page').then(
-            (module) => module.ShopAssignedJobDetailPage,
+          import('./shop/repair-job-details/shop-repair-request-details.page').then(
+            (module) => module.ShopRepairRequestDetailsPage,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'assigned' },
@@ -345,8 +345,8 @@ export const routes: Routes = [
       {
         path: 'jobs/active-jobs/:id',
         loadComponent: () =>
-          import('./shop/jobs/active-jobs/detail/shop-active-job-detail.page').then(
-            (module) => module.ShopActiveJobDetailPage,
+          import('./shop/repair-job-details/shop-repair-request-details.page').then(
+            (module) => module.ShopRepairRequestDetailsPage,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'active' },
@@ -372,8 +372,8 @@ export const routes: Routes = [
       {
         path: 'jobs/disputed-jobs',
         loadComponent: () =>
-          import('./shop/jobs/disputed-jobs/listing/shop-disputed-jobs-listing.page').then(
-            (module) => module.ShopDisputedJobsListingPage,
+          import('./shared/components/dispute-center/dispute-center.component').then(
+            (module) => module.DisputeCenterComponent,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'disputed' },
@@ -381,8 +381,8 @@ export const routes: Routes = [
       {
         path: 'jobs/disputed-jobs/:id',
         loadComponent: () =>
-          import('./shop/jobs/disputed-jobs/detail/shop-disputed-job-detail.page').then(
-            (module) => module.ShopDisputedJobDetailPage,
+          import('./shared/components/dispute-center/dispute-center.component').then(
+            (module) => module.DisputeCenterComponent,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'disputed' },

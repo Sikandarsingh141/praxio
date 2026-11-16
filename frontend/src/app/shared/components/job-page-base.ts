@@ -5,6 +5,10 @@ import { CustomerRepairRequest } from '../../customer/models/customer-portal.mod
 import { ShopRepairRequest } from '../../shop/repair-requests/shop-repair-requests.models';
 import { TechnicianRepairDetails } from '../../shop/technicians/technicians.models';
 import {
+  FilterConfig,
+  FilterValues,
+} from './filters/common-filter.component';
+import {
   CustomerJobCategory,
   JobListItem,
   ShopJobCategory,
@@ -106,6 +110,78 @@ export abstract class CustomerJobsListingPageBase extends JobListingPageBase {
 @Directive()
 export abstract class ShopJobsListingPageBase extends JobListingPageBase {
   protected abstract readonly category: ShopJobCategory;
+  readonly appliedFilters = signal<FilterValues>({});
+
+  get filterConfig(): FilterConfig {
+    const titles: Record<ShopJobCategory, string> = {
+      new: 'New job filters',
+      pending: 'Pending job filters',
+      assigned: 'Assigned job filters',
+      active: 'Active job filters',
+      disputed: 'Disputed job filters',
+      completed: 'Completed job filters',
+    };
+    return {
+      title: titles[this.category],
+      fields: [
+        { key: 'appliance', label: 'Appliance or device', type: 'text' },
+        { key: 'brand', label: 'Brand', type: 'text' },
+        {
+          key: 'serviceType',
+          label: 'Service type',
+          type: 'select',
+          placeholder: 'Any service type',
+          options: [
+            { label: 'Shop visit', value: 'shop_visit' },
+            { label: 'Home service', value: 'home_service' },
+          ],
+        },
+        { key: 'requestDate', label: 'Request date', type: 'date-range' },
+      ],
+    };
+  }
+
+  applyFilters(filters: FilterValues): void {
+    this.appliedFilters.set(filters);
+    this.page.set(1);
+  }
+
+  protected override matchesPageFilters(item: JobListItem): boolean {
+    const filters = this.appliedFilters();
+    const appliance = filters['appliance'];
+    const brand = filters['brand'];
+    const serviceType = filters['serviceType'];
+    if (
+      typeof appliance === 'string' &&
+      appliance.trim() &&
+      !item.title.toLocaleLowerCase().includes(appliance.trim().toLocaleLowerCase())
+    ) {
+      return false;
+    }
+    if (
+      typeof brand === 'string' &&
+      brand.trim() &&
+      !(item.brand ?? '').toLocaleLowerCase().includes(brand.trim().toLocaleLowerCase())
+    ) {
+      return false;
+    }
+    if (typeof serviceType === 'string' && serviceType && item.serviceType !== serviceType) {
+      return false;
+    }
+
+    const requestDate = filters['requestDate'];
+    if (requestDate && typeof requestDate === 'object' && 'from' in requestDate) {
+      const requestDay = item.createdAt.slice(0, 10);
+      if (
+        (requestDate.from && requestDay < requestDate.from) ||
+        (requestDate.to && requestDay > requestDate.to)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   protected override loadItems(): Observable<JobListItem[]> {
     return this.jobs.shopJobs(this.category);
   }

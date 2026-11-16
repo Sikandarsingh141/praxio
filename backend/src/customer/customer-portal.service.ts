@@ -2000,6 +2000,24 @@ export class CustomerPortalService {
         technician,
       ]),
     );
+    const pageRequestIds = pageRequests.map((request) => request._id);
+    const quotations = pageRequestIds.length
+      ? await this.quotations
+          .find({
+            repairRequestId: { $in: pageRequestIds },
+            shopId: shop._id,
+          })
+          .sort({ createdAt: -1 })
+          .lean()
+          .exec()
+      : [];
+    const quotationsByRequest = new Map<string, typeof quotations>();
+    for (const quotation of quotations) {
+      const requestId = quotation.repairRequestId.toString();
+      const requestQuotations = quotationsByRequest.get(requestId) ?? [];
+      requestQuotations.push(quotation);
+      quotationsByRequest.set(requestId, requestQuotations);
+    }
     const requests = pageRequests.map((request) => {
       const safeRequest = {
         ...request,
@@ -2045,6 +2063,7 @@ export class CustomerPortalService {
                 }
               : (customer?.location ?? null),
         },
+        quotations: quotationsByRequest.get(request._id.toString()) ?? [],
         shopResponse: request.shopResponses?.find(
           (item) => item.shopId.toString() === shop._id.toString(),
         ),

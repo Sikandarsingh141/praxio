@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ShopProfile } from '../../core/auth/auth.models';
@@ -9,7 +9,8 @@ import { ShopRepairRequest } from '../repair-requests/shop-repair-requests.model
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 import { ShopRepairRouteComponent } from './components/shop-repair-route.component';
 import { ShopRepairWorkflowComponent } from './components/shop-repair-workflow.component';
-import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 import { Technician } from '../technicians/technicians.models';
 import { TechniciansService } from '../technicians/technicians.service';
 import { ToastService } from '../../core/toast/toast.service';
@@ -26,10 +27,10 @@ const DECLINE_REASONS = [
   selector: 'app-shop-repair-request-details-page',
   standalone: true,
   imports: [
-    AdminPageHeaderComponent,
     CommonModule,
     FormsModule,
     RouterLink,
+    JobTimelineComponent,
     ShopRepairRouteComponent,
     ShopRepairWorkflowComponent,
   ],
@@ -37,9 +38,11 @@ const DECLINE_REASONS = [
   styleUrl: './shop-repair-request-details.page.scss',
 })
 export class ShopRepairRequestDetailsPage implements OnInit {
+  readonly jobs = inject(JobSharedService);
   readonly reasons = DECLINE_REASONS;
   readonly request = signal<ShopRepairRequest | null>(null);
   readonly shopProfile = signal<ShopProfile | null>(null);
+  readonly heroImageUnavailable = signal(false);
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -63,6 +66,9 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly pickupInstructions = signal('');
   readonly pickupMessage = signal('');
   readonly repairFormError = signal('');
+  readonly pageTitle = signal('Repair Request Details');
+  readonly backRoute = signal('/shop/repair-requests');
+  readonly backLabel = signal('Repair Requests');
   readonly assignmentModalOpen = signal(false);
   readonly assignmentLoading = signal(false);
   readonly assignmentSubmitting = signal(false);
@@ -102,8 +108,27 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly currentProgressStep = computed(() => {
     const request = this.request();
     if (!request) return 1;
-    if (request.repairJob || request.shopResponse.status === 'customer_accepted') return 4;
-    if (request.shopResponse.status === 'quotation_submitted') return 3;
+    const status = request.repairJob?.status;
+    if (
+      status === 'in_progress' ||
+      status === 'on_hold' ||
+      status === 'repair_completed' ||
+      status === 'ready_for_pickup' ||
+      status === 'picked_up' ||
+      status === 'completed' ||
+      status === 'inspection_approved' ||
+      request.shopResponse.status === 'customer_accepted'
+    ) {
+      return 4;
+    }
+    if (
+      status === 'awaiting_customer_approval' ||
+      status === 'repair_declined' ||
+      request.shopResponse.status === 'quotation_submitted' ||
+      request.quotations.length
+    ) {
+      return 3;
+    }
     return 2;
   });
 
@@ -129,6 +154,74 @@ export class ShopRepairRequestDetailsPage implements OnInit {
 
   setRequest(request: ShopRepairRequest): void {
     this.request.set(request);
+    this.heroImageUnavailable.set(false);
+  }
+
+  customerName(request: ShopRepairRequest): string {
+    return (
+      request.customer.displayName?.trim() ||
+      [request.customer.firstName, request.customer.lastName].filter(Boolean).join(' ') ||
+      'Customer'
+    );
+  }
+
+  customerInitials(request: ShopRepairRequest): string {
+    return this.customerName(request)
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  photoSource(photo: ShopRepairRequest['photos'][number]): string {
+    const data = photo.data.trim();
+    if (
+      data.startsWith('data:') ||
+      /^https?:\/\//i.test(data) ||
+      data.startsWith('/') ||
+      data.startsWith('blob:')
+    ) {
+      return data;
+    }
+    return `data:${photo.mimeType || 'image/jpeg'};base64,${data}`;
+  }
+
+  statusLabel(request: ShopRepairRequest): string {
+    const status = request.repairJob?.status ?? request.shopResponse.status;
+    return status
+      .replace(/_/g, ' ')
+      .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  isRepairComplete(request: ShopRepairRequest): boolean {
+    return request.repairJob?.status === 'completed' || request.status === 'completed';
+  }
+
+  progressDate(request: ShopRepairRequest, index: number): string | undefined {
+    const repairJob = request.repairJob;
+    const historyAt = (action: string): string | undefined =>
+      repairJob?.history?.find((event) => event.action === action)?.at;
+    switch (index) {
+      case 0:
+        return request.createdAt;
+      case 1:
+        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
+      case 2:
+        return (
+          request.quotations.find((quotation) => quotation.status === 'accepted')?.respondedAt ??
+          request.quotations[request.quotations.length - 1]?.createdAt
+        );
+      case 3:
+        return (
+          historyAt('repair_completed') ??
+          repairJob?.repairCompletedAt ??
+          historyAt('ready_for_pickup') ??
+          repairJob?.readyForPickupAt ??
+          repairJob?.completedAt
+        );
+      default:
+        return undefined;
+    }
   }
 
   openAssignment(): void {
@@ -243,6 +336,36 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   }
 
   ngOnInit(): void {
+    const routeContexts: Record<string, { title: string; label: string; route: string }> = {
+      new: {
+        title: 'New Repair Request Details',
+        label: 'New Repair Requests',
+        route: '/shop/jobs/new-jobs',
+      },
+      pending: {
+        title: 'Pending Job Details',
+        label: 'Pending Jobs',
+        route: '/shop/jobs/pending-jobs',
+      },
+      assigned: {
+        title: 'Assigned Job Details',
+        label: 'Assigned Jobs',
+        route: '/shop/jobs/assigned-jobs',
+      },
+      active: {
+        title: 'Active Job Details',
+        label: 'Active Jobs',
+        route: '/shop/jobs/active-jobs',
+      },
+    };
+    const routeStatus = this.route.snapshot.data['jobStatus'];
+    const routeContext = typeof routeStatus === 'string' ? routeContexts[routeStatus] : undefined;
+    if (routeContext) {
+      this.pageTitle.set(routeContext.title);
+      this.backLabel.set(routeContext.label);
+      this.backRoute.set(routeContext.route);
+    }
+
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
       this.error.set('Repair request was not found.');

@@ -87,6 +87,16 @@ describe('DisputeCenterComponent customer views', () => {
     expect(
       (fixture.nativeElement.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,
     ).toContain('/customer/disputes/dispute-id');
+
+    fixture.componentInstance.role.set('shop');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.raise-dispute-button')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.customer-dispute-table')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-job-pagination')).not.toBeNull();
+    expect(
+      (fixture.nativeElement.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,
+    ).toContain('/shop/disputes/dispute-id');
   });
 
   it('shows dispute history and resolution details in the completed-job detail layout', async () => {

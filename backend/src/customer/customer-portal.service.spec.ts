@@ -75,6 +75,7 @@ describe('CustomerPortalService', () => {
     find: jest.fn(),
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
+    updateMany: jest.fn(),
     updateOne: jest.fn(),
   };
   const quotationModel = {
@@ -99,6 +100,7 @@ describe('CustomerPortalService', () => {
     jest.clearAllMocks();
     userModel.find.mockReturnValue(createQuery(shops));
     registrationModel.findOne.mockReturnValue(createQuery({}));
+    repairRequestModel.updateMany.mockReturnValue(createQuery({ modifiedCount: 0 }));
     quotationModel.findOne.mockReturnValue(createQuery(null));
     registrationModel.find.mockReturnValue(
       createQuery([{ userId: nearShopId }, { userId: farShopId }]),
@@ -181,6 +183,58 @@ describe('CustomerPortalService', () => {
     expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
       expect.stringContaining('shopDetails.shopImageData'),
     );
+  });
+
+  it('includes this shop’s quotations in repair-request list responses', async () => {
+    const requestId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const quoteId = new Types.ObjectId();
+    const request = {
+      _id: requestId,
+      customerId,
+      shopIds: [nearShopId],
+      shopResponses: [{ shopId: nearShopId, status: 'customer_accepted' }],
+      acceptedQuotationId: quoteId,
+      appliance: 'Laptop',
+      description: 'Screen repair',
+      status: 'completed',
+      repairJob: { status: 'completed' },
+      createdAt: new Date('2026-10-01T00:00:00.000Z'),
+    };
+    const quotation = {
+      _id: quoteId,
+      repairRequestId: requestId,
+      shopId: nearShopId,
+      amount: 125,
+      currency: 'USD',
+      status: 'accepted',
+      createdAt: new Date('2026-10-02T00:00:00.000Z'),
+    };
+    userModel.findById.mockReturnValue(
+      createQuery({
+        ...shops[0],
+        accountType: 'shop',
+        accountStatus: 'active',
+      }),
+    );
+    userModel.find.mockReturnValue(createQuery([]));
+    repairRequestModel.find.mockReturnValue(createQuery([request]));
+    quotationModel.find.mockReturnValue(createQuery([quotation]));
+
+    const result = await service.getShopRepairRequests(nearShopId.toString(), {
+      status: 'all',
+      page: 1,
+      limit: 50,
+    });
+
+    expect(quotationModel.find).toHaveBeenCalledWith({
+      repairRequestId: { $in: [requestId] },
+      shopId: nearShopId,
+    });
+    expect(result.requests[0]).toMatchObject({
+      quotations: [quotation],
+      shopResponse: { status: 'customer_accepted' },
+    });
   });
 
   it('filters by supported service, text terms, and distance without inventing distance', async () => {

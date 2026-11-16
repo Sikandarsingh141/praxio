@@ -2,6 +2,7 @@
   class="dispute-page"
   [class.customer-dispute-list-page]="role() === 'customer' && mode() === 'list'"
   [class.customer-dispute-detail-page]="role() === 'customer' && mode() === 'detail'"
+  [class.shop-dispute-list-page]="role() === 'shop' && mode() === 'list'"
   [attr.aria-busy]="loading()"
 >
   @if (mode() === 'list') {
@@ -127,7 +128,7 @@
     @if (loading()) {
       <p class="state-card" role="status">Loading disputes…</p>
     } @else if (list()?.items?.length) {
-      @if (role() === 'customer') {
+      @if (role() !== 'admin') {
         <section class="customer-dispute-table-card" aria-label="Dispute cases">
           <table class="customer-dispute-table">
             <thead>
@@ -209,7 +210,7 @@
                         </svg>
                       </summary>
                       <div class="dispute-action-popup">
-                        <a [routerLink]="customerDisputeDetailLink(item._id)">
+                        <a [routerLink]="disputeDetailLink(item._id)">
                           <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
                             <circle cx="12" cy="12" r="3" />
@@ -258,7 +259,7 @@
           }
         </section>
       }
-      @if (role() === 'customer') {
+      @if (role() !== 'admin') {
         @if ((list()?.pagination?.total ?? 0) > pageSize) {
           <app-job-pagination
             variant="brand"
@@ -377,12 +378,12 @@
 
   @if (mode() === 'detail') {
     @if (role() === 'customer') {
-      <a class="detail-back-link" [routerLink]="['/', role(), 'disputes']">
+      <a class="detail-back-link" [routerLink]="disputeListLink()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
         Back to Dispute Management
       </a>
     } @else {
-      <a class="back-link detail-back-link" [routerLink]="['/', role(), 'disputes']">
+      <a class="back-link detail-back-link" [routerLink]="disputeListLink()">
         <span aria-hidden="true">←</span> All disputes
       </a>
     }

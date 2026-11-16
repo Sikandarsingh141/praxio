@@ -234,6 +234,19 @@ describe('JobSharedService', () => {
     });
   });
 
+  it('keeps listing jobs when an older API response omits quotations', (done) => {
+    const request = shopRequest('completed-without-quotes', 'customer_accepted', 'completed');
+    Reflect.deleteProperty(request, 'quotations');
+    shopApi.list.and.returnValue(of(shopPage([request], 1, 1)));
+
+    service.shopJobs('completed').subscribe((items) => {
+      expect(items).toHaveSize(1);
+      expect(items[0].quotationSubmitted).toBeTrue();
+      expect(items[0].currency).toBeUndefined();
+      done();
+    });
+  });
+
   it('uses the supported pending filter for technician assigned jobs', (done) => {
     const job: TechnicianJob = {
       id: 'tech-job',

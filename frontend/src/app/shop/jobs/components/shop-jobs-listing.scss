@@ -1,0 +1,32 @@
+@use '../../../customer/jobs/active-jobs/listing/customer-active-jobs-listing.page.scss' as *;
+
+.toolbar-select {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #647169;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.toolbar-select select {
+  min-height: 2.5rem;
+  padding: 0 0.55rem;
+  border: 1px solid #dfe6e1;
+  border-radius: 0.6rem;
+  background: #fff;
+  color: #20302b;
+  font: inherit;
+}
+
+.toolbar-select select:focus-visible {
+  border-color: #6fae7b;
+  outline: 3px solid rgb(22 125 43 / 15%);
+}
+
+@media (max-width: 700px) {
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}

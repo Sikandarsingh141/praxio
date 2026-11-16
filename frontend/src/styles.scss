@@ -3918,7 +3918,7 @@ a {
 }
 
 .customer-dispute-table-card {
-  overflow: visible;
+  overflow-x: auto;
   border: 1px solid #e2e8e4;
   border-radius: 0.85rem;
   background: #fff;
@@ -3972,7 +3972,17 @@ a {
   font-size: 0.78rem;
 }
 
+.shop-dispute-list-page .dispute-request-id-cell strong {
+  color: #17231c;
+  font-size: 0.78rem;
+}
+
 .customer-dispute-list-page .dispute-request-id-cell span {
+  color: #68756d;
+  font-size: 0.65rem;
+}
+
+.shop-dispute-list-page .dispute-request-id-cell span {
   color: #68756d;
   font-size: 0.65rem;
 }
@@ -4071,6 +4081,11 @@ a {
 }
 
 .customer-dispute-list-page .dispute-issue-cell small {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.shop-dispute-list-page .dispute-issue-cell small {
   display: block;
   margin-top: 0.2rem;
 }

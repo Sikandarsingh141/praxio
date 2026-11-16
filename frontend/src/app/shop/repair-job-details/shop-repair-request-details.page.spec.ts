@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ShopProfile } from '../../core/auth/auth.models';
 import { ShopRepairRequest } from '../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 import { ShopRepairRequestDetailsPage } from './shop-repair-request-details.page';
 import { TechniciansService } from '../technicians/technicians.service';
 
@@ -93,7 +94,12 @@ describe('ShopRepairRequestDetailsPage directions', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ id: request._id }) } },
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ id: request._id }),
+              data: { jobStatus: 'assigned' },
+            },
+          },
         },
         {
           provide: ShopRepairRequestsService,
@@ -105,6 +111,10 @@ describe('ShopRepairRequestDetailsPage directions', () => {
                 throwError(() => ({ error: { message: 'Directions service unavailable.' } })),
               ),
           },
+        },
+        {
+          provide: JobSharedService,
+          useValue: { shopTimeline: jasmine.createSpy().and.returnValue([]) },
         },
         {
           provide: AuthService,
@@ -127,6 +137,9 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
+    expect(fixture.nativeElement.querySelector('main.customer-active-job-detail-page')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.request-hero')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.customer-detail-layout')).not.toBeNull();
     const directionsLink: HTMLAnchorElement | null =
       fixture.nativeElement.querySelector('.directions-button[href]');
 
@@ -141,6 +154,27 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(text).toContain('Pending Inspection');
     expect(text).not.toContain('4.8 km');
     expect(text).not.toContain('12 min');
+  });
+
+  it('keeps new-request shop actions in the customer-matched detail layout', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(fixture.nativeElement.querySelector('.customer-detail-layout')).not.toBeNull();
+    expect(text).toContain('Customer Information');
+    expect(text).toContain('Device Information');
+    expect(text).toContain('Accept & Submit Quotation');
+    expect(text).toContain('Decline Request');
+  });
+
+  it('uses the assigned-jobs context when opened from that stage', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Assigned Job Details');
+    const backLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('.back-link');
+    expect(backLink?.getAttribute('href')).toBe('/shop/jobs/assigned-jobs');
   });
 
   it('renders quotation details in the redesigned summary table', () => {

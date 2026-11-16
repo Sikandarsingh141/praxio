@@ -1,0 +1,73 @@
+@use './shop-jobs-listing.scss' as *;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.jobs-table {
+  min-width: 1140px;
+}
+
+.th-request-id,
+.td-request-id {
+  min-width: 7.25rem;
+  white-space: nowrap;
+}
+
+.job-id {
+  color: #087c3b;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.th-customer,
+.td-customer {
+  min-width: 10rem;
+}
+
+.customer-cell {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.customer-avatar {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5f6e8;
+  color: #12732b;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.customer-name {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quotation-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #f1f5f2;
+  color: #56645a;
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.quotation-status.submitted {
+  background: #edf8ef;
+  color: #087c3b;
+}

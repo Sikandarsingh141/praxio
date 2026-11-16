@@ -1,0 +1,72 @@
+import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
+import { CommonModule } from '@angular/common';
+import { Component, Input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { JobListItem } from '../../../shared/models/job.models';
+
+@Component({
+  selector: 'app-shop-jobs-table',
+  standalone: true,
+  imports: [CommonModule, OverlayModule, RouterLink],
+  templateUrl: './shop-jobs-table.component.html',
+  styleUrl: './shop-jobs-table.component.scss',
+})
+export class ShopJobsTableComponent {
+  @Input({ required: true }) jobs: JobListItem[] = [];
+  @Input({ required: true }) detailRoute = '';
+  @Input() title = 'Shop jobs';
+  @Input() showQuotationStatus = false;
+
+  private readonly unavailableImages = new Set<string>();
+  readonly openActionsJobId = signal<string | null>(null);
+  readonly actionMenuPositions: ConnectedPosition[] = [
+    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -6 },
+  ];
+
+  toggleActions(jobId: string): void {
+    this.openActionsJobId.update((current) => (current === jobId ? null : jobId));
+  }
+
+  closeActions(): void {
+    this.openActionsJobId.set(null);
+  }
+
+  formatStatus(status: string): string {
+    return status
+      .replace(/_/g, ' ')
+      .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  customerInitials(name?: string): string {
+    const initials = (name ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toLocaleUpperCase())
+      .join('');
+    return initials || 'CU';
+  }
+
+  imageSource(job: JobListItem): string | null {
+    const data = job.imageData?.trim();
+    if (!data) return null;
+    if (
+      data.startsWith('data:') ||
+      /^https?:\/\//i.test(data) ||
+      data.startsWith('/') ||
+      data.startsWith('blob:')
+    ) {
+      return data;
+    }
+    return `data:${job.imageMimeType || 'image/jpeg'};base64,${data}`;
+  }
+
+  imageUnavailable(jobId: string): boolean {
+    return this.unavailableImages.has(jobId);
+  }
+
+  markImageUnavailable(jobId: string): void {
+    this.unavailableImages.add(jobId);
+  }
+}

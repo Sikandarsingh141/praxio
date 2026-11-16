@@ -340,13 +340,18 @@ export class DisputeCenterComponent implements OnInit {
     this.loadList();
   }
 
-  customerDisputeDetailLink(disputeId: string): string[] {
+  disputeDetailLink(disputeId: string): string[] {
     const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
+    const roleListRoute = `/${this.role()}/jobs/disputed-jobs`;
     const baseRoute =
-      currentRoute === '/customer/jobs/disputed-jobs'
-        ? '/customer/jobs/disputed-jobs'
-        : '/customer/disputes';
+      currentRoute === roleListRoute ? roleListRoute : `/${this.role()}/disputes`;
     return [baseRoute, disputeId];
+  }
+
+  disputeListLink(): string[] {
+    const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
+    const roleListRoute = `/${this.role()}/jobs/disputed-jobs`;
+    return [currentRoute.startsWith(`${roleListRoute}/`) ? roleListRoute : `/${this.role()}/disputes`];
   }
 
   changePageSize(size: number): void {

@@ -337,6 +337,7 @@ export class JobSharedService {
   }
 
   private shopListItem(request: ShopRepairRequest): JobListItem {
+    const quotations = request.quotations ?? [];
     return {
       id: request._id,
       title: request.appliance,
@@ -346,13 +347,13 @@ export class JobSharedService {
         `${request.customer.firstName} ${request.customer.lastName}`.trim(),
       brand: request.brand,
       model: request.model,
-      imageData: request.photos[0]?.data ?? null,
-      imageMimeType: request.photos[0]?.mimeType,
+      imageData: request.photos?.[0]?.data ?? null,
+      imageMimeType: request.photos?.[0]?.mimeType,
       serviceType: request.serviceType,
       createdAt: request.createdAt,
       amount: request.repairJob?.approvedRepairAmount ?? null,
-      currency: request.quotations.find((quotation) => quotation.status === 'accepted')?.currency,
-      quotationSubmitted: request.quotations.length > 0 ||
+      currency: quotations.find((quotation) => quotation.status === 'accepted')?.currency,
+      quotationSubmitted: quotations.length > 0 ||
         ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
           request.shopResponse.status,
         ),

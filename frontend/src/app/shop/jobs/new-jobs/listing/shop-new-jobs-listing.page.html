@@ -1,15 +1,13 @@
 <main class="jobs-page">
-  <header class="page-heading">
-    <div>
-      <h1>New Jobs</h1>
-      <p class="description">{{ description }}</p>
-    </div>
-    <div class="heading-actions">
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="shop-new-jobs-title">{{ title }}</h1>
+    <p adminPageDescription class="admin-page-description">{{ description }}</p>
+    <div adminPageActions class="header-actions">
       <label class="search-control">
         <input
           type="search"
           placeholder="Search ID, device, brand, customer or issue"
-          aria-label="Search jobs by ID, device, brand, customer, or issue"
+          aria-label="Search new jobs by ID, device, brand, customer, or issue"
           [value]="search()"
           (input)="setSearch($any($event.target).value)"
         />
@@ -20,8 +18,24 @@
         [appliedFilters]="appliedFilters()"
         (filtersChange)="applyFilters($event)"
       />
+      <label class="toolbar-select">
+        <span>Status</span>
+        <select [value]="statusFilter()" (change)="setStatusFilter($any($event.target).value)">
+          <option value="">All statuses</option>
+          @for (status of statusOptions(); track status) {
+            <option [value]="status">{{ status.replaceAll('_', ' ') | titlecase }}</option>
+          }
+        </select>
+      </label>
+      <label class="toolbar-select">
+        <span>Sort by</span>
+        <select [value]="sort()" (change)="setSort($any($event.target).value)">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </label>
     </div>
-  </header>
+  </app-admin-page-header>
 
   @if (loading()) {
     <p class="loading-state" role="status">Loading new jobs...</p>
@@ -37,73 +51,12 @@
       [description]="search() ? 'Adjust your search or filters to see more requests.' : 'New customer repair requests will appear here.'"
     />
   } @else {
-    <section class="table-card" aria-label="New Jobs">
-      <table class="jobs-table">
-        <thead>
-          <tr>
-            <th scope="col">Job ID</th>
-            <th scope="col">Device &amp; Brand</th>
-            <th scope="col">Customer</th>
-            <th scope="col">Issue / Problem</th>
-            <th scope="col">Request Date</th>
-            <th scope="col">Shop</th>
-            <th scope="col">Quotation</th>
-            <th scope="col">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (job of pageItems(); track job.id) {
-            <tr>
-              <td class="job-id">#{{ job.id.slice(-8).toUpperCase() }}</td>
-              <td>
-                <div class="device-cell">
-                  <div class="device-thumbnail">
-                    @if (job.imageData && job.imageMimeType) {
-                      <img [src]="'data:' + job.imageMimeType + ';base64,' + job.imageData" [alt]="job.title" />
-                    } @else {
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="12" rx="1.5" /><path d="M2.5 20h19M9 17l-1 3m7-3 1 3" /></svg>
-                    }
-                  </div>
-                  <div class="device-copy">
-                    <strong>{{ job.title }}</strong>
-                    <span>{{ job.brand || 'Brand not specified' }}{{ job.model ? ' · ' + job.model : '' }}</span>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <div class="person-cell">
-                  <span class="avatar" aria-hidden="true">{{ customerInitials(job.customerName) }}</span>
-                  <span>{{ job.customerName || 'Customer' }}</span>
-                </div>
-              </td>
-              <td class="issue-cell" [title]="job.description">{{ job.description || 'No issue details' }}</td>
-              <td class="date-cell">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M7.5 3v4m9-4v4M3.5 10h17" /></svg>
-                {{ job.createdAt | date: 'MMM d, y, h:mm a' }}
-              </td>
-              <td>
-                <div class="shop-cell">
-                  <span class="shop-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M4 10V20h16V10M3 9l2-5h14l2 5M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0M9 20v-6h6v6" /></svg>
-                  </span>
-                  <span>{{ job.shopName || shopDisplayName }}</span>
-                </div>
-              </td>
-              <td>
-                <span class="quotation-status" [class.submitted]="job.quotationSubmitted">
-                  {{ job.quotationSubmitted ? 'Submitted' : 'Not submitted' }}
-                </span>
-              </td>
-              <td>
-                <a class="action-button" [routerLink]="[detailRoute, job.id]" [attr.aria-label]="'View job ' + job.id">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.2-6 9.5-6 9.5 6 9.5 6-3.2 6-9.5 6-9.5-6-9.5-6Z" /><circle cx="12" cy="12" r="2.5" /></svg>
-                </a>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
+    <app-shop-jobs-table
+      [jobs]="pageItems()"
+      [detailRoute]="detailRoute"
+      title="New Jobs"
+      [showQuotationStatus]="true"
+    />
     @if (filteredItems().length > pageSize()) {
       <app-job-pagination
         variant="brand"
