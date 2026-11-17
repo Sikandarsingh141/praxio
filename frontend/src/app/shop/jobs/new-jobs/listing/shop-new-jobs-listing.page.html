@@ -18,22 +18,6 @@
         [appliedFilters]="appliedFilters()"
         (filtersChange)="applyFilters($event)"
       />
-      <label class="toolbar-select">
-        <span>Status</span>
-        <select [value]="statusFilter()" (change)="setStatusFilter($any($event.target).value)">
-          <option value="">All statuses</option>
-          @for (status of statusOptions(); track status) {
-            <option [value]="status">{{ status.replaceAll('_', ' ') | titlecase }}</option>
-          }
-        </select>
-      </label>
-      <label class="toolbar-select">
-        <span>Sort by</span>
-        <select [value]="sort()" (change)="setSort($any($event.target).value)">
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-        </select>
-      </label>
     </div>
   </app-admin-page-header>
 

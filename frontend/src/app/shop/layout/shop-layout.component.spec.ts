@@ -82,7 +82,7 @@ describe('ShopLayout', () => {
       'data:image/png;base64,abc',
     );
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
-    expect(fixture.nativeElement.textContent).toContain('My Repair Requests');
+    expect(fixture.nativeElement.textContent).toContain('Repair Requests');
     expect(fixture.nativeElement.textContent).toContain('All repair requests');
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
