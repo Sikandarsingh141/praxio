@@ -110,6 +110,10 @@ describe('ShopRepairRequestDetailsPage directions', () => {
               .and.returnValue(
                 throwError(() => ({ error: { message: 'Directions service unavailable.' } })),
               ),
+            startRepair: jasmine.createSpy().and.returnValue(of(request)),
+            holdRepair: jasmine.createSpy().and.returnValue(of(request)),
+            completeRepair: jasmine.createSpy().and.returnValue(of(request)),
+            readyForPickup: jasmine.createSpy().and.returnValue(of(request)),
           },
         },
         {
@@ -254,5 +258,108 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(component.isQuotationValid()).toBeTrue();
     expect(component.quotationProposedSolution()).toBe('General Repair, Other');
     expect(component.quotationMessage()).toBe('Board-level repair');
+  });
+
+  it('supports completion multi-select, Other, dynamic parts, and preserves the API contract', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.setRequest({
+      ...request,
+      repairJob: { status: 'in_progress' },
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.completion-action button')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.completion-modal-backdrop')).toBeNull();
+
+    component.openCompletionModal();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.completion-modal-backdrop')).not.toBeNull();
+    expect(
+      fixture.nativeElement
+        .querySelector('textarea[name="completionDescription"]')
+        ?.getAttribute('placeholder'),
+    ).toBe('Summarize the completed repair.');
+    expect(
+      fixture.nativeElement
+        .querySelector('textarea[name="finalNotes"]')
+        ?.getAttribute('placeholder'),
+    ).toBe('Add any final notes for the customer.');
+
+    component.workPerformedSearch.set('battery');
+    expect(component.filteredWorkPerformedOptions()).toEqual(['Battery Replacement']);
+
+    component.toggleWorkPerformedOption('Battery Replacement');
+    component.toggleWorkPerformedOption('Other');
+    component.workPerformedOther.set('Board-level solder repair');
+    fixture.detectChanges();
+
+    expect(component.workPerformedSelections()).toEqual(['Battery Replacement', 'Other']);
+    expect(fixture.nativeElement.querySelectorAll('.completion-chip').length).toBe(2);
+    expect(fixture.nativeElement.querySelector('input[name="workPerformedOther"]')).not.toBeNull();
+
+    component.updateReplacedPartName(0, 'Battery');
+    component.updateReplacedPartQuantity(0, 2);
+    component.addReplacedPart();
+    component.updateReplacedPartName(1, 'Charging port');
+    fixture.detectChanges();
+
+    expect(component.partsReplacedValue()).toBe('Battery × 2, Charging port × 1');
+    expect(fixture.nativeElement.querySelectorAll('.completion-part-row').length).toBe(2);
+
+    component.completionDescription.set('Device repaired and tested.');
+    component.finalNotes.set('Customer should keep it dry.');
+    fixture.detectChanges();
+    expect(component.isCompletionValid()).toBeTrue();
+
+    component.completeRepair();
+    const completeRepairSpy = TestBed.inject(ShopRepairRequestsService).completeRepair as jasmine.Spy;
+    expect(completeRepairSpy).toHaveBeenCalledWith(request._id, {
+      completionDescription: 'Device repaired and tested.',
+      workPerformed: 'Battery Replacement, Other: Board-level solder repair',
+      partsReplaced: 'Battery × 2, Charging port × 1',
+      finalNotes: 'Customer should keep it dry.',
+    });
+    expect(component.completionModalOpen()).toBeFalse();
+  });
+
+  it('opens a pickup popup and keeps the ready-for-pickup API payload', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.setRequest({
+      ...request,
+      repairJob: { status: 'repair_completed' },
+    });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.pickup-action button')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#pickup-dialog-title')).toBeNull();
+
+    component.openPickupModal();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#pickup-dialog-title')?.textContent).toContain(
+      'Mark Ready for Pickup',
+    );
+    expect(
+      fixture.nativeElement
+        .querySelector('textarea[name="pickupInstructions"]')
+        ?.getAttribute('placeholder'),
+    ).toBe('Shop address, hours, or pickup requirements');
+
+    component.pickupInstructions.set('Collect from Sector 70, 10 AM to 6 PM.');
+    component.pickupMessage.set('Please bring the receipt.');
+    fixture.detectChanges();
+
+    component.markReadyForPickup();
+    const readySpy = TestBed.inject(ShopRepairRequestsService).readyForPickup as jasmine.Spy;
+    expect(readySpy).toHaveBeenCalledWith(request._id, {
+      pickupInstructions: 'Collect from Sector 70, 10 AM to 6 PM.',
+      message: 'Please bring the receipt.',
+    });
+    expect(component.pickupModalOpen()).toBeFalse();
   });
 });

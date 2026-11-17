@@ -40,6 +40,26 @@ const QUOTATION_SUMMARY_OPTIONS = [
 
 type QuotationSummaryOption = (typeof QUOTATION_SUMMARY_OPTIONS)[number];
 
+const WORK_PERFORMED_OPTIONS = [
+  'Hardware Repair',
+  'Software Repair',
+  'Component Replacement',
+  'Battery Replacement',
+  'Screen / Display Replacement',
+  'Electrical Repair',
+  'Cleaning & Maintenance',
+  'Testing & Quality Check',
+  'Performance Optimization',
+  'Other',
+] as const;
+
+type WorkPerformedOption = (typeof WORK_PERFORMED_OPTIONS)[number];
+
+type ReplacedPart = {
+  name: string;
+  quantity: number;
+};
+
 @Component({
   selector: 'app-shop-repair-request-details-page',
   standalone: true,
@@ -81,11 +101,19 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly repairActionSubmitting = signal(false);
   readonly progressNotes = signal('');
   readonly completionDescription = signal('');
-  readonly workPerformed = signal('');
-  readonly partsReplaced = signal('');
+  readonly completionModalOpen = signal(false);
+  readonly completionAttempted = signal(false);
+  readonly workPerformedOptions = WORK_PERFORMED_OPTIONS;
+  readonly workPerformedSelections = signal<WorkPerformedOption[]>([]);
+  readonly workPerformedSearch = signal('');
+  readonly workPerformedDropdownOpen = signal(false);
+  readonly workPerformedOther = signal('');
+  readonly replacedParts = signal<ReplacedPart[]>([{ name: '', quantity: 1 }]);
   readonly finalNotes = signal('');
   readonly pickupInstructions = signal('');
   readonly pickupMessage = signal('');
+  readonly pickupModalOpen = signal(false);
+  readonly pickupAttempted = signal(false);
   readonly repairFormError = signal('');
   readonly pageTitle = signal('Repair Request Details');
   readonly backRoute = signal('/shop/repair-requests');
@@ -139,6 +167,31 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       ? details
       : this.quotationProposedSolution();
   });
+  readonly filteredWorkPerformedOptions = computed(() => {
+    const term = this.workPerformedSearch().trim().toLowerCase();
+    return WORK_PERFORMED_OPTIONS.filter(
+      (option) => !term || option.toLowerCase().includes(term),
+    );
+  });
+  readonly hasOtherWorkPerformed = computed(() =>
+    this.workPerformedSelections().includes('Other'),
+  );
+  readonly workPerformedValue = computed(() => {
+    const otherDetails = this.workPerformedOther().trim();
+    return this.workPerformedSelections()
+      .map((option) => (option === 'Other' && otherDetails ? `Other: ${otherDetails}` : option))
+      .join(', ');
+  });
+  readonly partsReplacedValue = computed(() =>
+    this.replacedParts()
+      .map((part) => ({
+        name: part.name.trim(),
+        quantity: Math.max(1, Number(part.quantity) || 1),
+      }))
+      .filter((part) => part.name)
+      .map((part) => `${part.name} × ${part.quantity}`)
+      .join(', '),
+  );
   readonly currentProgressStep = computed(() => {
     const request = this.request();
     if (!request) return 1;
@@ -578,18 +631,116 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     );
   }
 
+  openCompletionModal(): void {
+    this.completionModalOpen.set(true);
+    this.repairFormError.set('');
+  }
+
+  closeCompletionModal(): void {
+    this.completionModalOpen.set(false);
+    this.completionAttempted.set(false);
+    this.repairFormError.set('');
+  }
+
+  openPickupModal(): void {
+    this.pickupModalOpen.set(true);
+    this.repairFormError.set('');
+  }
+
+  closePickupModal(): void {
+    this.pickupModalOpen.set(false);
+    this.pickupAttempted.set(false);
+    this.repairFormError.set('');
+  }
+
+  hasWorkPerformedOption(option: WorkPerformedOption): boolean {
+    return this.workPerformedSelections().includes(option);
+  }
+
+  toggleWorkPerformedOption(option: WorkPerformedOption): void {
+    const removing = this.hasWorkPerformedOption(option);
+    this.workPerformedSelections.update((selected) =>
+      removing ? selected.filter((item) => item !== option) : [...selected, option],
+    );
+    if (option === 'Other' && removing) {
+      this.workPerformedOther.set('');
+    }
+    this.workPerformedSearch.set('');
+    this.repairFormError.set('');
+  }
+
+  removeWorkPerformedOption(option: WorkPerformedOption): void {
+    this.workPerformedSelections.update((selected) => selected.filter((item) => item !== option));
+    if (option === 'Other') {
+      this.workPerformedOther.set('');
+    }
+    this.repairFormError.set('');
+  }
+
+  closeWorkPerformedDropdown(event: FocusEvent): void {
+    const container = event.currentTarget as HTMLElement | null;
+    const nextTarget = event.relatedTarget as HTMLElement | null;
+    if (!container || (nextTarget && container.contains(nextTarget))) return;
+    this.workPerformedDropdownOpen.set(false);
+    this.workPerformedSearch.set('');
+  }
+
+  addReplacedPart(): void {
+    this.replacedParts.update((parts) => [...parts, { name: '', quantity: 1 }]);
+  }
+
+  removeReplacedPart(index: number): void {
+    this.replacedParts.update((parts) => parts.filter((_, partIndex) => partIndex !== index));
+  }
+
+  updateReplacedPartName(index: number, value: string): void {
+    this.replacedParts.update((parts) =>
+      parts.map((part, partIndex) =>
+        partIndex === index ? { ...part, name: value } : part,
+      ),
+    );
+  }
+
+  updateReplacedPartQuantity(index: number, value: number | string): void {
+    this.replacedParts.update((parts) =>
+      parts.map((part, partIndex) =>
+        partIndex === index
+          ? { ...part, quantity: Math.max(1, Number(value) || 1) }
+          : part,
+      ),
+    );
+  }
+
+  isCompletionValid(): boolean {
+    return (
+      !!this.completionDescription().trim() &&
+      this.workPerformedSelections().length > 0 &&
+      (!this.hasOtherWorkPerformed() || !!this.workPerformedOther().trim())
+    );
+  }
+
   completeRepair(): void {
     const request = this.request();
-    if (!request || !this.completionDescription().trim() || !this.workPerformed().trim()) {
-      this.repairFormError.set('Describe the outcome and work performed before continuing.');
+    this.completionAttempted.set(true);
+    if (!request) return;
+    if (!this.completionDescription().trim()) {
+      this.repairFormError.set('Add a completion summary before continuing.');
+      return;
+    }
+    if (!this.workPerformedSelections().length) {
+      this.repairFormError.set('Select at least one work performed activity.');
+      return;
+    }
+    if (this.hasOtherWorkPerformed() && !this.workPerformedOther().trim()) {
+      this.repairFormError.set('Describe the other work performed.');
       return;
     }
     this.repairFormError.set('');
     this.runRepairAction('complete', () =>
       this.requestsService.completeRepair(request._id, {
         completionDescription: this.completionDescription().trim(),
-        workPerformed: this.workPerformed().trim(),
-        partsReplaced: this.partsReplaced().trim() || undefined,
+        workPerformed: this.workPerformedValue(),
+        partsReplaced: this.partsReplacedValue() || undefined,
         finalNotes: this.finalNotes().trim() || undefined,
       }),
     );
@@ -597,6 +748,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
 
   markReadyForPickup(): void {
     const request = this.request();
+    this.pickupAttempted.set(true);
     if (!request || !this.pickupInstructions().trim()) {
       this.repairFormError.set('Enter pickup instructions for the customer.');
       return;
@@ -629,6 +781,14 @@ export class ShopRepairRequestDetailsPage implements OnInit {
           pickup: 'Customer notified that the repair is ready for pickup.',
         };
         this.toastService.success('Repair Updated', messages[action]);
+        if (action === 'complete') {
+          this.closeCompletionModal();
+          this.resetCompletionForm();
+        }
+        if (action === 'pickup') {
+          this.closePickupModal();
+          this.resetPickupForm();
+        }
         this.repairActionSubmitting.set(false);
         this.reloadRequest(id);
       },
@@ -639,6 +799,23 @@ export class ShopRepairRequestDetailsPage implements OnInit {
         this.repairActionSubmitting.set(false);
       },
     });
+  }
+
+  private resetCompletionForm(): void {
+    this.completionDescription.set('');
+    this.workPerformedSelections.set([]);
+    this.workPerformedSearch.set('');
+    this.workPerformedDropdownOpen.set(false);
+    this.workPerformedOther.set('');
+    this.replacedParts.set([{ name: '', quantity: 1 }]);
+    this.finalNotes.set('');
+    this.completionAttempted.set(false);
+  }
+
+  private resetPickupForm(): void {
+    this.pickupInstructions.set('');
+    this.pickupMessage.set('');
+    this.pickupAttempted.set(false);
   }
 
   private reloadRequest(id: string): void {

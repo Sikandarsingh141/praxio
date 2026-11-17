@@ -378,82 +378,25 @@
               Place on hold
             </button>
           </div>
-          <form class="workflow-form" (ngSubmit)="completeRepair()">
-            <h3>Record repair completion</h3>
-            <label>
-              <span>Completion summary *</span>
-              <textarea
-                name="completionDescription"
-                rows="2"
-                maxlength="2000"
-                required
-                [ngModel]="completionDescription()"
-                (ngModelChange)="completionDescription.set($event)"
-              ></textarea>
-            </label>
-            <label>
-              <span>Work performed *</span>
-              <textarea
-                name="workPerformed"
-                rows="2"
-                maxlength="2000"
-                required
-                [ngModel]="workPerformed()"
-                (ngModelChange)="workPerformed.set($event)"
-              ></textarea>
-            </label>
-            <label>
-              <span>Parts replaced (optional)</span>
-              <input
-                name="partsReplaced"
-                maxlength="1000"
-                [ngModel]="partsReplaced()"
-                (ngModelChange)="partsReplaced.set($event)"
-              />
-            </label>
-            <label>
-              <span>Final notes (optional)</span>
-              <textarea
-                name="finalNotes"
-                rows="2"
-                maxlength="2000"
-                [ngModel]="finalNotes()"
-                (ngModelChange)="finalNotes.set($event)"
-              ></textarea>
-            </label>
-            <button type="submit" class="primary-button" [disabled]="repairActionSubmitting()">
-              {{ repairActionSubmitting() ? 'Saving…' : 'Mark repair complete' }}
+          <div class="completion-action">
+            <div>
+              <h3>Complete this repair</h3>
+              <p>Record the final outcome, activities, and parts before notifying the customer.</p>
+            </div>
+            <button type="button" class="primary-button" (click)="openCompletionModal()">
+              Mark repair complete
             </button>
-          </form>
+          </div>
         } @else if (job.status === 'repair_completed') {
-          <form class="workflow-form" (ngSubmit)="markReadyForPickup()">
-            <h3>Notify customer for pickup</h3>
-            <label>
-              <span>Pickup instructions *</span>
-              <textarea
-                name="pickupInstructions"
-                rows="2"
-                maxlength="1000"
-                required
-                [ngModel]="pickupInstructions()"
-                (ngModelChange)="pickupInstructions.set($event)"
-                placeholder="Shop address, hours, or pickup requirements"
-              ></textarea>
-            </label>
-            <label>
-              <span>Message (optional)</span>
-              <textarea
-                name="pickupMessage"
-                rows="2"
-                maxlength="500"
-                [ngModel]="pickupMessage()"
-                (ngModelChange)="pickupMessage.set($event)"
-              ></textarea>
-            </label>
-            <button type="submit" class="primary-button" [disabled]="repairActionSubmitting()">
-              {{ repairActionSubmitting() ? 'Sending…' : 'Mark ready for pickup' }}
+          <div class="completion-action pickup-action">
+            <div>
+              <h3>Notify customer for pickup</h3>
+              <p>Share pickup details and move the repair to ready for pickup.</p>
+            </div>
+            <button type="button" class="primary-button" (click)="openPickupModal()">
+              Mark ready for pickup
             </button>
-          </form>
+          </div>
         } @else {
           <p class="workflow-note">
             @if (job.status === 'ready_for_pickup') {
@@ -740,6 +683,322 @@
         @if (request()?.technicianAssignment?.current) { <label class="assignment-search"><span>Reassignment reason <b>*</b></span><textarea rows="2" maxlength="500" [ngModel]="assignmentReason()" (ngModelChange)="assignmentReason.set($event)"></textarea></label> }
         @if (assignmentError()) { <p class="form-error" role="alert">{{ assignmentError() }}</p> }
         <footer><button type="button" class="secondary-button" (click)="cancelAssignment()">Cancel</button>@if (request()?.technicianAssignment?.current) { <button type="button" class="decline-button" [disabled]="assignmentSubmitting()" (click)="unassignTechnician()">Unassign</button> }<button type="button" class="primary-button" [disabled]="assignmentSubmitting() || assignmentLoading()" (click)="submitAssignment()">{{ assignmentSubmitting() ? 'Saving…' : 'Confirm Assignment' }}</button></footer>
+      </section>
+    </div>
+  }
+
+  @if (completionModalOpen()) {
+    <div class="completion-modal-backdrop" role="presentation" (click)="closeCompletionModal()">
+      <section
+        class="completion-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="completion-dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="completion-dialog-header">
+          <div>
+            <span class="section-kicker">REPAIR COMPLETION</span>
+            <h2 id="completion-dialog-title">Mark Repair Complete</h2>
+          </div>
+          <button
+            type="button"
+            class="dialog-close"
+            aria-label="Close repair completion form"
+            (click)="closeCompletionModal()"
+          >
+            ×
+          </button>
+        </header>
+        <form class="completion-form" (ngSubmit)="completeRepair()">
+          <p class="completion-intro">
+            Record the final outcome, activities, and parts used before the repair is marked complete.
+          </p>
+          @if (repairFormError()) {
+            <p class="form-error" role="alert">{{ repairFormError() }}</p>
+          }
+
+          <section class="completion-section">
+            <header class="completion-section-header">
+              <span class="completion-step">01</span>
+              <div>
+                <h3>Completion Summary</h3>
+                <p>Describe the final result of the repair.</p>
+              </div>
+            </header>
+            <label class="completion-field">
+              <span>Completion summary <b>*</b></span>
+              <textarea
+                name="completionDescription"
+                rows="3"
+                maxlength="2000"
+                required
+                placeholder="Summarize the completed repair."
+                [ngModel]="completionDescription()"
+                (ngModelChange)="completionDescription.set($event); repairFormError.set('')"
+                [attr.aria-invalid]="completionAttempted() && !completionDescription().trim()"
+              ></textarea>
+              @if (completionAttempted() && !completionDescription().trim()) {
+                <small class="field-error">Add a completion summary.</small>
+              }
+            </label>
+          </section>
+
+          <section class="completion-section">
+            <header class="completion-section-header">
+              <span class="completion-step">02</span>
+              <div>
+                <h3>Work Performed</h3>
+                <p>Select every activity completed during this repair.</p>
+              </div>
+            </header>
+            <label class="completion-field">
+              <span>Work performed <b>*</b></span>
+              <div
+                class="completion-multiselect"
+                [class.open]="workPerformedDropdownOpen()"
+                [attr.aria-invalid]="completionAttempted() && !workPerformedSelections().length"
+                (focusout)="closeWorkPerformedDropdown($event)"
+              >
+                <div class="completion-chip-list">
+                  @for (option of workPerformedSelections(); track option) {
+                    <span class="completion-chip">
+                      {{ option }}
+                      <button
+                        type="button"
+                        [attr.aria-label]="'Remove ' + option"
+                        (click)="removeWorkPerformedOption(option); $event.stopPropagation(); $event.preventDefault()"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  }
+                  <input
+                    type="text"
+                    name="workPerformedSearch"
+                    [attr.placeholder]="workPerformedSelections().length ? 'Search more activities' : 'Search work performed'"
+                    [ngModel]="workPerformedSearch()"
+                    (ngModelChange)="workPerformedSearch.set($event)"
+                    (focus)="workPerformedDropdownOpen.set(true)"
+                  />
+                </div>
+                @if (workPerformedDropdownOpen()) {
+                  <div class="completion-options" role="listbox" aria-multiselectable="true">
+                    @for (option of filteredWorkPerformedOptions(); track option) {
+                      <button
+                        type="button"
+                        class="completion-option"
+                        role="option"
+                        [attr.aria-selected]="hasWorkPerformedOption(option)"
+                        (click)="toggleWorkPerformedOption(option); $event.preventDefault()"
+                      >
+                        <span class="completion-option-check">
+                          {{ hasWorkPerformedOption(option) ? '✓' : '' }}
+                        </span>
+                        {{ option }}
+                      </button>
+                    } @empty {
+                      <p class="completion-options-empty">No matching activities.</p>
+                    }
+                  </div>
+                }
+              </div>
+              @if (completionAttempted() && !workPerformedSelections().length) {
+                <small class="field-error">Select at least one activity.</small>
+              }
+            </label>
+            @if (hasOtherWorkPerformed()) {
+              <label class="completion-field">
+                <span>Describe other work performed <b>*</b></span>
+                <input
+                  type="text"
+                  name="workPerformedOther"
+                  maxlength="2000"
+                  required
+                  placeholder="Describe the work performed"
+                  [ngModel]="workPerformedOther()"
+                  (ngModelChange)="workPerformedOther.set($event); repairFormError.set('')"
+                  [attr.aria-invalid]="completionAttempted() && !workPerformedOther().trim()"
+                />
+                @if (completionAttempted() && !workPerformedOther().trim()) {
+                  <small class="field-error">Describe the other work performed.</small>
+                }
+              </label>
+            }
+          </section>
+
+          <section class="completion-section">
+            <header class="completion-section-header">
+              <span class="completion-step">03</span>
+              <div>
+                <h3>Parts Replaced</h3>
+                <p>Add parts only if replacements were used.</p>
+              </div>
+            </header>
+            <div class="completion-parts-list">
+              @for (part of replacedParts(); track $index) {
+                <div class="completion-part-row">
+                  <label class="completion-field">
+                    <span>Part Name</span>
+                    <input
+                      type="text"
+                      [name]="'partName' + $index"
+                      maxlength="500"
+                      placeholder="e.g. Charging port"
+                      [ngModel]="part.name"
+                      (ngModelChange)="updateReplacedPartName($index, $event)"
+                    />
+                  </label>
+                  <label class="completion-field">
+                    <span>Quantity</span>
+                    <input
+                      type="number"
+                      [name]="'partQuantity' + $index"
+                      min="1"
+                      step="1"
+                      [ngModel]="part.quantity"
+                      (ngModelChange)="updateReplacedPartQuantity($index, $event)"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    class="remove-part-button"
+                    [attr.aria-label]="'Remove part ' + ($index + 1)"
+                    (click)="removeReplacedPart($index)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              } @empty {
+                <p class="completion-empty">No parts added.</p>
+              }
+              <button type="button" class="add-part-button" (click)="addReplacedPart()">
+                + Add Part
+              </button>
+            </div>
+          </section>
+
+          <section class="completion-section">
+            <header class="completion-section-header">
+              <span class="completion-step">04</span>
+              <div>
+                <h3>Final Notes</h3>
+                <p>Optional notes for the customer.</p>
+              </div>
+            </header>
+            <label class="completion-field">
+              <span>Final notes (optional)</span>
+              <textarea
+                name="finalNotes"
+                rows="3"
+                maxlength="2000"
+                placeholder="Add any final notes for the customer."
+                [ngModel]="finalNotes()"
+                (ngModelChange)="finalNotes.set($event)"
+              ></textarea>
+            </label>
+          </section>
+
+          <footer class="completion-footer">
+            <button type="button" class="secondary-button" (click)="closeCompletionModal()">
+              Cancel
+            </button>
+            <button type="submit" class="primary-button" [disabled]="repairActionSubmitting()">
+              {{ repairActionSubmitting() ? 'Saving…' : 'Mark Repair Complete' }}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (pickupModalOpen()) {
+    <div class="completion-modal-backdrop" role="presentation" (click)="closePickupModal()">
+      <section
+        class="completion-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pickup-dialog-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="completion-dialog-header">
+          <div>
+            <span class="section-kicker">PICKUP NOTIFICATION</span>
+            <h2 id="pickup-dialog-title">Mark Ready for Pickup</h2>
+          </div>
+          <button
+            type="button"
+            class="dialog-close"
+            aria-label="Close pickup notification form"
+            (click)="closePickupModal()"
+          >
+            ×
+          </button>
+        </header>
+        <form class="completion-form" (ngSubmit)="markReadyForPickup()">
+          <p class="completion-intro">
+            Share the pickup details below. The customer will be notified when the repair is ready.
+          </p>
+          @if (repairFormError()) {
+            <p class="form-error" role="alert">{{ repairFormError() }}</p>
+          }
+
+          <section class="completion-section">
+            <header class="completion-section-header">
+              <span class="completion-step">01</span>
+              <div>
+                <h3>Pickup Instructions</h3>
+                <p>Tell the customer where and when to collect the repair.</p>
+              </div>
+            </header>
+            <label class="completion-field">
+              <span>Pickup instructions <b>*</b></span>
+              <textarea
+                name="pickupInstructions"
+                rows="3"
+                maxlength="1000"
+                required
+                placeholder="Shop address, hours, or pickup requirements"
+                [ngModel]="pickupInstructions()"
+                (ngModelChange)="pickupInstructions.set($event); repairFormError.set('')"
+                [attr.aria-invalid]="pickupAttempted() && !pickupInstructions().trim()"
+              ></textarea>
+              @if (pickupAttempted() && !pickupInstructions().trim()) {
+                <small class="field-error">Enter pickup instructions for the customer.</small>
+              }
+            </label>
+          </section>
+
+          <section class="completion-section">
+            <header class="completion-section-header">
+              <span class="completion-step">02</span>
+              <div>
+                <h3>Customer Message</h3>
+                <p>Add an optional note for the customer.</p>
+              </div>
+            </header>
+            <label class="completion-field">
+              <span>Message (optional)</span>
+              <textarea
+                name="pickupMessage"
+                rows="3"
+                maxlength="500"
+                placeholder="Add an optional message for the customer"
+                [ngModel]="pickupMessage()"
+                (ngModelChange)="pickupMessage.set($event)"
+              ></textarea>
+            </label>
+          </section>
+
+          <footer class="completion-footer">
+            <button type="button" class="secondary-button" (click)="closePickupModal()">
+              Cancel
+            </button>
+            <button type="submit" class="primary-button" [disabled]="repairActionSubmitting()">
+              {{ repairActionSubmitting() ? 'Sending…' : 'Mark Ready for Pickup' }}
+            </button>
+          </footer>
+        </form>
       </section>
     </div>
   }

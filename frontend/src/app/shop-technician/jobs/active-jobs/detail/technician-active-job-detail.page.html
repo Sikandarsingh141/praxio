@@ -317,6 +317,41 @@
         }
 
         @if (repair.status === 'in_progress' || repair.status === 'on_hold') {
+          <div class="workflow-actions">
+            <label>
+              <span>Progress note (optional)</span>
+              <input
+                type="text"
+                maxlength="1000"
+                [ngModel]="progressNotes()"
+                (ngModelChange)="progressNotes.set($event)"
+                [attr.placeholder]="
+                  repair.status === 'on_hold'
+                    ? 'Share an update with the customer'
+                    : 'Explain why work is paused, if applicable'
+                "
+              />
+            </label>
+            @if (repair.status === 'on_hold') {
+              <button
+                type="button"
+                class="job-button primary"
+                [disabled]="repairActionPending()"
+                (click)="resumeRepair()"
+              >
+                {{ repairActionPending() ? 'Updating…' : 'Resume repair' }}
+              </button>
+            } @else {
+              <button
+                type="button"
+                class="job-button secondary"
+                [disabled]="repairActionPending()"
+                (click)="holdRepair()"
+              >
+                {{ repairActionPending() ? 'Updating…' : 'Place on hold' }}
+              </button>
+            }
+          </div>
           <div class="workflow-action-buttons">
             <button type="button" class="job-button secondary" (click)="openAdditionalChargesModal()">
               Request Additional Charges
