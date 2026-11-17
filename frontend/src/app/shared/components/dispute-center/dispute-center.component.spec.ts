@@ -1,10 +1,12 @@
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
+import { CustomerRepairRequest } from '../../../customer/models/customer-portal.models';
 import { CustomerPortalService } from '../../../customer/services/customer-portal.service';
-import { RepairDispute } from '../../models/disputes.models';
+import { DisputeListResult, RepairDispute } from '../../models/disputes.models';
 import { DisputesService } from '../../services/disputes.service';
+import { ToastService } from '../../../core/toast/toast.service';
 import { DisputeCenterComponent } from './dispute-center.component';
 
 describe('DisputeCenterComponent customer views', () => {
@@ -92,11 +94,85 @@ describe('DisputeCenterComponent customer views', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.raise-dispute-button')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector(
+        '.shop-dispute-list-page .customer-dispute-table-card',
+      ),
+    ).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.customer-dispute-table')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-job-pagination')).not.toBeNull();
     expect(
       (fixture.nativeElement.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,
     ).toContain('/shop/disputes/dispute-id');
+  });
+
+  it('opens the raise-dispute form with the completed repair ID and submits against it', async () => {
+    const request: CustomerRepairRequest = {
+      _id: '507f1f77bcf86cd7099f4b67bb',
+      shopIds: ['shop-id'],
+      appliance: 'Mobile Phone',
+      brand: 'Apple',
+      model: '17',
+      description: 'Screen still does not work',
+      status: 'completed',
+      createdAt: '2026-11-17T00:00:00.000Z',
+      quotations: [],
+      repairJob: { status: 'completed' },
+    };
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list', 'create']);
+    disputes.list.and.returnValue(
+      of({
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        summary: { TOTAL: 0, OPEN: 0, UNDER_REVIEW: 0, RESOLVED: 0, CLOSED: 0 },
+      } satisfies DisputeListResult),
+    );
+    disputes.create.and.returnValue(of({ _id: 'new-dispute' } as RepairDispute));
+    const customerPortal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getRepairRequests'],
+    );
+    customerPortal.getRepairRequests.and.returnValue(of([request]));
+    const toastService = jasmine.createSpyObj<ToastService>('ToastService', ['success', 'error']);
+
+    await TestBed.configureTestingModule({
+      imports: [DisputeCenterComponent],
+      providers: [
+        provideRouter([]),
+        { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: customerPortal },
+        { provide: ToastService, useValue: toastService },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(DisputeCenterComponent);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+
+    (fixture.nativeElement.querySelector('.raise-dispute-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const requestOption = dialog.querySelector(
+      'option[value="507f1f77bcf86cd7099f4b67bb"]',
+    ) as HTMLOptionElement;
+    expect(requestOption.textContent?.trim()).toBe('Mobile Phone · Apple 17 (#9F4B67BB)');
+    expect(dialog.querySelector('.repair-status')?.textContent?.trim()).toBe('Completed');
+    expect(dialog.textContent).toContain('Dispute Guidelines');
+
+    fixture.componentInstance.description = 'Screen still does not work';
+    fixture.componentInstance.createDispute();
+
+    expect(disputes.create).toHaveBeenCalledWith(
+      '507f1f77bcf86cd7099f4b67bb',
+      jasmine.objectContaining({
+        category: 'repair_quality',
+        description: 'Screen still does not work',
+      }),
+    );
+    expect(router.navigate).toHaveBeenCalledWith(['/customer/disputes', 'new-dispute']);
   });
 
   it('shows dispute history and resolution details in the completed-job detail layout', async () => {
@@ -187,5 +263,18 @@ describe('DisputeCenterComponent customer views', () => {
     expect(text).toContain('Resolution Details');
     expect(text).toContain('The device still does not cool.');
     expect(text).toContain('The repair was completed.');
+
+    const component = harness.routeDebugElement!.componentInstance as DisputeCenterComponent;
+    component.role.set('shop');
+    harness.detectChanges();
+
+    expect(page.querySelector('.customer-dispute-detail-page')).not.toBeNull();
+    expect(page.querySelector('.request-hero')).not.toBeNull();
+    expect(page.querySelector('.request-progress')).not.toBeNull();
+    expect(page.querySelector('.customer-detail-sidebar')).not.toBeNull();
+    expect(page.querySelector('.participants-card')).toBeNull();
+    expect((page.querySelector('.repair-details-link') as HTMLAnchorElement).href).toContain(
+      '/shop/repair-requests/repair-id',
+    );
   });
 });

@@ -20,16 +20,38 @@ describe('CustomerDisputedJobDetailPage', () => {
       description: 'The repaired device still does not work.',
       expectedResolution: 'Repair the device correctly.',
       attachments: [],
-      status: 'UNDER_REVIEW',
+      status: 'AWAITING_CUSTOMER_RESPONSE',
       priority: 'normal',
       messages: [],
-      statusHistory: [],
+      shopResponse: {
+        explanation: 'Please confirm whether the issue is resolved.',
+        message: 'We have reviewed the repair.',
+        attachments: [],
+        respondedAt: '2025-01-03T09:00:00.000Z',
+      },
+      statusHistory: [
+        {
+          from: 'AWAITING_SHOP_RESPONSE',
+          to: 'AWAITING_CUSTOMER_RESPONSE',
+          actorRole: 'shop',
+          reason: 'The shop submitted reinspection findings.',
+          at: '2025-01-03T09:00:00.000Z',
+        },
+      ],
       resolution: {
         documents: [],
         completionDocuments: [],
         requiredActionCompleted: false,
       },
-      reinspections: [],
+      reinspections: [
+        {
+          findings: 'The device still fails to power on.',
+          identifiedProblem: 'Charging assembly is damaged.',
+          requiredRepairWork: 'Replace the charging assembly.',
+          attachments: [],
+          submittedAt: '2025-01-03T08:59:59.000Z',
+        },
+      ],
       additionalCharges: [],
       reworkProgress: [],
       reworkCompletions: [],
@@ -53,8 +75,31 @@ describe('CustomerDisputedJobDetailPage', () => {
       },
     };
 
-    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['get']);
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', [
+      'get',
+      'sendMessage',
+      'reportUnresolved',
+    ]);
     disputes.get.and.returnValue(of(dispute));
+    const sentMessage = 'The issue is still happening.';
+    disputes.sendMessage.and.returnValue(
+      of({
+        ...dispute,
+        messages: [
+          {
+            authorId: 'customer-1',
+            authorRole: 'customer',
+            message: sentMessage,
+            attachments: [],
+            internal: false,
+            createdAt: '2025-01-03T10:00:00.000Z',
+          },
+        ],
+      }),
+    );
+    disputes.reportUnresolved.and.returnValue(
+      of({ ...dispute, status: 'UNDER_REVIEW' }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [CustomerDisputedJobDetailPage],
@@ -85,6 +130,66 @@ describe('CustomerDisputedJobDetailPage', () => {
     expect(text).toContain('Dispute Description');
     expect(text).toContain('The repaired device still does not work.');
     expect(text).toContain('Repair Shop');
+    expect(text).toContain('Conversation');
+    expect(text).toContain("Review the shop's reinspection findings");
+    expect(text).toContain('The device still fails to power on.');
+    expect(page.querySelector('.empty-conversation strong')?.textContent).toContain('No messages yet');
+    const messageInput = page.querySelector<HTMLTextAreaElement>('.conversation-compose textarea');
+    const sendButton = page.querySelector<HTMLButtonElement>('.conversation-compose button[type="submit"]');
+    expect(messageInput).not.toBeNull();
+    expect(sendButton?.disabled).toBeTrue();
+    messageInput!.value = sentMessage;
+    messageInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    harness.fixture.detectChanges();
+    expect(sendButton?.disabled).toBeFalse();
+    sendButton?.click();
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(disputes.sendMessage).toHaveBeenCalledWith('customer', 'dispute-123', {
+      message: sentMessage,
+      attachments: [],
+    });
+    expect(page.textContent).toContain(sentMessage);
+    expect(page.textContent).toContain('Message sent.');
+    const reinspectionReply = page.querySelector<HTMLTextAreaElement>(
+      'textarea[name="reinspectionReply"]',
+    );
+    expect(reinspectionReply).not.toBeNull();
+    const reply = 'I reviewed the findings. Please proceed with the listed repair.';
+    reinspectionReply!.value = reply;
+    reinspectionReply!.dispatchEvent(new Event('input', { bubbles: true }));
+    harness.fixture.detectChanges();
+    const replyButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.customer-response-panel button'),
+    ).find((button) => button.textContent?.includes('Send response to shop'));
+    expect(replyButton?.disabled).toBeFalse();
+    replyButton?.click();
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(disputes.sendMessage).toHaveBeenCalledWith('customer', 'dispute-123', {
+      message: reply,
+      attachments: [],
+    });
+    expect(page.textContent).toContain('Response sent to the shop.');
+    const unresolvedInput = page.querySelector<HTMLTextAreaElement>(
+      'textarea[name="reinspectionUnresolvedNotes"]',
+    );
+    expect(unresolvedInput).not.toBeNull();
+    const unresolvedNotes = 'The issue is still not fixed.';
+    unresolvedInput!.value = unresolvedNotes;
+    unresolvedInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    harness.fixture.detectChanges();
+    const reportButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.customer-response-panel button'),
+    ).find((button) => button.textContent?.includes('Report issue still exists'));
+    expect(reportButton?.disabled).toBeFalse();
+    reportButton?.click();
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(disputes.reportUnresolved).toHaveBeenCalledWith('dispute-123', {
+      notes: unresolvedNotes,
+      attachments: [],
+    });
     expect(text).not.toContain('Open customer dispute page for permitted actions');
     expect(page.querySelector('.dispute-actions-link')).toBeNull();
     expect(disputes.get).toHaveBeenCalledWith('customer', 'dispute-123');

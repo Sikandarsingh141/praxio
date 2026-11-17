@@ -1,13 +1,961 @@
-<main class="job-detail-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb"><a [routerLink]="backRoute">{{ backLabel }}</a><span aria-hidden="true">/</span><span aria-current="page">Issue details</span></nav>
-  @if (loading()) { <p class="state" role="status">Loading issue details...</p> }
-  @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
-  @else if (record(); as dispute) {
-    <header class="detail-heading"><div><p class="eyebrow">ISSUE {{ dispute.reference }}</p><h1>{{ dispute.subject }}</h1><p>Repair request #{{ dispute.repairRequestId.slice(-8).toUpperCase() }}</p></div><app-job-status-badge [status]="dispute.status" /></header>
-    <section class="detail-section"><h2>Issue details</h2><dl><div><dt>Category</dt><dd>{{ dispute.category.replaceAll('_', ' ') | titlecase }}</dd></div><div><dt>Opened</dt><dd>{{ dispute.createdAt | date: 'medium' }}</dd></div><div><dt>Repair item</dt><dd>{{ dispute.repair?.appliance || 'Repair request' }} {{ dispute.repair?.brand }} {{ dispute.repair?.model }}</dd></div></dl><p>{{ dispute.description }}</p>@if (dispute.expectedResolution) { <p><strong>Requested resolution:</strong> {{ dispute.expectedResolution }}</p> }</section>
-    <section class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="attachments(dispute)" /></section>
-    <section class="detail-section"><h2>Dispute history</h2><app-job-timeline [items]="timeline(dispute)" /></section>
-    <section class="detail-section"><h2>Messages</h2>@if (dispute.messages.length) { @for (message of dispute.messages; track $index) { <article class="message"><strong>{{ message.authorRole | titlecase }}</strong><time>{{ message.createdAt | date: 'medium' }}</time><p>{{ message.message }}</p></article> } } @else { <p>No messages have been added to this dispute yet.</p> }</section>
-    <a class="job-button" [routerLink]="[disputeRoute, dispute._id]">Open issue page for permitted actions</a>
+<main class="job-detail-page customer-disputed-job-detail-page">
+  @if (loading()) {
+    <p class="state" role="status">Loading issue details...</p>
+  } @else if (error()) {
+    <p class="state error" role="alert">{{ error() }}</p>
+  } @else if (record(); as dispute) {
+    <a class="detail-back-link" [routerLink]="backRoute">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+      Back to {{ backLabel }}
+    </a>
+    <h1 class="detail-page-title">{{ pageTitle }}</h1>
+
+    <section class="request-hero" aria-label="Disputed repair summary">
+      <div class="request-hero-photo">
+        @if (dispute.repair?.photos?.[0]; as photo) {
+          <img [src]="photoSource(photo)" [alt]="dispute.repair?.appliance + ' photo'" />
+        } @else {
+          <span class="hero-image-placeholder" role="img" aria-label="No image available">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="8.5" cy="9" r="1.5" />
+              <path d="m21 15-5-5L5 21" />
+            </svg>
+          </span>
+        }
+      </div>
+      <div class="request-hero-copy">
+        <h2>{{ dispute.subject }}</h2>
+        <span class="request-id">Dispute ID: <strong>{{ dispute.reference }}</strong></span>
+        <span class="request-id">
+          Request ID: <strong>#{{ dispute.repairRequestId.slice(-8).toUpperCase() }}</strong>
+        </span>
+      </div>
+      <span class="detail-status" [attr.data-status]="dispute.status.toLowerCase()">
+        <span class="status-dot" aria-hidden="true"></span>{{ formatStatus(dispute.status) }}
+      </span>
+    </section>
+
+    <ol class="request-progress" aria-label="Dispute progress">
+      @for (step of progressSteps; track step; let index = $index) {
+        <li
+          [class.completed]="isDisputeComplete(dispute) || index + 1 < currentProgressStep(dispute)"
+          [class.current]="!isDisputeComplete(dispute) && index + 1 === currentProgressStep(dispute)"
+          [attr.aria-current]="
+            !isDisputeComplete(dispute) && index + 1 === currentProgressStep(dispute) ? 'step' : null
+          "
+        >
+          <span class="progress-marker" aria-hidden="true">
+            @if (isDisputeComplete(dispute) || index + 1 < currentProgressStep(dispute)) {
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <strong>{{ step }}</strong>
+          @if (progressDate(dispute, index); as stepDate) {
+            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
+          }
+        </li>
+      }
+    </ol>
+
+    @if (actionError()) {
+      <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+    }
+    @if (actionNotice()) {
+      <p class="action-feedback success" role="status">{{ actionNotice() }}</p>
+    }
+
+    <div class="customer-detail-layout">
+      <div class="customer-detail-main">
+        <section class="detail-section customer-detail-main-card" aria-label="Issue details">
+          <section class="customer-detail-block customer-information-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5 21a7 7 0 0 1 14 0" />
+              </svg>
+              Customer Information
+            </h2>
+            <div class="customer-information-row">
+              <div class="customer-identity">
+                <span class="customer-avatar" aria-hidden="true">
+                  {{ initials(customerName(dispute)) }}
+                </span>
+                <strong>{{ customerName(dispute) }}</strong>
+              </div>
+              <dl class="customer-facts">
+                <div><dt>Email</dt><dd>{{ customerEmail(dispute) }}</dd></div>
+                <div><dt>Dispute reference</dt><dd>{{ dispute.reference }}</dd></div>
+                <div><dt>Opened</dt><dd>{{ dispute.createdAt | date: 'MMM d, y' }}</dd></div>
+              </dl>
+            </div>
+          </section>
+
+          <section class="customer-detail-block problem-description-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6M8 13h8m-8 4h8" />
+              </svg>
+              Dispute Description
+            </h2>
+            <p>{{ dispute.description || 'No dispute description provided.' }}</p>
+            @if (dispute.customerComments) {
+              <p><strong>Additional comments:</strong> {{ dispute.customerComments }}</p>
+            }
+            @if (dispute.expectedResolution) {
+              <p><strong>Requested resolution:</strong> {{ dispute.expectedResolution }}</p>
+            }
+          </section>
+
+          <section class="customer-detail-block route-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              Customer Location and Route
+            </h2>
+            @if (hasRouteCoordinates()) {
+              <app-shop-repair-route
+                [requestId]="dispute.repairRequestId"
+                [shopLocation]="shopLocation()"
+                [customerLocation]="customerCoordinates()"
+                [directionsLoader]="directionsLoader"
+                heading="Route to Customer"
+                description="Driving directions from your shop to the customer's location."
+                originLabel="Repair shop"
+                destinationLabel="Customer location"
+              />
+            } @else {
+              <div class="route-empty" role="status">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                <p>{{ routeAvailabilityMessage() }}</p>
+              </div>
+            }
+          </section>
+
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" />
+              </svg>
+              Original Repair
+            </h2>
+            @if (dispute.repair; as repair) {
+              <dl class="sidebar-facts">
+                <div><dt>Device</dt><dd>{{ repair.appliance }}</dd></div>
+                <div><dt>Brand</dt><dd>{{ repair.brand || 'Not specified' }}</dd></div>
+                <div><dt>Model</dt><dd>{{ repair.model || 'Not specified' }}</dd></div>
+                <div><dt>Repair status</dt><dd>{{ formatStatus(repair.status) }}</dd></div>
+                <div><dt>Request submitted</dt><dd>{{ repair.createdAt | date: 'MMM d, y' }}</dd></div>
+              </dl>
+              @if (repair.description) {
+                <p>{{ repair.description }}</p>
+              }
+              @if (repair.quotation; as quotation) {
+                <div class="quotation-entry">
+                  <div class="quotation-heading">
+                    <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                    <span class="quotation-status accepted">Accepted quotation</span>
+                  </div>
+                  <p>{{ quotation.message }}</p>
+                  @if (quotation.proposedSolution) {
+                    <p>{{ quotation.proposedSolution }}</p>
+                  }
+                </div>
+              }
+            } @else {
+              <p class="muted-copy">Original repair information is not available.</p>
+            }
+          </section>
+
+          <section class="customer-detail-block timeline-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+              </svg>
+              Status History
+            </h2>
+            @if (dispute.statusHistory.length) {
+              <ol class="status-history-list">
+                @for (event of dispute.statusHistory; track $index; let index = $index) {
+                  <li>
+                    <span class="status-history-number">{{ index + 1 }}</span>
+                    <div class="status-history-copy">
+                      <strong>{{ statusHistoryTitle(event, index) }}</strong>
+                      <p>
+                        By {{ event.actorRole | titlecase }} ·
+                        <time>{{ event.at | date: 'medium' }}</time>
+                      </p>
+                      @if (event.reason) {
+                        <p>{{ event.reason }}</p>
+                      }
+                    </div>
+                  </li>
+                }
+              </ol>
+            } @else {
+              <ol class="status-history-list">
+                <li>
+                  <span class="status-history-number">1</span>
+                  <div class="status-history-copy">
+                    <strong>Case opened</strong>
+                    <p>By Customer · <time>{{ dispute.createdAt | date: 'medium' }}</time></p>
+                  </div>
+                </li>
+              </ol>
+            }
+          </section>
+
+          @if (dispute.shopResponse; as response) {
+            <section class="customer-detail-block">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" />
+                </svg>
+                Repair Shop Response
+              </h2>
+              <p>{{ response.explanation }}</p>
+              @if (response.proposedResolution) {
+                <p><strong>Proposed resolution:</strong> {{ response.proposedResolution }}</p>
+              }
+              @if (response.message) {
+                <p>{{ response.message }}</p>
+              }
+              <p class="muted-copy">Responded {{ response.respondedAt | date: 'MMM d, y, h:mm a' }}</p>
+              @if (response.attachments.length) {
+                <app-job-attachments [items]="attachments(response.attachments)" />
+              }
+            </section>
+          }
+
+          @if (hasResolution(dispute)) {
+            <section class="customer-detail-block">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+                Resolution
+              </h2>
+              <dl class="sidebar-facts">
+                @if (dispute.resolution.state) {
+                  <div><dt>Resolution status</dt><dd>{{ dispute.resolution.state | titlecase }}</dd></div>
+                }
+                @if (dispute.resolution.type) {
+                  <div><dt>Resolution type</dt><dd>{{ formatStatus(dispute.resolution.type) }}</dd></div>
+                }
+                @if (dispute.resolution.description) {
+                  <div><dt>Proposal</dt><dd>{{ dispute.resolution.description }}</dd></div>
+                }
+                @if (dispute.resolution.amount !== undefined) {
+                  <div><dt>Amount</dt><dd>{{ dispute.resolution.amount | currency }}</dd></div>
+                }
+                @if (dispute.resolution.resolvedAt) {
+                  <div><dt>Resolved</dt><dd>{{ dispute.resolution.resolvedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                }
+              </dl>
+              @if (dispute.resolution.notes) {
+                <p>{{ dispute.resolution.notes }}</p>
+              }
+              @if (dispute.resolution.documents.length) {
+                <app-job-attachments [items]="attachments(dispute.resolution.documents)" />
+              }
+              @if (dispute.resolution.completionDocuments.length) {
+                <app-job-attachments [items]="attachments(dispute.resolution.completionDocuments)" />
+              }
+            </section>
+          }
+
+          <section class="customer-detail-block messages-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z" />
+              </svg>
+              Conversation
+            </h2>
+            @if (dispute.messages.length) {
+              <ol class="conversation-list">
+                @for (message of dispute.messages; track $index) {
+                    <li class="message">
+                      <div class="message-meta">
+                        <strong>{{ message.authorRole | titlecase }}</strong>
+                        <time>{{ message.createdAt | date: 'MMM d, y, h:mm a' }}</time>
+                      </div>
+                      <p>{{ message.message }}</p>
+                      @if (message.attachments.length) {
+                        <app-job-attachments [items]="attachments(message.attachments)" />
+                      }
+                    </li>
+                  }
+                </ol>
+              } @else {
+                <div class="empty-conversation">
+                  <span class="conversation-empty-icon" aria-hidden="true">
+                    <svg viewBox="0 0 48 48">
+                      <path d="M8 8h26a6 6 0 0 1 6 6v13a6 6 0 0 1-6 6H21l-9 7v-7h-4a6 6 0 0 1-6-6V14a6 6 0 0 1 6-6Z" />
+                      <path d="M15 19h12m-12 6h8" />
+                    </svg>
+                  </span>
+                  <strong>No messages yet</strong>
+                  <p>Start the conversation to discuss and resolve this dispute.</p>
+                </div>
+              }
+              @if (canSendMessage(dispute)) {
+                <form class="conversation-compose" (ngSubmit)="sendMessage(dispute)">
+                  <label class="conversation-message-field">
+                    <span>Add a message</span>
+                    <textarea
+                      [(ngModel)]="message"
+                      name="conversationMessage"
+                      rows="3"
+                      maxlength="4000"
+                      placeholder="Type your message here..."
+                      required
+                    ></textarea>
+                  </label>
+                  <div class="conversation-compose-actions">
+                    <label class="attach-button">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m9 12.5 6.4-6.4a3 3 0 0 1 4.2 4.2l-8.5 8.5a5 5 0 0 1-7.1-7.1l8.5-8.5" />
+                      </svg>
+                      <strong>Attach files</strong><span>(Up to 2 files)</span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        multiple
+                        (change)="onConversationFilesSelected($event)"
+                      />
+                    </label>
+                    <button
+                      class="job-button"
+                      type="submit"
+                      [disabled]="saving() || !message.trim()"
+                    >
+                      {{ saving() ? 'Sending...' : 'Send message' }}
+                    </button>
+                  </div>
+                  @if (conversationAttachments.length) {
+                    <ul class="selected-attachments">
+                      @for (file of conversationAttachments; track file.name; let index = $index) {
+                        <li>
+                          <span>{{ file.name }}</span>
+                          <button
+                            type="button"
+                            class="remove-attachment"
+                            (click)="removeConversationAttachment(index)"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </form>
+              }
+          </section>
+        </section>
+
+          @if (
+              dispute.status !== 'CLOSED' &&
+              dispute.status !== 'RESOLVED' &&
+              dispute.resolution.state !== 'proposed'
+          ) {
+              <section class="panel action-panel">
+                <h2 class="section-heading">Propose a resolution to the customer</h2>
+                <form class="form-grid" (ngSubmit)="proposeResolution(dispute)">
+                  <label>
+                    <span>Resolution type</span>
+                    <select [(ngModel)]="resolutionType" name="resolutionType">
+                      <option value="repair_again">Repair again</option>
+                      <option value="additional_repair">Additional repair</option>
+                      <option value="partial_refund">Partial refund</option>
+                      <option value="full_refund">Full refund</option>
+                      <option value="price_adjustment">Price adjustment</option>
+                      <option value="customer_compensation">Customer compensation</option>
+                      <option value="shop_compensation">Shop compensation</option>
+                      <option value="no_action">No action</option>
+                      <option value="other">Other agreement</option>
+                    </select>
+                  </label>
+                  @if (resolutionType === 'partial_refund' || resolutionType === 'full_refund') {
+                    <label>
+                      <span>Refund amount</span>
+                      <input
+                        type="number"
+                        [(ngModel)]="resolutionAmount"
+                        name="resolutionAmount"
+                        min="0"
+                        step="0.01"
+                        required
+                      />
+                    </label>
+                  }
+                  <label class="wide">
+                    <span>Proposed resolution</span>
+                    <textarea
+                      [(ngModel)]="resolutionDescription"
+                      name="resolutionDescription"
+                      rows="3"
+                      maxlength="3000"
+                      required
+                    ></textarea>
+                  </label>
+                  <label class="wide">
+                    <span>Notes</span>
+                    <textarea
+                      [(ngModel)]="resolutionNotes"
+                      name="resolutionNotes"
+                      rows="2"
+                      maxlength="2000"
+                      required
+                    ></textarea>
+                  </label>
+                  <button
+                    class="button primary"
+                    type="submit"
+                    [disabled]="saving() || !resolutionDescription.trim() || !resolutionNotes.trim()"
+                  >
+                    {{ saving() ? 'Submitting...' : 'Submit proposal' }}
+                  </button>
+                </form>
+              </section>
+          }
+
+          @if (dispute.status === 'OPEN') {
+              <section class="panel action-panel">
+                <h2 class="section-heading">Review customer dispute</h2>
+                <div class="action-row">
+                  <button
+                    class="button primary"
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="acceptDispute(dispute)"
+                  >
+                    {{ saving() ? 'Submitting...' : 'Accept dispute' }}
+                  </button>
+                </div>
+
+                <hr />
+                <h3>Send a formal response</h3>
+                <form class="action-form" (ngSubmit)="submitShopResponse(dispute)">
+                  <label>
+                    <span>Investigation and response</span>
+                    <textarea
+                      [(ngModel)]="shopResponseExplanation"
+                      name="shopResponseExplanation"
+                      rows="3"
+                      maxlength="3000"
+                      required
+                    ></textarea>
+                  </label>
+                  <label>
+                    <span>Message to customer</span>
+                    <textarea
+                      [(ngModel)]="shopResponseMessage"
+                      name="shopResponseMessage"
+                      rows="2"
+                      maxlength="4000"
+                      required
+                    ></textarea>
+                  </label>
+                  <label>
+                    <span>Proposed next step (optional)</span>
+                    <textarea
+                      [(ngModel)]="shopProposedResolution"
+                      name="shopProposedResolution"
+                      rows="2"
+                      maxlength="2000"
+                    ></textarea>
+                  </label>
+                  <button
+                    class="button primary"
+                    type="submit"
+                    [disabled]="
+                      saving() ||
+                      !shopResponseExplanation.trim() ||
+                      !shopResponseMessage.trim()
+                    "
+                  >
+                    {{ saving() ? 'Submitting...' : 'Submit response' }}
+                  </button>
+                </form>
+
+                <hr />
+                <h3>Reject dispute</h3>
+                <form class="action-form" (ngSubmit)="rejectDispute(dispute)">
+                  <label>
+                    <span>Rejection reason</span>
+                    <input
+                      [(ngModel)]="rejectionReason"
+                      name="rejectionReason"
+                      maxlength="1000"
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>Explanation</span>
+                    <textarea
+                      [(ngModel)]="rejectionExplanation"
+                      name="rejectionExplanation"
+                      rows="3"
+                      maxlength="3000"
+                      required
+                    ></textarea>
+                  </label>
+                  <label>
+                    <span>Evidence (optional)</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      multiple
+                      (change)="onRejectionFilesSelected($event)"
+                    />
+                  </label>
+                  @if (rejectionAttachments.length) {
+                    <ul class="selected-attachments">
+                      @for (file of rejectionAttachments; track file.name; let index = $index) {
+                        <li>
+                          <span>{{ file.name }}</span>
+                          <button
+                            type="button"
+                            class="remove-attachment"
+                            (click)="removeRejectionAttachment(index)"
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      }
+                    </ul>
+                  }
+                  <button class="button danger" type="submit" [disabled]="saving()">
+                    {{ saving() ? 'Submitting...' : 'Submit rejection' }}
+                  </button>
+                </form>
+              </section>
+          }
+
+          @if (canReviewCustomerResponse(dispute)) {
+            <section class="panel action-panel">
+              <h2 class="section-heading">Review the customer's response</h2>
+              @if (dispute.resolution.description) {
+                <p>{{ dispute.resolution.description }}</p>
+              }
+              @if (dispute.resolution.notes) {
+                <p>{{ dispute.resolution.notes }}</p>
+              }
+              <label>
+                <span>Reason (required when rejecting)</span>
+                <textarea
+                  [(ngModel)]="resolutionDecisionReason"
+                  name="resolutionDecisionReason"
+                  rows="3"
+                  maxlength="2000"
+                ></textarea>
+              </label>
+              <div class="action-row">
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="decideResolution(dispute, 'accept')"
+                >
+                  {{ saving() ? 'Submitting...' : 'Accept proposed resolution' }}
+                </button>
+                <button
+                  class="button danger"
+                  type="button"
+                  [disabled]="saving() || !resolutionDecisionReason.trim()"
+                  (click)="decideResolution(dispute, 'reject')"
+                >
+                  Reject proposed resolution
+                </button>
+              </div>
+            </section>
+          }
+
+          @if (canStartReinspection(dispute)) {
+            <section class="panel action-panel">
+              <h2 class="section-heading">Start reinspection</h2>
+              <p>Inspect the device and document the remaining repair work.</p>
+              <div class="action-row">
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="startReinspection(dispute)"
+                >
+                  {{ saving() ? 'Starting...' : 'Start reinspection' }}
+                </button>
+              </div>
+            </section>
+          }
+
+          @if (canSubmitReinspection(dispute)) {
+            <section class="panel action-panel">
+              <h2 class="section-heading">Submit reinspection findings</h2>
+              <form class="form-grid" (ngSubmit)="submitReinspection(dispute)">
+                <label class="wide">
+                  <span>Inspection findings</span>
+                  <textarea
+                    [(ngModel)]="reinspectionFindings"
+                    name="reinspectionFindings"
+                    rows="3"
+                    maxlength="3000"
+                    required
+                  ></textarea>
+                </label>
+                <label class="wide">
+                  <span>Required repair work</span>
+                  <textarea
+                    [(ngModel)]="requiredRepairWork"
+                    name="requiredRepairWork"
+                    rows="3"
+                    maxlength="3000"
+                    required
+                  ></textarea>
+                </label>
+                <label>
+                  <span>Estimated completion time (optional)</span>
+                  <input
+                    [(ngModel)]="estimatedCompletionTime"
+                    name="estimatedCompletionTime"
+                    maxlength="200"
+                  />
+                </label>
+                <label>
+                  <span>Supporting images or documents (optional)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    multiple
+                    (change)="onReinspectionFilesSelected($event)"
+                  />
+                </label>
+                @if (reinspectionAttachments.length) {
+                  <ul class="selected-attachments wide">
+                    @for (file of reinspectionAttachments; track file.name; let index = $index) {
+                      <li>
+                        <span>{{ file.name }}</span>
+                        <button
+                          type="button"
+                          class="remove-attachment"
+                          (click)="removeReinspectionAttachment(index)"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+                <button
+                  class="button primary"
+                  type="submit"
+                  [disabled]="saving() || !reinspectionFindings.trim() || !requiredRepairWork.trim()"
+                >
+                  {{ saving() ? 'Submitting...' : 'Submit findings' }}
+                </button>
+              </form>
+
+              <hr />
+              <h3>Request additional charges</h3>
+              <form class="form-grid" (ngSubmit)="requestCharges(dispute)">
+                <label class="wide">
+                  <span>Reason for additional charges</span>
+                  <textarea
+                    [(ngModel)]="chargeReason"
+                    name="chargeReason"
+                    rows="2"
+                    maxlength="2000"
+                    required
+                  ></textarea>
+                </label>
+                @for (item of chargeItems; track $index; let index = $index) {
+                  <label>
+                    <span>Item description</span>
+                    <input
+                      [(ngModel)]="item.description"
+                      [name]="'chargeDescription-' + index"
+                      maxlength="500"
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>Amount</span>
+                    <input
+                      type="number"
+                      [(ngModel)]="item.amount"
+                      [name]="'chargeAmount-' + index"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </label>
+                  <button
+                    class="button danger"
+                    type="button"
+                    [disabled]="chargeItems.length === 1"
+                    (click)="removeChargeLine(index)"
+                  >
+                    Remove item
+                  </button>
+                }
+                <button
+                  class="button secondary"
+                  type="button"
+                  [disabled]="chargeItems.length >= 20"
+                  (click)="addChargeLine()"
+                >
+                  Add charge item
+                </button>
+                <label class="wide">
+                  <span>Message to customer (optional)</span>
+                  <textarea
+                    [(ngModel)]="chargeMessage"
+                    name="chargeMessage"
+                    rows="2"
+                    maxlength="2000"
+                  ></textarea>
+                </label>
+                <button
+                  class="button primary"
+                  type="submit"
+                  [disabled]="saving() || !chargeReason.trim()"
+                >
+                  {{ saving() ? 'Submitting...' : 'Request additional charges' }}
+                </button>
+              </form>
+
+              @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
+                <hr />
+                <h3>Proceed with approved rework</h3>
+                <p>Start the approved repair work on the device.</p>
+                <div class="action-row">
+                  <button
+                    class="button primary"
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="startRework(dispute)"
+                  >
+                    {{ saving() ? 'Starting...' : 'Start rework' }}
+                  </button>
+                </div>
+              }
+            </section>
+          }
+
+          @if (
+            dispute.additionalCharges.length &&
+            dispute.additionalCharges[dispute.additionalCharges.length - 1].status === 'accepted' &&
+            canStartRework(dispute) &&
+            dispute.status !== 'REINSPECTION_IN_PROGRESS'
+          ) {
+            <section class="panel action-panel">
+              <h2 class="section-heading">Customer approved additional charges</h2>
+              <p>Start the approved repair work on the device.</p>
+              <div class="action-row">
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="startRework(dispute)"
+                >
+                  {{ saving() ? 'Starting...' : 'Start rework' }}
+                </button>
+              </div>
+            </section>
+          }
+
+          @if (canUpdateRework(dispute)) {
+            <section class="panel action-panel">
+              <h2 class="section-heading">Rework in progress</h2>
+              <form class="form-grid" (ngSubmit)="addReworkProgress(dispute)">
+                <label class="wide">
+                  <span>Progress update</span>
+                  <textarea
+                    [(ngModel)]="progressNotes"
+                    name="progressNotes"
+                    rows="3"
+                    maxlength="3000"
+                    required
+                  ></textarea>
+                </label>
+                <label class="wide">
+                  <span>Progress photos or documents (optional)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    multiple
+                    (change)="onProgressFilesSelected($event)"
+                  />
+                </label>
+                @if (progressAttachments.length) {
+                  <ul class="selected-attachments wide">
+                    @for (file of progressAttachments; track file.name; let index = $index) {
+                      <li>
+                        <span>{{ file.name }}</span>
+                        <button
+                          type="button"
+                          class="remove-attachment"
+                          (click)="removeProgressAttachment(index)"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+                <button
+                  class="button primary"
+                  type="submit"
+                  [disabled]="saving() || !progressNotes.trim()"
+                >
+                  {{ saving() ? 'Submitting...' : 'Add progress update' }}
+                </button>
+              </form>
+
+              <hr />
+              <h3>Complete rework</h3>
+              <form class="form-grid" (ngSubmit)="completeRework(dispute)">
+                <label class="wide">
+                  <span>Work performed</span>
+                  <textarea
+                    [(ngModel)]="reworkDescription"
+                    name="reworkDescription"
+                    rows="3"
+                    maxlength="3000"
+                    required
+                  ></textarea>
+                </label>
+                <label class="wide">
+                  <span>Parts replaced (optional)</span>
+                  <textarea
+                    [(ngModel)]="partsReplaced"
+                    name="partsReplaced"
+                    rows="2"
+                    maxlength="2000"
+                  ></textarea>
+                </label>
+                <label class="wide">
+                  <span>Testing results</span>
+                  <textarea
+                    [(ngModel)]="testingResults"
+                    name="testingResults"
+                    rows="3"
+                    maxlength="3000"
+                    required
+                  ></textarea>
+                </label>
+                <label class="wide">
+                  <span>Final notes (optional)</span>
+                  <textarea
+                    [(ngModel)]="finalNotes"
+                    name="finalNotes"
+                    rows="2"
+                    maxlength="2000"
+                  ></textarea>
+                </label>
+                <label class="wide">
+                  <span>Completion evidence (optional)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    multiple
+                    (change)="onCompletionFilesSelected($event)"
+                  />
+                </label>
+                @if (completionDocuments.length) {
+                  <ul class="selected-attachments wide">
+                    @for (file of completionDocuments; track file.name; let index = $index) {
+                      <li>
+                        <span>{{ file.name }}</span>
+                        <button
+                          type="button"
+                          class="remove-attachment"
+                          (click)="removeCompletionDocument(index)"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+                <label class="checkbox-field wide">
+                  <input
+                    type="checkbox"
+                    [(ngModel)]="reworkTested"
+                    name="reworkTested"
+                  />
+                  <span>I confirm that the device has been tested.</span>
+                </label>
+                <button
+                  class="button primary"
+                  type="submit"
+                  [disabled]="saving() || !reworkDescription.trim() || !testingResults.trim() || !reworkTested"
+                >
+                  {{ saving() ? 'Submitting...' : 'Submit completion' }}
+                </button>
+              </form>
+            </section>
+          }
+      </div>
+
+      <aside class="customer-detail-sidebar">
+        <section class="detail-section customer-detail-sidebar-card" aria-label="Dispute summary">
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 2 8l10 5 10-5-10-5Z" />
+                <path d="M2 12l10 5 10-5M2 16l10 5 10-5" />
+              </svg>
+              Dispute Information
+            </h2>
+            <dl class="sidebar-facts">
+              <div><dt>Category</dt><dd>{{ formatStatus(dispute.category) }}</dd></div>
+              <div><dt>Priority</dt><dd>{{ dispute.priority | titlecase }}</dd></div>
+              <div><dt>Status</dt><dd>{{ formatStatus(dispute.status) }}</dd></div>
+              @if (dispute.amountInDispute !== undefined) {
+                <div><dt>Amount in dispute</dt><dd>{{ dispute.amountInDispute | currency }}</dd></div>
+              }
+              <div><dt>Opened</dt><dd>{{ dispute.createdAt | date: 'MMM d, y' }}</dd></div>
+              <div><dt>Last updated</dt><dd>{{ dispute.updatedAt | date: 'MMM d, y' }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+              Dispute Evidence <small>({{ dispute.attachments.length }})</small>
+            </h2>
+            <app-job-attachments [items]="attachments(dispute.attachments)" />
+          </section>
+
+          @if (dispute.repair?.photos?.length) {
+            <section class="customer-detail-block uploaded-photos-card">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="m21 15-5-5L5 21" />
+                </svg>
+                Repair Photos <small>({{ dispute.repair?.photos?.length }})</small>
+              </h2>
+              <app-job-attachments [items]="repairPhotos(dispute)" />
+            </section>
+          }
+        </section>
+
+        <a class="job-button" [routerLink]="[disputeRoute, dispute._id]">
+          Open issue page for permitted actions
+        </a>
+      </aside>
+    </div>
   }
 </main>

@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, WritableSignal, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CustomerPortalService } from '../../../customer/services/customer-portal.service';
+import { CustomerRepairRequest } from '../../../customer/models/customer-portal.models';
 import {
   DisputeAttachment,
   DisputeCategory,
@@ -104,6 +105,11 @@ export class DisputeCenterComponent implements OnInit {
     model?: string;
     status?: string;
   } | null>(null);
+  readonly raiseDisputeDialogOpen = signal(false);
+  readonly eligibleRepairRequests = signal<CustomerRepairRequest[]>([]);
+  readonly eligibleRepairRequestsLoading = signal(false);
+  readonly eligibleRepairRequestsError = signal('');
+  readonly raiseDisputeFormError = signal('');
   readonly categories = DISPUTE_CATEGORIES;
   readonly disputeProgressSteps = [
     'Dispute submitted',
@@ -123,6 +129,7 @@ export class DisputeCenterComponent implements OnInit {
   toDate = '';
   sortOrder: 'newest' | 'oldest' | 'priority' = 'newest';
   category = 'repair_quality';
+  selectedRepairRequestId = '';
   description = '';
   customerComments = '';
   attachments: DisputeAttachment[] = [];
@@ -424,7 +431,7 @@ export class DisputeCenterComponent implements OnInit {
           appliance: request.appliance,
           brand: request.brand,
           model: request.model,
-          status: request.repairJob?.status,
+          status: request.repairJob?.status ?? request.status,
         });
         this.loading.set(false);
       },
@@ -432,13 +439,75 @@ export class DisputeCenterComponent implements OnInit {
     });
   }
 
+  openRaiseDisputeDialog(): void {
+    this.raiseDisputeDialogOpen.set(true);
+    this.eligibleRepairRequestsLoading.set(true);
+    this.eligibleRepairRequestsError.set('');
+    this.raiseDisputeFormError.set('');
+    this.selectedRepairRequestId = '';
+    this.description = '';
+    this.customerComments = '';
+    this.category = 'repair_quality';
+    this.attachments = [];
+    this.customerPortal.getRepairRequests().subscribe({
+      next: (requests) => {
+        const eligibleRequests = requests.filter((request) => this.canRaiseDisputeFor(request));
+        this.eligibleRepairRequests.set(eligibleRequests);
+        this.selectedRepairRequestId = eligibleRequests[0]?._id ?? '';
+        this.eligibleRepairRequestsLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.eligibleRepairRequestsError.set(
+          error.error?.message || 'Completed repairs could not be loaded.',
+        );
+        this.eligibleRepairRequestsLoading.set(false);
+      },
+    });
+  }
+
+  closeRaiseDisputeDialog(): void {
+    this.raiseDisputeDialogOpen.set(false);
+    this.eligibleRepairRequestsError.set('');
+    this.raiseDisputeFormError.set('');
+    this.selectedRepairRequestId = '';
+    this.description = '';
+    this.customerComments = '';
+    this.category = 'repair_quality';
+    this.attachments = [];
+  }
+
+  repairRequestOptionLabel(request: CustomerRepairRequest): string {
+    const device = [request.brand, request.model].filter(Boolean).join(' ');
+    const requestId = `#${request._id.slice(-8).toUpperCase()}`;
+    const description = [request.appliance, device].filter(Boolean).join(' · ');
+    return `${description} (${requestId})`;
+  }
+
+  attachmentSizeLabel(attachment: DisputeAttachment): string {
+    const encodedData = attachment.data?.split(',').pop();
+    if (!encodedData) return 'File attached';
+    const padding = encodedData.endsWith('==') ? 2 : encodedData.endsWith('=') ? 1 : 0;
+    const sizeInBytes = Math.max(0, Math.floor((encodedData.length * 3) / 4) - padding);
+    return `${Math.max(1, Math.round(sizeInBytes / 1024))} KB`;
+  }
+
+  private canRaiseDisputeFor(request: CustomerRepairRequest): boolean {
+    return ['picked_up', 'completed'].includes(request.repairJob?.status ?? request.status);
+  }
+
   createDispute(): void {
     if (!this.description.trim()) {
-      this.error.set('Describe the problem found after receiving the repaired device.');
+      this.setRaiseDisputeError('Describe the problem found after receiving the repaired device.');
+      return;
+    }
+    const repairRequestId =
+      this.mode() === 'create' ? this.repairRequestId : this.selectedRepairRequestId;
+    if (!repairRequestId) {
+      this.setRaiseDisputeError('Select a completed repair before raising a dispute.');
       return;
     }
     this.run(
-      this.disputes.create(this.repairRequestId, {
+      this.disputes.create(repairRequestId, {
         category: this.category,
         description: this.description.trim(),
         attachments: this.attachments,
@@ -446,7 +515,16 @@ export class DisputeCenterComponent implements OnInit {
       }),
       'Dispute submitted.',
       (dispute) => void this.router.navigate(['/customer/disputes', dispute._id]),
+      this.raiseDisputeDialogOpen() ? this.raiseDisputeFormError : this.error,
     );
+  }
+
+  private setRaiseDisputeError(message: string): void {
+    if (this.raiseDisputeDialogOpen()) {
+      this.raiseDisputeFormError.set(message);
+      return;
+    }
+    this.error.set(message);
   }
 
   sendMessage(): void {
@@ -895,21 +973,30 @@ export class DisputeCenterComponent implements OnInit {
     const input = event.target;
     if (!(input instanceof HTMLInputElement) || !input.files?.length) return;
     const files = Array.from(input.files);
+    await this.addDisputeAttachments(files);
+    input.value = '';
+  }
+
+  async onFilesDropped(event: DragEvent): Promise<void> {
+    event.preventDefault();
+    const files = Array.from(event.dataTransfer?.files ?? []);
+    await this.addDisputeAttachments(files);
+  }
+
+  private async addDisputeAttachments(files: File[]): Promise<void> {
+    if (!files.length) return;
     if (files.length + this.attachments.length > 2) {
-      this.error.set('Attach up to two files, each no larger than 500 KB.');
-      input.value = '';
+      this.setRaiseDisputeError('Attach up to two files, each no larger than 500 KB.');
       return;
     }
     try {
       const attachments = await Promise.all(files.map((file) => this.readAttachment(file)));
       this.attachments = [...this.attachments, ...attachments];
-      this.error.set('');
+      this.setRaiseDisputeError('');
     } catch (error) {
-      this.error.set(
+      this.setRaiseDisputeError(
         error instanceof Error ? error.message : 'The selected files could not be read.',
       );
-    } finally {
-      input.value = '';
     }
   }
 
@@ -1109,6 +1196,7 @@ export class DisputeCenterComponent implements OnInit {
     request: import('rxjs').Observable<RepairDispute>,
     successMessage: string,
     onSuccess: (dispute: RepairDispute) => void,
+    errorTarget: WritableSignal<string> = this.error,
   ): void {
     this.saving.set(true);
     this.error.set('');
@@ -1120,13 +1208,21 @@ export class DisputeCenterComponent implements OnInit {
         onSuccess(dispute);
       },
       error: (error: HttpErrorResponse) =>
-        this.fail(error, 'The requested dispute action could not be completed.'),
+        this.fail(
+          error,
+          'The requested dispute action could not be completed.',
+          errorTarget,
+        ),
     });
   }
 
-  private fail(error: HttpErrorResponse, fallback: string): void {
+  private fail(
+    error: HttpErrorResponse,
+    fallback: string,
+    errorTarget: WritableSignal<string> = this.error,
+  ): void {
     const msg = error.error?.message || fallback;
-    this.error.set(msg);
+    errorTarget.set(msg);
     this.toastService.error('Dispute Error', msg);
     this.loading.set(false);
     this.saving.set(false);

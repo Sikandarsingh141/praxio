@@ -1,10 +1,183 @@
 <main
   class="dispute-page"
   [class.customer-dispute-list-page]="role() === 'customer' && mode() === 'list'"
-  [class.customer-dispute-detail-page]="role() === 'customer' && mode() === 'detail'"
+  [class.customer-dispute-detail-page]="role() !== 'admin' && mode() === 'detail'"
   [class.shop-dispute-list-page]="role() === 'shop' && mode() === 'list'"
   [attr.aria-busy]="loading()"
 >
+  <ng-template #raiseDisputeForm>
+    <form
+      class="panel form-grid"
+      [class.raise-dispute-form]="raiseDisputeDialogOpen()"
+      (ngSubmit)="createDispute()"
+    >
+      @if (!raiseDisputeDialogOpen()) {
+        <p class="form-intro wide">
+          Tell the shop what issue remains. The original repair and payment history will not be
+          changed.
+        </p>
+      }
+      @if (raiseDisputeDialogOpen()) {
+        <div class="dispute-guidelines wide">
+          <span class="guideline-icon" aria-hidden="true">i</span>
+          <div>
+            <strong>Dispute Guidelines</strong>
+            <p>Use this only if you’re not satisfied with the completed repair, quality, or service.</p>
+          </div>
+        </div>
+      }
+      @if (mode() === 'list') {
+        <label class="wide dispute-field">
+          <span class="dispute-field-heading">
+            @if (raiseDisputeDialogOpen()) {
+              <span class="dispute-field-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m14.7 6.3 3-3 3 3-3 3M5 19l9.4-9.4m-3.1-3.1a4 4 0 0 0 5.2 5.2L9.2 18.9a2.1 2.1 0 0 1-3-3l7.2-7.2Z" /></svg>
+              </span>
+            }
+            <span>Completed Repair @if (raiseDisputeDialogOpen()) { <b>*</b> }</span>
+          </span>
+          <span class="repair-select-wrap">
+            <select [(ngModel)]="selectedRepairRequestId" name="repairRequestId" required>
+              @for (request of eligibleRepairRequests(); track request._id) {
+                <option [value]="request._id">{{ repairRequestOptionLabel(request) }}</option>
+              }
+            </select>
+            @if (raiseDisputeDialogOpen()) {
+              <span class="repair-status">Completed</span>
+            }
+          </span>
+        </label>
+      }
+      <label class="dispute-field">
+        <span class="dispute-field-heading">
+          @if (raiseDisputeDialogOpen()) {
+            <span class="dispute-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3 3.5 7.8v8.4L12 21l8.5-4.8V7.8L12 3Zm0 0v9m8.5-4.2L12 13m0 8v-8m-8.5-4.2L12 13" /></svg>
+            </span>
+          }
+          <span>Issue Category @if (raiseDisputeDialogOpen()) { <b>*</b> }</span>
+        </span>
+        <select [(ngModel)]="category" name="category">
+          @for (option of categories; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+      <label class="wide dispute-field">
+        <span class="dispute-field-heading">
+          @if (raiseDisputeDialogOpen()) {
+            <span class="dispute-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg>
+            </span>
+          }
+          <span>Describe the Problem @if (raiseDisputeDialogOpen()) { <b>*</b> }</span>
+        </span>
+        <textarea
+          [(ngModel)]="description"
+          name="description"
+          maxlength="5000"
+          rows="5"
+          required
+          placeholder="Clearly describe the issue you’re facing with the completed repair..."
+        ></textarea>
+        @if (raiseDisputeDialogOpen()) {
+          <span class="character-count">{{ description.length }} / 5000</span>
+        }
+      </label>
+      <label class="wide dispute-field">
+        <span class="dispute-field-heading">
+          @if (raiseDisputeDialogOpen()) {
+            <span class="dispute-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6zM14 3v5h5m-9 4h6m-6 4h6" /></svg>
+            </span>
+          }
+          <span>Additional Notes (Optional)</span>
+        </span>
+        <textarea
+          [(ngModel)]="customerComments"
+          name="comments"
+          maxlength="2000"
+          rows="3"
+          placeholder="Add any extra details that can help resolve the issue..."
+        ></textarea>
+        @if (raiseDisputeDialogOpen()) {
+          <span class="character-count">{{ customerComments.length }} / 2000</span>
+        }
+      </label>
+      <div class="wide dispute-field">
+        <span class="dispute-field-heading">
+          @if (raiseDisputeDialogOpen()) {
+            <span class="dispute-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L8 8m4-4 4 4M5 14v5h14v-5" /></svg>
+            </span>
+          }
+          <span>Upload Images or Documents (Optional)</span>
+        </span>
+        <span class="upload-help">Upload up to 2 files (JPG, PNG, WebP, or PDF). Each file should be 500 KB or smaller.</span>
+        <input
+          #disputeFileInput
+          class="dispute-file-input"
+          aria-label="Select images or documents to attach"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
+          multiple
+          (change)="onFilesSelected($event)"
+        />
+        <button
+          type="button"
+          class="upload-dropzone"
+          (click)="disputeFileInput.click()"
+          (dragover)="$event.preventDefault()"
+          (drop)="onFilesDropped($event)"
+        >
+          <span class="upload-cloud" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.4-8A5.5 5.5 0 0 1 17 8a4 4 0 0 1 .5 8H16m-4 2V11m0 0-3 3m3-3 3 3" /></svg>
+          </span>
+          <span>Drag &amp; drop files here or <strong>browse files</strong></span>
+        </button>
+      </div>
+      @if (attachments.length) {
+        <ul class="attachment-list wide dispute-attachment-list">
+          @for (attachment of attachments; track attachment.name; let index = $index) {
+            <li>
+              @if (attachment.mimeType.startsWith('image/') && attachment.data) {
+                <img [src]="attachment.data" alt="" />
+              } @else {
+                <span class="attachment-file-icon" aria-hidden="true">PDF</span>
+              }
+              <span class="attachment-file-details">
+                <strong>{{ attachment.name }}</strong>
+                <small>{{ attachmentSizeLabel(attachment) }}</small>
+              </span>
+              <span class="attachment-ready" aria-label="File attached">✓</span>
+              <button
+                type="button"
+                class="remove-attachment-button"
+                [attr.aria-label]="'Remove ' + attachment.name"
+                (click)="removeAttachment(index)"
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      <div class="form-actions wide">
+        @if (mode() === 'list') {
+          <button class="button secondary" type="button" (click)="closeRaiseDisputeDialog()">
+            Cancel
+          </button>
+        } @else {
+          <a class="button secondary" routerLink="/customer/repair-requests">Cancel</a>
+        }
+        <button class="button primary" type="submit" [disabled]="saving()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 18-8-7 18-3-7-8-3Zm8 3 5-5" /></svg>
+          {{ saving() ? 'Submitting…' : 'Submit Dispute' }}
+        </button>
+      </div>
+    </form>
+  </ng-template>
+
   @if (mode() === 'list') {
     @if (role() === 'admin') {
       <app-admin-page-header>
@@ -20,13 +193,14 @@
           Track post-repair issues, review evidence, and coordinate fair resolutions.
         </p>
         @if (role() === 'customer') {
-          <a
+          <button
             adminPageActions
             class="button primary raise-dispute-button"
-            routerLink="/customer/repair-requests"
+            type="button"
+            (click)="openRaiseDisputeDialog()"
           >
             <span aria-hidden="true">＋</span> Raise a Dispute
-          </a>
+          </button>
         }
       </app-admin-page-header>
     }
@@ -292,6 +466,66 @@
     }
   }
 
+  @if (mode() === 'list' && role() === 'customer' && raiseDisputeDialogOpen()) {
+    <div class="raise-dispute-backdrop" role="presentation" (click)="closeRaiseDisputeDialog()">
+      <section
+        class="raise-dispute-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="raise-dispute-title"
+        tabindex="-1"
+        (click)="$event.stopPropagation()"
+        (keydown.escape)="closeRaiseDisputeDialog()"
+      >
+        <header class="raise-dispute-dialog-header">
+          <span class="raise-dispute-title-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3.4 8.1 8 10 4.6-1.9 8-5 8-10V6l-8-3Zm-3.5 9 2.3 2.3 4.8-5" /></svg>
+          </span>
+          <div class="raise-dispute-title-copy">
+            <h2 id="raise-dispute-title">Raise a Dispute</h2>
+            <p>Tell the shop what issue remains. The original repair and payment history will not be changed.</p>
+          </div>
+          <button
+            type="button"
+            class="raise-dispute-dialog-close"
+            aria-label="Close dispute form"
+            (click)="closeRaiseDisputeDialog()"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+        @if (eligibleRepairRequestsLoading()) {
+          <p class="state-card" role="status">Loading completed repairs…</p>
+        } @else if (eligibleRepairRequestsError()) {
+          <p class="feedback error" role="alert">{{ eligibleRepairRequestsError() }}</p>
+          <div class="form-actions">
+            <button type="button" class="button secondary" (click)="closeRaiseDisputeDialog()">
+              Cancel
+            </button>
+            <button type="button" class="button primary" (click)="openRaiseDisputeDialog()">
+              Try again
+            </button>
+          </div>
+        } @else if (!eligibleRepairRequests().length) {
+          <p class="state-card" role="status">
+            No completed repairs are available to dispute. You can raise a dispute after receiving
+            the repaired item.
+          </p>
+          <div class="form-actions">
+            <button type="button" class="button secondary" (click)="closeRaiseDisputeDialog()">
+              Cancel
+            </button>
+          </div>
+        } @else {
+          @if (raiseDisputeFormError()) {
+            <p class="feedback error" role="alert">{{ raiseDisputeFormError() }}</p>
+          }
+          <ng-container *ngTemplateOutlet="raiseDisputeForm"></ng-container>
+        }
+      </section>
+    </div>
+  }
+
   @if (mode() === 'create') {
     <a class="back-link" routerLink="/customer/repair-requests">← My repair requests</a>
     <app-admin-page-header>
@@ -313,71 +547,12 @@
         You can raise a dispute after the repaired item has been received.
       </p>
     } @else {
-      <form class="panel form-grid" (ngSubmit)="createDispute()">
-        <p class="form-intro wide">
-          Tell the shop what issue remains. The original repair and payment history will not be
-          changed.
-        </p>
-        <label>
-          Issue category
-          <select [(ngModel)]="category" name="category">
-            @for (option of categories; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
-            }
-          </select>
-        </label>
-        <label class="wide">
-          Describe the problem
-          <textarea
-            [(ngModel)]="description"
-            name="description"
-            maxlength="5000"
-            rows="5"
-            required
-          ></textarea>
-        </label>
-        <label class="wide">
-          Additional notes (optional)
-          <textarea
-            [(ngModel)]="customerComments"
-            name="comments"
-            maxlength="2000"
-            rows="3"
-          ></textarea>
-        </label>
-        <label class="wide">
-          Images or documents (optional, up to two files, 500 KB each)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            multiple
-            (change)="onFilesSelected($event)"
-          />
-        </label>
-        @if (attachments.length) {
-          <ul class="attachment-list wide">
-            @for (attachment of attachments; track attachment.name; let index = $index) {
-              <li>
-                <span>{{ attachment.name }}</span
-                ><button type="button" class="text-button" (click)="removeAttachment(index)">
-                  Remove
-                </button>
-              </li>
-            }
-          </ul>
-        }
-        <div class="form-actions wide">
-          <button class="button primary" type="submit" [disabled]="saving()">
-            {{ saving() ? 'Submitting…' : 'Submit dispute' }}
-          </button>
-          <a class="button secondary" routerLink="/customer/repair-requests">Cancel</a>
-        </div>
-      </form>
+      <ng-container *ngTemplateOutlet="raiseDisputeForm"></ng-container>
     }
   }
 
   @if (mode() === 'detail') {
-    @if (role() === 'customer') {
+    @if (role() !== 'admin') {
       <a class="detail-back-link" [routerLink]="disputeListLink()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
         Back to Issue Resolution
@@ -396,7 +571,7 @@
         {{ role() === 'admin' ? 'Loading dispute details…' : 'Loading issue details…' }}
       </p>
     } @else if (dispute(); as item) {
-      @if (role() === 'customer') {
+      @if (role() !== 'admin') {
         <h1 class="detail-page-title">Issue Resolution Details</h1>
         <section class="request-hero" aria-label="Dispute summary">
           <div class="request-hero-photo">
@@ -510,7 +685,7 @@
 
       <div
         class="customer-detail-layout"
-        [class.customer-layout-disabled]="role() !== 'customer'"
+        [class.customer-layout-disabled]="role() === 'admin'"
       >
         <div class="customer-detail-main">
       <div class="detail-grid dispute-detail-grid">
@@ -549,7 +724,7 @@
           </section>
         }
 
-        @if (role() !== 'customer') {
+        @if (role() === 'admin') {
           <section class="panel detail-card participants-card">
             <h2 class="panel-title">
               <span class="panel-icon" aria-hidden="true">
@@ -1685,7 +1860,7 @@
         </section>
       }
         </div>
-        @if (role() === 'customer') {
+        @if (role() !== 'admin') {
           <aside class="customer-detail-sidebar">
             <section
               class="detail-section customer-detail-sidebar-card"
@@ -1761,7 +1936,13 @@
                       }
                     </div>
                   }
-                  <a class="shop-link" [routerLink]="['/customer/repair-requests', repair.id]">
+                  <a
+                    class="shop-link"
+                    [routerLink]="[
+                      role() === 'customer' ? '/customer/repair-requests' : '/shop/repair-requests',
+                      repair.id
+                    ]"
+                  >
                     View repair details
                   </a>
                 </section>
@@ -1778,17 +1959,17 @@
                 <div class="dispute-participant">
                   <strong>Customer</strong>
                   <span>{{ item.parties?.customer?.name || 'Customer' }}</span>
-                  @if (item.parties?.customer?.email) {
+                  @if (role() === 'customer' && item.parties?.customer?.email) {
                     <span>{{ item.parties?.customer?.email }}</span>
                   }
                 </div>
                 <div class="dispute-participant">
                   <strong>Repair Shop</strong>
                   <span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span>
-                  @if (item.parties?.shop?.email) {
+                  @if (role() === 'customer' && item.parties?.shop?.email) {
                     <span>{{ item.parties?.shop?.email }}</span>
                   }
-                  @if (item.parties?.shop?.id) {
+                  @if (role() === 'customer' && item.parties?.shop?.id) {
                     <a class="shop-link" [routerLink]="['/customer/shops', item.parties?.shop?.id]">
                       View shop
                     </a>

@@ -381,8 +381,8 @@ export const routes: Routes = [
       {
         path: 'jobs/disputed-jobs/:id',
         loadComponent: () =>
-          import('./shared/components/dispute-center/dispute-center.component').then(
-            (module) => module.DisputeCenterComponent,
+          import('./shop/jobs/disputed-jobs/detail/shop-disputed-job-detail.page').then(
+            (module) => module.ShopDisputedJobDetailPage,
           ),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal', jobStatus: 'disputed' },

@@ -3925,6 +3925,12 @@ a {
   box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
 }
 
+@media (min-width: 1400px) {
+  .shop-dispute-list-page .customer-dispute-table-card {
+    overflow: visible;
+  }
+}
+
 .customer-dispute-table {
   width: 100%;
   min-width: 1080px;
