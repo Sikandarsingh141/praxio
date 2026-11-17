@@ -44,10 +44,10 @@ export class ShopLayout implements OnInit, OnDestroy {
     route: string;
     countKey: keyof ShopJobCounts;
   }> = [
-    { label: 'Open Requests', route: '/shop/jobs/new-jobs', countKey: 'new' },
+    { label: 'New Requests', route: '/shop/jobs/new-jobs', countKey: 'new' },
     { label: 'Pending Requests', route: '/shop/jobs/pending-jobs', countKey: 'pending' },
     { label: 'Assigned Jobs', route: '/shop/jobs/assigned-jobs', countKey: 'assigned' },
-    { label: 'Active Requests', route: '/shop/jobs/active-jobs', countKey: 'active' },
+    { label: 'Active Jobs', route: '/shop/jobs/active-jobs', countKey: 'active' },
     { label: 'Disputed Jobs', route: '/shop/jobs/disputed-jobs', countKey: 'disputed' },
     { label: 'Completed Jobs', route: '/shop/jobs/completed-jobs', countKey: 'completed' },
   ];

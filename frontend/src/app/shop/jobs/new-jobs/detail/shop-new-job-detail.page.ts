@@ -91,7 +91,7 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
   });
 
   readonly backRoute = '/shop/jobs/new-jobs';
-  readonly backLabel = 'New Jobs';
+  readonly backLabel = 'New Requests';
   readonly pageTitle = 'New Repair Request Details';
   legacyDetailRoute(id: string): string[] { return ['/shop/repair-requests', id]; }
 

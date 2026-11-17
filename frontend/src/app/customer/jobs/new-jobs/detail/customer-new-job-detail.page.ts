@@ -44,8 +44,8 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
   readonly customerDirectionsLoader = (requestId: string): Observable<RepairRoute> =>
     this.customerPortal.getRepairRoute(requestId);
   readonly backRoute = '/customer/jobs/new-jobs';
-  readonly backLabel = 'Open Request';
-  readonly pageTitle = 'Open Request Details';
+  readonly backLabel = 'New Requests';
+  readonly pageTitle = 'New Request Details';
 
   constructor() {
     super();

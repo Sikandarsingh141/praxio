@@ -59,8 +59,8 @@ export class CustomerPendingJobDetailPage extends CustomerJobDetailPageBase {
   readonly customerDirectionsLoader = (requestId: string): Observable<RepairRoute> =>
     this.customerPortal.getRepairRoute(requestId);
   readonly backRoute = '/customer/jobs/pending-jobs';
-  readonly backLabel = 'Pending Jobs';
-  readonly pageTitle = 'Pending Job Details';
+  readonly backLabel = 'Pending Requests';
+  readonly pageTitle = 'Pending Request Details';
 
   constructor() {
     super();

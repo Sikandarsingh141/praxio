@@ -339,12 +339,12 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     const routeContexts: Record<string, { title: string; label: string; route: string }> = {
       new: {
         title: 'New Repair Request Details',
-        label: 'New Repair Requests',
+        label: 'New Requests',
         route: '/shop/jobs/new-jobs',
       },
       pending: {
-        title: 'Pending Job Details',
-        label: 'Pending Jobs',
+        title: 'Pending Request Details',
+        label: 'Pending Requests',
         route: '/shop/jobs/pending-jobs',
       },
       assigned: {

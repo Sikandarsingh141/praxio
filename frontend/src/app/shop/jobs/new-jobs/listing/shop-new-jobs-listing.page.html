@@ -38,23 +38,23 @@
   </app-admin-page-header>
 
   @if (loading()) {
-    <p class="loading-state" role="status">Loading new jobs...</p>
+    <p class="loading-state" role="status">Loading new requests...</p>
   } @else if (error()) {
     <section class="error-state" role="alert">
-      <h2>New Jobs could not be loaded</h2>
+      <h2>New Requests could not be loaded</h2>
       <p>{{ error() }}</p>
       <button class="job-button" type="button" (click)="reload()">Try again</button>
     </section>
   } @else if (!filteredItems().length) {
     <app-empty-state
-      [title]="search() ? 'No matching jobs' : 'No new jobs'"
+      [title]="search() ? 'No matching requests' : 'No new requests'"
       [description]="search() ? 'Adjust your search or filters to see more requests.' : 'New customer repair requests will appear here.'"
     />
   } @else {
     <app-shop-jobs-table
       [jobs]="pageItems()"
       [detailRoute]="detailRoute"
-      title="New Jobs"
+      title="New Requests"
       [showQuotationStatus]="true"
     />
     @if (filteredItems().length > pageSize()) {

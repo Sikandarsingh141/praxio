@@ -45,7 +45,7 @@ interface PendingQuotationResponse {
 })
 export class CustomerPendingJobsListingPage extends CustomerJobsListingPageBase {
   protected override readonly category: CustomerJobCategory = 'pending';
-  readonly title: string = 'Pending Jobs';
+  readonly title: string = 'Pending Requests';
   readonly description: string = 'Review jobs with submitted quotations.';
   readonly detailRoute: string = '/customer/jobs/pending-jobs';
   readonly appliedFilters = signal<FilterValues>({});

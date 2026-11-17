@@ -23,7 +23,7 @@ import { ShopJobsTableComponent } from '../../components/shop-jobs-table.compone
 })
 export class ShopNewJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'new' as const;
-  readonly title = 'New Jobs';
+  readonly title = 'New Requests';
   readonly description = 'Review newly submitted repair requests.';
   readonly detailRoute = '/shop/jobs/new-jobs';
 }

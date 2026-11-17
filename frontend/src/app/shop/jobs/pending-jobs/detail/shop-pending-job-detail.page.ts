@@ -16,8 +16,8 @@ import { ShopRepairWorkflowComponent } from '../../../repair-job-details/compone
 })
 export class ShopPendingJobDetailPage extends ShopJobDetailPageBase {
   readonly backRoute = '/shop/jobs/pending-jobs';
-  readonly backLabel = 'Pending Jobs';
-  readonly pageTitle = 'Pending Job Details';
+  readonly backLabel = 'Pending Requests';
+  readonly pageTitle = 'Pending Request Details';
   legacyDetailRoute(id: string): string[] { return ['/shop/repair-requests', id]; }
 }
 

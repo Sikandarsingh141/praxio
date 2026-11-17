@@ -115,9 +115,9 @@ describe('CustomerLayout', () => {
       fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
     ).map((element) => element.textContent?.trim());
     expect(submenuLabels).toEqual([
-      'Open Requests',
+      'New Requests',
       'Pending Requests',
-      'Active Requests',
+      'Active Jobs',
       'Disputed Jobs',
       'Completed Jobs',
     ]);

@@ -38,20 +38,20 @@
   </app-admin-page-header>
 
   @if (loading()) {
-    <p class="loading-state" role="status">Loading pending jobs...</p>
+    <p class="loading-state" role="status">Loading pending requests...</p>
   } @else if (error()) {
     <section class="error-state" role="alert">
-      <h2>Pending Jobs could not be loaded</h2>
+      <h2>Pending Requests could not be loaded</h2>
       <p>{{ error() }}</p>
       <button class="job-button" type="button" (click)="reload()">Try again</button>
     </section>
   } @else if (!filteredItems().length) {
     <app-empty-state
-      [title]="search() ? 'No matching jobs' : 'No pending jobs'"
+      [title]="search() ? 'No matching requests' : 'No pending requests'"
       [description]="search() ? 'Try another device, customer, or job ID.' : 'Requests waiting for a decision will appear here.'"
     />
   } @else {
-    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Pending Jobs" />
+    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Pending Requests" />
     @if (filteredItems().length > pageSize()) {
       <app-job-pagination
         variant="brand"
