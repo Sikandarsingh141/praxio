@@ -36,6 +36,7 @@ export class TechnicianLayoutComponent implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly accountMenuOpen = signal(false);
   readonly sidebarOpen = signal(false);
+  readonly mobileSearchOpen = signal(false);
   readonly unreadNotificationCount = signal(0);
 
   // Global search state
@@ -69,10 +70,19 @@ export class TechnicianLayoutComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      this.closeSidebar();
+      this.closeGlobalSearch();
+      this.closeAccountMenu();
+      return;
+    }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
-      const input = document.getElementById('technician-global-search') as HTMLInputElement | null;
-      input?.focus();
+      this.mobileSearchOpen.set(true);
+      setTimeout(() => {
+        const input = document.getElementById('technician-global-search');
+        if (input instanceof HTMLInputElement) input.focus();
+      });
     }
   }
 
@@ -86,6 +96,19 @@ export class TechnicianLayoutComponent implements OnInit, OnDestroy {
 
   toggleSidebar(): void {
     this.sidebarOpen.update((open) => !open);
+  }
+
+  toggleMobileSearch(): void {
+    const open = !this.mobileSearchOpen();
+    this.mobileSearchOpen.set(open);
+    if (open) {
+      setTimeout(() => {
+        const input = document.getElementById('technician-global-search');
+        if (input instanceof HTMLInputElement) input.focus();
+      });
+    } else {
+      this.closeGlobalSearch();
+    }
   }
 
   closeSidebar(): void {
@@ -142,6 +165,7 @@ export class TechnicianLayoutComponent implements OnInit, OnDestroy {
   closeGlobalSearch(): void {
     this.searchResults.set(null);
     this.searchError.set('');
+    this.mobileSearchOpen.set(false);
   }
 
   getUserDisplayName(): string {

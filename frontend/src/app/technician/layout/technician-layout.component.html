@@ -1,14 +1,30 @@
 <div class="role-portal technician-portal">
-  <!-- Top Header Bar matching Shop Portal -->
   <header class="portal-header">
+    <button
+      class="menu-toggle"
+      type="button"
+      [attr.aria-expanded]="sidebarOpen()"
+      aria-controls="technician-navigation"
+      [attr.aria-label]="sidebarOpen() ? 'Close navigation menu' : 'Open navigation menu'"
+      (click)="toggleSidebar()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        @if (sidebarOpen()) {
+          <path d="m6 6 12 12M18 6 6 18" />
+        } @else {
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        }
+      </svg>
+    </button>
+
     <a class="portal-brand" routerLink="/technician" aria-label="Fixora technician portal">
       <span class="brand-mark"><img src="/fixroa-logo.png" alt="Fixroa" /></span>
-      <small>TECHNICIAN PORTAL</small>
     </a>
+    <span class="topbar-note">TECHNICIAN PORTAL</span>
 
-    <!-- Center Search Bar -->
     <form
       class="global-search"
+      [class.mobile-search-open]="mobileSearchOpen()"
       role="search"
       (submit)="$event.preventDefault(); searchJobs()"
     >
@@ -30,6 +46,7 @@
         }
       </span>
       <span class="search-shortcut" aria-hidden="true">Ctrl + K</span>
+      <button class="search-submit" type="submit">Search</button>
 
       @if (searchResults() !== null || searchLoading() || searchError()) {
         <div class="global-search-results">
@@ -62,7 +79,19 @@
       }
     </form>
 
-    <!-- Header Right Area -->
+    <button
+      class="mobile-search-toggle"
+      type="button"
+      aria-label="Open assigned job search"
+      [attr.aria-expanded]="mobileSearchOpen()"
+      (click)="toggleMobileSearch()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.8" cy="10.8" r="6.3" />
+        <path d="m16 16 4 4" />
+      </svg>
+    </button>
+
     <div class="header-account">
       <app-notification-center (opened)="closeAccountMenu()" />
 
@@ -144,102 +173,130 @@
     </div>
   </header>
 
-  <!-- Portal Body -->
   <div class="portal-body">
-    <!-- Left Sidebar matching Shop Portal -->
-    <aside class="portal-sidebar" aria-label="Technician portal navigation">
-      <a
-        class="portal-nav"
-        routerLink="/technician"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
-        </svg>
-        Dashboard
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/technician/jobs"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
-        </svg>
-        My Assigned Jobs
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/technician/active-jobs"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m8 5 11 7-11 7z" />
-        </svg>
-        Active Jobs
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/technician/completed-jobs"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m5 12 4 4L19 6M4 3h16v18H4z" />
-        </svg>
-        Completed Jobs
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/technician/messages"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5" />
-        </svg>
-        Messages
-        @if (chat.unreadMessageCount() > 0) {
-          <span
-            class="nav-unread-count"
-            [attr.aria-label]="chat.unreadMessageCount() + ' unread messages'"
-          >
-            {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
-          </span>
-        }
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/technician/notifications"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-          <path d="M10 21h4" />
-        </svg>
-        Notifications
-        @if (unreadNotificationCount() > 0) {
-          <span class="nav-notification-count" [attr.aria-label]="unreadNotificationCount() + ' unread notifications'">
-            {{ unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount() }}
-          </span>
-        }
-      </a>
-      <a
-        class="portal-nav"
-        routerLink="/technician/profile"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21a8 8 0 0 1 16 0" />
-        </svg>
-        My Profile
-      </a>
+    @if (sidebarOpen()) {
+      <button
+        class="mobile-backdrop"
+        type="button"
+        aria-label="Dismiss navigation overlay"
+        (click)="closeSidebar()"
+      ></button>
+    }
+
+    <aside
+      id="technician-navigation"
+      class="portal-sidebar"
+      [class.sidebar-open]="sidebarOpen()"
+      aria-label="Technician portal navigation"
+    >
+      <nav class="navigation-group" aria-label="Main navigation">
+        <a
+          class="portal-nav"
+          routerLink="/technician"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+          </svg>
+          Dashboard
+        </a>
+        <a
+          class="portal-nav"
+          routerLink="/technician/jobs"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
+          </svg>
+          My Assigned Jobs
+        </a>
+        <a
+          class="portal-nav"
+          routerLink="/technician/active-jobs"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m8 5 11 7-11 7z" />
+          </svg>
+          Active Jobs
+        </a>
+        <a
+          class="portal-nav"
+          routerLink="/technician/completed-jobs"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 12 4 4L19 6M4 3h16v18H4z" />
+          </svg>
+          Completed Jobs
+        </a>
+        <a
+          class="portal-nav"
+          routerLink="/technician/messages"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 5h16v12H9l-5 4zM8 9h8M8 13h5" />
+          </svg>
+          Messages
+          @if (chat.unreadMessageCount() > 0) {
+            <span
+              class="nav-unread-count"
+              [attr.aria-label]="chat.unreadMessageCount() + ' unread messages'"
+            >
+              {{ chat.unreadMessageCount() > 99 ? '99+' : chat.unreadMessageCount() }}
+            </span>
+          }
+        </a>
+        <a
+          class="portal-nav"
+          routerLink="/technician/notifications"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            <path d="M10 21h4" />
+          </svg>
+          Notifications
+          @if (unreadNotificationCount() > 0) {
+            <span
+              class="nav-notification-count"
+              [attr.aria-label]="unreadNotificationCount() + ' unread notifications'"
+            >
+              {{ unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount() }}
+            </span>
+          }
+        </a>
+      </nav>
+
+      <div class="sidebar-heading">YOUR ACCOUNT</div>
+      <nav class="navigation-group" aria-label="Account navigation">
+        <a
+          class="portal-nav"
+          routerLink="/technician/profile"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="closeSidebar()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21a8 8 0 0 1 16 0" />
+          </svg>
+          My Profile
+        </a>
+      </nav>
 
       <section class="sidebar-support-card" aria-label="Technician support">
         <svg class="support-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -250,13 +307,21 @@
         </svg>
         <strong>Need Help?</strong>
         <p>Contact shop admin or Fixora support.</p>
-        <a routerLink="/technician/messages" class="support-link">
+        <a
+          routerLink="/technician/messages"
+          class="support-link"
+          (click)="closeSidebar()"
+        >
           Get Support
           <span aria-hidden="true">→</span>
         </a>
       </section>
 
-      <button type="button" class="portal-nav portal-logout-btn" (click)="signOut()">
+      <button
+        type="button"
+        class="portal-nav portal-logout-btn"
+        (click)="closeSidebar(); signOut()"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M10 17l5-5-5-5M15 12H3" />
           <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7" />
@@ -265,7 +330,6 @@
       </button>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="portal-content">
       @if (error()) {
         <p class="portal-error" role="alert">{{ error() }}</p>

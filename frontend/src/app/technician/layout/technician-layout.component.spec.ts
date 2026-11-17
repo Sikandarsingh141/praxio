@@ -23,7 +23,7 @@ describe('TechnicianLayoutComponent', () => {
     httpTestingController.verify();
   });
 
-  it('renders technician header, search bar, and portal navigation matching shop portal', () => {
+  it('renders the Customer-style header and responsive technician portal navigation', () => {
     authService.login('technician@example.com', 'password').subscribe();
     httpTestingController.expectOne(`${environment.apiBaseUrl}/auth/login`).flush({
       data: {
@@ -67,8 +67,15 @@ describe('TechnicianLayoutComponent', () => {
     fixture.detectChanges();
 
     // Verify brand
-    const brand = fixture.nativeElement.querySelector('.portal-brand');
-    expect(brand?.textContent).toContain('TECHNICIAN PORTAL');
+    const header = fixture.nativeElement.querySelector('.portal-header');
+    expect(header).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.portal-brand img')?.getAttribute('alt')).toBe('Fixroa');
+    expect(fixture.nativeElement.querySelector('.topbar-note')?.textContent).toContain(
+      'TECHNICIAN PORTAL',
+    );
+    expect(fixture.nativeElement.querySelector('.global-search')).not.toBeNull();
+    const menuToggle = fixture.nativeElement.querySelector('.menu-toggle') as HTMLButtonElement | null;
+    expect(menuToggle?.getAttribute('aria-controls')).toBe('technician-navigation');
 
     // Verify account name
     const accountName = fixture.nativeElement.querySelector('.account-name');
@@ -90,5 +97,16 @@ describe('TechnicianLayoutComponent', () => {
     expect(navLinks[4]?.textContent).toContain('2');
     expect(navLinks[5]?.querySelector('.nav-notification-count')?.textContent).toContain('1');
     expect(fixture.nativeElement.querySelector('.sidebar-support-card')?.textContent).toContain('Get Support');
+
+    menuToggle?.click();
+    fixture.detectChanges();
+    expect(menuToggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(
+      fixture.nativeElement.querySelector('.portal-sidebar')?.classList.contains('sidebar-open'),
+    ).toBeTrue();
+
+    (fixture.nativeElement.querySelector('.mobile-backdrop') as HTMLButtonElement | null)?.click();
+    fixture.detectChanges();
+    expect(menuToggle?.getAttribute('aria-expanded')).toBe('false');
   });
 });
