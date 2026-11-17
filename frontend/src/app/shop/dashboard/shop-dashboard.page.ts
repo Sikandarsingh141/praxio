@@ -40,33 +40,48 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
   readonly quotationChartData = computed(() => {
     const data = this.dashboard();
     const trend = data?.quotations.trend ?? [];
-    if (trend.length >= 7) {
-      const maxCount = Math.max(...trend.map((t) => t.count), 1);
-      return trend.slice(-7).map((d, index, arr) => ({
-        date: d._id,
-        label: this.formatDateLabel(d._id),
-        count: d.count,
-        heightPercent: Math.max(8, Math.round((d.count / Math.max(maxCount, 10)) * 100)),
-        isLatest: index === arr.length - 1,
-      }));
-    }
-    const baseDate = new Date('2026-11-16T12:00:00Z');
-    const defaultCounts = [1, 2, 2, 4, 5, 6, 8];
-    const days: Array<{ date: string; label: string; count: number; heightPercent: number; isLatest: boolean }> = [];
+    const trendByDate = new Map(trend.map((entry) => [entry._id, entry.count]));
+    const latestTrendDate = trend.reduce(
+      (latest, entry) => (entry._id > latest ? entry._id : latest),
+      '',
+    );
+    const latestDateKey =
+      data?.range.to?.slice(0, 10) ||
+      latestTrendDate ||
+      new Date().toISOString().slice(0, 10);
+    const latestDate = new Date(`${latestDateKey}T12:00:00Z`);
+    const days: Array<{ date: string; label: string; count: number; isLatest: boolean }> = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(baseDate.getTime() - i * 86400000);
+      const d = new Date(latestDate.getTime() - i * 86400000);
       const iso = d.toISOString().slice(0, 10);
-      const existing = trend.find((t) => t._id === iso);
-      const count = existing ? existing.count : defaultCounts[6 - i];
+      const count = trendByDate.get(iso) ?? 0;
       days.push({
         date: iso,
         label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }),
         count,
-        heightPercent: Math.max(8, Math.round((count / 10) * 100)),
         isLatest: i === 0,
       });
     }
-    return days;
+    const maximum = Math.max(...days.map((day) => day.count), 0);
+    const chartMaximum = Math.max(10, Math.ceil(maximum / 10) * 10);
+    return days.map((day) => ({
+      ...day,
+      heightPercent:
+        day.count === 0
+          ? 0
+          : Math.max(8, Math.round((day.count / chartMaximum) * 100)),
+    }));
+  });
+
+  readonly quotationChartAxisLabels = computed(() => {
+    const maximum = Math.max(
+      ...this.quotationChartData().map((day) => day.count),
+      0,
+    );
+    const chartMaximum = Math.max(10, Math.ceil(maximum / 10) * 10);
+    return Array.from({ length: 6 }, (_, index) =>
+      Math.round(chartMaximum * (1 - index / 5)),
+    );
   });
 
   constructor(realtime: NotificationRealtimeService) {
@@ -145,55 +160,6 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
     this.loadDashboard();
   }
 
-  readonly fallbackRequests = [
-    {
-      _id: 'REQ-0821-SAM',
-      appliance: 'Samsung TV',
-      description: 'Display screen blank',
-      createdAt: '2026-11-16T10:00:00.000Z',
-      shopResponse: { status: 'new' as const },
-      customer: { firstName: 'Nancy', lastName: 'Sharma' },
-    },
-    {
-      _id: 'REQ-0820-CLR',
-      appliance: 'Cooler',
-      description: 'Motor not running',
-      createdAt: '2026-11-16T09:30:00.000Z',
-      shopResponse: { status: 'completed' as const },
-      repairJob: { status: 'completed' },
-      customer: { firstName: 'Nancy', lastName: 'Sharma' },
-    },
-    {
-      _id: 'REQ-0819-HDP',
-      appliance: 'HeadPhone',
-      description: 'One side not working',
-      createdAt: '2026-11-16T09:00:00.000Z',
-      shopResponse: { status: 'completed' as const },
-      repairJob: { status: 'completed' },
-      customer: { firstName: 'Nancy', lastName: 'Sharma' },
-    },
-  ];
-
-  readonly fallbackQuotations = [
-    { _id: 'q-1', appliance: 'Cooler', customerName: 'Nancy Sharma', createdAt: '2026-11-16T12:00:00Z', amount: 100, currency: 'INR', status: 'accepted' },
-    { _id: 'q-2', appliance: 'HeadPhone', customerName: 'Nancy Sharma', createdAt: '2026-11-16T12:00:00Z', amount: 50, currency: 'INR', status: 'accepted' },
-    { _id: 'q-3', appliance: 'AC', customerName: 'Sikandar Customer', createdAt: '2026-11-16T12:00:00Z', amount: 100, currency: 'INR', status: 'accepted' },
-    { _id: 'q-4', appliance: 'Mobile Phone', customerName: 'Sikandar Customer', createdAt: '2026-11-15T12:00:00Z', amount: 200, currency: 'INR', status: 'accepted' },
-  ];
-
-  readonly fallbackReviews: Array<{
-    _id: string;
-    customerName: string;
-    overallRating: number;
-    title?: string;
-    reviewText: string;
-    createdAt: string;
-  }> = [
-    { _id: 'r-1', customerName: 'Nancy Sharma', overallRating: 5, reviewText: 'Taking very extra charges', createdAt: '2026-11-17T10:00:00Z' },
-    { _id: 'r-2', customerName: 'Nancy Sharma', overallRating: 5, reviewText: 'Good thank you', createdAt: '2026-11-16T10:00:00Z' },
-    { _id: 'r-3', customerName: 'Sikandar Customer', overallRating: 5, reviewText: 'Working nice', createdAt: '2026-11-16T10:00:00Z' },
-  ];
-
   trendWidth(count: number, trend: Array<{ _id: string; count: number }>): number {
     const maximum = Math.max(...trend.map((entry) => entry.count), 1);
     return Math.max(8, (count / maximum) * 100);
@@ -211,7 +177,7 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
     if (typeof customer === 'string' && customer.trim()) return customer;
     if (customer?.displayName) return customer.displayName;
     const fullName = [customer?.firstName, customer?.lastName].filter(Boolean).join(' ').trim();
-    return fullName || 'Nancy Sharma';
+    return fullName || 'Customer';
   }
 
   deviceType(appliance?: string): string {

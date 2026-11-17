@@ -1,4 +1,4 @@
-<section class="shop-dashboard" aria-labelledby="shop-dashboard-title">
+<section class="shop-dashboard-page" aria-labelledby="shop-dashboard-title">
   <app-admin-page-header>
     <h1 adminPageTitle class="admin-page-title" id="shop-dashboard-title">Dashboard</h1>
     <p adminPageDescription class="admin-page-description">
@@ -44,8 +44,8 @@
         </div>
         <div class="metric-content">
           <span class="metric-label">Repair Requests</span>
-          <strong>{{ data.requests.total || 12 }}</strong>
-          <span class="metric-trend positive">↑ +3 from last 7 days</span>
+          <strong>{{ data.requests.total }}</strong>
+          <span class="metric-trend positive">{{ data.requests.new }} new requests</span>
         </div>
       </a>
 
@@ -61,8 +61,8 @@
         </div>
         <div class="metric-content">
           <span class="metric-label">Quotations Submitted</span>
-          <strong>{{ data.quotations.total || 10 }}</strong>
-          <span class="metric-trend positive">↑ +2 from last 7 days</span>
+          <strong>{{ data.quotations.total }}</strong>
+          <span class="metric-trend positive">{{ data.quotations.pending }} awaiting response</span>
         </div>
       </a>
 
@@ -76,8 +76,8 @@
         </div>
         <div class="metric-content">
           <span class="metric-label">Accepted Quotations</span>
-          <strong>{{ data.quotations.accepted || 8 }}</strong>
-          <span class="metric-trend positive">↑ +2 from last 7 days</span>
+          <strong>{{ data.quotations.accepted }}</strong>
+          <span class="metric-trend positive">Accepted by customers</span>
         </div>
       </a>
 
@@ -90,8 +90,8 @@
         </div>
         <div class="metric-content">
           <span class="metric-label">Active Repairs</span>
-          <strong>{{ data.repairs.active || 4 }}</strong>
-          <span class="metric-trend positive">↑ +1 from last 7 days</span>
+          <strong>{{ data.repairs.active }}</strong>
+          <span class="metric-trend positive">In the repair workflow</span>
         </div>
       </a>
 
@@ -104,8 +104,8 @@
         </div>
         <div class="metric-content">
           <span class="metric-label">Customer Rating</span>
-          <strong>{{ data.reviews.averageRating ? (data.reviews.averageRating | number:'1.1-1') : '5.0' }}</strong>
-          <span class="metric-trend rating-note">Based on {{ data.reviews.total || 6 }} reviews</span>
+          <strong>{{ data.reviews.averageRating !== null ? (data.reviews.averageRating | number:'1.1-1') : '—' }}</strong>
+          <span class="metric-trend rating-note">Based on {{ data.reviews.total }} reviews</span>
         </div>
       </a>
 
@@ -119,9 +119,9 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-label">Repair revenue</span>
-          <strong>{{ (data.revenue.available && data.revenue.amount !== undefined) ? (data.revenue.amount | currency: (data.revenue.currency || 'INR') : 'symbol' : '1.0-0') : '₹12,500' }}</strong>
-          <span class="metric-trend positive">↑ +18% from last 30 days</span>
+          <span class="metric-label">Repair Revenue</span>
+          <strong>{{ data.revenue.available && data.revenue.amount !== undefined ? (data.revenue.amount | currency: (data.revenue.currency || 'INR') : 'symbol' : '1.0-0') : 'Not available' }}</strong>
+          <span class="metric-trend rating-note">{{ data.revenue.available ? 'Recorded repair payments' : 'Payment tracking is not configured' }}</span>
         </div>
       </article>
     </div>
@@ -148,12 +148,9 @@
 
         <div class="bar-chart-container">
           <div class="y-axis">
-            <span>10</span>
-            <span>8</span>
-            <span>6</span>
-            <span>4</span>
-            <span>2</span>
-            <span>0</span>
+            @for (label of quotationChartAxisLabels(); track label) {
+              <span>{{ label }}</span>
+            }
           </div>
           <div class="chart-content">
             <div class="grid-lines">
@@ -167,15 +164,15 @@
             <div class="bars-container">
               @for (bar of quotationChartData(); track bar.date) {
                 <div class="bar-col" [class.latest]="bar.isLatest">
-                  @if (bar.isLatest) {
-                    <div class="chart-tooltip">
-                      <div class="tooltip-date">Nov 16, 2026</div>
-                      <div class="tooltip-value">{{ bar.count }} Quotations</div>
-                      <div class="tooltip-arrow"></div>
-                    </div>
-                    <div class="chart-bar-pin"></div>
-                  }
                   <div class="bar-track">
+                    @if (bar.isLatest && (bar.count > 0 || data.range.to)) {
+                      <div class="chart-tooltip" [style.bottom.%]="bar.heightPercent">
+                        <div class="tooltip-date">{{ bar.date | date: 'MMM d, y' }}</div>
+                        <div class="tooltip-value">{{ bar.count }} Quotations</div>
+                        <div class="tooltip-arrow"></div>
+                      </div>
+                      <div class="chart-bar-pin" [style.bottom.%]="bar.heightPercent"></div>
+                    }
                     <div class="bar-fill" [style.height.%]="bar.heightPercent"></div>
                   </div>
                   <span class="bar-label">{{ bar.label }}</span>
@@ -228,7 +225,7 @@
               </svg>
             </div>
             <span class="step-label">Inspection</span>
-            <strong class="step-count">{{ (data.repairs.inspection_pending + data.repairs.inspection_in_progress) || 1 }}</strong>
+            <strong class="step-count">{{ data.repairs.inspection_pending + data.repairs.inspection_in_progress + data.repairs.awaiting_customer_approval + data.repairs.inspection_approved }}</strong>
           </div>
           <div class="pipeline-chevron" aria-hidden="true">›</div>
 
@@ -240,7 +237,7 @@
               </svg>
             </div>
             <span class="step-label">In Progress</span>
-            <strong class="step-count">{{ data.repairs.in_progress }}</strong>
+            <strong class="step-count">{{ data.repairs.in_progress + data.repairs.on_hold }}</strong>
           </div>
           <div class="pipeline-chevron" aria-hidden="true">›</div>
 
@@ -254,7 +251,7 @@
               </svg>
             </div>
             <span class="step-label">Ready for Pickup</span>
-            <strong class="step-count">{{ data.repairs.ready_for_pickup }}</strong>
+            <strong class="step-count">{{ data.repairs.repair_completed + data.repairs.ready_for_pickup }}</strong>
           </div>
           <div class="pipeline-chevron" aria-hidden="true">›</div>
 
@@ -267,7 +264,7 @@
               </svg>
             </div>
             <span class="step-label">Completed</span>
-            <strong class="step-count">{{ data.repairs.completed !== 0 ? data.repairs.completed : 6 }}</strong>
+            <strong class="step-count">{{ data.repairs.picked_up + data.repairs.completed }}</strong>
           </div>
         </div>
       </article>
@@ -295,7 +292,7 @@
         </header>
 
         <div class="recent-requests-list">
-          @for (req of (data.requests.recent.length ? data.requests.recent.slice(0, 3) : fallbackRequests); track req._id) {
+          @for (req of data.requests.recent.slice(0, 3); track req._id) {
             <article class="recent-request">
               <div class="req-device-thumb">
                 @switch (deviceType(req.appliance)) {
@@ -338,14 +335,18 @@
                 <span class="req-sub">{{ customerName(req) }} · {{ req.createdAt | date: 'mediumDate' }}</span>
               </div>
               <div class="req-actions">
-                @if (req.shopResponse.status === 'completed' || req.repairJob?.status === 'completed') {
-                  <span class="status-pill status-completed">Completed</span>
-                } @else {
-                  <span class="status-pill status-new">New</span>
-                }
+                @let status = req.repairJob?.status || req.shopResponse.status;
+                <span
+                  class="status-pill"
+                  [class.status-new]="status === 'new'"
+                  [class.status-completed]="status === 'completed'"
+                  [class.status-accepted]="status === 'customer_accepted'"
+                >{{ status.replaceAll('_', ' ') | titlecase }}</span>
                 <a class="req-view-link" [routerLink]="['/shop/repair-requests', req._id]">View Details →</a>
               </div>
             </article>
+          } @empty {
+            <p class="empty-list-state">No repair requests to show yet.</p>
           }
         </div>
       </article>
@@ -371,17 +372,19 @@
         </header>
 
         <div class="quotations-list">
-          @for (q of (data.quotations.recent.length ? data.quotations.recent.slice(0, 4) : fallbackQuotations); track q._id) {
+          @for (q of data.quotations.recent.slice(0, 4); track q._id) {
             <article class="quotation-row">
               <div class="quotation-info">
-                <strong>{{ q.appliance || 'Cooler' }}</strong>
-                <span class="quotation-sub">{{ q.customerName || 'Nancy Sharma' }} · {{ q.createdAt | date: 'mediumDate' }}</span>
+                <strong>{{ q.appliance || 'Repair request' }}</strong>
+                <span class="quotation-sub">{{ q.customerName || 'Customer' }} · {{ q.createdAt | date: 'mediumDate' }}</span>
               </div>
               <div class="quotation-meta">
-                <strong class="quotation-price">{{ (q.amount || 100) | currency: (q.currency || 'INR') : 'symbol' : '1.2-2' }}</strong>
-                <span class="status-pill status-accepted">{{ quotationStatusLabel(q.status) }}</span>
+                <strong class="quotation-price">{{ q.amount | currency: (q.currency || 'INR') : 'symbol' : '1.2-2' }}</strong>
+                <span class="status-pill" [class.status-accepted]="q.status === 'accepted'">{{ quotationStatusLabel(q.status) }}</span>
               </div>
             </article>
+          } @empty {
+            <p class="empty-list-state">No quotations to show yet.</p>
           }
         </div>
       </article>
@@ -404,20 +407,22 @@
         </header>
 
         <div class="reviews-list">
-          @for (r of (data.reviews.recent.length ? data.reviews.recent.slice(0, 3) : fallbackReviews); track r._id) {
+          @for (r of data.reviews.recent.slice(0, 3); track r._id) {
             <article class="review-item">
               <div class="review-top">
                 <div class="review-author-wrap">
-                  <span class="review-avatar">{{ (r.customerName || 'N').slice(0, 1).toUpperCase() }}</span>
-                  <strong class="review-author-name">{{ r.customerName || 'Nancy Sharma' }}</strong>
+                  <span class="review-avatar">{{ (r.customerName || 'C').slice(0, 1).toUpperCase() }}</span>
+                  <strong class="review-author-name">{{ r.customerName || 'Customer' }}</strong>
                 </div>
                 <span class="review-date">{{ r.createdAt | date: 'mediumDate' }}</span>
               </div>
-              <div class="review-stars-row" [attr.aria-label]="(r.overallRating || 5) + ' out of 5 stars'">
-                <span class="star-gold">★★★★★</span>
+              <div class="review-stars-row" [attr.aria-label]="r.overallRating + ' out of 5 stars'">
+                <span class="star-gold">{{ '★'.repeat(r.overallRating) }}</span>
               </div>
               <p class="review-text-body">{{ r.title || r.reviewText }}</p>
             </article>
+          } @empty {
+            <p class="empty-list-state">No customer reviews to show yet.</p>
           }
         </div>
       </article>

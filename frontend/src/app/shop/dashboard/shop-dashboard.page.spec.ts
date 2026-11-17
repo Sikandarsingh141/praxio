@@ -125,7 +125,6 @@ describe('ShopDashboardPage', () => {
     const pageHeader = fixture.nativeElement.querySelector('app-admin-page-header') as HTMLElement;
     expect(getComputedStyle(pageHeader).display).toBe('block');
     expect(pageHeader.getBoundingClientRect().width).toBeGreaterThan(300);
-    expect(getComputedStyle(pageHeader).gridColumnEnd).toBe('-1');
     const headerCopy = fixture.nativeElement.querySelector(
       '.admin-page-header__copy',
     ) as HTMLElement;
@@ -133,8 +132,14 @@ describe('ShopDashboardPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
     expect(fixture.nativeElement.textContent).toContain('Performance summary');
     expect(fixture.nativeElement.textContent).toContain('Quotation activity');
-    expect(fixture.nativeElement.textContent).toContain('Repair revenue');
+    expect(fixture.nativeElement.textContent).toContain('Repair Revenue');
     expect(fixture.nativeElement.querySelectorAll('.metric-card')).toHaveSize(6);
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.metric-content > strong') as NodeListOf<HTMLElement>,
+      ).map((value) => value.textContent?.trim()),
+    ).toEqual(['0', '0', '0', '0', '—', 'Not available']);
+    expect(fixture.componentInstance.quotationChartData().every((bar) => bar.count === 0)).toBeTrue();
     expect(fixture.nativeElement.querySelector('.dashboard-columns')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.pipeline-grid')).toBeTruthy();
     const pipelineGrid = fixture.nativeElement.querySelector('.pipeline-grid') as HTMLElement;
@@ -148,7 +153,66 @@ describe('ShopDashboardPage', () => {
     expect(fixture.nativeElement.querySelector('.active-repairs-panel')).toBeFalsy();
     expect(fixture.nativeElement.querySelectorAll('.recent-request')).toHaveSize(3);
     expect(fixture.nativeElement.textContent).not.toContain('Washer four');
+    expect(fixture.nativeElement.textContent).not.toContain('Samsung TV');
+    expect(fixture.nativeElement.textContent).toContain('No quotations to show yet.');
+    expect(fixture.nativeElement.textContent).toContain('No customer reviews to show yet.');
     expect(fixture.nativeElement.textContent).not.toContain('Your dashboard');
+    expect(fixture.nativeElement.querySelector('.chart-tooltip')).toBeFalsy();
+
+    const dashboard = fixture.componentInstance.dashboard()!;
+    fixture.componentInstance.dashboard.set({
+      ...dashboard,
+      quotations: {
+        ...dashboard.quotations,
+        trend: [
+          { _id: '2026-11-11', count: 2 },
+          { _id: '2026-11-12', count: 2 },
+          { _id: '2026-11-14', count: 1 },
+          { _id: '2026-11-15', count: 3 },
+          { _id: '2026-11-16', count: 2 },
+        ],
+      },
+      repairs: {
+        ...dashboard.repairs,
+        confirmed: 1,
+        inspection_in_progress: 2,
+        inspection_approved: 3,
+        awaiting_customer_approval: 4,
+        in_progress: 6,
+        on_hold: 5,
+        repair_completed: 6,
+        ready_for_pickup: 7,
+        picked_up: 8,
+        completed: 9,
+      },
+    });
+    fixture.detectChanges();
+    const chartData = fixture.componentInstance.quotationChartData();
+    expect(chartData.at(-1)).toEqual(
+      jasmine.objectContaining({
+        date: '2026-11-16',
+        count: 2,
+        isLatest: true,
+      }),
+    );
+    expect(fixture.nativeElement.querySelector('.chart-tooltip')?.textContent).toContain(
+      '2 Quotations',
+    );
+    fixture.componentInstance.dashboard.update((value) => ({
+      ...value!,
+      range: { ...value!.range, to: '2026-11-20T23:59:59.999Z' },
+    }));
+    expect(fixture.componentInstance.quotationChartData().at(-1)?.date).toBe(
+      '2026-11-20',
+    );
+    fixture.componentInstance.dashboard.update((value) => ({
+      ...value!,
+      range: { from: null, to: null },
+    }));
+    const pipelineCounts = Array.from(
+      fixture.nativeElement.querySelectorAll('.pipeline-step-card .step-count') as NodeListOf<HTMLElement>,
+    ).map((value) => value.textContent?.trim());
+    expect(pipelineCounts).toEqual(['1', '9', '11', '13', '17']);
 
     fixture.nativeElement.querySelector('.filter-trigger').click();
     fixture.detectChanges();

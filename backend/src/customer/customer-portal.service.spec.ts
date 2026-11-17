@@ -711,8 +711,13 @@ describe('CustomerPortalService', () => {
         createQuery([
           {
             statuses: [
+              { _id: 'inspection_approved', count: 1 },
               { _id: 'ready_for_pickup', count: 1 },
               { _id: 'disputed', count: 1 },
+              { _id: 'repair_completed', count: 1 },
+              { _id: 'picked_up', count: 1 },
+              { _id: 'completed', count: 1 },
+              { _id: 'repair_declined', count: 1 },
             ],
             active: [],
             readyForPickup: [{ count: 1 }],
@@ -745,7 +750,7 @@ describe('CustomerPortalService', () => {
     expect(result).toMatchObject({
       requests: { total: 2, new: 2 },
       quotations: { total: 1, pending: 1 },
-      repairs: { total: 2, readyForPickup: 1, disputed: 1, active: 2 },
+      repairs: { total: 7, readyForPickup: 1, disputed: 1, active: 1 },
       reviews: { averageRating: 4.5, total: 2 },
       revenue: { available: false },
     });

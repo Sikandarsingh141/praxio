@@ -1736,6 +1736,15 @@ export class CustomerPortalService {
       ...REPAIR_JOB_STATUSES,
       ...LEGACY_REPAIR_JOB_STATUSES,
     ];
+    const activeRepairStatuses = [
+      'confirmed',
+      'inspection_pending',
+      'inspection_in_progress',
+      'awaiting_customer_approval',
+      'inspection_approved',
+      'in_progress',
+      'on_hold',
+    ];
     const quotationStatuses = [
       'pending',
       'accepted',
@@ -1796,11 +1805,10 @@ export class CustomerPortalService {
         ...Object.fromEntries(
           repairStatuses.map((status) => [status, repairCounts[status] ?? 0]),
         ),
-        active: repairStatuses
-          .filter(
-            (status) => !['completed', 'repair_declined'].includes(status),
-          )
-          .reduce((sum, status) => sum + (repairCounts[status] ?? 0), 0),
+        active: activeRepairStatuses.reduce(
+          (sum, status) => sum + (repairCounts[status] ?? 0),
+          0,
+        ),
         readyForPickup: itemCount(repairData.readyForPickup),
         recent: repairData.active ?? [],
       },
