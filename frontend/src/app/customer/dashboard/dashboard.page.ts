@@ -32,28 +32,28 @@ export class DashboardPage implements OnInit {
   readonly recentRequests = signal<CustomerRepairRequest[]>([]);
   readonly requestStats = signal([
     {
-      label: 'Total requests',
+      label: 'All Requests',
       value: 0,
       icon: 'requests',
       tone: 'total',
-      note: "All repair requests you've created",
+      note: "All requests you've created",
     },
     {
-      label: 'Open requests',
+      label: 'Open Requests',
       value: 0,
       icon: 'open',
       tone: 'open',
       note: 'Requests awaiting shop action',
     },
     {
-      label: 'Active repairs',
+      label: 'Active Repairs',
       value: 0,
       icon: 'active',
       tone: 'active',
       note: 'Repairs currently in progress',
     },
     {
-      label: 'Completed',
+      label: 'Completed Repairs',
       value: 0,
       icon: 'completed',
       tone: 'completed',
@@ -84,21 +84,21 @@ export class DashboardPage implements OnInit {
   private setRequestStats(requests: CustomerRepairRequest[]): void {
     this.requestStats.set([
       {
-        label: 'Total requests',
+        label: 'All Requests',
         value: requests.length,
         icon: 'requests',
         tone: 'total',
-        note: "All repair requests you've created",
+        note: "All requests you've created",
       },
       {
-        label: 'Open requests',
+        label: 'Open Requests',
         value: requests.filter((request) => request.status === 'open' && !request.repairJob).length,
         icon: 'open',
         tone: 'open',
         note: 'Requests awaiting shop action',
       },
       {
-        label: 'Active repairs',
+        label: 'Active Repairs',
         value: requests.filter(
           (request) =>
             !!request.repairJob &&
@@ -109,7 +109,7 @@ export class DashboardPage implements OnInit {
         note: 'Repairs currently in progress',
       },
       {
-        label: 'Completed',
+        label: 'Completed Repairs',
         value: requests.filter(
           (request) => request.status === 'completed' || request.repairJob?.status === 'completed',
         ).length,

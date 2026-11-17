@@ -16,7 +16,7 @@ import { ShopJobsTableComponent } from '../../components/shop-jobs-table.compone
 })
 export class ShopActiveJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'active' as const;
-  readonly title = 'Active Jobs';
+  readonly title = 'Active Repairs';
   readonly description = 'Follow repairs currently in progress.';
   readonly detailRoute = '/shop/jobs/active-jobs';
 }

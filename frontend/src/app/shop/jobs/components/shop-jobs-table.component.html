@@ -3,7 +3,7 @@
     <table class="jobs-table" [class.assignment-jobs-table]="showAssignmentDetails">
     <thead>
       <tr>
-        <th scope="col" class="th-request-id">{{ showAssignmentDetails ? 'Job ID' : 'Request ID' }}</th>
+        <th scope="col" class="th-request-id">Request ID</th>
         <th scope="col" class="th-device">Device &amp; Brand</th>
         <th scope="col" class="th-customer">Customer</th>
         <th scope="col" class="th-issue">Issue / Problem</th>
@@ -127,10 +127,10 @@
                 class="action-btn-icon action-btn-more"
                 cdkOverlayOrigin
                 #jobMenuOrigin="cdkOverlayOrigin"
-                [attr.aria-label]="'Job actions for job ' + job.id"
+                [attr.aria-label]="'Request actions for request ' + job.id"
                 [attr.aria-expanded]="openActionsJobId() === job.id"
                 (click)="toggleActions(job.id)"
-                title="Job actions"
+                title="Request actions"
               >
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="12" cy="5" r="1.5" fill="currentColor" />

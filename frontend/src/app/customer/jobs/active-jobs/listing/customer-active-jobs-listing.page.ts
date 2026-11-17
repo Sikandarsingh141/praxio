@@ -30,7 +30,7 @@ import { JobListItem } from '../../../../shared/models/job.models';
 })
 export class CustomerActiveJobsListingPage extends CustomerJobsListingPageBase {
   protected override readonly category = 'active' as const;
-  readonly title = 'Active Jobs';
+  readonly title = 'Active Repairs';
   readonly description = 'Follow repairs currently in progress.';
   readonly detailRoute = '/customer/jobs/active-jobs';
   readonly appliedFilters = signal<FilterValues>({});
@@ -42,7 +42,7 @@ export class CustomerActiveJobsListingPage extends CustomerJobsListingPageBase {
   ];
 
   readonly filterConfig: FilterConfig = {
-    title: 'Active job filters',
+    title: 'Active repair filters',
     fields: [
       { key: 'appliance', label: 'Appliance or device', type: 'text' },
       { key: 'brand', label: 'Brand', type: 'text' },

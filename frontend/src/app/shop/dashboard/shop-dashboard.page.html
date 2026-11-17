@@ -34,7 +34,7 @@
   } @else if (dashboard(); as data) {
     <!-- Row 1: KPI Metric Cards -->
     <div class="metric-grid">
-      <!-- 1. Repair Requests -->
+      <!-- 1. All Requests -->
       <a class="metric-card" routerLink="/shop/repair-requests">
         <div class="metric-icon-wrap icon-requests">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -43,7 +43,7 @@
           </svg>
         </div>
         <div class="metric-content">
-          <span class="metric-label">Repair Requests</span>
+          <span class="metric-label">All Requests</span>
           <strong>{{ data.requests.total }}</strong>
           <span class="metric-trend positive">{{ data.requests.new }} new requests</span>
         </div>
@@ -270,9 +270,9 @@
       </article>
     </div>
 
-    <!-- Row 3: Incoming Repair Requests, Recent Quotations, Recent Reviews -->
+    <!-- Row 3: Recent Requests, Recent Quotations, Recent Reviews -->
     <div class="dashboard-columns lower-columns recent-side-panels">
-      <!-- Column 1: Incoming Repair Requests -->
+      <!-- Column 1: Recent Requests -->
       <article class="panel requests-panel">
         <header class="panel-header">
           <div class="panel-header-left">
@@ -284,7 +284,7 @@
               </svg>
             </div>
             <div>
-              <h3>Incoming Repair Requests</h3>
+              <h3>Recent Requests</h3>
               <p>Recent requests shared with your shop</p>
             </div>
           </div>

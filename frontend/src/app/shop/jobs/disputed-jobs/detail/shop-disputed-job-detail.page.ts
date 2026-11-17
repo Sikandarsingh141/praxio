@@ -19,8 +19,8 @@ import { DisputesService } from '../../../../shared/services/disputes.service';
 export class ShopDisputedJobDetailPage extends JobDetailPageBase<RepairDispute> {
   private readonly disputes = inject(DisputesService);
   readonly backRoute = '/shop/jobs/disputed-jobs';
-  readonly backLabel = 'Disputed Jobs';
-  readonly pageTitle = 'Disputed Job Details';
+  readonly backLabel = 'Issue Resolution';
+  readonly pageTitle = 'Issue Resolution Details';
   readonly disputeRoute = '/shop/disputes';
 
   protected override loadRecord(id: string) { return this.disputes.get('shop', id); }

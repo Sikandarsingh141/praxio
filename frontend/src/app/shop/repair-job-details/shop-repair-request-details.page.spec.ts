@@ -172,7 +172,7 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Assigned Job Details');
+    expect(fixture.nativeElement.textContent).toContain('Assigned Request Details');
     const backLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector('.back-link');
     expect(backLink?.getAttribute('href')).toBe('/shop/jobs/assigned-jobs');
   });

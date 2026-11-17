@@ -1,6 +1,6 @@
 <main class="job-detail-page customer-completed-job-detail-page">
   @if (loading()) {
-    <p class="state" role="status">Loading job details...</p>
+    <p class="state" role="status">Loading repair details...</p>
   } @else if (error()) {
     <p class="state error" role="alert">{{ error() }}</p>
   } @else if (record(); as job) {

@@ -14,7 +14,7 @@ import { JobListItem } from '../../../shared/models/job.models';
 export class ShopJobsTableComponent {
   @Input({ required: true }) jobs: JobListItem[] = [];
   @Input({ required: true }) detailRoute = '';
-  @Input() title = 'Shop jobs';
+  @Input() title = 'Shop requests';
   @Input() showQuotationStatus = false;
   @Input() showAssignmentDetails = false;
 

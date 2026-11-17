@@ -406,7 +406,13 @@ export class DisputeCenterComponent implements OnInit {
         this.selectedPriority = dispute.priority;
         this.loading.set(false);
       },
-      error: (error: HttpErrorResponse) => this.fail(error, 'Dispute details could not be loaded.'),
+      error: (error: HttpErrorResponse) =>
+        this.fail(
+          error,
+          this.role() === 'admin'
+            ? 'Dispute details could not be loaded.'
+            : 'Issue details could not be loaded.',
+        ),
     });
   }
 

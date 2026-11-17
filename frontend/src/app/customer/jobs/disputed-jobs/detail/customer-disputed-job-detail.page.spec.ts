@@ -81,7 +81,7 @@ describe('CustomerDisputedJobDetailPage', () => {
     expect(page.querySelector('.request-hero')).not.toBeNull();
     expect(page.querySelector('.request-progress')).not.toBeNull();
     expect(page.querySelector('.customer-detail-layout')).not.toBeNull();
-    expect(text).toContain('Disputed Job Details');
+    expect(text).toContain('Issue Resolution Details');
     expect(text).toContain('Dispute Description');
     expect(text).toContain('The repaired device still does not work.');
     expect(text).toContain('Repair Shop');

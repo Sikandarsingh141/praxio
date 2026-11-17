@@ -46,10 +46,10 @@ export class ShopLayout implements OnInit, OnDestroy {
   }> = [
     { label: 'New Requests', route: '/shop/jobs/new-jobs', countKey: 'new' },
     { label: 'Pending Requests', route: '/shop/jobs/pending-jobs', countKey: 'pending' },
-    { label: 'Assigned Jobs', route: '/shop/jobs/assigned-jobs', countKey: 'assigned' },
-    { label: 'Active Jobs', route: '/shop/jobs/active-jobs', countKey: 'active' },
-    { label: 'Disputed Jobs', route: '/shop/jobs/disputed-jobs', countKey: 'disputed' },
-    { label: 'Completed Jobs', route: '/shop/jobs/completed-jobs', countKey: 'completed' },
+    { label: 'Assigned Requests', route: '/shop/jobs/assigned-jobs', countKey: 'assigned' },
+    { label: 'Active Repairs', route: '/shop/jobs/active-jobs', countKey: 'active' },
+    { label: 'Issue Resolution', route: '/shop/jobs/disputed-jobs', countKey: 'disputed' },
+    { label: 'Completed Repairs', route: '/shop/jobs/completed-jobs', countKey: 'completed' },
   ];
   readonly requestSectionExpanded = signal(this.isRequestSectionActive());
   readonly requestCounts = signal<ShopJobCounts | null>(null);
@@ -158,7 +158,7 @@ export class ShopLayout implements OnInit, OnDestroy {
     const query = this.searchQuery().trim();
     if (!query) {
       this.searchResults.set(null);
-      this.searchError.set('Enter a search term to find repair requests or quotations.');
+      this.searchError.set('Enter a search term to find requests or quotations.');
       return;
     }
 

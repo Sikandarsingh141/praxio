@@ -7,7 +7,7 @@
         <input
           type="search"
           placeholder="Search ID, device, brand, shop or issue"
-          aria-label="Search completed jobs by ID, device, brand, shop, or issue"
+          aria-label="Search completed repairs by ID, device, brand, shop, or issue"
           [value]="search()"
           (input)="setSearch($any($event.target).value)"
         />
@@ -25,24 +25,24 @@
   </app-admin-page-header>
 
   @if (loading()) {
-    <p class="loading-state" role="status">Loading completed jobs...</p>
+    <p class="loading-state" role="status">Loading completed repairs...</p>
   } @else if (error()) {
     <section class="error-state" role="alert">
-      <h2>Completed Jobs could not be loaded</h2>
+      <h2>Completed Repairs could not be loaded</h2>
       <p>{{ error() }}</p>
       <button class="job-button" type="button" (click)="reload()">Try again</button>
     </section>
   } @else if (!filteredItems().length) {
     <app-empty-state
-      [title]="search() ? 'No matching jobs' : 'No completed jobs'"
+      [title]="search() ? 'No matching repairs' : 'No completed repairs'"
       [description]="
         search()
-          ? 'Try another device, shop, or job ID.'
+          ? 'Try another device, shop, or request ID.'
           : 'Finished repairs will appear here.'
       "
     />
   } @else {
-    <section class="table-card" aria-label="Completed Jobs">
+    <section class="table-card" aria-label="Completed Repairs">
       <div class="table-scroll">
         <table class="jobs-table">
         <thead>
@@ -128,10 +128,10 @@
                     class="action-btn-icon action-btn-more"
                     cdkOverlayOrigin
                     #jobMenuOrigin="cdkOverlayOrigin"
-                    [attr.aria-label]="'Job actions for job ' + job.id"
+                    [attr.aria-label]="'Request actions for request ' + job.id"
                     [attr.aria-expanded]="openActionsJobId() === job.id"
                     (click)="toggleActions(job.id)"
-                    title="Job actions"
+                    title="Request actions"
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <circle cx="12" cy="5" r="1.5" fill="currentColor" />

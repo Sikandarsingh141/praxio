@@ -1,6 +1,6 @@
 <main class="job-detail-page customer-disputed-job-detail-page">
   @if (loading()) {
-    <p class="state" role="status">Loading dispute details...</p>
+    <p class="state" role="status">Loading issue details...</p>
   } @else if (error()) {
     <p class="state error" role="alert">{{ error() }}</p>
   } @else if (record(); as dispute) {
@@ -67,7 +67,7 @@
 
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
-        <section class="detail-section customer-detail-main-card" aria-label="Dispute details">
+        <section class="detail-section customer-detail-main-card" aria-label="Issue details">
           <section class="customer-detail-block customer-information-card">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">

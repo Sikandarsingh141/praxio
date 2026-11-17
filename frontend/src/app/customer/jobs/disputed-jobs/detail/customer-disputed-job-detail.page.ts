@@ -22,8 +22,8 @@ import { DisputesService } from '../../../../shared/services/disputes.service';
 export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispute> {
   private readonly disputes = inject(DisputesService);
   readonly backRoute = '/customer/jobs/disputed-jobs';
-  readonly backLabel = 'Disputed Jobs';
-  readonly pageTitle = 'Disputed Job Details';
+  readonly backLabel = 'Issue Resolution';
+  readonly pageTitle = 'Issue Resolution Details';
   readonly progressSteps = [
     'Dispute submitted',
     'Under review',

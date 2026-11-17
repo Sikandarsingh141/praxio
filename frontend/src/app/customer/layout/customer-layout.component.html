@@ -160,7 +160,7 @@
       <nav class="navigation-group" aria-label="Main navigation">
         @for (item of visibleNavigation; track item.label) {
           @if (item.available) {
-            @if (item.label === 'My Repair Requests') {
+            @if (item.label === 'My Requests') {
               <button
                 class="nav-item request-nav-toggle"
                 [class.nav-active]="isRequestSectionActive()"

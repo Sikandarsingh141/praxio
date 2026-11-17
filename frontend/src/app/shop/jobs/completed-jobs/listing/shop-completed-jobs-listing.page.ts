@@ -16,8 +16,8 @@ import { ShopJobsTableComponent } from '../../components/shop-jobs-table.compone
 })
 export class ShopCompletedJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'completed' as const;
-  readonly title = 'Completed Jobs';
-  readonly description = 'Review finished repair jobs and their history.';
+  readonly title = 'Completed Repairs';
+  readonly description = 'Review completed repairs and their history.';
   readonly detailRoute = '/shop/jobs/completed-jobs';
 }
 

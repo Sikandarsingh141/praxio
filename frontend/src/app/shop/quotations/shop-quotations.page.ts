@@ -37,7 +37,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
           Track customer responses to quotations submitted by your shop.
         </p>
         <a adminPageActions class="requests-link" routerLink="/shop/repair-requests">
-          View repair requests
+          View All Requests
         </a>
       </app-admin-page-header>
       <div class="summary" aria-label="Quotation summary">
@@ -135,7 +135,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
         <div class="state">
           <strong>No quotations found</strong>
           <p>Quotes you submit for repair requests will appear here.</p>
-          <a routerLink="/shop/repair-requests">Browse repair requests</a>
+          <a routerLink="/shop/repair-requests">Browse All Requests</a>
         </div>
       } @else {
         <div class="list">

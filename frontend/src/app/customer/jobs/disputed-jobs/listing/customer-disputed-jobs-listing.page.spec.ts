@@ -68,7 +68,7 @@ describe('CustomerDisputedJobsListingPage', () => {
     const page = harness.routeNativeElement as HTMLElement;
     const text = page.textContent ?? '';
     expect(page.querySelector('app-dispute-center')).not.toBeNull();
-    expect(text).toContain('Dispute management');
+    expect(text).toContain('Issue Resolution');
     expect(text).toContain('Total Disputes');
     expect(text).toContain('Raise a Dispute');
     const detailsLink = page.querySelector(

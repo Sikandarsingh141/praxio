@@ -30,8 +30,9 @@ import { CustomerJobCategory, JobListItem } from '../../../../shared/models/job.
 })
 export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
   protected override readonly category: CustomerJobCategory = 'new';
-  readonly title: string = 'New Requests';
-  readonly description: string = 'Review newly submitted repair requests and manage incoming jobs.';
+  readonly title: string = 'Open Requests';
+  readonly description: string =
+    'Review newly submitted repair requests and manage incoming requests.';
   readonly detailRoute: string = '/customer/jobs/new-jobs';
   readonly appliedFilters = signal<FilterValues>({});
   readonly failedImages = signal<Set<string>>(new Set<string>());
@@ -99,7 +100,7 @@ export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
     return 'generic';
   }
   readonly filterConfig: FilterConfig = {
-    title: 'New job filters',
+    title: 'Open request filters',
     fields: [
       { key: 'appliance', label: 'Appliance or device', type: 'text' },
       { key: 'brand', label: 'Brand', type: 'text' },

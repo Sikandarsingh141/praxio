@@ -92,12 +92,12 @@ describe('CustomerLayout', () => {
       'data:image/png;base64,abc',
     );
     expect(fixture.nativeElement.textContent).toContain('Find repair shops');
-    expect(fixture.nativeElement.textContent).toContain('My Repair Requests');
+    expect(fixture.nativeElement.textContent).toContain('My Requests');
     expect(fixture.nativeElement.textContent).not.toContain('My repair requests');
-    expect(fixture.nativeElement.textContent).toContain('All Repair Requests');
+    expect(fixture.nativeElement.textContent).toContain('All Requests');
     expect(fixture.nativeElement.textContent).toContain('My quotations');
     expect(fixture.nativeElement.textContent).not.toContain('Disputes');
-    expect(fixture.nativeElement.textContent).not.toContain('Assigned Jobs');
+    expect(fixture.nativeElement.textContent).not.toContain('Assigned Requests');
 
     const requestToggle = fixture.nativeElement.querySelector(
       '.request-nav-toggle',
@@ -115,11 +115,24 @@ describe('CustomerLayout', () => {
       fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
     ).map((element) => element.textContent?.trim());
     expect(submenuLabels).toEqual([
-      'New Requests',
+      'Open Requests',
       'Pending Requests',
-      'Active Jobs',
-      'Disputed Jobs',
-      'Completed Jobs',
+      'Active Repairs',
+      'Issue Resolution',
+      'Completed Repairs',
+    ]);
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          '.request-submenu-item',
+        ) as NodeListOf<HTMLAnchorElement>,
+      ).map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/customer/jobs/new-jobs',
+      '/customer/jobs/pending-jobs',
+      '/customer/jobs/active-jobs',
+      '/customer/jobs/disputed-jobs',
+      '/customer/jobs/completed-jobs',
     ]);
     expect(requestCounts).toEqual(['4', '2', '3', '1', '5']);
     expect(requestToggle.getAttribute('aria-expanded')).toBe('true');
@@ -133,7 +146,7 @@ describe('CustomerLayout', () => {
       fixture.nativeElement
         .querySelector('.request-submenu-item.nav-active')
         ?.textContent?.trim(),
-    ).toContain('Disputed Jobs');
+    ).toContain('Issue Resolution');
 
     const profileLink = fixture.nativeElement.querySelector(
       'a[href="/customer/profile"]',

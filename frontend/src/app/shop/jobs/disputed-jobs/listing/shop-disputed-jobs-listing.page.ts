@@ -16,8 +16,8 @@ import { JobPaginationComponent } from '../../../../shared/components/job-pagina
 })
 export class ShopDisputedJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'disputed' as const;
-  readonly title = 'Disputed Jobs';
-  readonly description = 'Review repair jobs with an open dispute.';
+  readonly title = 'Issue Resolution';
+  readonly description = 'Review repair requests with an open dispute.';
   readonly detailRoute = '/shop/jobs/disputed-jobs';
 }
 

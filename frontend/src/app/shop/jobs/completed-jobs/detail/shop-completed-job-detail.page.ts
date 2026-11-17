@@ -22,8 +22,8 @@ export class ShopCompletedJobDetailPage extends ShopJobDetailPageBase {
     'Repair & Complete',
   ];
   readonly backRoute = '/shop/jobs/completed-jobs';
-  readonly backLabel = 'Completed Jobs';
-  readonly pageTitle = 'Completed Job Details';
+  readonly backLabel = 'Completed Repairs';
+  readonly pageTitle = 'Completed Repair Details';
   readonly customerMapUrl = computed(() => {
     const job = this.record();
     if (!job) return null;

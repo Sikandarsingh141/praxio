@@ -183,7 +183,7 @@
       } @else if (statsError()) {
         <div class="empty-state compact-empty" role="alert">
           <p>{{ statsError() }}</p>
-          <a class="dashboard-link" routerLink="/customer/repair-requests">Open repair requests</a>
+          <a class="dashboard-link" routerLink="/customer/repair-requests">All Requests</a>
         </div>
       } @else if (recentRequests().length) {
         <div class="recent-request-list">
@@ -203,14 +203,14 @@
               </span>
             </a>
           }
-          <a class="dashboard-link" routerLink="/customer/repair-requests">View all requests</a>
+          <a class="dashboard-link" routerLink="/customer/repair-requests">All Requests</a>
         </div>
       } @else {
         <div class="empty-state compact-empty">
           <span class="empty-icon request-icon" aria-hidden="true">▤</span>
           <h3>No repair requests yet</h3>
           <p>Your repair requests and shop quotations will appear here.</p>
-          <a class="dashboard-link" routerLink="/customer/repair-requests">View requests</a>
+          <a class="dashboard-link" routerLink="/customer/repair-requests">All Requests</a>
         </div>
       }
     </section>

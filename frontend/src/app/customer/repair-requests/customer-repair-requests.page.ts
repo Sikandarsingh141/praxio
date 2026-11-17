@@ -40,10 +40,10 @@ export class CustomerRepairRequestsPage implements OnInit {
   readonly selectedStatus = signal<RequestStatusTab>('all');
   readonly completedOnly = signal(false);
   readonly statusTabs: Array<{ key: RequestStatusTab; label: string }> = [
-    { key: 'all', label: 'All' },
-    { key: 'open', label: 'Open' },
-    { key: 'in_progress', label: 'In Progress' },
-    { key: 'completed', label: 'Completed' },
+    { key: 'all', label: 'All Requests' },
+    { key: 'open', label: 'Open Requests' },
+    { key: 'in_progress', label: 'Active Repairs' },
+    { key: 'completed', label: 'Completed Repairs' },
   ];
   readonly sortOrder = signal<'newest' | 'oldest'>('newest');
   readonly page = signal(1);

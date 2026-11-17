@@ -18,7 +18,7 @@ import { ShopJobsTableComponent } from '../../components/shop-jobs-table.compone
 })
 export class ShopAssignedJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'assigned' as const;
-  readonly title = 'Assigned Jobs';
+  readonly title = 'Assigned Requests';
   readonly description = 'Repair requests assigned to a technician or to you. Track progress and manage assignments.';
   readonly detailRoute = '/shop/jobs/assigned-jobs';
   readonly assigneeFilter = signal('');

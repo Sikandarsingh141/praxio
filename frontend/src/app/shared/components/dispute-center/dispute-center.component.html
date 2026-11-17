@@ -15,7 +15,7 @@
       </app-admin-page-header>
     } @else {
       <app-admin-page-header>
-        <h1 adminPageTitle class="admin-page-title">Disputed Jobs</h1>
+        <h1 adminPageTitle class="admin-page-title">Issue Resolution</h1>
         <p adminPageDescription class="admin-page-description">
           Track post-repair issues, review evidence, and coordinate fair resolutions.
         </p>
@@ -380,21 +380,24 @@
     @if (role() === 'customer') {
       <a class="detail-back-link" [routerLink]="disputeListLink()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
-        Back to Dispute Management
+        Back to Issue Resolution
       </a>
     } @else {
       <a class="back-link detail-back-link" [routerLink]="disputeListLink()">
-        <span aria-hidden="true">←</span> All disputes
+        <span aria-hidden="true">←</span>
+        {{ role() === 'admin' ? 'All disputes' : 'Issue Resolution' }}
       </a>
     }
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
     @if (loading()) {
-      <p class="state-card" role="status">Loading dispute details…</p>
+      <p class="state-card" role="status">
+        {{ role() === 'admin' ? 'Loading dispute details…' : 'Loading issue details…' }}
+      </p>
     } @else if (dispute(); as item) {
       @if (role() === 'customer') {
-        <h1 class="detail-page-title">Dispute Details</h1>
+        <h1 class="detail-page-title">Issue Resolution Details</h1>
         <section class="request-hero" aria-label="Dispute summary">
           <div class="request-hero-photo">
             @if (item.repair?.photos?.[0]; as photo) {
@@ -452,11 +455,13 @@
       } @else {
         @if (role() !== 'admin') {
           <div class="detail-breadcrumb">
-            <span>Disputes</span><span aria-hidden="true">/</span><strong>Dispute Details</strong>
+            <span>Issue Resolution</span><span aria-hidden="true">/</span><strong>Issue Details</strong>
           </div>
         }
         <app-admin-page-header>
-          <h1 adminPageTitle class="admin-page-title">Dispute details</h1>
+          <h1 adminPageTitle class="admin-page-title">
+            {{ role() === 'admin' ? 'Dispute details' : 'Issue details' }}
+          </h1>
           <p adminPageDescription class="admin-page-description dispute-reference">
             {{ item.reference }}
           </p>

@@ -672,7 +672,7 @@
             <button type="button" class="technician-option" [class.selected]="selectedTechnicianId() === technician.id" [disabled]="technician.status !== 'active' || technician.availability === 'on_leave'" (click)="selectedTechnicianId.set(technician.id)">
               @if (technician.profileImageData) { <img [src]="technician.profileImageData" [alt]="technician.name" /> } @else { <span class="assignment-avatar">{{ technician.name.slice(0, 1) }}</span> }
               <span><strong>{{ technician.name }}</strong><small>{{ technician.employeeId }} · {{ technician.skills.slice(0, 2).join(' · ') }}</small></span>
-              <span class="status-badge" [attr.data-status]="technician.availability">{{ technician.availability.replace('_', ' ') | titlecase }} · {{ technician.workload }} jobs</span>
+              <span class="status-badge" [attr.data-status]="technician.availability">{{ technician.availability.replace('_', ' ') | titlecase }} · {{ technician.workload }} requests</span>
               <i>{{ selectedTechnicianId() === technician.id ? '●' : '○' }}</i>
             </button>
           }

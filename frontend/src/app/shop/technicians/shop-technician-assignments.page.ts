@@ -14,7 +14,7 @@ import { TechniciansService } from './technicians.service';
     <section class="assignments-page">
       <header class="page-heading">
         <div><p class="eyebrow">WORK MANAGEMENT</p><h1>Technician Assignments</h1><p>Active repair jobs and the technician responsible for each.</p></div>
-        <a routerLink="/shop/repair-requests" class="secondary-button">View repair requests</a>
+        <a routerLink="/shop/repair-requests" class="secondary-button">View All Requests</a>
       </header>
       @if (error()) { <p class="error" role="alert">{{ error() }}</p> }
       <section class="assignment-list-card">
@@ -23,7 +23,7 @@ import { TechniciansService } from './technicians.service';
         @else if (filtered().length) {
           <div class="table-wrap"><table><thead><tr><th>Repair Request</th><th>Customer</th><th>Technician</th><th>Repair Status</th><th>Assigned On</th><th></th></tr></thead><tbody>
             @for (assignment of filtered(); track assignment.requestId) {
-              <tr><td><strong>{{ assignment.appliance }}</strong><small>{{ assignment.requestId.slice(-8).toUpperCase() }} · {{ assignment.brand }} {{ assignment.model }}</small></td><td>{{ assignment.customer }}</td><td>@if (assignment.technician; as tech) { <a class="tech-link" [routerLink]="['/shop/technicians', tech.id]" [attr.aria-label]="'View ' + tech.name + ' profile'"><strong class="tech-name">{{ tech.name }}</strong></a> } @else { <strong class="tech-name">Unknown technician</strong> }<small>{{ assignment.technician?.availability | titlecase }} · {{ assignment.technician?.workload }} active jobs</small></td><td><span class="status">{{ assignment.repairStatus.replace('_', ' ') | titlecase }}</span></td><td>{{ assignment.assignment.assignedAt | date: 'mediumDate' }}</td><td><a [routerLink]="['/shop/repair-requests', assignment.requestId]">Manage</a></td></tr>
+              <tr><td><strong>{{ assignment.appliance }}</strong><small>{{ assignment.requestId.slice(-8).toUpperCase() }} · {{ assignment.brand }} {{ assignment.model }}</small></td><td>{{ assignment.customer }}</td><td>@if (assignment.technician; as tech) { <a class="tech-link" [routerLink]="['/shop/technicians', tech.id]" [attr.aria-label]="'View ' + tech.name + ' profile'"><strong class="tech-name">{{ tech.name }}</strong></a> } @else { <strong class="tech-name">Unknown technician</strong> }<small>{{ assignment.technician?.availability | titlecase }} · {{ assignment.technician?.workload }} active repairs</small></td><td><span class="status">{{ assignment.repairStatus.replace('_', ' ') | titlecase }}</span></td><td>{{ assignment.assignment.assignedAt | date: 'mediumDate' }}</td><td><a [routerLink]="['/shop/repair-requests', assignment.requestId]">Manage</a></td></tr>
             }
           </tbody></table></div>
         } @else { <div class="state"><strong>No active assignments</strong><p>Assign a repair to yourself or a technician from its request details.</p></div> }

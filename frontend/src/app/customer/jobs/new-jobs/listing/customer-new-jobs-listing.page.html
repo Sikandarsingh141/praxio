@@ -9,7 +9,7 @@
         <input
           type="search"
           placeholder="Search ID, device, brand, shop or issue"
-          aria-label="Search jobs by ID, device, brand, shop, or issue"
+          aria-label="Search requests by ID, device, brand, shop, or issue"
           [value]="search()"
           (input)="setSearch($any($event.target).value)"
         />
@@ -33,10 +33,10 @@
     </section>
   } @else if (!filteredItems().length) {
     <app-empty-state
-      [title]="search() ? 'No matching jobs' : 'No ' + title.toLowerCase()"
+      [title]="search() ? 'No matching requests' : 'No ' + title.toLowerCase()"
       [description]="
         search()
-          ? 'Try another device, shop, or job ID.'
+          ? 'Try another device, shop, or request ID.'
           : title === 'Pending Requests'
             ? 'Requests with submitted quotations will appear here.'
             : 'New repair requests will appear here.'
@@ -48,7 +48,7 @@
         <table class="jobs-table">
         <thead>
           <tr>
-            <th scope="col" class="th-job-id">Job ID</th>
+            <th scope="col" class="th-job-id">Request ID</th>
             <th scope="col" class="th-device">Device &amp; Brand</th>
             <th scope="col" class="th-issue">Issue / Problem</th>
             <th scope="col" class="th-date">Request Date</th>
@@ -60,7 +60,7 @@
         <tbody>
           @for (job of pageItems(); track job.id) {
             <tr class="job-table-row">
-              <!-- Job ID -->
+              <!-- Request ID -->
               <td class="td-job-id">
                 <span class="job-id-text">#{{ formatJobId(job.id) }}</span>
               </td>
@@ -226,10 +226,10 @@
                     class="action-btn-icon action-btn-more"
                     cdkOverlayOrigin
                     #jobMenuOrigin="cdkOverlayOrigin"
-                    [attr.aria-label]="'Job actions for job ' + job.id"
+                    [attr.aria-label]="'Request actions for request ' + job.id"
                     [attr.aria-expanded]="openActionsJobId() === job.id"
                     (click)="toggleActions(job.id)"
-                    title="Job actions"
+                    title="Request actions"
                   >
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <circle cx="12" cy="5" r="1.5" fill="currentColor"/>

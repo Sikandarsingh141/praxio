@@ -71,7 +71,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly repairFormError = signal('');
   readonly pageTitle = signal('Repair Request Details');
   readonly backRoute = signal('/shop/repair-requests');
-  readonly backLabel = signal('Repair Requests');
+  readonly backLabel = signal('All Requests');
   readonly assignmentModalOpen = signal(false);
   readonly assignmentLoading = signal(false);
   readonly assignmentSubmitting = signal(false);
@@ -349,7 +349,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   ngOnInit(): void {
     const routeContexts: Record<string, { title: string; label: string; route: string }> = {
       new: {
-        title: 'New Repair Request Details',
+        title: 'New Request Details',
         label: 'New Requests',
         route: '/shop/jobs/new-jobs',
       },
@@ -359,13 +359,13 @@ export class ShopRepairRequestDetailsPage implements OnInit {
         route: '/shop/jobs/pending-jobs',
       },
       assigned: {
-        title: 'Assigned Job Details',
-        label: 'Assigned Jobs',
+        title: 'Assigned Request Details',
+        label: 'Assigned Requests',
         route: '/shop/jobs/assigned-jobs',
       },
       active: {
-        title: 'Active Job Details',
-        label: 'Active Jobs',
+        title: 'Active Repair Details',
+        label: 'Active Repairs',
         route: '/shop/jobs/active-jobs',
       },
     };

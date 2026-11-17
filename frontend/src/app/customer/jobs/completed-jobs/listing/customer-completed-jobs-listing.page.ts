@@ -30,8 +30,8 @@ import { JobListItem } from '../../../../shared/models/job.models';
 })
 export class CustomerCompletedJobsListingPage extends CustomerJobsListingPageBase {
   protected override readonly category = 'completed' as const;
-  readonly title = 'Completed Jobs';
-  readonly description = 'Review finished repair jobs and their history.';
+  readonly title = 'Completed Repairs';
+  readonly description = 'Review completed repairs and their history.';
   readonly detailRoute = '/customer/jobs/completed-jobs';
   readonly appliedFilters = signal<FilterValues>({});
   readonly failedImages = signal<Set<string>>(new Set<string>());
@@ -42,7 +42,7 @@ export class CustomerCompletedJobsListingPage extends CustomerJobsListingPageBas
   ];
 
   readonly filterConfig: FilterConfig = {
-    title: 'Completed job filters',
+    title: 'Completed repair filters',
     fields: [
       { key: 'appliance', label: 'Appliance or device', type: 'text' },
       { key: 'brand', label: 'Brand', type: 'text' },

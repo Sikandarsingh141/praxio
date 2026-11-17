@@ -1,11 +1,11 @@
 <section class="requests-page" aria-labelledby="requests-title">
   <app-admin-page-header>
     <h1 adminPageTitle class="admin-page-title" id="requests-title">
-      {{ completedRepairs() ? 'Completed Repairs' : 'Repair requests' }}
+      {{ completedRepairs() ? 'Completed Repairs' : 'All Requests' }}
     </h1>
     @if (completedRepairs()) {
       <p adminPageDescription class="admin-page-description">
-        Review repair jobs completed by your shop.
+        Review completed repairs handled by your shop.
       </p>
     } @else {
       <p adminPageDescription class="admin-page-description">
@@ -44,7 +44,7 @@
   <section class="list-panel">
     <div class="filter-row">
       <label class="search-control inline-search-field">
-        <span class="visually-hidden">Search repair requests</span>
+        <span class="visually-hidden">Search all requests</span>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="10.8" cy="10.8" r="6.8" />
           <path d="m16 16 4.5 4.5" />
@@ -56,7 +56,7 @@
           placeholder="Search ID, customer, appliance…"
         />
         @if (searchLoading()) {
-          <span class="inline-search-spinner" role="status" aria-label="Searching repair requests"></span>
+          <span class="inline-search-spinner" role="status" aria-label="Searching all requests"></span>
         }
       </label>
       <label class="sort-control">
@@ -75,7 +75,7 @@
 
     @if (pageData(); as data) {
       @if (!completedRepairs()) {
-        <div class="tabs" role="tablist" aria-label="Filter repair requests">
+        <div class="tabs" role="tablist" aria-label="Filter requests">
           @for (tab of tabs; track tab.value) {
             <button
               type="button"

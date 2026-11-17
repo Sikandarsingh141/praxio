@@ -46,7 +46,7 @@ interface PendingQuotationResponse {
 export class CustomerPendingJobsListingPage extends CustomerJobsListingPageBase {
   protected override readonly category: CustomerJobCategory = 'pending';
   readonly title: string = 'Pending Requests';
-  readonly description: string = 'Review jobs with submitted quotations.';
+  readonly description: string = 'Review requests with submitted quotations.';
   readonly detailRoute: string = '/customer/jobs/pending-jobs';
   readonly appliedFilters = signal<FilterValues>({});
   readonly failedImages = signal<Set<string>>(new Set<string>());
@@ -163,7 +163,7 @@ export class CustomerPendingJobsListingPage extends CustomerJobsListingPageBase 
     return 'generic';
   }
   readonly filterConfig: FilterConfig = {
-    title: 'Pending job filters',
+    title: 'Pending request filters',
     fields: [
       { key: 'appliance', label: 'Appliance or device', type: 'text' },
       { key: 'brand', label: 'Brand', type: 'text' },

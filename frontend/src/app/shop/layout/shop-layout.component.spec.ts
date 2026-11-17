@@ -83,13 +83,16 @@ describe('ShopLayout', () => {
     );
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
     expect(fixture.nativeElement.textContent).toContain('Repair Requests');
-    expect(fixture.nativeElement.textContent).toContain('All repair requests');
+    expect(fixture.nativeElement.textContent).toContain('All Requests');
+    expect(fixture.nativeElement.querySelector('a[href="/shop/repair-requests"]')?.textContent).toContain(
+      'All Requests',
+    );
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
     expect(fixture.nativeElement.textContent).toContain('Business profile');
     expect(
       (fixture.nativeElement.querySelector('#shop-global-search') as HTMLInputElement).placeholder,
-    ).toBe('Search repair requests, quotations, or customers...');
+    ).toBe('Search requests, quotations, or customers...');
 
     const requestToggle = fixture.nativeElement.querySelector(
       '.request-nav-toggle',
@@ -108,10 +111,24 @@ describe('ShopLayout', () => {
     expect(submenuLabels).toEqual([
       'New Requests',
       'Pending Requests',
-      'Assigned Jobs',
-      'Active Jobs',
-      'Disputed Jobs',
-      'Completed Jobs',
+      'Assigned Requests',
+      'Active Repairs',
+      'Issue Resolution',
+      'Completed Repairs',
+    ]);
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          '.request-submenu-item',
+        ) as NodeListOf<HTMLAnchorElement>,
+      ).map((link) => link.getAttribute('href')),
+    ).toEqual([
+      '/shop/jobs/new-jobs',
+      '/shop/jobs/pending-jobs',
+      '/shop/jobs/assigned-jobs',
+      '/shop/jobs/active-jobs',
+      '/shop/jobs/disputed-jobs',
+      '/shop/jobs/completed-jobs',
     ]);
     expect(requestCounts).toEqual(['2', '3', '4', '5', '6', '7']);
 

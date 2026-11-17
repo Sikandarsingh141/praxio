@@ -4,7 +4,7 @@
     <p adminPageDescription class="admin-page-description">{{ description }}</p>
     <a adminPageActions class="assign-job-button" routerLink="/shop/jobs/pending-jobs">
       <span aria-hidden="true">+</span>
-      Assign Job
+      Assign Request
     </a>
   </app-admin-page-header>
 
@@ -33,8 +33,8 @@
     <label class="search-control">
       <input
         type="search"
-        placeholder="Search by job ID, customer, device, or issue..."
-        aria-label="Search assigned jobs by ID, customer, device, or issue"
+        placeholder="Search by request ID, customer, device, or issue..."
+        aria-label="Search assigned requests by ID, customer, device, or issue"
         [value]="search()"
         (input)="setSearch($any($event.target).value)"
       />
@@ -64,23 +64,23 @@
   </div>
 
   @if (loading()) {
-    <p class="loading-state" role="status">Loading assigned jobs...</p>
+    <p class="loading-state" role="status">Loading assigned requests...</p>
   } @else if (error()) {
     <section class="error-state" role="alert">
-      <h2>Assigned Jobs could not be loaded</h2>
+      <h2>Assigned Requests could not be loaded</h2>
       <p>{{ error() }}</p>
       <button class="job-button" type="button" (click)="reload()">Try again</button>
     </section>
   } @else if (!filteredItems().length) {
     <app-empty-state
-      [title]="search() ? 'No matching jobs' : 'No assigned jobs'"
+      [title]="search() ? 'No matching requests' : 'No assigned requests'"
       [description]="search() || assigneeFilter() || deviceFilter() ? 'Try changing your search or filters.' : 'Assign an accepted request to yourself or a technician and it will appear here.'"
     />
   } @else {
     <app-shop-jobs-table
       [jobs]="pageItems()"
       [detailRoute]="detailRoute"
-      title="Assigned Jobs"
+      title="Assigned Requests"
       [showAssignmentDetails]="true"
     >
       @if (filteredItems().length > 0) {

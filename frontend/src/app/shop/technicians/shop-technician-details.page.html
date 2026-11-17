@@ -18,7 +18,7 @@
 
     <nav class="tabs" aria-label="Technician details sections">
       <button type="button" [class.active]="tab() === 'overview'" (click)="setTab('overview')">◉ Overview</button>
-      <button type="button" [class.active]="tab() === 'jobs'" (click)="setTab('jobs')">▤ Assigned Jobs <span>{{ technician.jobs?.length ?? 0 }}</span></button>
+      <button type="button" [class.active]="tab() === 'jobs'" (click)="setTab('jobs')">▤ Assigned Requests <span>{{ technician.jobs?.length ?? 0 }}</span></button>
       <button type="button" [class.active]="tab() === 'performance'" (click)="setTab('performance')">↗ Performance</button>
       <button type="button" [class.active]="tab() === 'activity'" (click)="setTab('activity')">◷ Activity</button>
     </nav>
@@ -45,7 +45,7 @@
           <h2>Status &amp; Availability</h2>
           <dl>
             <div><dt>Current Status</dt><dd><span class="status-badge" [attr.data-status]="technician.availability">{{ technician.availability.replace('_', ' ') | titlecase }}</span></dd></div>
-            <div><dt>Active Assignments</dt><dd>{{ technician.workload }} Jobs</dd></div>
+            <div><dt>Active Assignments</dt><dd>{{ technician.workload }} requests</dd></div>
             <div><dt>Account</dt><dd>{{ technician.status | titlecase }}</dd></div>
           </dl>
         </section>
@@ -57,7 +57,7 @@
       </div>
     } @else if (tab() === 'jobs') {
       <section class="detail-card table-card">
-        <h2>Assigned Jobs</h2>
+        <h2>Assigned Requests</h2>
         @if (technician.jobs?.length) {
           <div class="table-wrap"><table><thead><tr><th>Repair Request</th><th>Device</th><th>Status</th><th>Assignment Date</th><th>Completion Date</th><th></th></tr></thead><tbody>
             @for (job of technician.jobs; track job.id) { <tr><td>{{ job.id.slice(-8).toUpperCase() }}</td><td>{{ job.appliance }} {{ job.brand }} {{ job.model }}</td><td><span class="repair-status">{{ job.status.replace('_', ' ') | titlecase }}</span></td><td>{{ job.assignedAt | date: 'mediumDate' }}</td><td>{{ job.completedAt ? (job.completedAt | date: 'mediumDate') : '—' }}</td><td><a [routerLink]="['/shop/repair-requests', job.id]">View request</a></td></tr> }
@@ -66,10 +66,10 @@
       </section>
     } @else if (tab() === 'performance') {
       <section class="performance-grid">
-        <article class="metric-card"><span>Total Jobs</span><strong>{{ technician.performance?.totalJobs ?? 0 }}</strong></article>
-        <article class="metric-card"><span>Completed Jobs</span><strong>{{ technician.performance?.completedJobs ?? 0 }}</strong></article>
-        <article class="metric-card"><span>In Progress</span><strong>{{ technician.performance?.inProgressJobs ?? 0 }}</strong></article>
-        <article class="metric-card"><span>Reassigned</span><strong>{{ technician.performance?.reassignedJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Total Requests</span><strong>{{ technician.performance?.totalJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Completed Repairs</span><strong>{{ technician.performance?.completedJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Active Repairs</span><strong>{{ technician.performance?.inProgressJobs ?? 0 }}</strong></article>
+        <article class="metric-card"><span>Reassigned Requests</span><strong>{{ technician.performance?.reassignedJobs ?? 0 }}</strong></article>
         <article class="metric-card"><span>Average Completion Time</span><strong>{{ technician.performance?.averageCompletionTimeHours === null || technician.performance?.averageCompletionTimeHours === undefined ? '—' : (technician.performance?.averageCompletionTimeHours + ' hrs') }}</strong></article>
         <article class="metric-card"><span>Customer Ratings</span><strong>Not available</strong></article>
       </section>

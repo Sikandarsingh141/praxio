@@ -44,11 +44,11 @@ export class CustomerLayout implements OnInit, OnDestroy {
     route: string;
     countKey: keyof CustomerJobCounts;
   }> = [
-    { label: 'New Requests', route: '/customer/jobs/new-jobs', countKey: 'new' },
+    { label: 'Open Requests', route: '/customer/jobs/new-jobs', countKey: 'new' },
     { label: 'Pending Requests', route: '/customer/jobs/pending-jobs', countKey: 'pending' },
-    { label: 'Active Jobs', route: '/customer/jobs/active-jobs', countKey: 'active' },
-    { label: 'Disputed Jobs', route: '/customer/jobs/disputed-jobs', countKey: 'disputed' },
-    { label: 'Completed Jobs', route: '/customer/jobs/completed-jobs', countKey: 'completed' },
+    { label: 'Active Repairs', route: '/customer/jobs/active-jobs', countKey: 'active' },
+    { label: 'Issue Resolution', route: '/customer/jobs/disputed-jobs', countKey: 'disputed' },
+    { label: 'Completed Repairs', route: '/customer/jobs/completed-jobs', countKey: 'completed' },
   ];
 
   ngOnInit(): void {
@@ -106,12 +106,12 @@ export class CustomerLayout implements OnInit, OnDestroy {
     { label: 'Dashboard', icon: 'grid', route: '/customer', available: true },
     { label: 'Find repair shops', icon: 'search', route: '/customer/shops', available: true },
     {
-      label: 'My Repair Requests',
+      label: 'My Requests',
       icon: 'tool',
       available: true,
     },
     {
-      label: 'All Repair Requests',
+      label: 'All Requests',
       icon: 'tool',
       route: '/customer/repair-requests',
       available: true,
@@ -253,7 +253,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
     if (url.startsWith('/customer/repair-requests')) {
       return url.startsWith('/customer/repair-requests/completed')
         ? 'Completed Repairs'
-        : 'My repair requests';
+        : 'All Requests';
     }
     return url.startsWith('/customer/profile') ? 'My profile' : 'Dashboard';
   }

@@ -24,12 +24,13 @@ describe('ShopJobsTableComponent', () => {
       },
     ];
     fixture.componentInstance.detailRoute = '/shop/jobs/assigned-jobs';
-    fixture.componentInstance.title = 'Assigned Jobs';
+    fixture.componentInstance.title = 'Assigned Requests';
     fixture.detectChanges();
 
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
     const actionsButton = row.querySelector('button') as HTMLButtonElement;
     expect(row.textContent).toContain('#12345678');
+    expect(fixture.nativeElement.textContent).toContain('Request ID');
     expect(row.textContent).toContain('Washing machine');
     expect(row.textContent).toContain('Ava Customer');
     expect(row.textContent).toContain('Not draining');
@@ -111,7 +112,7 @@ describe('ShopJobsTableComponent', () => {
     const headers = Array.from(
       fixture.nativeElement.querySelectorAll('thead th') as NodeListOf<HTMLElement>,
     ).map((header) => header.textContent?.trim());
-    expect(headers).toContain('Job ID');
+    expect(headers).toContain('Request ID');
     expect(headers).toContain('Assigned To');
     expect(headers).toContain('Assigned On');
     expect(headers).not.toContain('Request Date');

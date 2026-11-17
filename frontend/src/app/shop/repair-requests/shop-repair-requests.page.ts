@@ -17,7 +17,7 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
 import { getCustomerUploadedPhoto } from '../../shared/utils/appliance-thumbnail.util';
 
 const TABS = [
-  { label: 'All requests', value: 'all' },
+  { label: 'All Requests', value: 'all' },
   { label: 'New', value: 'new' },
   { label: 'Pending', value: 'pending' },
   { label: 'Accepted', value: 'accepted' },
@@ -154,7 +154,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
         },
         error: (error: HttpErrorResponse) => {
           if (requestSequence !== this.requestSequence) return;
-          this.error.set(error.error?.message || 'Repair requests could not be loaded.');
+          this.error.set(error.error?.message || 'All requests could not be loaded.');
           this.loading.set(false);
           this.searchLoading.set(false);
         },
