@@ -1421,8 +1421,33 @@ export class DisputesService {
       actor.role === 'customer'
         ? 'resolution.customerRejectionReason'
         : 'resolution.shopRejectionReason';
-    if (dto.decision === 'accept' && dispute.resolution?.[actor.role === 'customer' ? 'customerAcceptedAt' : 'shopAcceptedAt']) {
-      throw new ConflictException('You have already accepted this resolution.');
+    if (
+      dto.decision === 'accept' &&
+      dispute.resolution?.[
+        actor.role === 'customer' ? 'customerAcceptedAt' : 'shopAcceptedAt'
+      ]
+    ) {
+      const alreadyAcceptedByOtherParty = Boolean(
+        dispute.resolution?.[
+          actor.role === 'customer' ? 'shopAcceptedAt' : 'customerAcceptedAt'
+        ],
+      );
+      const nextStatus: DisputeStatus = alreadyAcceptedByOtherParty
+        ? 'UNDER_REVIEW'
+        : actor.role === 'customer'
+          ? 'AWAITING_SHOP_RESPONSE'
+          : 'AWAITING_CUSTOMER_RESPONSE';
+      if (dispute.status === nextStatus) {
+        return this.visible(dispute, actor.role);
+      }
+      const updated = await this.atomicUpdate(
+        dispute,
+        actor,
+        {},
+        nextStatus,
+        `${actor.role} accepted the proposed resolution.`,
+      );
+      return this.visible(updated, actor.role);
     }
     const update: UpdateQuery<Dispute> =
       dto.decision === 'accept'

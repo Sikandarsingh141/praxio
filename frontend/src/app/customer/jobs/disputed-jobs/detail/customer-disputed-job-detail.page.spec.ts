@@ -79,8 +79,10 @@ describe('CustomerDisputedJobDetailPage', () => {
       'get',
       'sendMessage',
       'reportUnresolved',
+      'decideResolution',
     ]);
     disputes.get.and.returnValue(of(dispute));
+    disputes.decideResolution.and.returnValue(of(dispute));
     const sentMessage = 'The issue is still happening.';
     disputes.sendMessage.and.returnValue(
       of({
@@ -122,6 +124,7 @@ describe('CustomerDisputedJobDetailPage', () => {
     );
 
     const page = harness.routeNativeElement as HTMLElement;
+    const component = harness.routeDebugElement!.componentInstance as CustomerDisputedJobDetailPage;
     const text = page.textContent ?? '';
     expect(page.querySelector('.request-hero')).not.toBeNull();
     expect(page.querySelector('.request-progress')).not.toBeNull();
@@ -131,8 +134,8 @@ describe('CustomerDisputedJobDetailPage', () => {
     expect(text).toContain('The repaired device still does not work.');
     expect(text).toContain('Repair Shop');
     expect(text).toContain('Conversation');
-    expect(text).toContain("Review the shop's reinspection findings");
-    expect(text).toContain('The device still fails to power on.');
+    expect(text).toContain('Customer response');
+    expect(text).toContain('Reinspection submission');
     expect(page.querySelector('.empty-conversation strong')?.textContent).toContain('No messages yet');
     const messageInput = page.querySelector<HTMLTextAreaElement>('.conversation-compose textarea');
     const sendButton = page.querySelector<HTMLButtonElement>('.conversation-compose button[type="submit"]');
@@ -151,16 +154,24 @@ describe('CustomerDisputedJobDetailPage', () => {
     });
     expect(page.textContent).toContain(sentMessage);
     expect(page.textContent).toContain('Message sent.');
+    const reinspectionButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.customer-response-action-card button'),
+    ).find((button) => button.textContent?.includes('Reinspection submission'));
+    expect(reinspectionButton).not.toBeUndefined();
+    reinspectionButton!.click();
+    harness.fixture.detectChanges();
+    expect(page.querySelector('#reinspection-submission-title')).not.toBeNull();
+    expect(page.textContent).toContain("Review the shop's reinspection findings");
+    expect(page.textContent).toContain('The device still fails to power on.');
     const reinspectionReply = page.querySelector<HTMLTextAreaElement>(
       'textarea[name="reinspectionReply"]',
     );
     expect(reinspectionReply).not.toBeNull();
     const reply = 'I reviewed the findings. Please proceed with the listed repair.';
-    reinspectionReply!.value = reply;
-    reinspectionReply!.dispatchEvent(new Event('input', { bubbles: true }));
+    component.reinspectionReply = reply;
     harness.fixture.detectChanges();
     const replyButton = Array.from(
-      page.querySelectorAll<HTMLButtonElement>('.customer-response-panel button'),
+      page.querySelectorAll<HTMLButtonElement>('.issue-modal button'),
     ).find((button) => button.textContent?.includes('Send response to shop'));
     expect(replyButton?.disabled).toBeFalse();
     replyButton?.click();
@@ -171,16 +182,17 @@ describe('CustomerDisputedJobDetailPage', () => {
       attachments: [],
     });
     expect(page.textContent).toContain('Response sent to the shop.');
+    reinspectionButton!.click();
+    harness.fixture.detectChanges();
     const unresolvedInput = page.querySelector<HTMLTextAreaElement>(
       'textarea[name="reinspectionUnresolvedNotes"]',
     );
     expect(unresolvedInput).not.toBeNull();
     const unresolvedNotes = 'The issue is still not fixed.';
-    unresolvedInput!.value = unresolvedNotes;
-    unresolvedInput!.dispatchEvent(new Event('input', { bubbles: true }));
+    component.unresolvedNotes = unresolvedNotes;
     harness.fixture.detectChanges();
     const reportButton = Array.from(
-      page.querySelectorAll<HTMLButtonElement>('.customer-response-panel button'),
+      page.querySelectorAll<HTMLButtonElement>('.issue-modal button'),
     ).find((button) => button.textContent?.includes('Report issue still exists'));
     expect(reportButton?.disabled).toBeFalse();
     reportButton?.click();
@@ -190,6 +202,48 @@ describe('CustomerDisputedJobDetailPage', () => {
       notes: unresolvedNotes,
       attachments: [],
     });
+    const proposedDispute: RepairDispute = {
+      ...dispute,
+      status: 'AWAITING_CUSTOMER_RESPONSE',
+      resolution: {
+        ...dispute.resolution,
+        state: 'proposed',
+        description: 'Repair the charging assembly again.',
+      },
+    };
+    component.record.set(proposedDispute);
+    harness.fixture.detectChanges();
+    const reviewButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.customer-response-action-card button'),
+    ).find((button) => button.textContent?.includes('Review proposed resolution'));
+    expect(reviewButton).not.toBeUndefined();
+    reviewButton!.click();
+    harness.fixture.detectChanges();
+    expect(page.querySelector('#review-proposed-resolution-title')).not.toBeNull();
+    expect(page.textContent).toContain('Repair the charging assembly again.');
+    const reasonInput = page.querySelector<HTMLTextAreaElement>(
+      'textarea[name="resolutionDecisionReason"]',
+    );
+    expect(reasonInput?.getAttribute('placeholder')).toBe(
+      'Explain why you are rejecting this resolution.',
+    );
+    const rejectButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.issue-modal button'),
+    ).find((button) => button.textContent?.includes('Reject resolution'));
+    expect(rejectButton?.disabled).toBeTrue();
+    const reason = 'The proposed repair does not address the issue.';
+    component.resolutionDecisionReason = reason;
+    harness.fixture.detectChanges();
+    expect(rejectButton?.disabled).toBeFalse();
+    rejectButton!.click();
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(disputes.decideResolution).toHaveBeenCalledWith('customer', 'dispute-123', {
+      decision: 'reject',
+      reason,
+    });
+    expect(component.reviewResolutionModalOpen()).toBeFalse();
+
     expect(text).not.toContain('Open customer dispute page for permitted actions');
     expect(page.querySelector('.dispute-actions-link')).toBeNull();
     expect(disputes.get).toHaveBeenCalledWith('customer', 'dispute-123');

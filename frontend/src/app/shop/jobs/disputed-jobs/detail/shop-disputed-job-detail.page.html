@@ -359,185 +359,6 @@
           </section>
         </section>
 
-          @if (
-              dispute.status !== 'CLOSED' &&
-              dispute.status !== 'RESOLVED' &&
-              dispute.resolution.state !== 'proposed'
-          ) {
-              <section class="panel action-panel">
-                <h2 class="section-heading">Propose a resolution to the customer</h2>
-                <form class="form-grid" (ngSubmit)="proposeResolution(dispute)">
-                  <label>
-                    <span>Resolution type</span>
-                    <select [(ngModel)]="resolutionType" name="resolutionType">
-                      <option value="repair_again">Repair again</option>
-                      <option value="additional_repair">Additional repair</option>
-                      <option value="partial_refund">Partial refund</option>
-                      <option value="full_refund">Full refund</option>
-                      <option value="price_adjustment">Price adjustment</option>
-                      <option value="customer_compensation">Customer compensation</option>
-                      <option value="shop_compensation">Shop compensation</option>
-                      <option value="no_action">No action</option>
-                      <option value="other">Other agreement</option>
-                    </select>
-                  </label>
-                  @if (resolutionType === 'partial_refund' || resolutionType === 'full_refund') {
-                    <label>
-                      <span>Refund amount</span>
-                      <input
-                        type="number"
-                        [(ngModel)]="resolutionAmount"
-                        name="resolutionAmount"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </label>
-                  }
-                  <label class="wide">
-                    <span>Proposed resolution</span>
-                    <textarea
-                      [(ngModel)]="resolutionDescription"
-                      name="resolutionDescription"
-                      rows="3"
-                      maxlength="3000"
-                      required
-                    ></textarea>
-                  </label>
-                  <label class="wide">
-                    <span>Notes</span>
-                    <textarea
-                      [(ngModel)]="resolutionNotes"
-                      name="resolutionNotes"
-                      rows="2"
-                      maxlength="2000"
-                      required
-                    ></textarea>
-                  </label>
-                  <button
-                    class="button primary"
-                    type="submit"
-                    [disabled]="saving() || !resolutionDescription.trim() || !resolutionNotes.trim()"
-                  >
-                    {{ saving() ? 'Submitting...' : 'Submit proposal' }}
-                  </button>
-                </form>
-              </section>
-          }
-
-          @if (dispute.status === 'OPEN') {
-              <section class="panel action-panel">
-                <h2 class="section-heading">Review customer dispute</h2>
-                <div class="action-row">
-                  <button
-                    class="button primary"
-                    type="button"
-                    [disabled]="saving()"
-                    (click)="acceptDispute(dispute)"
-                  >
-                    {{ saving() ? 'Submitting...' : 'Accept dispute' }}
-                  </button>
-                </div>
-
-                <hr />
-                <h3>Send a formal response</h3>
-                <form class="action-form" (ngSubmit)="submitShopResponse(dispute)">
-                  <label>
-                    <span>Investigation and response</span>
-                    <textarea
-                      [(ngModel)]="shopResponseExplanation"
-                      name="shopResponseExplanation"
-                      rows="3"
-                      maxlength="3000"
-                      required
-                    ></textarea>
-                  </label>
-                  <label>
-                    <span>Message to customer</span>
-                    <textarea
-                      [(ngModel)]="shopResponseMessage"
-                      name="shopResponseMessage"
-                      rows="2"
-                      maxlength="4000"
-                      required
-                    ></textarea>
-                  </label>
-                  <label>
-                    <span>Proposed next step (optional)</span>
-                    <textarea
-                      [(ngModel)]="shopProposedResolution"
-                      name="shopProposedResolution"
-                      rows="2"
-                      maxlength="2000"
-                    ></textarea>
-                  </label>
-                  <button
-                    class="button primary"
-                    type="submit"
-                    [disabled]="
-                      saving() ||
-                      !shopResponseExplanation.trim() ||
-                      !shopResponseMessage.trim()
-                    "
-                  >
-                    {{ saving() ? 'Submitting...' : 'Submit response' }}
-                  </button>
-                </form>
-
-                <hr />
-                <h3>Reject dispute</h3>
-                <form class="action-form" (ngSubmit)="rejectDispute(dispute)">
-                  <label>
-                    <span>Rejection reason</span>
-                    <input
-                      [(ngModel)]="rejectionReason"
-                      name="rejectionReason"
-                      maxlength="1000"
-                      required
-                    />
-                  </label>
-                  <label>
-                    <span>Explanation</span>
-                    <textarea
-                      [(ngModel)]="rejectionExplanation"
-                      name="rejectionExplanation"
-                      rows="3"
-                      maxlength="3000"
-                      required
-                    ></textarea>
-                  </label>
-                  <label>
-                    <span>Evidence (optional)</span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,application/pdf"
-                      multiple
-                      (change)="onRejectionFilesSelected($event)"
-                    />
-                  </label>
-                  @if (rejectionAttachments.length) {
-                    <ul class="selected-attachments">
-                      @for (file of rejectionAttachments; track file.name; let index = $index) {
-                        <li>
-                          <span>{{ file.name }}</span>
-                          <button
-                            type="button"
-                            class="remove-attachment"
-                            (click)="removeRejectionAttachment(index)"
-                          >
-                            Remove
-                          </button>
-                        </li>
-                      }
-                    </ul>
-                  }
-                  <button class="button danger" type="submit" [disabled]="saving()">
-                    {{ saving() ? 'Submitting...' : 'Submit rejection' }}
-                  </button>
-                </form>
-              </section>
-          }
-
           @if (canReviewCustomerResponse(dispute)) {
             <section class="panel action-panel">
               <h2 class="section-heading">Review the customer's response</h2>
@@ -577,173 +398,20 @@
             </section>
           }
 
-          @if (canStartReinspection(dispute)) {
+          @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
             <section class="panel action-panel">
-              <h2 class="section-heading">Start reinspection</h2>
-              <p>Inspect the device and document the remaining repair work.</p>
+              <h2 class="section-heading">Proceed with approved rework</h2>
+              <p>Start the approved repair work on the device.</p>
               <div class="action-row">
                 <button
                   class="button primary"
                   type="button"
                   [disabled]="saving()"
-                  (click)="startReinspection(dispute)"
+                  (click)="startRework(dispute)"
                 >
-                  {{ saving() ? 'Starting...' : 'Start reinspection' }}
+                  {{ saving() ? 'Starting...' : 'Start rework' }}
                 </button>
               </div>
-            </section>
-          }
-
-          @if (canSubmitReinspection(dispute)) {
-            <section class="panel action-panel">
-              <h2 class="section-heading">Submit reinspection findings</h2>
-              <form class="form-grid" (ngSubmit)="submitReinspection(dispute)">
-                <label class="wide">
-                  <span>Inspection findings</span>
-                  <textarea
-                    [(ngModel)]="reinspectionFindings"
-                    name="reinspectionFindings"
-                    rows="3"
-                    maxlength="3000"
-                    required
-                  ></textarea>
-                </label>
-                <label class="wide">
-                  <span>Required repair work</span>
-                  <textarea
-                    [(ngModel)]="requiredRepairWork"
-                    name="requiredRepairWork"
-                    rows="3"
-                    maxlength="3000"
-                    required
-                  ></textarea>
-                </label>
-                <label>
-                  <span>Estimated completion time (optional)</span>
-                  <input
-                    [(ngModel)]="estimatedCompletionTime"
-                    name="estimatedCompletionTime"
-                    maxlength="200"
-                  />
-                </label>
-                <label>
-                  <span>Supporting images or documents (optional)</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    multiple
-                    (change)="onReinspectionFilesSelected($event)"
-                  />
-                </label>
-                @if (reinspectionAttachments.length) {
-                  <ul class="selected-attachments wide">
-                    @for (file of reinspectionAttachments; track file.name; let index = $index) {
-                      <li>
-                        <span>{{ file.name }}</span>
-                        <button
-                          type="button"
-                          class="remove-attachment"
-                          (click)="removeReinspectionAttachment(index)"
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    }
-                  </ul>
-                }
-                <button
-                  class="button primary"
-                  type="submit"
-                  [disabled]="saving() || !reinspectionFindings.trim() || !requiredRepairWork.trim()"
-                >
-                  {{ saving() ? 'Submitting...' : 'Submit findings' }}
-                </button>
-              </form>
-
-              <hr />
-              <h3>Request additional charges</h3>
-              <form class="form-grid" (ngSubmit)="requestCharges(dispute)">
-                <label class="wide">
-                  <span>Reason for additional charges</span>
-                  <textarea
-                    [(ngModel)]="chargeReason"
-                    name="chargeReason"
-                    rows="2"
-                    maxlength="2000"
-                    required
-                  ></textarea>
-                </label>
-                @for (item of chargeItems; track $index; let index = $index) {
-                  <label>
-                    <span>Item description</span>
-                    <input
-                      [(ngModel)]="item.description"
-                      [name]="'chargeDescription-' + index"
-                      maxlength="500"
-                      required
-                    />
-                  </label>
-                  <label>
-                    <span>Amount</span>
-                    <input
-                      type="number"
-                      [(ngModel)]="item.amount"
-                      [name]="'chargeAmount-' + index"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </label>
-                  <button
-                    class="button danger"
-                    type="button"
-                    [disabled]="chargeItems.length === 1"
-                    (click)="removeChargeLine(index)"
-                  >
-                    Remove item
-                  </button>
-                }
-                <button
-                  class="button secondary"
-                  type="button"
-                  [disabled]="chargeItems.length >= 20"
-                  (click)="addChargeLine()"
-                >
-                  Add charge item
-                </button>
-                <label class="wide">
-                  <span>Message to customer (optional)</span>
-                  <textarea
-                    [(ngModel)]="chargeMessage"
-                    name="chargeMessage"
-                    rows="2"
-                    maxlength="2000"
-                  ></textarea>
-                </label>
-                <button
-                  class="button primary"
-                  type="submit"
-                  [disabled]="saving() || !chargeReason.trim()"
-                >
-                  {{ saving() ? 'Submitting...' : 'Request additional charges' }}
-                </button>
-              </form>
-
-              @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
-                <hr />
-                <h3>Proceed with approved rework</h3>
-                <p>Start the approved repair work on the device.</p>
-                <div class="action-row">
-                  <button
-                    class="button primary"
-                    type="button"
-                    [disabled]="saving()"
-                    (click)="startRework(dispute)"
-                  >
-                    {{ saving() ? 'Starting...' : 'Start rework' }}
-                  </button>
-                </div>
-              }
             </section>
           }
 
@@ -768,142 +436,131 @@
               </div>
             </section>
           }
-
-          @if (canUpdateRework(dispute)) {
-            <section class="panel action-panel">
-              <h2 class="section-heading">Rework in progress</h2>
-              <form class="form-grid" (ngSubmit)="addReworkProgress(dispute)">
-                <label class="wide">
-                  <span>Progress update</span>
-                  <textarea
-                    [(ngModel)]="progressNotes"
-                    name="progressNotes"
-                    rows="3"
-                    maxlength="3000"
-                    required
-                  ></textarea>
-                </label>
-                <label class="wide">
-                  <span>Progress photos or documents (optional)</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    multiple
-                    (change)="onProgressFilesSelected($event)"
-                  />
-                </label>
-                @if (progressAttachments.length) {
-                  <ul class="selected-attachments wide">
-                    @for (file of progressAttachments; track file.name; let index = $index) {
-                      <li>
-                        <span>{{ file.name }}</span>
-                        <button
-                          type="button"
-                          class="remove-attachment"
-                          (click)="removeProgressAttachment(index)"
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    }
-                  </ul>
-                }
-                <button
-                  class="button primary"
-                  type="submit"
-                  [disabled]="saving() || !progressNotes.trim()"
-                >
-                  {{ saving() ? 'Submitting...' : 'Add progress update' }}
-                </button>
-              </form>
-
-              <hr />
-              <h3>Complete rework</h3>
-              <form class="form-grid" (ngSubmit)="completeRework(dispute)">
-                <label class="wide">
-                  <span>Work performed</span>
-                  <textarea
-                    [(ngModel)]="reworkDescription"
-                    name="reworkDescription"
-                    rows="3"
-                    maxlength="3000"
-                    required
-                  ></textarea>
-                </label>
-                <label class="wide">
-                  <span>Parts replaced (optional)</span>
-                  <textarea
-                    [(ngModel)]="partsReplaced"
-                    name="partsReplaced"
-                    rows="2"
-                    maxlength="2000"
-                  ></textarea>
-                </label>
-                <label class="wide">
-                  <span>Testing results</span>
-                  <textarea
-                    [(ngModel)]="testingResults"
-                    name="testingResults"
-                    rows="3"
-                    maxlength="3000"
-                    required
-                  ></textarea>
-                </label>
-                <label class="wide">
-                  <span>Final notes (optional)</span>
-                  <textarea
-                    [(ngModel)]="finalNotes"
-                    name="finalNotes"
-                    rows="2"
-                    maxlength="2000"
-                  ></textarea>
-                </label>
-                <label class="wide">
-                  <span>Completion evidence (optional)</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    multiple
-                    (change)="onCompletionFilesSelected($event)"
-                  />
-                </label>
-                @if (completionDocuments.length) {
-                  <ul class="selected-attachments wide">
-                    @for (file of completionDocuments; track file.name; let index = $index) {
-                      <li>
-                        <span>{{ file.name }}</span>
-                        <button
-                          type="button"
-                          class="remove-attachment"
-                          (click)="removeCompletionDocument(index)"
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    }
-                  </ul>
-                }
-                <label class="checkbox-field wide">
-                  <input
-                    type="checkbox"
-                    [(ngModel)]="reworkTested"
-                    name="reworkTested"
-                  />
-                  <span>I confirm that the device has been tested.</span>
-                </label>
-                <button
-                  class="button primary"
-                  type="submit"
-                  [disabled]="saving() || !reworkDescription.trim() || !testingResults.trim() || !reworkTested"
-                >
-                  {{ saving() ? 'Submitting...' : 'Submit completion' }}
-                </button>
-              </form>
-            </section>
-          }
       </div>
 
       <aside class="customer-detail-sidebar">
+        @if (dispute.status === 'OPEN') {
+          <section class="detail-section customer-detail-sidebar-card sidebar-action-card" aria-label="Dispute decision actions">
+            <div class="sidebar-action-copy">
+              <h2>Dispute decision</h2>
+              <p>Accept the customer's dispute or reject it with supporting evidence.</p>
+            </div>
+            <div class="sidebar-action-buttons">
+              <button
+                class="button primary"
+                type="button"
+                (click)="openAcceptDisputeModal()"
+              >
+                Accept dispute
+              </button>
+              <button
+                class="button danger"
+                type="button"
+                (click)="openRejectDisputeModal()"
+              >
+                Reject dispute
+              </button>
+            </div>
+          </section>
+        }
+        @if (canProposeResolution(dispute) || canReviewDispute(dispute)) {
+          <section class="detail-section customer-detail-sidebar-card sidebar-action-card resolution-action-card" aria-label="Resolution actions">
+            <div class="sidebar-action-copy">
+              <h2>Resolution actions</h2>
+              <p>Propose a resolution to the customer or review customer dispute.</p>
+            </div>
+            <div class="sidebar-action-buttons">
+              @if (canProposeResolution(dispute)) {
+                <button
+                  class="button primary"
+                  type="button"
+                  (click)="openProposeResolutionModal()"
+                >
+                  Propose resolution
+                </button>
+              }
+              @if (canReviewDispute(dispute)) {
+                <button
+                  class="button secondary"
+                  type="button"
+                  (click)="openReviewDisputeModal()"
+                >
+                  Review customer dispute
+                </button>
+              }
+            </div>
+          </section>
+        }
+        @if (canSubmitReinspection(dispute)) {
+          <section class="detail-section customer-detail-sidebar-card sidebar-action-card reinspection-submit-action-card" aria-label="Reinspection submission actions">
+            <div class="sidebar-action-copy">
+              <h2>Reinspection submission</h2>
+              <p>Submit findings or request customer-approved additional charges.</p>
+            </div>
+            <div class="sidebar-action-buttons">
+              <button
+                class="button primary"
+                type="button"
+                [disabled]="saving()"
+                (click)="openReinspectionModal()"
+              >
+                Submit reinspection findings
+              </button>
+              <button
+                class="button secondary"
+                type="button"
+                [disabled]="saving()"
+                (click)="openAdditionalChargesModal()"
+              >
+                Request additional charges
+              </button>
+            </div>
+          </section>
+        }
+        @if (canUpdateRework(dispute)) {
+          <section class="detail-section customer-detail-sidebar-card sidebar-action-card rework-action-card" aria-label="Rework actions">
+            <div class="sidebar-action-copy">
+              <h2>Rework actions</h2>
+              <p>Share progress updates or complete the approved rework.</p>
+            </div>
+            <div class="sidebar-action-buttons">
+              <button
+                class="button primary"
+                type="button"
+                [disabled]="saving()"
+                (click)="openReworkProgressModal()"
+              >
+                Add progress update
+              </button>
+              <button
+                class="button secondary"
+                type="button"
+                [disabled]="saving()"
+                (click)="openCompleteReworkModal()"
+              >
+                Complete rework
+              </button>
+            </div>
+          </section>
+        }
+        @if (canStartReinspection(dispute)) {
+          <section class="detail-section customer-detail-sidebar-card sidebar-action-card reinspection-action-card" aria-label="Reinspection actions">
+            <div class="sidebar-action-copy">
+              <h2>Start reinspection</h2>
+              <p>Inspect the device and document the remaining repair work.</p>
+            </div>
+            <div class="sidebar-action-buttons">
+              <button
+                class="button primary"
+                type="button"
+                [disabled]="saving()"
+                (click)="startReinspection(dispute)"
+              >
+                {{ saving() ? 'Starting...' : 'Start reinspection' }}
+              </button>
+            </div>
+          </section>
+        }
         <section class="detail-section customer-detail-sidebar-card" aria-label="Dispute summary">
           <section class="customer-detail-block">
             <h2 class="section-heading">
@@ -951,11 +608,775 @@
             </section>
           }
         </section>
-
-        <a class="job-button" [routerLink]="[disputeRoute, dispute._id]">
-          Open issue page for permitted actions
-        </a>
       </aside>
     </div>
+
+    @if (proposeResolutionModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeProposeResolutionModal()">
+        <section
+          class="issue-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="propose-resolution-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="propose-resolution-title">Propose a resolution to the customer</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close resolution proposal"
+              (click)="closeProposeResolutionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="proposeResolution(dispute)">
+            <p class="issue-modal-intro">
+              Choose the resolution type and describe what the customer will receive.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section form-grid">
+              <label>
+                <span>Resolution type</span>
+                <select [(ngModel)]="resolutionType" name="resolutionType">
+                  <option value="repair_again">Repair again</option>
+                  <option value="additional_repair">Additional repair</option>
+                  <option value="partial_refund">Partial refund</option>
+                  <option value="full_refund">Full refund</option>
+                  <option value="price_adjustment">Price adjustment</option>
+                  <option value="customer_compensation">Customer compensation</option>
+                  <option value="shop_compensation">Shop compensation</option>
+                  <option value="no_action">No action</option>
+                  <option value="other">Other agreement</option>
+                </select>
+              </label>
+              @if (resolutionType === 'partial_refund' || resolutionType === 'full_refund') {
+                <label>
+                  <span>Refund amount</span>
+                  <input
+                    type="number"
+                    [(ngModel)]="resolutionAmount"
+                    name="resolutionAmount"
+                    placeholder="0.00"
+                    min="0"
+                    step="0.01"
+                    required
+                  />
+                </label>
+              }
+              <label class="wide">
+                <span>Proposed resolution</span>
+                <textarea
+                  [(ngModel)]="resolutionDescription"
+                  name="resolutionDescription"
+                  placeholder="Describe the resolution you are offering."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label class="wide">
+                <span>Notes</span>
+                <textarea
+                  [(ngModel)]="resolutionNotes"
+                  name="resolutionNotes"
+                  placeholder="Add supporting notes for the customer."
+                  rows="2"
+                  maxlength="2000"
+                  required
+                ></textarea>
+              </label>
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeProposeResolutionModal()"
+              >
+                Cancel
+              </button>
+              <button
+                class="button primary"
+                type="submit"
+                [disabled]="saving() || !resolutionDescription.trim() || !resolutionNotes.trim()"
+              >
+                {{ saving() ? 'Submitting...' : 'Submit proposal' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (reviewDisputeModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeReviewDisputeModal()">
+        <section
+          class="issue-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="review-dispute-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="review-dispute-title">Review customer dispute</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close dispute review"
+              (click)="closeReviewDisputeModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="submitShopResponse(dispute)">
+            <p class="issue-modal-intro">Send a formal response and next step to the customer.</p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Investigation and response</span>
+                <textarea
+                  [(ngModel)]="shopResponseExplanation"
+                  name="shopResponseExplanation"
+                  placeholder="Explain your investigation and response."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Message to customer</span>
+                <textarea
+                  [(ngModel)]="shopResponseMessage"
+                  name="shopResponseMessage"
+                  placeholder="Write a clear message for the customer."
+                  rows="2"
+                  maxlength="4000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Proposed next step (optional)</span>
+                <textarea
+                  [(ngModel)]="shopProposedResolution"
+                  name="shopProposedResolution"
+                  placeholder="Describe the proposed next step (optional)."
+                  rows="2"
+                  maxlength="2000"
+                ></textarea>
+              </label>
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeReviewDisputeModal()"
+              >
+                Cancel
+              </button>
+              <button
+                class="button primary"
+                type="submit"
+                [disabled]="
+                  saving() || !shopResponseExplanation.trim() || !shopResponseMessage.trim()
+                "
+              >
+                {{ saving() ? 'Submitting...' : 'Submit response' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (acceptDisputeModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeAcceptDisputeModal()">
+        <section
+          class="issue-modal issue-modal-compact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="accept-dispute-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="accept-dispute-title">Accept dispute</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close dispute acceptance"
+              (click)="closeAcceptDisputeModal()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="issue-modal-form">
+            <p class="issue-modal-intro">
+              Confirm that you accept this dispute. The customer will be notified and the issue
+              will move to under review.
+            </p>
+            @if (dispute.customerComments) {
+              <div class="issue-modal-section">
+                <span class="issue-modal-label">Customer comments</span>
+                <p>{{ dispute.customerComments }}</p>
+              </div>
+            }
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeAcceptDisputeModal()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="button primary"
+                [disabled]="saving()"
+                (click)="acceptDispute(dispute)"
+              >
+                {{ saving() ? 'Submitting...' : 'Accept dispute' }}
+              </button>
+            </footer>
+          </div>
+        </section>
+      </div>
+    }
+
+    @if (rejectDisputeModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeRejectDisputeModal()">
+        <section
+          class="issue-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-dispute-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="reject-dispute-title">Reject dispute</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close dispute rejection"
+              (click)="closeRejectDisputeModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="rejectDispute(dispute)">
+            <p class="issue-modal-intro">
+              Explain why the dispute should be rejected. The customer will receive your response.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Rejection reason</span>
+                <input
+                  [(ngModel)]="rejectionReason"
+                  name="rejectionReason"
+                  placeholder="e.g. Issue outside covered repair scope"
+                  maxlength="1000"
+                  required
+                />
+              </label>
+              <label>
+                <span>Explanation</span>
+                <textarea
+                  [(ngModel)]="rejectionExplanation"
+                  name="rejectionExplanation"
+                  placeholder="Explain why the dispute should be rejected."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Evidence (optional)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  multiple
+                  (change)="onRejectionFilesSelected($event)"
+                />
+              </label>
+              @if (rejectionAttachments.length) {
+                <ul class="selected-attachments">
+                  @for (file of rejectionAttachments; track file.name; let index = $index) {
+                    <li>
+                      <span>{{ file.name }}</span>
+                      <button
+                        type="button"
+                        class="remove-attachment"
+                        (click)="removeRejectionAttachment(index)"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeRejectDisputeModal()"
+              >
+                Cancel
+              </button>
+              <button class="button danger" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Submitting...' : 'Submit rejection' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (reinspectionModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeReinspectionModal()">
+        <section
+          class="issue-modal issue-modal-wide"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reinspection-findings-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="reinspection-findings-title">Submit reinspection findings</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close reinspection findings"
+              (click)="closeReinspectionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="submitReinspection(dispute)">
+            <p class="issue-modal-intro">
+              Document what you found and the remaining work required to resolve the dispute.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Inspection findings</span>
+                <textarea
+                  [(ngModel)]="reinspectionFindings"
+                  name="reinspectionFindings"
+                  placeholder="Describe what you found during reinspection."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Required repair work</span>
+                <textarea
+                  [(ngModel)]="requiredRepairWork"
+                  name="requiredRepairWork"
+                  placeholder="List the remaining repair work required."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Estimated completion time (optional)</span>
+                <input
+                  [(ngModel)]="estimatedCompletionTime"
+                  name="estimatedCompletionTime"
+                  placeholder="e.g. 2 business days"
+                  maxlength="200"
+                />
+              </label>
+              <label>
+                <span>Supporting images or documents (optional)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  multiple
+                  (change)="onReinspectionFilesSelected($event)"
+                />
+              </label>
+              @if (reinspectionAttachments.length) {
+                <ul class="selected-attachments">
+                  @for (file of reinspectionAttachments; track file.name; let index = $index) {
+                    <li>
+                      <span>{{ file.name }}</span>
+                      <button
+                        type="button"
+                        class="remove-attachment"
+                        (click)="removeReinspectionAttachment(index)"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeReinspectionModal()"
+              >
+                Cancel
+              </button>
+              <button class="button primary" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Submitting...' : 'Submit findings' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (additionalChargesModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeAdditionalChargesModal()">
+        <section
+          class="issue-modal issue-modal-wide"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="additional-charges-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="additional-charges-title">Request additional charges</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close additional charges"
+              (click)="closeAdditionalChargesModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="requestCharges(dispute)">
+            <p class="issue-modal-intro">
+              Send the customer an itemized charge request for approval before continuing the repair.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Reason for additional charges</span>
+                <textarea
+                  [(ngModel)]="chargeReason"
+                  name="chargeReason"
+                  placeholder="Explain why additional charges are needed."
+                  rows="2"
+                  maxlength="2000"
+                  required
+                ></textarea>
+              </label>
+              @for (item of chargeItems; track $index; let index = $index) {
+                <div class="issue-modal-charge-row">
+                  <label>
+                    <span>Item description</span>
+                    <input
+                      [(ngModel)]="item.description"
+                      [name]="'chargeDescription-' + index"
+                      placeholder="e.g. Replacement part"
+                      maxlength="500"
+                      required
+                    />
+                  </label>
+                  <label>
+                    <span>Amount</span>
+                    <input
+                      type="number"
+                      [(ngModel)]="item.amount"
+                      [name]="'chargeAmount-' + index"
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </label>
+                  <button
+                    class="button danger"
+                    type="button"
+                    [disabled]="chargeItems.length === 1"
+                    (click)="removeChargeLine(index)"
+                  >
+                    Remove item
+                  </button>
+                </div>
+              }
+              <button
+                class="button secondary"
+                type="button"
+                [disabled]="chargeItems.length >= 20"
+                (click)="addChargeLine()"
+              >
+                Add charge item
+              </button>
+              <label>
+                <span>Message to customer (optional)</span>
+                <textarea
+                  [(ngModel)]="chargeMessage"
+                  name="chargeMessage"
+                  placeholder="Add an optional message for the customer."
+                  rows="2"
+                  maxlength="2000"
+                ></textarea>
+              </label>
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeAdditionalChargesModal()"
+              >
+                Cancel
+              </button>
+              <button class="button primary" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Submitting...' : 'Request additional charges' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (reworkProgressModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeReworkProgressModal()">
+        <section
+          class="issue-modal issue-modal-wide"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rework-progress-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="rework-progress-title">Rework in progress</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close rework progress"
+              (click)="closeReworkProgressModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="addReworkProgress(dispute)">
+            <p class="issue-modal-intro">
+              Share progress updates and supporting evidence with the customer.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Progress update</span>
+                <textarea
+                  [(ngModel)]="progressNotes"
+                  name="progressNotes"
+                  placeholder="Describe the work completed so far."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Progress photos or documents (optional)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  multiple
+                  (change)="onProgressFilesSelected($event)"
+                />
+              </label>
+              @if (progressAttachments.length) {
+                <ul class="selected-attachments">
+                  @for (file of progressAttachments; track file.name; let index = $index) {
+                    <li>
+                      <span>{{ file.name }}</span>
+                      <button
+                        type="button"
+                        class="remove-attachment"
+                        (click)="removeProgressAttachment(index)"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeReworkProgressModal()"
+              >
+                Cancel
+              </button>
+              <button class="button primary" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Submitting...' : 'Add progress update' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (completeReworkModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeCompleteReworkModal()">
+        <section
+          class="issue-modal issue-modal-wide"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="complete-rework-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="complete-rework-title">Complete rework</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close complete rework"
+              (click)="closeCompleteReworkModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="completeRework(dispute)">
+            <p class="issue-modal-intro">
+              Document the completed work and confirm the device has been tested before completion.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Work performed</span>
+                <textarea
+                  [(ngModel)]="reworkDescription"
+                  name="reworkDescription"
+                  placeholder="Describe the work performed."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Parts replaced (optional)</span>
+                <textarea
+                  [(ngModel)]="partsReplaced"
+                  name="partsReplaced"
+                  placeholder="e.g. Screen, battery"
+                  rows="2"
+                  maxlength="2000"
+                ></textarea>
+              </label>
+              <label>
+                <span>Testing results</span>
+                <textarea
+                  [(ngModel)]="testingResults"
+                  name="testingResults"
+                  placeholder="Describe the tests and their results."
+                  rows="3"
+                  maxlength="3000"
+                  required
+                ></textarea>
+              </label>
+              <label>
+                <span>Final notes (optional)</span>
+                <textarea
+                  [(ngModel)]="finalNotes"
+                  name="finalNotes"
+                  placeholder="Add any final notes for the customer."
+                  rows="2"
+                  maxlength="2000"
+                ></textarea>
+              </label>
+              <label>
+                <span>Completion evidence (optional)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  multiple
+                  (change)="onCompletionFilesSelected($event)"
+                />
+              </label>
+              @if (completionDocuments.length) {
+                <ul class="selected-attachments">
+                  @for (file of completionDocuments; track file.name; let index = $index) {
+                    <li>
+                      <span>{{ file.name }}</span>
+                      <button
+                        type="button"
+                        class="remove-attachment"
+                        (click)="removeCompletionDocument(index)"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              <label class="checkbox-field">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="reworkTested"
+                  name="reworkTested"
+                />
+                <span>I confirm that the device has been tested.</span>
+              </label>
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeCompleteReworkModal()"
+              >
+                Cancel
+              </button>
+              <button class="button primary" type="submit" [disabled]="saving()">
+                {{ saving() ? 'Submitting...' : 'Submit completion' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
   }
 </main>

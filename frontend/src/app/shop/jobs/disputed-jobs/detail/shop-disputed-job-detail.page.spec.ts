@@ -186,6 +186,7 @@ describe('ShopDisputedJobDetailPage', () => {
     return {
       page: harness.routeNativeElement as HTMLElement,
       component: harness.routeDebugElement?.componentInstance as ShopDisputedJobDetailPage,
+      harness,
       disputes,
     };
   }
@@ -211,11 +212,22 @@ describe('ShopDisputedJobDetailPage', () => {
     expect(text).toContain('Attach files');
     expect(text).toContain('Propose a resolution to the customer');
     expect(text).toContain('Accept dispute');
-    expect(text).toContain('Send a formal response');
+    expect(text).toContain('Review customer dispute');
     expect(text).toContain('Reject dispute');
-    expect(text).toContain('Open issue page for permitted actions');
-    expect(page.querySelector('a.job-button')?.getAttribute('href')).toBe(
-      '/shop/disputes/dispute-123',
+    expect(page.querySelector('.customer-detail-sidebar > section:first-child')?.className).toContain(
+      'sidebar-action-card',
+    );
+    expect(page.querySelector('.sidebar-action-copy')?.textContent).toContain('Dispute decision');
+    expect(page.querySelector('.sidebar-action-buttons')?.textContent).toContain('Accept dispute');
+    expect(page.querySelector('.sidebar-action-buttons')?.textContent).toContain('Reject dispute');
+    expect(page.querySelector('.customer-detail-sidebar > section:nth-child(2)')?.className).toContain(
+      'resolution-action-card',
+    );
+    expect(page.querySelector('.resolution-action-card')?.textContent).toContain(
+      'Propose resolution',
+    );
+    expect(page.querySelector('.resolution-action-card')?.textContent).toContain(
+      'Review customer dispute',
     );
   });
 
@@ -260,6 +272,48 @@ describe('ShopDisputedJobDetailPage', () => {
     });
   });
 
+  it('opens separate popups for each issue resolution action', async () => {
+    const { page, component, harness, disputes } = await renderPage(null);
+
+    component.openProposeResolutionModal();
+    harness.detectChanges();
+    expect(page.querySelector('#propose-resolution-title')).not.toBeNull();
+    component.resolutionDescription = 'Repair the device again.';
+    component.resolutionNotes = 'We will inspect it first.';
+    component.proposeResolution(dispute);
+    harness.detectChanges();
+    expect(disputes.proposeResolution).toHaveBeenCalled();
+    expect(component.proposeResolutionModalOpen()).toBeFalse();
+
+    component.openReviewDisputeModal();
+    harness.detectChanges();
+    expect(page.querySelector('#review-dispute-title')).not.toBeNull();
+    expect(page.textContent).toContain('Send a formal response');
+    component.closeReviewDisputeModal();
+    harness.detectChanges();
+    expect(component.reviewDisputeModalOpen()).toBeFalse();
+
+    component.openAcceptDisputeModal();
+    harness.detectChanges();
+    expect(page.querySelector('#accept-dispute-title')).not.toBeNull();
+    component.acceptDispute(dispute);
+    harness.detectChanges();
+    expect(disputes.accept).toHaveBeenCalledWith('dispute-123');
+    expect(component.acceptDisputeModalOpen()).toBeFalse();
+
+    component.openRejectDisputeModal();
+    harness.detectChanges();
+    expect(page.querySelector('#reject-dispute-title')).not.toBeNull();
+    expect(page.querySelector('input[name="rejectionReason"]')).not.toBeNull();
+    component.rejectionReason = 'Outside repair scope.';
+    component.rejectionExplanation = 'The evidence shows unrelated damage.';
+    component.rejectDispute(dispute);
+    harness.detectChanges();
+    expect(disputes.reject).toHaveBeenCalled();
+    expect(component.rejectDisputeModalOpen()).toBeFalse();
+    expect(page.querySelector('.issue-modal')).toBeNull();
+  });
+
   it('requires a refund amount when proposing a refund', async () => {
     const { component, disputes } = await renderPage(null);
     component.resolutionType = 'partial_refund';
@@ -289,7 +343,96 @@ describe('ShopDisputedJobDetailPage', () => {
     expect(text).toContain("Review the customer's response");
     expect(text).toContain('Submit reinspection findings');
     expect(text).toContain('Request additional charges');
-    expect(text).toContain('Rework in progress');
+    expect(text).toContain('Rework actions');
+  });
+
+  it('places reinspection submission actions after resolution actions', async () => {
+    const reinspectionDispute: RepairDispute = {
+      ...dispute,
+      status: 'REINSPECTION_IN_PROGRESS',
+    };
+    const { page } = await renderPage(null, reinspectionDispute);
+    const cardLabels = Array.from(page.querySelectorAll('.sidebar-action-card')).map((card) =>
+      card.getAttribute('aria-label'),
+    );
+
+    expect(cardLabels).toContain('Resolution actions');
+    expect(cardLabels).toContain('Reinspection submission actions');
+    expect(cardLabels.indexOf('Reinspection submission actions')).toBeGreaterThan(
+      cardLabels.indexOf('Resolution actions'),
+    );
+  });
+
+  it('places rework actions after reinspection submission', async () => {
+    const awaitingShopResponse: RepairDispute = {
+      ...dispute,
+      status: 'AWAITING_SHOP_RESPONSE',
+    };
+    const { page } = await renderPage(null, awaitingShopResponse);
+    const cardLabels = Array.from(page.querySelectorAll('.sidebar-action-card')).map((card) =>
+      card.getAttribute('aria-label'),
+    );
+
+    expect(cardLabels).toContain('Reinspection submission actions');
+    expect(cardLabels).toContain('Rework actions');
+    expect(cardLabels.indexOf('Rework actions')).toBeGreaterThan(
+      cardLabels.indexOf('Reinspection submission actions'),
+    );
+  });
+
+  it('opens separate popups for each rework workflow action', async () => {
+    const awaitingShopResponse: RepairDispute = {
+      ...dispute,
+      status: 'AWAITING_SHOP_RESPONSE',
+    };
+    const { component, page, harness } = await renderPage(null, awaitingShopResponse);
+
+    component.openReinspectionModal();
+    harness.detectChanges();
+    expect(page.querySelector('#reinspection-findings-title')).not.toBeNull();
+    expect(
+      page.querySelector('textarea[name="reinspectionFindings"]')?.getAttribute('placeholder'),
+    ).toBe('Describe what you found during reinspection.');
+    component.closeReinspectionModal();
+    harness.detectChanges();
+
+    component.openAdditionalChargesModal();
+    harness.detectChanges();
+    expect(page.querySelector('#additional-charges-title')).not.toBeNull();
+    expect(
+      page
+        .querySelector('.issue-modal-charge-row input[type="number"]')
+        ?.getAttribute('placeholder'),
+    ).toBe('0.00');
+    component.closeAdditionalChargesModal();
+    harness.detectChanges();
+
+    component.record.set({ ...dispute, status: 'REPAIR_IN_PROGRESS' });
+    harness.detectChanges();
+
+    component.openReworkProgressModal();
+    harness.detectChanges();
+    expect(page.querySelector('#rework-progress-title')).not.toBeNull();
+    expect(page.querySelector('textarea[name="progressNotes"]')?.getAttribute('placeholder')).toBe(
+      'Describe the work completed so far.',
+    );
+    component.closeReworkProgressModal();
+    harness.detectChanges();
+
+    component.openCompleteReworkModal();
+    harness.detectChanges();
+    expect(page.querySelector('#complete-rework-title')).not.toBeNull();
+    expect(page.querySelector('textarea[name="reworkDescription"]')?.getAttribute('placeholder')).toBe(
+      'Describe the work performed.',
+    );
+    expect(page.querySelector('textarea[name="testingResults"]')?.getAttribute('placeholder')).toBe(
+      'Describe the tests and their results.',
+    );
+    expect(page.querySelector('input[name="reworkTested"]')).not.toBeNull();
+    component.closeCompleteReworkModal();
+    harness.detectChanges();
+
+    expect(page.querySelector('.issue-modal')).toBeNull();
   });
 
   it('submits the Shop dispute workflow actions through the existing APIs', async () => {
@@ -369,12 +512,19 @@ describe('ShopDisputedJobDetailPage', () => {
   });
 
   it('starts reinspection and rework only for eligible workflow statuses', async () => {
-    const { component, disputes } = await renderPage(null);
+    const { component, disputes, page, harness } = await renderPage(null);
     const acceptedDispute: RepairDispute = { ...dispute, status: 'ACCEPTED' };
     const reinspectedDispute: RepairDispute = {
       ...dispute,
       status: 'REINSPECTION_IN_PROGRESS',
     };
+
+    component.record.set(acceptedDispute);
+    harness.detectChanges();
+    expect(page.querySelector('.reinspection-action-card')).not.toBeNull();
+    expect(page.querySelector('.reinspection-action-card')?.textContent).toContain(
+      'Start reinspection',
+    );
 
     component.startReinspection(acceptedDispute);
     component.startRework(reinspectedDispute);

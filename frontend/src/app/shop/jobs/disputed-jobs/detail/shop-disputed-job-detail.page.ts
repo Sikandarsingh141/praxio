@@ -60,12 +60,19 @@ export class ShopDisputedJobDetailPage
   readonly saving = signal(false);
   readonly actionError = signal('');
   readonly actionNotice = signal('');
+  readonly proposeResolutionModalOpen = signal(false);
+  readonly reviewDisputeModalOpen = signal(false);
+  readonly acceptDisputeModalOpen = signal(false);
+  readonly rejectDisputeModalOpen = signal(false);
+  readonly reinspectionModalOpen = signal(false);
+  readonly additionalChargesModalOpen = signal(false);
+  readonly reworkProgressModalOpen = signal(false);
+  readonly completeReworkModalOpen = signal(false);
   readonly directionsLoader = (requestId: string): Observable<RepairRoute> =>
     this.repairRequests.getDirections(requestId);
   readonly backRoute = '/shop/jobs/disputed-jobs';
   readonly backLabel = 'Issue Resolution';
   readonly pageTitle = 'Issue Resolution Details';
-  readonly disputeRoute = '/shop/disputes';
   message = '';
   conversationAttachments: DisputeAttachment[] = [];
   rejectionReason = '';
@@ -327,6 +334,86 @@ export class ShopDisputedJobDetailPage
     );
   }
 
+  openProposeResolutionModal(): void {
+    this.proposeResolutionModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeProposeResolutionModal(): void {
+    this.proposeResolutionModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openReviewDisputeModal(): void {
+    this.reviewDisputeModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeReviewDisputeModal(): void {
+    this.reviewDisputeModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openAcceptDisputeModal(): void {
+    this.acceptDisputeModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeAcceptDisputeModal(): void {
+    this.acceptDisputeModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openRejectDisputeModal(): void {
+    this.rejectDisputeModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeRejectDisputeModal(): void {
+    this.rejectDisputeModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openReinspectionModal(): void {
+    this.reinspectionModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeReinspectionModal(): void {
+    this.reinspectionModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openAdditionalChargesModal(): void {
+    this.additionalChargesModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeAdditionalChargesModal(): void {
+    this.additionalChargesModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openReworkProgressModal(): void {
+    this.reworkProgressModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeReworkProgressModal(): void {
+    this.reworkProgressModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openCompleteReworkModal(): void {
+    this.completeReworkModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeCompleteReworkModal(): void {
+    this.completeReworkModalOpen.set(false);
+    this.actionError.set('');
+  }
+
   proposeResolution(dispute: RepairDispute): void {
     if (!this.resolutionDescription.trim() || !this.resolutionNotes.trim()) {
       this.actionError.set('Describe the proposed resolution and include supporting notes.');
@@ -352,6 +439,7 @@ export class ShopDisputedJobDetailPage
         this.resolutionDescription = '';
         this.resolutionNotes = '';
         this.resolutionAmount = null;
+        this.closeProposeResolutionModal();
       },
     );
   }
@@ -360,6 +448,7 @@ export class ShopDisputedJobDetailPage
     this.runShopAction(
       this.disputes.accept(dispute._id),
       'Dispute accepted.',
+      () => this.closeAcceptDisputeModal(),
     );
   }
 
@@ -379,6 +468,7 @@ export class ShopDisputedJobDetailPage
         this.shopResponseExplanation = '';
         this.shopResponseMessage = '';
         this.shopProposedResolution = '';
+        this.closeReviewDisputeModal();
       },
     );
   }
@@ -399,8 +489,21 @@ export class ShopDisputedJobDetailPage
         this.rejectionReason = '';
         this.rejectionExplanation = '';
         this.rejectionAttachments = [];
+        this.closeRejectDisputeModal();
       },
     );
+  }
+
+  canProposeResolution(dispute: RepairDispute): boolean {
+    return (
+      dispute.status !== 'CLOSED' &&
+      dispute.status !== 'RESOLVED' &&
+      dispute.resolution.state !== 'proposed'
+    );
+  }
+
+  canReviewDispute(dispute: RepairDispute): boolean {
+    return dispute.status === 'OPEN';
   }
 
   canReviewCustomerResponse(dispute: RepairDispute): boolean {
@@ -467,6 +570,7 @@ export class ShopDisputedJobDetailPage
         this.requiredRepairWork = '';
         this.estimatedCompletionTime = '';
         this.reinspectionAttachments = [];
+        this.closeReinspectionModal();
       },
     );
   }
@@ -510,6 +614,7 @@ export class ShopDisputedJobDetailPage
         this.chargeReason = '';
         this.chargeMessage = '';
         this.chargeItems = [{ description: '', amount: null }];
+        this.closeAdditionalChargesModal();
       },
     );
   }
@@ -558,6 +663,7 @@ export class ShopDisputedJobDetailPage
       () => {
         this.progressNotes = '';
         this.progressAttachments = [];
+        this.closeReworkProgressModal();
       },
     );
   }
@@ -589,6 +695,7 @@ export class ShopDisputedJobDetailPage
         this.finalNotes = '';
         this.reworkTested = false;
         this.completionDocuments = [];
+        this.closeCompleteReworkModal();
       },
     );
   }

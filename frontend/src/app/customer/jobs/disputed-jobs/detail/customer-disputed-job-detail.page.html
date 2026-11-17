@@ -446,47 +446,6 @@
           </section>
         </section>
 
-        @if (
-          dispute.status === 'AWAITING_CUSTOMER_RESPONSE' &&
-          dispute.resolution.state === 'proposed'
-        ) {
-          <section class="customer-response-panel">
-            <h2 class="section-heading">Review the proposed resolution</h2>
-            <p>{{ dispute.resolution.description }}</p>
-            @if (dispute.resolution.amount !== undefined) {
-              <p>Proposed amount: {{ dispute.resolution.amount | currency }}</p>
-            }
-            <label class="customer-response-field">
-              <span>Reason if rejecting</span>
-              <textarea
-                [(ngModel)]="resolutionDecisionReason"
-                name="resolutionDecisionReason"
-                rows="2"
-                maxlength="1000"
-                [disabled]="saving()"
-              ></textarea>
-            </label>
-            <div class="customer-action-row">
-              <button
-                class="job-button"
-                type="button"
-                [disabled]="saving()"
-                (click)="decideResolution(dispute, 'accept')"
-              >
-                Accept resolution
-              </button>
-              <button
-                class="job-button customer-danger-button"
-                type="button"
-                [disabled]="saving() || !resolutionDecisionReason.trim()"
-                (click)="decideResolution(dispute, 'reject')"
-              >
-                Reject resolution
-              </button>
-            </div>
-          </section>
-        }
-
         @if (canReviewCompletedRework(dispute)) {
           <section class="customer-response-panel">
             <h2 class="section-heading">Please inspect and test your device</h2>
@@ -523,108 +482,6 @@
             </label>
             <label class="response-attach-button">
               <span>Additional images/documents</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                multiple
-                [disabled]="saving()"
-                (change)="onResponseFilesSelected($event)"
-              />
-            </label>
-            @if (responseAttachments.length) {
-              <ul class="selected-attachments">
-                @for (file of responseAttachments; track file.name; let index = $index) {
-                  <li>
-                    <span>{{ file.name }}</span>
-                    <button
-                      type="button"
-                      class="remove-attachment"
-                      [disabled]="saving()"
-                      (click)="removeResponseAttachment(index)"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                }
-              </ul>
-            }
-            <button
-              class="job-button customer-danger-button"
-              type="button"
-              [disabled]="saving() || !unresolvedNotes.trim()"
-              (click)="reportUnresolved(dispute)"
-            >
-              Report issue still exists
-            </button>
-          </section>
-        }
-
-        @if (pendingReinspectionResponse(dispute); as inspection) {
-          <section class="customer-response-panel">
-            <h2 class="section-heading">Review the shop's reinspection findings</h2>
-            <p>
-              The shop is waiting for your response. Review the inspection and message the shop, or
-              report the issue if it still remains.
-            </p>
-            <article class="dispute-entry">
-              <p><strong>Findings:</strong> {{ inspection.findings }}</p>
-              @if (inspection.identifiedProblem) {
-                <p><strong>Identified problem:</strong> {{ inspection.identifiedProblem }}</p>
-              }
-              <p><strong>Required repair work:</strong> {{ inspection.requiredRepairWork }}</p>
-              @if (inspection.partsRequired) {
-                <p><strong>Parts required:</strong> {{ inspection.partsRequired }}</p>
-              }
-              @if (inspection.labourCharges !== undefined) {
-                <p><strong>Labour charges:</strong> {{ inspection.labourCharges | currency }}</p>
-              }
-              @if (inspection.otherCharges !== undefined) {
-                <p><strong>Other charges:</strong> {{ inspection.otherCharges | currency }}</p>
-              }
-              @if (inspection.estimatedCompletionTime) {
-                <p><strong>Estimated completion:</strong> {{ inspection.estimatedCompletionTime }}</p>
-              }
-              @if (inspection.message) {
-                <p>{{ inspection.message }}</p>
-              }
-              @if (inspection.attachments.length) {
-                <app-job-attachments [items]="attachments(inspection.attachments)" />
-              }
-            </article>
-            <form class="customer-response-form" (ngSubmit)="sendReinspectionReply(dispute)">
-              <label class="customer-response-field">
-                <span>Message the repair shop</span>
-                <textarea
-                  [(ngModel)]="reinspectionReply"
-                  name="reinspectionReply"
-                  rows="3"
-                  maxlength="4000"
-                  [disabled]="saving()"
-                  required
-                ></textarea>
-              </label>
-              <button
-                class="job-button"
-                type="submit"
-                [disabled]="saving() || !reinspectionReply.trim()"
-              >
-                {{ saving() ? 'Sending...' : 'Send response to shop' }}
-              </button>
-            </form>
-            <hr />
-            <h3>Issue still exists?</h3>
-            <label class="customer-response-field">
-              <span>Describe what is still wrong</span>
-              <textarea
-                [(ngModel)]="unresolvedNotes"
-                name="reinspectionUnresolvedNotes"
-                rows="3"
-                maxlength="2000"
-                [disabled]="saving()"
-              ></textarea>
-            </label>
-            <label class="response-attach-button">
-              <span>Additional images/documents (optional)</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -725,6 +582,46 @@
       </div>
 
       <aside class="customer-detail-sidebar">
+        @if (
+          (dispute.status === 'AWAITING_CUSTOMER_RESPONSE' &&
+            dispute.resolution.state === 'proposed') ||
+          pendingReinspectionResponse(dispute)
+        ) {
+          <section
+            class="detail-section customer-detail-sidebar-card customer-response-action-card"
+            aria-label="Customer response actions"
+          >
+            <div class="customer-sidebar-action-copy">
+              <h2>Customer response</h2>
+              <p>Review the proposed resolution or respond to reinspection findings.</p>
+            </div>
+            <div class="customer-sidebar-action-buttons">
+              @if (
+                dispute.status === 'AWAITING_CUSTOMER_RESPONSE' &&
+                dispute.resolution.state === 'proposed'
+              ) {
+                <button
+                  class="job-button"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openReviewResolutionModal()"
+                >
+                  Review proposed resolution
+                </button>
+              }
+              @if (pendingReinspectionResponse(dispute)) {
+                <button
+                  class="job-button"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openReinspectionSubmissionModal()"
+                >
+                  Reinspection submission
+                </button>
+              }
+            </div>
+          </section>
+        }
         <section class="detail-section customer-detail-sidebar-card" aria-label="Dispute summary">
           <section class="customer-detail-block">
             <h2 class="section-heading">
@@ -809,5 +706,225 @@
         </section>
       </aside>
     </div>
+
+    @if (reviewResolutionModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeReviewResolutionModal()">
+        <section
+          class="issue-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="review-proposed-resolution-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="review-proposed-resolution-title">Review the proposed resolution</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close resolution review"
+              (click)="closeReviewResolutionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="issue-modal-form">
+            <p class="issue-modal-intro">Review the shop's proposal and choose your response.</p>
+            <div class="issue-modal-section">
+              <p>{{ dispute.resolution.description }}</p>
+              @if (dispute.resolution.amount !== undefined) {
+                <p><strong>Proposed amount:</strong> {{ dispute.resolution.amount | currency }}</p>
+              }
+              <label>
+                <span>Reason if rejecting</span>
+                <textarea
+                  [(ngModel)]="resolutionDecisionReason"
+                  name="resolutionDecisionReason"
+                  rows="3"
+                  maxlength="1000"
+                  placeholder="Explain why you are rejecting this resolution."
+                  [disabled]="saving()"
+                ></textarea>
+              </label>
+              @if (actionError()) {
+                <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+              }
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="job-button"
+                [disabled]="saving()"
+                (click)="closeReviewResolutionModal()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="job-button"
+                [disabled]="saving()"
+                (click)="decideResolution(dispute, 'accept')"
+              >
+                Accept resolution
+              </button>
+              <button
+                type="button"
+                class="job-button customer-danger-button"
+                [disabled]="saving() || !resolutionDecisionReason.trim()"
+                (click)="decideResolution(dispute, 'reject')"
+              >
+                Reject resolution
+              </button>
+            </footer>
+          </div>
+        </section>
+      </div>
+    }
+
+    @if (reinspectionSubmissionModalOpen()) {
+      <div
+        class="issue-modal-backdrop"
+        role="presentation"
+        (click)="closeReinspectionSubmissionModal()"
+      >
+        <section
+          class="issue-modal issue-modal-wide"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reinspection-submission-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="reinspection-submission-title">Reinspection submission</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close reinspection submission"
+              (click)="closeReinspectionSubmissionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="issue-modal-form">
+            <p class="issue-modal-intro">
+              Review the shop's reinspection findings and choose how to respond.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            @if (pendingReinspectionResponse(dispute); as inspection) {
+              <div class="issue-modal-section">
+                <p><strong>Findings:</strong> {{ inspection.findings }}</p>
+                @if (inspection.identifiedProblem) {
+                  <p><strong>Identified problem:</strong> {{ inspection.identifiedProblem }}</p>
+                }
+                <p><strong>Required repair work:</strong> {{ inspection.requiredRepairWork }}</p>
+                @if (inspection.partsRequired) {
+                  <p><strong>Parts required:</strong> {{ inspection.partsRequired }}</p>
+                }
+                @if (inspection.labourCharges !== undefined) {
+                  <p><strong>Labour charges:</strong> {{ inspection.labourCharges | currency }}</p>
+                }
+                @if (inspection.otherCharges !== undefined) {
+                  <p><strong>Other charges:</strong> {{ inspection.otherCharges | currency }}</p>
+                }
+                @if (inspection.estimatedCompletionTime) {
+                  <p><strong>Estimated completion:</strong> {{ inspection.estimatedCompletionTime }}</p>
+                }
+                @if (inspection.message) {
+                  <p>{{ inspection.message }}</p>
+                }
+                @if (inspection.attachments.length) {
+                  <app-job-attachments [items]="attachments(inspection.attachments)" />
+                }
+              </div>
+            }
+            <form class="issue-modal-section" (ngSubmit)="sendReinspectionReply(dispute)">
+              <label>
+                <span>Message the repair shop</span>
+                <textarea
+                  [(ngModel)]="reinspectionReply"
+                  name="reinspectionReply"
+                  rows="3"
+                  maxlength="4000"
+                  placeholder="Write your response to the repair shop."
+                  [disabled]="saving()"
+                  required
+                ></textarea>
+              </label>
+              <button
+                class="job-button"
+                type="submit"
+                [disabled]="saving() || !reinspectionReply.trim()"
+              >
+                {{ saving() ? 'Sending...' : 'Send response to shop' }}
+              </button>
+            </form>
+            <form class="issue-modal-section" (ngSubmit)="reportUnresolved(dispute)">
+              <h3>Issue still exists?</h3>
+              <label>
+                <span>Describe what is still wrong</span>
+                <textarea
+                  [(ngModel)]="unresolvedNotes"
+                  name="reinspectionUnresolvedNotes"
+                  rows="3"
+                  maxlength="2000"
+                  placeholder="Describe what is still not working."
+                  [disabled]="saving()"
+                ></textarea>
+              </label>
+              <label class="response-attach-button">
+                <span>Additional images/documents (optional)</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  multiple
+                  [disabled]="saving()"
+                  (change)="onResponseFilesSelected($event)"
+                />
+              </label>
+              @if (responseAttachments.length) {
+                <ul class="selected-attachments">
+                  @for (file of responseAttachments; track file.name; let index = $index) {
+                    <li>
+                      <span>{{ file.name }}</span>
+                      <button
+                        type="button"
+                        class="remove-attachment"
+                        [disabled]="saving()"
+                        (click)="removeResponseAttachment(index)"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              <button
+                class="job-button customer-danger-button"
+                type="submit"
+                [disabled]="saving() || !unresolvedNotes.trim()"
+              >
+                Report issue still exists
+              </button>
+            </form>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="job-button"
+                (click)="closeReinspectionSubmissionModal()"
+              >
+                Close
+              </button>
+            </footer>
+          </div>
+        </section>
+      </div>
+    }
   }
 </main>

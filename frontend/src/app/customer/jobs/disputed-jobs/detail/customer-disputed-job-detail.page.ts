@@ -38,6 +38,8 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   readonly saving = signal(false);
   readonly actionError = signal('');
   readonly actionNotice = signal('');
+  readonly reviewResolutionModalOpen = signal(false);
+  readonly reinspectionSubmissionModalOpen = signal(false);
   message = '';
   conversationAttachments: DisputeAttachment[] = [];
   responseAttachments: DisputeAttachment[] = [];
@@ -223,6 +225,26 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
     );
   }
 
+  openReviewResolutionModal(): void {
+    this.reviewResolutionModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeReviewResolutionModal(): void {
+    this.reviewResolutionModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openReinspectionSubmissionModal(): void {
+    this.reinspectionSubmissionModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeReinspectionSubmissionModal(): void {
+    this.reinspectionSubmissionModalOpen.set(false);
+    this.actionError.set('');
+  }
+
   decideResolution(dispute: RepairDispute, decision: 'accept' | 'reject'): void {
     if (
       dispute.status !== 'AWAITING_CUSTOMER_RESPONSE' ||
@@ -244,6 +266,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
       decision === 'accept' ? 'Resolution accepted.' : 'Resolution rejected.',
       () => {
         this.resolutionDecisionReason = '';
+        this.closeReviewResolutionModal();
       },
     );
   }
@@ -263,6 +286,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
       'Response sent to the shop.',
       () => {
         this.reinspectionReply = '';
+        this.closeReinspectionSubmissionModal();
       },
     );
   }
@@ -320,6 +344,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
       () => {
         this.unresolvedNotes = '';
         this.responseAttachments = [];
+        this.closeReinspectionSubmissionModal();
       },
     );
   }

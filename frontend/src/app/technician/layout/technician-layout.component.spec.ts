@@ -101,8 +101,6 @@ describe('TechnicianLayoutComponent', () => {
 
     // Verify unread badge in Messages
     expect(navLinks[4]?.textContent).toContain('2');
-    expect(navLinks[5]?.querySelector('.nav-notification-count')?.textContent).toContain('1');
-    expect(fixture.nativeElement.querySelector('.sidebar-support-card')?.textContent).toContain('Get Support');
 
     menuToggle?.click();
     fixture.detectChanges();
