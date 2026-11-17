@@ -37,6 +37,22 @@ const EMPTY_SUMMARY: TechnicianJobSummary = {
   today: 0,
 };
 
+const PROBLEM_CATEGORIES = [
+  'Hardware Issue',
+  'Software Issue',
+  'Physical Damage',
+  'Electrical Issue',
+  'Battery / Power Issue',
+  'Display / Screen Issue',
+  'Connectivity / Network Issue',
+  'Performance Issue',
+  'Water / Liquid Damage',
+  'Component Failure',
+  'Other',
+] as const;
+
+type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
+
 
 @Component({
   selector: 'app-shop-technician-portal-page',
@@ -96,6 +112,9 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
   readonly inspectionModalOpen = signal(false);
   readonly inspectionTargetId = signal('');
   readonly inspectionTargetName = signal('');
+  readonly problemCategories = PROBLEM_CATEGORIES;
+  readonly problemCategory = signal<ProblemCategory | ''>('');
+  readonly problemOther = signal('');
   readonly identifiedProblem = signal('');
   readonly findings = signal('');
   readonly requiredRepairWork = signal('');
@@ -1183,8 +1202,26 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
 
   populateInspectionForm(inspection?: RepairInspectionReport | null): void {
     this.clearInspectionImagePreviews();
+    const storedProblem = inspection?.identifiedProblem?.trim() || '';
+    const otherPrefix = 'Other:';
+    const otherProblem = storedProblem.startsWith(otherPrefix)
+      ? storedProblem.slice(otherPrefix.length).trim()
+      : '';
+    const matchedCategory = PROBLEM_CATEGORIES.find(
+      (category) => category === storedProblem,
+    );
+    const legacyProblem =
+      storedProblem.length > 0 &&
+      !matchedCategory &&
+      !storedProblem.startsWith(otherPrefix);
+    const useOther =
+      otherProblem.length > 0 || legacyProblem || storedProblem === otherPrefix;
+    this.identifiedProblem.set(storedProblem);
+    this.problemCategory.set(useOther ? 'Other' : matchedCategory ?? '');
+    this.problemOther.set(
+      useOther ? otherProblem || (legacyProblem ? storedProblem : '') : '',
+    );
     if (inspection) {
-      this.identifiedProblem.set(inspection.identifiedProblem ?? '');
       this.findings.set(inspection.findings ?? '');
       this.requiredRepairWork.set(inspection.requiredRepairWork ?? '');
       const parts = inspection.parts ?? [];
@@ -1205,7 +1242,6 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
       this.inspectionWarranty.set(inspection.warranty ?? '');
       this.inspectionMessage.set(inspection.message ?? '');
     } else {
-      this.identifiedProblem.set('');
       this.findings.set('');
       this.requiredRepairWork.set('');
       this.inspectionParts.set([{ name: '', quantity: 1, unitPrice: 0 }]);
@@ -1293,18 +1329,27 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
     const targetId = this.inspectionTargetId() || this.details()?.id;
     if (!targetId || this.submittingInspection()) return;
 
+    const category = this.problemCategory();
+    const problemOther = this.problemOther().trim();
+    const identifiedProblem =
+      category === 'Other' ? `Other: ${problemOther}` : category;
+    const missingOther = category === 'Other' && !problemOther;
+
     if (
       action === 'submit' &&
-      (!this.identifiedProblem().trim() ||
+      (!category ||
+        missingOther ||
         !this.findings().trim() ||
         !this.requiredRepairWork().trim() ||
         this.inspectionTotal() <= 0)
     ) {
       this.error.set(
-        'Please complete all required diagnosis fields and enter a valid repair estimate greater than zero.',
+        'Select a problem category, specify it if Other, and complete Diagnosis & Inspection Findings, Recommended Repair Work, and a valid repair estimate.',
       );
       return;
     }
+
+    this.identifiedProblem.set(identifiedProblem);
 
     try {
       this.submittingInspection.set(true);
@@ -1312,7 +1357,7 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
 
       const input: InspectionReportInput = {
         action,
-        identifiedProblem: this.identifiedProblem().trim(),
+        identifiedProblem: identifiedProblem || undefined,
         findings: this.findings().trim(),
         requiredRepairWork: this.requiredRepairWork().trim(),
         parts: this.nonEmptyParts(this.inspectionParts()),

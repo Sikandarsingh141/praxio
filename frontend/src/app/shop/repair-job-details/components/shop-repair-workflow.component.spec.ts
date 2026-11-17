@@ -53,15 +53,26 @@ describe('ShopRepairWorkflowComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const identifiedProblem = fixture.nativeElement.querySelector(
-      '[name="identifiedProblem"]',
-    ) as HTMLTextAreaElement;
+    fixture.componentInstance.openInspectionModal();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const problemCategory = fixture.nativeElement.querySelector(
+      '[name="problemCategory"]',
+    ) as HTMLSelectElement;
+    const problemOther = fixture.nativeElement.querySelector(
+      '[name="problemOther"]',
+    ) as HTMLInputElement;
     const findings = fixture.nativeElement.querySelector(
       '[name="findings"]',
     ) as HTMLTextAreaElement;
     expect(fixture.componentInstance.identifiedProblem()).toBe('Broken motor');
-    expect(identifiedProblem.value).toBe('Broken motor');
-    expect(identifiedProblem.required).toBeTrue();
+    expect(fixture.componentInstance.problemCategory()).toBe('Other');
+    expect(problemCategory.value).toBe('Other');
+    expect(problemCategory.required).toBeTrue();
+    expect(fixture.componentInstance.problemOther()).toBe('Broken motor');
+    expect(problemOther.value).toBe('Broken motor');
+    expect(problemOther.required).toBeTrue();
     expect(fixture.componentInstance.findings()).toBe('Motor winding is damaged');
     expect(findings.value).toBe('Motor winding is damaged');
     expect(fixture.nativeElement.textContent).toContain('Submit Inspection & Request Approval');

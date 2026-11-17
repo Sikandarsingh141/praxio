@@ -24,6 +24,21 @@ const DECLINE_REASONS = [
   'Other',
 ];
 
+const QUOTATION_SUMMARY_OPTIONS = [
+  'General Repair',
+  'Part Replacement',
+  'Hardware Repair',
+  'Software Repair',
+  'Electrical Repair',
+  'Screen / Display Replacement',
+  'Battery Replacement',
+  'Cleaning & Maintenance',
+  'Diagnostic & Troubleshooting',
+  'Other',
+] as const;
+
+type QuotationSummaryOption = (typeof QUOTATION_SUMMARY_OPTIONS)[number];
+
 @Component({
   selector: 'app-shop-new-job-detail-page',
   standalone: true,
@@ -54,13 +69,29 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
   readonly quotationAmount = signal<number | null>(null);
   readonly completionDays = signal<number | null>(null);
   readonly validityDays = signal<number | null>(7);
-  readonly quotationMessage = signal('');
+  readonly quotationSummaries = signal<QuotationSummaryOption[]>([]);
+  readonly quotationSummarySearch = signal('');
+  readonly quotationSummaryOpen = signal(false);
+  readonly additionalRepairDetails = signal('');
   readonly declineReason = signal('');
   readonly customDeclineReason = signal('');
   readonly selectedPhoto = signal<number | null>(null);
   readonly unavailablePhotos = signal(new Set<number>());
   readonly heroImageUnavailable = signal(false);
   readonly progressSteps = ['Request Submitted', 'Inspection Pending', 'Quotation', 'Repair & Complete'];
+  readonly filteredQuotationSummaries = computed(() => {
+    const term = this.quotationSummarySearch().trim().toLowerCase();
+    return QUOTATION_SUMMARY_OPTIONS.filter(
+      (option) => !term || option.toLowerCase().includes(term),
+    );
+  });
+  readonly quotationProposedSolution = computed(() => this.quotationSummaries().join(', '));
+  readonly quotationMessage = computed(() => {
+    const details = this.additionalRepairDetails().trim();
+    return this.hasQuotationSummaryOption('Other') && details
+      ? details
+      : this.quotationProposedSolution();
+  });
   photoAttachments(photos: ShopRepairRequest['photos']): JobAttachment[] {
     return (photos || []).map((photo, index) => ({
       name: `Photo ${index + 1}`,
@@ -141,10 +172,46 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
     const amount = this.quotationAmount();
     const days = this.completionDays();
     const validity = this.validityDays();
+    const summaries = this.quotationSummaries();
+    const otherDetails = this.additionalRepairDetails().trim();
     return amount !== null && Number.isFinite(amount) && amount > 0 &&
       days !== null && Number.isInteger(days) && days > 0 &&
       validity !== null && Number.isInteger(validity) && validity > 0 && validity <= 365 &&
-      !!this.quotationMessage().trim();
+      summaries.length > 0 &&
+      (!summaries.includes('Other') || otherDetails.length > 0) &&
+      this.quotationMessage().length <= 1000;
+  }
+
+  hasQuotationSummaryOption(option: QuotationSummaryOption): boolean {
+    return this.quotationSummaries().includes(option);
+  }
+
+  toggleQuotationSummary(option: QuotationSummaryOption): void {
+    const removing = this.hasQuotationSummaryOption(option);
+    this.quotationSummaries.update((selected) =>
+      removing ? selected.filter((item) => item !== option) : [...selected, option],
+    );
+    if (option === 'Other' && removing) {
+      this.additionalRepairDetails.set('');
+    }
+    this.quotationSummarySearch.set('');
+    this.formError.set('');
+  }
+
+  removeQuotationSummary(option: QuotationSummaryOption): void {
+    this.quotationSummaries.update((selected) => selected.filter((item) => item !== option));
+    if (option === 'Other') {
+      this.additionalRepairDetails.set('');
+    }
+    this.formError.set('');
+  }
+
+  closeQuotationSummaryDropdown(event: FocusEvent): void {
+    const container = event.currentTarget as HTMLElement | null;
+    const nextTarget = event.relatedTarget as HTMLElement | null;
+    if (!container || (nextTarget && container.contains(nextTarget))) return;
+    this.quotationSummaryOpen.set(false);
+    this.quotationSummarySearch.set('');
   }
 
   submitQuotation(): void {
@@ -163,6 +230,7 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
       amount,
       currency: 'INR',
       message: this.quotationMessage().trim(),
+      proposedSolution: this.quotationProposedSolution(),
       estimatedDays: completionDays,
       validUntil: new Date(Date.now() + days * 86400000).toISOString(),
     }).subscribe({

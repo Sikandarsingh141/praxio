@@ -12,7 +12,6 @@ import { CustomerJobDetailPageBase } from '../../../../shared/components/job-pag
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
-import { CustomerRepairWorkflowComponent } from '../../../repair-requests/components/customer-repair-workflow.component';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
 import { ToastService } from '../../../../core/toast/toast.service';
 
@@ -34,7 +33,6 @@ interface CustomerQuotationResponse {
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
-    CustomerRepairWorkflowComponent,
     ShopRepairRouteComponent,
   ],
   templateUrl: './customer-pending-job-detail.page.html',

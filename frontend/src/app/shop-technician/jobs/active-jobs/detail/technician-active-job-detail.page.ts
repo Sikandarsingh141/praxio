@@ -47,6 +47,9 @@ export class TechnicianActiveJobDetailPage extends TechnicianJobDetailPageBase {
   readonly workPerformed = signal('');
   readonly partsReplaced = signal('');
   readonly finalNotes = signal('');
+  readonly additionalChargesModalOpen = signal(false);
+  readonly completionModalOpen = signal(false);
+  readonly completionFormError = signal('');
   readonly progressSteps = [
     'Request Submitted',
     'Inspection Pending',
@@ -106,6 +109,27 @@ export class TechnicianActiveJobDetailPage extends TechnicianJobDetailPageBase {
     return (request.repairJobDetails?.status ?? request.shopResponse?.status ?? request.status)
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  hasInitialDiagnosis(request: TechnicianRepairDetails): boolean {
+    const inspection =
+      request.repairJobDetails?.inspection ?? request.repairJob?.inspection ?? request.inspection;
+    if (!inspection) return false;
+    return Boolean(
+      inspection.identifiedProblem?.trim() ||
+        inspection.findings?.trim() ||
+        inspection.requiredRepairWork?.trim() ||
+        inspection.parts?.some((part) => part.name?.trim()) ||
+        inspection.labourCharge > 0 ||
+        inspection.inspectionCharges > 0 ||
+        inspection.otherCharges > 0 ||
+        inspection.estimatedTimeValue != null ||
+        inspection.warranty?.trim() ||
+        inspection.message?.trim() ||
+        inspection.decisionReason?.trim() ||
+        inspection.images?.length ||
+        (inspection.status && inspection.status !== 'in_progress' && inspection.status !== 'draft'),
+    );
   }
 
   isRepairComplete(request: TechnicianRepairDetails): boolean {
@@ -289,17 +313,40 @@ export class TechnicianActiveJobDetailPage extends TechnicianJobDetailPageBase {
       });
   }
 
+  openAdditionalChargesModal(): void {
+    this.additionalChargesModalOpen.set(true);
+  }
+
+  closeAdditionalChargesModal(): void {
+    this.additionalChargesModalOpen.set(false);
+  }
+
+  onAdditionalChargesUpdated(request: TechnicianRepairDetails): void {
+    this.refreshRecord(request);
+    this.closeAdditionalChargesModal();
+  }
+
+  openCompletionModal(): void {
+    this.completionFormError.set('');
+    this.completionModalOpen.set(true);
+  }
+
+  closeCompletionModal(): void {
+    this.completionModalOpen.set(false);
+  }
+
   completeRepair(): void {
     const repair = this.record()?.repairJobDetails ?? this.record()?.repairJob;
     const completionDescription = this.completionDescription().trim();
     const workPerformed = this.workPerformed().trim();
     if (repair?.status !== 'in_progress' || this.repairActionPending()) return;
     if (!completionDescription || !workPerformed) {
-      this.repairActionError.set('Provide a completion summary and work performed.');
+      this.completionFormError.set('Provide a completion summary and work performed.');
       return;
     }
     this.repairActionPending.set(true);
     this.repairActionError.set('');
+    this.completionFormError.set('');
     this.technicians
       .completeJob(this.id, {
         completionDescription,
@@ -317,12 +364,14 @@ export class TechnicianActiveJobDetailPage extends TechnicianJobDetailPageBase {
           this.workPerformed.set('');
           this.partsReplaced.set('');
           this.finalNotes.set('');
+          this.completionModalOpen.set(false);
           this.refreshRecord(request);
           this.toast.success('Repair Workflow', 'Repair marked complete.');
         },
         error: (error: HttpErrorResponse) => {
           const message = error.error?.message || 'Repair could not be completed.';
           this.repairActionError.set(message);
+          this.completionFormError.set(message);
           this.toast.error('Workflow Error', message);
         },
       });

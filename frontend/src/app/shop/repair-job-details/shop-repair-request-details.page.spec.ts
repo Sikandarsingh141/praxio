@@ -222,4 +222,37 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(fixture.nativeElement.textContent).toContain('A valid shop and customer location');
     expect(fixture.nativeElement.querySelector('.directions-button.disabled')).not.toBeNull();
   });
+
+  it('supports multiple quotation activities and requires details when Other is selected', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.quotationOpen.set(true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('input[name="quotationSummarySearch"]')).not.toBeNull();
+
+    component.quotationSummarySearch.set('battery');
+    expect(component.filteredQuotationSummaries().map((option) => option)).toEqual([
+      'Battery Replacement',
+    ]);
+
+    component.toggleQuotationSummary('General Repair');
+    component.toggleQuotationSummary('Other');
+    fixture.detectChanges();
+
+    expect(component.quotationSummaries()).toEqual(['General Repair', 'Other']);
+    expect(fixture.nativeElement.querySelectorAll('.quotation-chip').length).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Additional Repair Details');
+
+    component.quotationAmount.set(1000);
+    component.completionDays.set(3);
+    component.quotationAttempted.set(true);
+    expect(component.isQuotationValid()).toBeFalse();
+
+    component.additionalRepairDetails.set('Board-level repair');
+    expect(component.isQuotationValid()).toBeTrue();
+    expect(component.quotationProposedSolution()).toBe('General Repair, Other');
+    expect(component.quotationMessage()).toBe('Board-level repair');
+  });
 });

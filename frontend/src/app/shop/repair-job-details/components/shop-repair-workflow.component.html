@@ -69,36 +69,89 @@
     }
 
     @if (job.status === 'inspection_in_progress') {
-      <form class="workflow-form" (ngSubmit)="saveInspection('submit')">
+      <div class="workflow-callout">
+        <p>Complete an inspection report before any repair work begins.</p>
+        <button type="button" class="primary-button" (click)="openInspectionModal()">
+          Submit Inspection &amp; Request Approval
+        </button>
+      </div>
+    }
+
+    @if (inspectionModalOpen()) {
+      <div class="inspection-modal-backdrop" role="presentation" (click)="closeInspectionModal()">
+        <section
+          class="inspection-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inspection-form-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="inspection-dialog-header">
+            <div>
+              <span class="section-kicker">REPAIR AUTHORIZATION</span>
+              <h3 id="inspection-form-title">Submit inspection &amp; request approval</h3>
+            </div>
+            <button
+              type="button"
+              class="dialog-close"
+              aria-label="Close inspection form"
+              (click)="closeInspectionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="workflow-form" (ngSubmit)="saveInspection('submit')">
+        @if (error()) {
+          <p class="workflow-error" role="alert">{{ error() }}</p>
+        }
         <h3>Inspection and diagnosis</h3>
         <label>
-          Identified problem *
-          <textarea
-            rows="3"
-            maxlength="2000"
+          <span>Problem Category<span class="required-mark" aria-hidden="true">*</span></span>
+          <select
             required
-            [ngModel]="identifiedProblem()"
-            (ngModelChange)="identifiedProblem.set($event)"
-            name="identifiedProblem"
-          ></textarea>
+            [ngModel]="problemCategory()"
+            (ngModelChange)="problemCategory.set($event)"
+            name="problemCategory"
+          >
+            <option value="" disabled>Select problem category</option>
+            @for (category of problemCategories; track category) {
+              <option [value]="category">{{ category }}</option>
+            }
+          </select>
         </label>
+        @if (problemCategory() === 'Other') {
+          <label>
+            <span>Specify Problem<span class="required-mark" aria-hidden="true">*</span></span>
+            <input
+              type="text"
+              required
+              maxlength="2000"
+              placeholder="Describe the problem category"
+              [ngModel]="problemOther()"
+              (ngModelChange)="problemOther.set($event)"
+              name="problemOther"
+            />
+          </label>
+        }
         <label>
-          Inspection findings *
+          <span>Diagnosis &amp; Inspection Findings<span class="required-mark" aria-hidden="true">*</span></span>
           <textarea
             rows="3"
             maxlength="2000"
             required
+            placeholder="Describe the identified problem, inspection observations, and findings."
             [ngModel]="findings()"
             (ngModelChange)="findings.set($event)"
             name="findings"
           ></textarea>
         </label>
         <label>
-          Required repair work *
+          <span>Recommended Repair Work<span class="required-mark" aria-hidden="true">*</span></span>
           <textarea
             rows="3"
             maxlength="2000"
             required
+            placeholder="Describe the repairs or replacements required to resolve the issue."
             [ngModel]="requiredRepairWork()"
             (ngModelChange)="requiredRepairWork.set($event)"
             name="requiredRepairWork"
@@ -110,16 +163,18 @@
             <div class="part-row">
               <label
                 >Part name<input
+                  placeholder="Enter part name"
                   [ngModel]="part.name"
                   (ngModelChange)="updatePart('inspection', index, 'name', $event)"
                   [name]="'inspection-part-' + index"
                   maxlength="120"
-              /></label>
+               /></label>
               <label
                 >Qty<input
                   type="number"
                   min="1"
                   step="1"
+                  placeholder="1"
                   [ngModel]="part.quantity"
                   (ngModelChange)="updatePart('inspection', index, 'quantity', $event)"
                   [name]="'inspection-qty-' + index"
@@ -129,6 +184,7 @@
                   type="number"
                   min="0"
                   step="0.01"
+                  placeholder="0.00"
                   [ngModel]="part.unitPrice"
                   (ngModelChange)="updatePart('inspection', index, 'unitPrice', $event)"
                   [name]="'inspection-price-' + index"
@@ -153,6 +209,7 @@
               type="number"
               min="0"
               step="0.01"
+              placeholder="0.00"
               [ngModel]="inspectionLabour()"
               (ngModelChange)="inspectionLabour.set(+$event || 0)"
               name="inspectionLabour"
@@ -162,6 +219,7 @@
               type="number"
               min="0"
               step="0.01"
+              placeholder="0.00"
               [ngModel]="inspectionCharge()"
               (ngModelChange)="inspectionCharge.set(+$event || 0)"
               name="inspectionCharge"
@@ -171,6 +229,7 @@
               type="number"
               min="0"
               step="0.01"
+              placeholder="0.00"
               [ngModel]="inspectionOtherCharges()"
               (ngModelChange)="inspectionOtherCharges.set(+$event || 0)"
               name="inspectionOtherCharges"
@@ -180,6 +239,7 @@
               type="number"
               min="0"
               step="0.5"
+              placeholder="e.g. 2"
               [ngModel]="inspectionTime()"
               (ngModelChange)="inspectionTime.set($event === '' ? null : +$event)"
               name="inspectionTime"
@@ -197,6 +257,7 @@
           <label
             >Repair warranty<input
               maxlength="1000"
+              placeholder="e.g. 6 months"
               [ngModel]="inspectionWarranty()"
               (ngModelChange)="inspectionWarranty.set($event)"
               name="inspectionWarranty"
@@ -220,6 +281,7 @@
           >Message to customer<textarea
             rows="2"
             maxlength="2000"
+            placeholder="Add a message for the customer"
             [ngModel]="inspectionMessage()"
             (ngModelChange)="inspectionMessage.set($event)"
             name="inspectionMessage"
@@ -253,6 +315,9 @@
           }
         </div>
         <div class="workflow-actions">
+          <button type="button" class="text-button" (click)="closeInspectionModal()">
+            Cancel
+          </button>
           <button
             type="button"
             class="secondary-button"
@@ -265,7 +330,9 @@
             {{ submitting() ? 'Sending…' : 'Submit Inspection & Request Approval' }}
           </button>
         </div>
-      </form>
+          </form>
+        </section>
+      </div>
     }
 
     @if (job.inspection; as inspection) {
@@ -454,190 +521,236 @@
             Request Additional Charges
           </button>
         } @else {
-          <form class="workflow-form" (ngSubmit)="submitAdditionalCharges('submit')">
-            <h3>Request additional charges</h3>
-            <p>Do not perform this additional work unless the customer approves it.</p>
-            <label
-              >Additional issue found *<textarea
-                rows="2"
-                maxlength="2000"
-                required
-                [ngModel]="additionalIssue()"
-                (ngModelChange)="additionalIssue.set($event)"
-                name="additionalIssue"
-              ></textarea>
-            </label>
-            <label
-              >Reason for additional work *<textarea
-                rows="2"
-                maxlength="2000"
-                required
-                [ngModel]="additionalReason()"
-                (ngModelChange)="additionalReason.set($event)"
-                name="additionalReason"
-              ></textarea>
-            </label>
-            <label
-              >Additional repair description *<textarea
-                rows="2"
-                maxlength="2000"
-                required
-                [ngModel]="additionalDescription()"
-                (ngModelChange)="additionalDescription.set($event)"
-                name="additionalDescription"
-              ></textarea>
-            </label>
-            <fieldset class="parts-fieldset">
-              <legend>Additional parts</legend>
-              @for (part of additionalParts(); track $index; let index = $index) {
-                <div class="part-row">
+          <div class="inspection-modal-backdrop" role="presentation" (click)="additionalFormOpen.set(false)">
+            <section
+              class="inspection-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="additional-charges-form-title"
+              (click)="$event.stopPropagation()"
+            >
+              <header class="inspection-dialog-header">
+                <div>
+                  <span class="section-kicker">ADDITIONAL WORK</span>
+                  <h3 id="additional-charges-form-title">Request additional charges</h3>
+                </div>
+                <button
+                  type="button"
+                  class="dialog-close"
+                  aria-label="Close additional charges form"
+                  (click)="additionalFormOpen.set(false)"
+                >
+                  ×
+                </button>
+              </header>
+              <form class="workflow-form" (ngSubmit)="submitAdditionalCharges('submit')">
+                @if (error()) {
+                  <p class="workflow-error" role="alert">{{ error() }}</p>
+                }
+                <h3>Additional repair work</h3>
+                <p>Do not perform this additional work unless the customer approves it.</p>
+                <label>
+                  <span>Additional Issue Found<span class="required-mark" aria-hidden="true">*</span></span>
+                  <input
+                    type="text"
+                    required
+                    maxlength="2000"
+                    placeholder="Describe the newly identified issue"
+                    [ngModel]="additionalIssue()"
+                    (ngModelChange)="additionalIssue.set($event)"
+                    name="additionalIssue"
+                  />
+                </label>
+                <label>
+                  <span>Reason for Additional Work<span class="required-mark" aria-hidden="true">*</span></span>
+                  <textarea
+                    rows="3"
+                    maxlength="2000"
+                    required
+                    placeholder="Explain why this work is needed"
+                    [ngModel]="additionalReason()"
+                    (ngModelChange)="additionalReason.set($event)"
+                    name="additionalReason"
+                  ></textarea>
+                </label>
+                <label>
+                  <span>Additional Repair Description<span class="required-mark" aria-hidden="true">*</span></span>
+                  <textarea
+                    rows="3"
+                    maxlength="2000"
+                    required
+                    placeholder="Describe the additional repair work"
+                    [ngModel]="additionalDescription()"
+                    (ngModelChange)="additionalDescription.set($event)"
+                    name="additionalDescription"
+                  ></textarea>
+                </label>
+                <fieldset class="parts-fieldset">
+                  <legend>Additional parts</legend>
+                  @for (part of additionalParts(); track $index; let index = $index) {
+                    <div class="part-row">
+                      <label
+                        >Part name<input
+                          placeholder="Enter part name"
+                          [ngModel]="part.name"
+                          (ngModelChange)="updatePart('additional', index, 'name', $event)"
+                          [name]="'additional-part-' + index"
+                          maxlength="120"
+                      /></label>
+                      <label
+                        >Qty<input
+                          type="number"
+                          min="1"
+                          step="1"
+                          placeholder="1"
+                          [ngModel]="part.quantity"
+                          (ngModelChange)="updatePart('additional', index, 'quantity', $event)"
+                          [name]="'additional-qty-' + index"
+                      /></label>
+                      <label
+                        >Price each<input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          [ngModel]="part.unitPrice"
+                          (ngModelChange)="updatePart('additional', index, 'unitPrice', $event)"
+                          [name]="'additional-price-' + index"
+                      /></label>
+                      <button
+                        type="button"
+                        class="text-button"
+                        (click)="removePart('additional', index)"
+                        [disabled]="additionalParts().length === 1"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  }
+                  <button type="button" class="text-button" (click)="addPart('additional')">
+                    Add part
+                  </button>
+                </fieldset>
+                <div class="cost-grid">
                   <label
-                    >Part name<input
-                      [ngModel]="part.name"
-                      (ngModelChange)="updatePart('additional', index, 'name', $event)"
-                      [name]="'additional-part-' + index"
-                      maxlength="120"
-                  /></label>
-                  <label
-                    >Qty<input
-                      type="number"
-                      min="1"
-                      step="1"
-                      [ngModel]="part.quantity"
-                      (ngModelChange)="updatePart('additional', index, 'quantity', $event)"
-                      [name]="'additional-qty-' + index"
-                  /></label>
-                  <label
-                    >Price each<input
+                    >Additional labour<input
                       type="number"
                       min="0"
                       step="0.01"
-                      [ngModel]="part.unitPrice"
-                      (ngModelChange)="updatePart('additional', index, 'unitPrice', $event)"
-                      [name]="'additional-price-' + index"
+                      placeholder="0.00"
+                      [ngModel]="additionalLabour()"
+                      (ngModelChange)="additionalLabour.set(+$event || 0)"
+                      name="additionalLabour"
                   /></label>
+                  <label
+                    >Other charges<input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      [ngModel]="additionalOtherCharges()"
+                      (ngModelChange)="additionalOtherCharges.set(+$event || 0)"
+                      name="additionalOtherCharges"
+                  /></label>
+                  <label
+                    >Additional time<input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      placeholder="e.g. 2"
+                      [ngModel]="additionalTime()"
+                      (ngModelChange)="additionalTime.set($event === '' ? null : +$event)"
+                      name="additionalTime"
+                  /></label>
+                  <label
+                    >Time unit<select
+                      [ngModel]="additionalTimeUnit()"
+                      (ngModelChange)="additionalTimeUnit.set($event)"
+                      name="additionalTimeUnit"
+                    >
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select></label
+                  >
+                </div>
+                <label>
+                  <span>Supporting images</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    (change)="chooseImages($event, 'additional')"
+                  />
+                </label>
+                @if (additionalImagesError()) {
+                  <p class="workflow-error" role="alert">{{ additionalImagesError() }}</p>
+                }
+                <p class="file-count">{{ additionalImages().length }} supporting image(s) selected</p>
+                <p class="file-count">
+                  Previously saved images are kept unless you choose replacement images.
+                </p>
+                <label>
+                  <span>Message to customer</span>
+                  <textarea
+                    rows="2"
+                    maxlength="2000"
+                    placeholder="Add a message for the customer"
+                    [ngModel]="additionalMessage()"
+                    (ngModelChange)="additionalMessage.set($event)"
+                    name="additionalMessage"
+                  ></textarea>
+                </label>
+                <label class="pause-option"
+                  ><input
+                    type="checkbox"
+                    [ngModel]="blocksRepair()"
+                    (ngModelChange)="blocksRepair.set($event)"
+                    name="blocksRepair"
+                  />
+                  This issue prevents the original repair from continuing safely; pause the repair until
+                  the customer responds.</label
+                >
+                <div class="cost-summary">
+                  <p>
+                    Original customer-approved amount
+                    <strong>{{ approvedTotal | currency: acceptedQuotation?.currency }}</strong>
+                  </p>
+                  <p>
+                    Previously approved additional charges
+                    <strong>{{
+                      job.approvedAdditionalCharges ?? 0 | currency: acceptedQuotation?.currency
+                    }}</strong>
+                  </p>
+                  <p>
+                    Newly requested amount
+                    <strong>{{ additionalTotal() | currency: acceptedQuotation?.currency }}</strong>
+                  </p>
+                  <p class="total-line">
+                    Updated total if approved
+                    <strong>{{
+                      approvedTotal + additionalTotal() | currency: acceptedQuotation?.currency
+                    }}</strong>
+                  </p>
+                </div>
+                <div class="workflow-actions">
+                  <button type="button" class="text-button" (click)="additionalFormOpen.set(false)">
+                    Cancel
+                  </button>
                   <button
                     type="button"
-                    class="text-button"
-                    (click)="removePart('additional', index)"
-                    [disabled]="additionalParts().length === 1"
+                    class="secondary-button"
+                    [disabled]="submitting()"
+                    (click)="submitAdditionalCharges('draft')"
                   >
-                    Remove
+                    Save as Draft
+                  </button>
+                  <button type="submit" class="primary-button" [disabled]="submitting()">
+                    {{ submitting() ? 'Sending…' : 'Send Additional Charge Request' }}
                   </button>
                 </div>
-              }
-              <button type="button" class="text-button" (click)="addPart('additional')">
-                Add part
-              </button>
-            </fieldset>
-            <div class="cost-grid">
-              <label
-                >Additional labour<input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  [ngModel]="additionalLabour()"
-                  (ngModelChange)="additionalLabour.set(+$event || 0)"
-                  name="additionalLabour"
-              /></label>
-              <label
-                >Other charges<input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  [ngModel]="additionalOtherCharges()"
-                  (ngModelChange)="additionalOtherCharges.set(+$event || 0)"
-                  name="additionalOtherCharges"
-              /></label>
-              <label
-                >Additional time<input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  [ngModel]="additionalTime()"
-                  (ngModelChange)="additionalTime.set($event === '' ? null : +$event)"
-                  name="additionalTime"
-              /></label>
-              <label
-                >Time unit<select
-                  [ngModel]="additionalTimeUnit()"
-                  (ngModelChange)="additionalTimeUnit.set($event)"
-                  name="additionalTimeUnit"
-                >
-                  <option value="hours">Hours</option>
-                  <option value="days">Days</option>
-                </select></label
-              >
-            </div>
-            <label
-              >Supporting images<input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                (change)="chooseImages($event, 'additional')"
-            /></label>
-            @if (additionalImagesError()) {
-              <p class="workflow-error" role="alert">{{ additionalImagesError() }}</p>
-            }
-            <p class="file-count">{{ additionalImages().length }} supporting image(s) selected</p>
-            <p class="file-count">
-              Previously saved images are kept unless you choose replacement images.
-            </p>
-            <label
-              >Message to customer<textarea
-                rows="2"
-                maxlength="2000"
-                [ngModel]="additionalMessage()"
-                (ngModelChange)="additionalMessage.set($event)"
-                name="additionalMessage"
-              ></textarea>
-            </label>
-            <label class="pause-option"
-              ><input
-                type="checkbox"
-                [ngModel]="blocksRepair()"
-                (ngModelChange)="blocksRepair.set($event)"
-                name="blocksRepair"
-              />
-              This issue prevents the original repair from continuing safely; pause the repair until
-              the customer responds.</label
-            >
-            <div class="cost-summary">
-              <p>
-                Original customer-approved amount
-                <strong>{{ approvedTotal | currency: acceptedQuotation?.currency }}</strong>
-              </p>
-              <p>
-                Previously approved additional charges
-                <strong>{{
-                  job.approvedAdditionalCharges ?? 0 | currency: acceptedQuotation?.currency
-                }}</strong>
-              </p>
-              <p>
-                Newly requested amount
-                <strong>{{ additionalTotal() | currency: acceptedQuotation?.currency }}</strong>
-              </p>
-              <p class="total-line">
-                Updated total if approved
-                <strong>{{
-                  approvedTotal + additionalTotal() | currency: acceptedQuotation?.currency
-                }}</strong>
-              </p>
-            </div>
-            <div class="workflow-actions">
-              <button
-                type="button"
-                class="secondary-button"
-                [disabled]="submitting()"
-                (click)="submitAdditionalCharges('draft')"
-              >
-                Save as Draft
-              </button>
-              <button type="submit" class="primary-button" [disabled]="submitting()">
-                Send Additional Charge Request
-              </button>
-            </div>
-          </form>
+              </form>
+            </section>
+          </div>
         }
       }
     }

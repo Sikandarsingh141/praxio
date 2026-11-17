@@ -61,6 +61,10 @@
   letter-spacing: 0.12em;
 }
 
+.required-mark {
+  color: #e11d48;
+}
+
 .customer-device,
 .report-summary,
 .cost-summary,
@@ -265,15 +269,69 @@
   margin-top: 0.15rem;
 }
 
-.workflow-error,
-.workflow-notice {
+.workflow-error {
   margin: 0;
-  color: #a14c43;
-  font-size: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.55rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.8rem;
+  font-weight: 650;
 }
 
 .workflow-notice {
+  margin: 0;
   color: #33744a;
+  font-size: 0.75rem;
+}
+
+.inspection-modal-backdrop {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 30 20 / 55%);
+}
+
+.inspection-dialog {
+  width: min(100%, 48rem);
+  max-height: min(92vh, 54rem);
+  overflow: auto;
+  padding: 1.1rem;
+  border: 1px solid #e1e9e3;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 1.5rem 3rem rgb(15 30 20 / 22%);
+}
+
+.inspection-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+
+  h3 {
+    margin: 0.15rem 0 0;
+    color: #17212b;
+    font-size: 1.15rem;
+  }
+}
+
+.dialog-close {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f2;
+  color: #43564a;
+  cursor: pointer;
+  font-size: 1.3rem;
 }
 
 @media (max-width: 650px) {

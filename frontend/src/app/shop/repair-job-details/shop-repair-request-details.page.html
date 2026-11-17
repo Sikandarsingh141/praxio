@@ -567,21 +567,78 @@
             }
           </label>
           <label class="full-width">
-            <span>Quotation summary / repair details <b>*</b></span>
-            <textarea
-              name="message"
-              rows="4"
-              maxlength="1000"
-              required
-              [ngModel]="message()"
-              (ngModelChange)="message.set($event); formError.set('')"
-              placeholder="Explain the estimated repair work"
-              [attr.aria-invalid]="quotationAttempted() && !message().trim()"
-            ></textarea>
-            @if (quotationAttempted() && !message().trim()) {
-              <small class="field-error">Describe the estimated repair work.</small>
+            <span>Quotation Summary / Repair Details <b>*</b></span>
+            <div
+              class="quotation-multiselect"
+              [class.open]="quotationSummaryOpen()"
+              [attr.aria-invalid]="quotationAttempted() && !quotationSummaries().length"
+              (focusout)="closeQuotationSummaryDropdown($event)"
+            >
+              <div class="quotation-chip-list">
+                @for (option of quotationSummaries(); track option) {
+                  <span class="quotation-chip">
+                    {{ option }}
+                    <button
+                      type="button"
+                      [attr.aria-label]="'Remove ' + option"
+                      (click)="removeQuotationSummary(option); $event.stopPropagation(); $event.preventDefault()"
+                    >
+                      ×
+                    </button>
+                  </span>
+                }
+                <input
+                  type="text"
+                  name="quotationSummarySearch"
+                  [attr.placeholder]="quotationSummaries().length ? 'Search more repair activities' : 'Search repair activities'"
+                  [ngModel]="quotationSummarySearch()"
+                  (ngModelChange)="quotationSummarySearch.set($event)"
+                  (focus)="quotationSummaryOpen.set(true)"
+                />
+              </div>
+              @if (quotationSummaryOpen()) {
+                <div class="quotation-options" role="listbox" aria-multiselectable="true">
+                  @for (option of filteredQuotationSummaries(); track option) {
+                    <button
+                      type="button"
+                      class="quotation-option"
+                      role="option"
+                      [attr.aria-selected]="hasQuotationSummaryOption(option)"
+                      (click)="toggleQuotationSummary(option); $event.preventDefault()"
+                    >
+                      <span class="quotation-option-check">
+                        {{ hasQuotationSummaryOption(option) ? '✓' : '' }}
+                      </span>
+                      {{ option }}
+                    </button>
+                  } @empty {
+                    <p class="quotation-options-empty">No matching repair activities.</p>
+                  }
+                </div>
+              }
+            </div>
+            @if (quotationAttempted() && !quotationSummaries().length) {
+              <small class="field-error">Select at least one repair activity.</small>
             }
           </label>
+          @if (hasQuotationSummaryOption('Other')) {
+            <label class="full-width">
+              <span>Additional Repair Details <b>*</b></span>
+              <textarea
+                name="additionalRepairDetails"
+                rows="3"
+                maxlength="1000"
+                required
+                [ngModel]="additionalRepairDetails()"
+                (ngModelChange)="additionalRepairDetails.set($event); formError.set('')"
+                placeholder="Describe the additional repair work or details."
+                [attr.aria-invalid]="quotationAttempted() && !additionalRepairDetails().trim()"
+              ></textarea>
+              @if (quotationAttempted() && !additionalRepairDetails().trim()) {
+                <small class="field-error">Describe the additional repair work.</small>
+              }
+            </label>
+          }
           @if (formError()) {
             <p class="form-error full-width" role="alert">{{ formError() }}</p>
           }

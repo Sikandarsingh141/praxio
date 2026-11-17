@@ -16,6 +16,30 @@ import { TechnicianRepairDetails } from '../../../../shop/technicians/technician
 import { TechniciansService } from '../../../../shop/technicians/technicians.service';
 import { TechnicianAdditionalChargesComponent } from '../../components/technician-additional-charges.component';
 import { ToastService } from '../../../../core/toast/toast.service';
+import {
+  InspectionReportInput,
+  RepairEstimatePartInput,
+  RepairInspectionReport,
+  RepairWorkflowImageInput,
+} from '../../../../shared/models/repair-workflow.models';
+
+type PartField = 'name' | 'quantity' | 'unitPrice';
+
+const PROBLEM_CATEGORIES = [
+  'Hardware Issue',
+  'Software Issue',
+  'Physical Damage',
+  'Electrical Issue',
+  'Battery / Power Issue',
+  'Display / Screen Issue',
+  'Connectivity / Network Issue',
+  'Performance Issue',
+  'Water / Liquid Damage',
+  'Component Failure',
+  'Other',
+] as const;
+
+type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
 
 @Component({
   selector: 'app-technician-assigned-job-detail-page',
@@ -47,6 +71,38 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
   readonly workPerformed = signal('');
   readonly partsReplaced = signal('');
   readonly finalNotes = signal('');
+  readonly additionalChargesModalOpen = signal(false);
+  readonly completionModalOpen = signal(false);
+  readonly completionFormError = signal('');
+  readonly inspectionModalOpen = signal(false);
+  readonly submittingInspection = signal(false);
+  readonly inspectionFormError = signal('');
+  readonly inspectionImagesError = signal('');
+  readonly problemCategories = PROBLEM_CATEGORIES;
+  readonly problemCategory = signal<ProblemCategory | ''>('');
+  readonly problemOther = signal('');
+  readonly identifiedProblem = signal('');
+  readonly findings = signal('');
+  readonly requiredRepairWork = signal('');
+  readonly inspectionParts = signal<RepairEstimatePartInput[]>([
+    { name: '', quantity: 1, unitPrice: 0 },
+  ]);
+  readonly inspectionLabour = signal(0);
+  readonly inspectionCharge = signal(0);
+  readonly inspectionOtherCharges = signal(0);
+  readonly inspectionTime = signal<number | null>(null);
+  readonly inspectionTimeUnit = signal<'hours' | 'days'>('days');
+  readonly inspectionWarranty = signal('');
+  readonly inspectionMessage = signal('');
+  readonly inspectionImages = signal<File[]>([]);
+  readonly inspectionPartsTotal = computed(() => this.partsTotal(this.inspectionParts()));
+  readonly inspectionTotal = computed(
+    () =>
+      this.inspectionPartsTotal() +
+      this.amount(this.inspectionLabour()) +
+      this.amount(this.inspectionCharge()) +
+      this.amount(this.inspectionOtherCharges()),
+  );
   readonly progressSteps = [
     'Request Submitted',
     'Inspection Pending',
@@ -106,6 +162,27 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
     return (request.repairJobDetails?.status ?? request.shopResponse?.status ?? request.status)
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  hasInitialDiagnosis(request: TechnicianRepairDetails): boolean {
+    const inspection =
+      request.repairJobDetails?.inspection ?? request.repairJob?.inspection ?? request.inspection;
+    if (!inspection) return false;
+    return Boolean(
+      inspection.identifiedProblem?.trim() ||
+        inspection.findings?.trim() ||
+        inspection.requiredRepairWork?.trim() ||
+        inspection.parts?.some((part) => part.name?.trim()) ||
+        inspection.labourCharge > 0 ||
+        inspection.inspectionCharges > 0 ||
+        inspection.otherCharges > 0 ||
+        inspection.estimatedTimeValue != null ||
+        inspection.warranty?.trim() ||
+        inspection.message?.trim() ||
+        inspection.decisionReason?.trim() ||
+        inspection.images?.length ||
+        (inspection.status && inspection.status !== 'in_progress' && inspection.status !== 'draft'),
+    );
   }
 
   isRepairComplete(request: TechnicianRepairDetails): boolean {
@@ -195,6 +272,174 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
           this.toast.error('Workflow Error', message);
         },
       });
+  }
+
+  openInspectionModal(): void {
+    const request = this.record();
+    const repair = request?.repairJobDetails ?? request?.repairJob;
+    this.populateInspectionForm(request?.inspection ?? repair?.inspection);
+    this.inspectionFormError.set('');
+    this.inspectionModalOpen.set(true);
+  }
+
+  closeInspectionModal(): void {
+    this.inspectionModalOpen.set(false);
+    this.inspectionFormError.set('');
+    this.inspectionImagesError.set('');
+    this.inspectionImages.set([]);
+  }
+
+  updateInspectionPart(index: number, field: PartField, value: string | number): void {
+    this.inspectionParts.update((parts) =>
+      parts.map((part, partIndex) =>
+        partIndex === index
+          ? {
+              ...part,
+              [field]: field === 'name' ? String(value) : Math.max(0, Number(value) || 0),
+            }
+          : part,
+      ),
+    );
+  }
+
+  addInspectionPart(): void {
+    this.inspectionParts.update((parts) => [...parts, { name: '', quantity: 1, unitPrice: 0 }]);
+  }
+
+  removeInspectionPart(index: number): void {
+    this.inspectionParts.update((parts) =>
+      parts.length > 1 ? parts.filter((_, partIndex) => partIndex !== index) : parts,
+    );
+  }
+
+  chooseInspectionImages(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    this.inspectionImagesError.set('');
+    if (files.length > 8 || files.some((file) => !/^image\/(jpeg|png|webp)$/.test(file.type))) {
+      this.inspectionImagesError.set('Choose up to 8 JPG, PNG, or WebP images.');
+      input.value = '';
+      return;
+    }
+    if (files.some((file) => file.size > 2_000_000)) {
+      this.inspectionImagesError.set('Each image must be smaller than 2 MB.');
+      input.value = '';
+      return;
+    }
+    if (files.reduce((total, file) => total + file.size, 0) > 1_200_000) {
+      this.inspectionImagesError.set('The selected images must total no more than 1.2 MB.');
+      input.value = '';
+      return;
+    }
+    this.inspectionImages.set(files);
+  }
+
+  async saveInspection(action: 'draft' | 'submit'): Promise<void> {
+    if (this.submittingInspection()) return;
+
+    const category = this.problemCategory();
+    const problemOther = this.problemOther().trim();
+    const identifiedProblem = category === 'Other' ? `Other: ${problemOther}` : category;
+    if (
+      action === 'submit' &&
+      (!category ||
+        (category === 'Other' && !problemOther) ||
+        !this.findings().trim() ||
+        !this.requiredRepairWork().trim() ||
+        this.inspectionTotal() <= 0)
+    ) {
+      this.inspectionFormError.set(
+        'Select a problem category, specify it if Other, and complete Diagnosis & Inspection Findings, Recommended Repair Work, and a valid repair estimate.',
+      );
+      return;
+    }
+
+    this.identifiedProblem.set(identifiedProblem);
+    this.submittingInspection.set(true);
+    this.inspectionFormError.set('');
+
+    try {
+      const input: InspectionReportInput = {
+        action,
+        identifiedProblem: identifiedProblem || undefined,
+        findings: this.findings().trim(),
+        requiredRepairWork: this.requiredRepairWork().trim(),
+        parts: this.nonEmptyParts(this.inspectionParts()),
+        labourCharge: this.amount(this.inspectionLabour()),
+        inspectionCharges: this.amount(this.inspectionCharge()),
+        otherCharges: this.amount(this.inspectionOtherCharges()),
+        estimatedTimeValue: this.inspectionTime() ?? undefined,
+        estimatedTimeUnit: this.inspectionTimeUnit(),
+        warranty: this.inspectionWarranty().trim() || undefined,
+        images: this.inspectionImages().length
+          ? await this.encodeImages(this.inspectionImages())
+          : undefined,
+        message: this.inspectionMessage().trim() || undefined,
+      };
+
+      this.technicians
+        .saveInspection(this.id, input)
+        .pipe(
+          switchMap(() => this.jobs.technicianJob(this.id)),
+          finalize(() => this.submittingInspection.set(false)),
+        )
+        .subscribe({
+          next: (request) => {
+            this.closeInspectionModal();
+            this.refreshRecord(request);
+            this.toast.success(
+              'Repair Workflow',
+              action === 'submit'
+                ? 'Inspection report sent to the customer for approval.'
+                : 'Inspection draft saved.',
+            );
+          },
+          error: (error: HttpErrorResponse) => {
+            const message = error.error?.message || 'Inspection report could not be saved.';
+            this.inspectionFormError.set(message);
+            this.toast.error('Workflow Error', message);
+          },
+        });
+    } catch (error) {
+      this.submittingInspection.set(false);
+      this.inspectionFormError.set(
+        error instanceof Error ? error.message : 'Images could not be read.',
+      );
+    }
+  }
+
+  private populateInspectionForm(inspection?: RepairInspectionReport | null): void {
+    const storedProblem = inspection?.identifiedProblem?.trim() || '';
+    const otherPrefix = 'Other:';
+    const otherProblem = storedProblem.startsWith(otherPrefix)
+      ? storedProblem.slice(otherPrefix.length).trim()
+      : '';
+    const matchedCategory = PROBLEM_CATEGORIES.find((category) => category === storedProblem);
+    const legacyProblem =
+      storedProblem.length > 0 && !matchedCategory && !storedProblem.startsWith(otherPrefix);
+    const useOther =
+      otherProblem.length > 0 || legacyProblem || storedProblem === otherPrefix;
+
+    this.identifiedProblem.set(storedProblem);
+    this.problemCategory.set(useOther ? 'Other' : matchedCategory ?? '');
+    this.problemOther.set(useOther ? otherProblem || (legacyProblem ? storedProblem : '') : '');
+    this.findings.set(inspection?.findings ?? '');
+    this.requiredRepairWork.set(inspection?.requiredRepairWork ?? '');
+    const parts = inspection?.parts ?? [];
+    this.inspectionParts.set(
+      parts.length
+        ? parts.map(({ name, quantity, unitPrice }) => ({ name, quantity, unitPrice }))
+        : [{ name: '', quantity: 1, unitPrice: 0 }],
+    );
+    this.inspectionLabour.set(inspection?.labourCharge ?? 0);
+    this.inspectionCharge.set(inspection?.inspectionCharges ?? 0);
+    this.inspectionOtherCharges.set(inspection?.otherCharges ?? 0);
+    this.inspectionTime.set(inspection?.estimatedTimeValue ?? null);
+    this.inspectionTimeUnit.set(inspection?.estimatedTimeUnit ?? 'days');
+    this.inspectionWarranty.set(inspection?.warranty ?? '');
+    this.inspectionMessage.set(inspection?.message ?? '');
+    this.inspectionImages.set([]);
+    this.inspectionImagesError.set('');
   }
 
   confirmStartRepair(): void {
@@ -289,17 +534,40 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
       });
   }
 
+  openAdditionalChargesModal(): void {
+    this.additionalChargesModalOpen.set(true);
+  }
+
+  closeAdditionalChargesModal(): void {
+    this.additionalChargesModalOpen.set(false);
+  }
+
+  onAdditionalChargesUpdated(request: TechnicianRepairDetails): void {
+    this.refreshRecord(request);
+    this.closeAdditionalChargesModal();
+  }
+
+  openCompletionModal(): void {
+    this.completionFormError.set('');
+    this.completionModalOpen.set(true);
+  }
+
+  closeCompletionModal(): void {
+    this.completionModalOpen.set(false);
+  }
+
   completeRepair(): void {
     const repair = this.record()?.repairJobDetails ?? this.record()?.repairJob;
     const completionDescription = this.completionDescription().trim();
     const workPerformed = this.workPerformed().trim();
     if (repair?.status !== 'in_progress' || this.repairActionPending()) return;
     if (!completionDescription || !workPerformed) {
-      this.repairActionError.set('Provide a completion summary and work performed.');
+      this.completionFormError.set('Provide a completion summary and work performed.');
       return;
     }
     this.repairActionPending.set(true);
     this.repairActionError.set('');
+    this.completionFormError.set('');
     this.technicians
       .completeJob(this.id, {
         completionDescription,
@@ -317,15 +585,58 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
           this.workPerformed.set('');
           this.partsReplaced.set('');
           this.finalNotes.set('');
+          this.completionModalOpen.set(false);
           this.refreshRecord(request);
           this.toast.success('Repair Workflow', 'Repair marked complete.');
         },
         error: (error: HttpErrorResponse) => {
           const message = error.error?.message || 'Repair could not be completed.';
           this.repairActionError.set(message);
+          this.completionFormError.set(message);
           this.toast.error('Workflow Error', message);
         },
       });
+  }
+
+  private amount(value: number): number {
+    return Math.max(0, Number(value) || 0);
+  }
+
+  private partsTotal(parts: RepairEstimatePartInput[]): number {
+    return parts.reduce(
+      (total, part) => total + this.amount(part.quantity) * this.amount(part.unitPrice),
+      0,
+    );
+  }
+
+  private nonEmptyParts(parts: RepairEstimatePartInput[]): RepairEstimatePartInput[] {
+    return parts
+      .filter((part) => part.name.trim())
+      .map((part) => ({
+        name: part.name.trim(),
+        quantity: Math.max(1, Math.floor(part.quantity)),
+        unitPrice: this.amount(part.unitPrice),
+      }));
+  }
+
+  private encodeImages(files: File[]): Promise<RepairWorkflowImageInput[]> {
+    return Promise.all(
+      files.map(
+        (file) =>
+          new Promise<RepairWorkflowImageInput>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              if (typeof reader.result !== 'string') {
+                reject(new Error('An image could not be read.'));
+                return;
+              }
+              resolve({ mimeType: file.type, data: reader.result });
+            };
+            reader.onerror = () => reject(new Error('An image could not be read.'));
+            reader.readAsDataURL(file);
+          }),
+      ),
+    );
   }
 }
 

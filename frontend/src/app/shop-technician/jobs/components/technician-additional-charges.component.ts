@@ -36,7 +36,9 @@ export class TechnicianAdditionalChargesComponent implements OnChanges {
   @Input({ required: true }) requestId!: string;
   @Input({ required: true }) repairJob!: RepairWorkflowJob;
   @Input() currency = 'USD';
+  @Input() autoOpen = false;
   @Output() readonly requestUpdated = new EventEmitter<TechnicianRepairDetails>();
+  @Output() readonly dismissed = new EventEmitter<void>();
 
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -68,6 +70,9 @@ export class TechnicianAdditionalChargesComponent implements OnChanges {
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['autoOpen'] && this.autoOpen) {
+      this.formOpen.set(true);
+    }
     if (!changes['repairJob']) return;
     const draft = this.repairJob.additionalChargeRequests?.find(
       (charge) => charge.status === 'draft',
@@ -76,7 +81,13 @@ export class TechnicianAdditionalChargesComponent implements OnChanges {
       this.loadDraft(draft);
     } else {
       this.resetForm();
+      if (this.autoOpen) this.formOpen.set(true);
     }
+  }
+
+  dismiss(): void {
+    this.formOpen.set(false);
+    this.dismissed.emit();
   }
 
   updatePart(index: number, field: PartField, value: string | number): void {

@@ -137,7 +137,10 @@
           <span class="status-badge" [attr.data-status]="repair.status">
             {{ repair.status.replaceAll('_', ' ') | titlecase }}
           </span>
-          @if (repair.status === 'confirmed' || repair.status === 'inspection_pending') {
+          @if (
+            (repair.status === 'confirmed' || repair.status === 'inspection_pending') &&
+            !hasInitialDiagnosis(job)
+          ) {
             <button
               type="button"
               class="job-button primary"
@@ -184,9 +187,13 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m-9-9h18" /></svg>
             Initial Diagnosis
           </h3>
-          @if ((job.repairJobDetails?.inspection ?? job.repairJob?.inspection ?? job.inspection); as inspection) {
+          @if (
+            hasInitialDiagnosis(job) &&
+            (job.repairJobDetails?.inspection ?? job.repairJob?.inspection ?? job.inspection);
+            as inspection
+          ) {
             <div class="diagnosis-summary">
-              <strong>{{ inspection.identifiedProblem || 'Diagnosis in progress' }}</strong>
+              @if (inspection.identifiedProblem) { <strong>{{ inspection.identifiedProblem }}</strong> }
               @if (inspection.findings) { <p>{{ inspection.findings }}</p> }
               @if (inspection.requiredRepairWork) {
                 <p><b>Recommended repair:</b> {{ inspection.requiredRepairWork }}</p>
@@ -224,7 +231,10 @@
           }
         </section>
 
-        @if (repair.status === 'confirmed' || repair.status === 'inspection_pending') {
+        @if (
+          (repair.status === 'confirmed' || repair.status === 'inspection_pending') &&
+          !hasInitialDiagnosis(job)
+        ) {
           <div class="authorization-callout">
             <p>Complete an inspection report before any repair work begins.</p>
             @if (inspectionActionError()) {
@@ -307,12 +317,16 @@
         }
 
         @if (repair.status === 'in_progress' || repair.status === 'on_hold') {
-          <app-technician-additional-charges
-            [requestId]="job.id"
-            [repairJob]="repair"
-            [currency]="job.quotation?.currency || 'USD'"
-            (requestUpdated)="refreshRecord($event)"
-          />
+          <div class="workflow-action-buttons">
+            <button type="button" class="job-button secondary" (click)="openAdditionalChargesModal()">
+              Request Additional Charges
+            </button>
+            @if (repair.status === 'in_progress') {
+              <button type="button" class="job-button primary" (click)="openCompletionModal()">
+                Mark Repair Complete
+              </button>
+            }
+          </div>
         }
 
         @if (!repair.completionDescription && !repair.workPerformed && !repair.additionalChargeRequests?.length) {
@@ -340,144 +354,162 @@
             (cancelled)="cancelStartRepair()"
           />
         }
+
+        @if (additionalChargesModalOpen()) {
+          <div class="inspection-modal-backdrop" role="presentation" (click)="closeAdditionalChargesModal()">
+            <section
+              class="inspection-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="active-additional-charges-title"
+              (click)="$event.stopPropagation()"
+            >
+              <header class="inspection-dialog-header">
+                <div>
+                  <span class="section-kicker">ADDITIONAL WORK</span>
+                  <h3 id="active-additional-charges-title">Request additional charges</h3>
+                  <p>Request #{{ job.id.slice(-8).toUpperCase() }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="inspection-dialog-close"
+                  aria-label="Close additional charges"
+                  (click)="closeAdditionalChargesModal()"
+                >
+                  ×
+                </button>
+              </header>
+              <div class="workflow-modal-body">
+                @if (repair.additionalChargeRequests?.length) {
+                  <div class="workflow-modal-charges">
+                    <h3>Additional charge requests</h3>
+                    @for (charge of repair.additionalChargeRequests; track charge._id) {
+                      <article class="additional-charge">
+                        <div>
+                          <strong>{{ charge.issue || charge.reason || 'Additional repair work' }}</strong>
+                          <span class="quotation-status" [attr.data-status]="charge.status">
+                            {{ charge.status | titlecase }}
+                          </span>
+                        </div>
+                        @if (charge.repairDescription) { <p>{{ charge.repairDescription }}</p> }
+                        @if (charge.message) { <p>{{ charge.message }}</p> }
+                        <p class="charge-meta">
+                          Requested {{ charge.requestedAt | date: 'medium' }} ·
+                          {{ charge.amount | currency: job.quotation?.currency || 'USD' }}
+                        </p>
+                        @if (charge.decisionReason) {
+                          <p><strong>Decision:</strong> {{ charge.decisionReason }}</p>
+                        }
+                      </article>
+                    }
+                  </div>
+                }
+                <app-technician-additional-charges
+                  [requestId]="job.id"
+                  [repairJob]="repair"
+                  [currency]="job.quotation?.currency || 'USD'"
+                  [autoOpen]="true"
+                  (requestUpdated)="onAdditionalChargesUpdated($event)"
+                  (dismissed)="closeAdditionalChargesModal()"
+                />
+              </div>
+            </section>
+          </div>
+        }
+
+        @if (completionModalOpen()) {
+          <div class="inspection-modal-backdrop" role="presentation" (click)="closeCompletionModal()">
+            <section
+              class="inspection-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="active-completion-form-title"
+              (click)="$event.stopPropagation()"
+            >
+              <header class="inspection-dialog-header">
+                <div>
+                  <span class="section-kicker">REPAIR COMPLETION</span>
+                  <h3 id="active-completion-form-title">Mark repair complete</h3>
+                  <p>Request #{{ job.id.slice(-8).toUpperCase() }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="inspection-dialog-close"
+                  aria-label="Close completion form"
+                  (click)="closeCompletionModal()"
+                >
+                  ×
+                </button>
+              </header>
+              <form class="inspection-dialog-form" (ngSubmit)="completeRepair()">
+                @if (completionFormError()) {
+                  <p class="workflow-error" role="alert">{{ completionFormError() }}</p>
+                }
+                <label>
+                  <span>Completion summary<span class="inspection-required-mark" aria-hidden="true">*</span></span>
+                  <textarea
+                    rows="3"
+                    maxlength="2000"
+                    required
+                    placeholder="Summarize the completed repair"
+                    name="activeCompletionDescription"
+                    [ngModel]="completionDescription()"
+                    (ngModelChange)="completionDescription.set($event)"
+                  ></textarea>
+                </label>
+                <label>
+                  <span>Work performed<span class="inspection-required-mark" aria-hidden="true">*</span></span>
+                  <textarea
+                    rows="3"
+                    maxlength="2000"
+                    required
+                    placeholder="Describe the work performed"
+                    name="activeWorkPerformed"
+                    [ngModel]="workPerformed()"
+                    (ngModelChange)="workPerformed.set($event)"
+                  ></textarea>
+                </label>
+                <label>
+                  <span>Parts replaced</span>
+                  <input
+                    type="text"
+                    maxlength="1000"
+                    placeholder="List the parts replaced"
+                    name="activePartsReplaced"
+                    [ngModel]="partsReplaced()"
+                    (ngModelChange)="partsReplaced.set($event)"
+                  />
+                </label>
+                <label>
+                  <span>Final notes</span>
+                  <textarea
+                    rows="2"
+                    maxlength="2000"
+                    placeholder="Add any final notes for the customer"
+                    name="activeFinalNotes"
+                    [ngModel]="finalNotes()"
+                    (ngModelChange)="finalNotes.set($event)"
+                  ></textarea>
+                </label>
+                <div class="inspection-dialog-actions">
+                  <button
+                    type="button"
+                    class="job-button secondary"
+                    [disabled]="repairActionPending()"
+                    (click)="closeCompletionModal()"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" class="job-button primary" [disabled]="repairActionPending()">
+                    {{ repairActionPending() ? 'Completing…' : 'Mark Repair Complete' }}
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        }
       </section>
 
-      @if (repair.status !== 'confirmed' && repair.status !== 'inspection_pending') {
-        <section
-          class="repair-workflow detail-section confirmed-repair-progress"
-          aria-labelledby="confirmed-repair-progress-title"
-        >
-          <header class="workflow-heading">
-            <div>
-              <span class="section-kicker">CONFIRMED REPAIR</span>
-              <h2 id="confirmed-repair-progress-title">Repair progress</h2>
-            </div>
-            <span class="status-badge" [attr.data-status]="repair.status">
-              {{ repair.status.replaceAll('_', ' ') | titlecase }}
-            </span>
-          </header>
-
-          @if (repairActionError()) {
-            <p class="workflow-error" role="alert">{{ repairActionError() }}</p>
-          }
-
-          @if (repair.status === 'inspection_approved') {
-            <div class="workflow-empty-state">
-              <p class="workflow-note">
-                The repair has been approved. Start work to begin tracking progress.
-              </p>
-              <button
-                type="button"
-                class="job-button primary"
-                [disabled]="repairActionPending()"
-                (click)="confirmStartRepair()"
-              >
-                {{ repairActionPending() ? 'Starting…' : 'Start Repair' }}
-              </button>
-            </div>
-          } @else if (repair.status === 'in_progress') {
-            <div class="workflow-actions">
-              <label>
-                <span>Progress note (optional)</span>
-                <input
-                  type="text"
-                  maxlength="1000"
-                  [ngModel]="progressNotes()"
-                  (ngModelChange)="progressNotes.set($event)"
-                  placeholder="Share an update on the repair"
-                />
-              </label>
-              <button
-                type="button"
-                class="job-button secondary"
-                [disabled]="repairActionPending()"
-                (click)="holdRepair()"
-              >
-                Place on hold
-              </button>
-            </div>
-            <form class="workflow-form" (ngSubmit)="completeRepair()">
-              <h3>Record repair completion</h3>
-              <label>
-                <span>Completion summary *</span>
-                <textarea
-                  rows="2"
-                  maxlength="2000"
-                  required
-                  [ngModel]="completionDescription()"
-                  (ngModelChange)="completionDescription.set($event)"
-                ></textarea>
-              </label>
-              <label>
-                <span>Work performed *</span>
-                <textarea
-                  rows="2"
-                  maxlength="2000"
-                  required
-                  [ngModel]="workPerformed()"
-                  (ngModelChange)="workPerformed.set($event)"
-                ></textarea>
-              </label>
-              <label>
-                <span>Parts replaced (optional)</span>
-                <input
-                  type="text"
-                  maxlength="1000"
-                  [ngModel]="partsReplaced()"
-                  (ngModelChange)="partsReplaced.set($event)"
-                />
-              </label>
-              <label>
-                <span>Final notes (optional)</span>
-                <textarea
-                  rows="2"
-                  maxlength="2000"
-                  [ngModel]="finalNotes()"
-                  (ngModelChange)="finalNotes.set($event)"
-                ></textarea>
-              </label>
-              <button type="submit" class="job-button primary" [disabled]="repairActionPending()">
-                {{ repairActionPending() ? 'Saving…' : 'Mark repair complete' }}
-              </button>
-            </form>
-          } @else if (repair.status === 'on_hold') {
-            <div class="workflow-actions">
-              <label>
-                <span>Progress note (optional)</span>
-                <input
-                  type="text"
-                  maxlength="1000"
-                  [ngModel]="progressNotes()"
-                  (ngModelChange)="progressNotes.set($event)"
-                  placeholder="Explain why the repair is paused"
-                />
-              </label>
-              <button
-                type="button"
-                class="job-button primary"
-                [disabled]="repairActionPending()"
-                (click)="resumeRepair()"
-              >
-                {{ repairActionPending() ? 'Resuming…' : 'Resume repair' }}
-              </button>
-            </div>
-          } @else {
-            <p class="workflow-note">
-              @if (repair.status === 'repair_completed') {
-                The repair has been completed. Waiting for the shop to verify and arrange pickup.
-              } @else if (repair.status === 'ready_for_pickup') {
-                The customer has been notified. Waiting for pickup confirmation.
-              } @else if (repair.status === 'picked_up') {
-                Pickup is confirmed. Waiting for the customer's repair review.
-              } @else if (repair.status === 'completed') {
-                This repair is complete.
-              } @else {
-                This repair is not yet complete.
-              }
-            </p>
-          }
-        </section>
-      }
     }
 
     <div class="customer-detail-layout">

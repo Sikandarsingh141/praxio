@@ -1889,7 +1889,30 @@
                   }
 
                   @if (repair.status === 'inspection_in_progress') {
-                    <form class="inspection-editor-layout" (ngSubmit)="saveInspection('submit')">
+                    <div class="inspection-callout-card">
+                      <div class="callout-icon-col">
+                        <svg viewBox="0 0 24 24" class="callout-svg" aria-hidden="true">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                          <line x1="16" y1="13" x2="8" y2="13"/>
+                          <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                      </div>
+                      <div class="callout-text-col">
+                        <h4>Inspection &amp; Diagnosis Report</h4>
+                        <p>Record your inspection findings, attach photos, and provide the estimated repair cost in the popup.</p>
+                        <button
+                          type="button"
+                          class="action-btn btn-primary-green callout-btn"
+                          (click)="openInspectionModal(repair.id, repair.appliance)"
+                          [disabled]="submittingInspection()"
+                        >
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                          <span>{{ submittingInspection() ? 'Opening…' : 'Submit Inspection &amp; Request Approval' }}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <form class="inspection-editor-layout inspection-editor-inline-hidden" (ngSubmit)="saveInspection('submit')">
                       <section class="inspection-editor-card" aria-labelledby="inspection-editor-title">
                         <header class="inspection-editor-heading">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
@@ -2206,15 +2229,15 @@
                       <!-- Diagnosis Grid -->
                       <div class="report-diagnosis-grid">
                         <div class="report-diag-item">
-                          <span class="diag-label">Identified Problem</span>
+                          <span class="diag-label">Problem Category</span>
                           <p class="diag-text">{{ insp.identifiedProblem || 'None specified' }}</p>
                         </div>
                         <div class="report-diag-item">
-                          <span class="diag-label">Inspection Findings</span>
+                          <span class="diag-label">Diagnosis &amp; Inspection Findings</span>
                           <p class="diag-text">{{ insp.findings || 'None specified' }}</p>
                         </div>
                         <div class="report-diag-item full-width">
-                          <span class="diag-label">Required Repair Work</span>
+                          <span class="diag-label">Recommended Repair Work</span>
                           <p class="diag-text">{{ insp.requiredRepairWork || 'None specified' }}</p>
                         </div>
                       </div>
@@ -2540,20 +2563,37 @@
           </div>
 
           <label class="modal-label">
-            Identified Problem *
-            <textarea
-              rows="2"
-              maxlength="2000"
+            <span>Problem Category<span class="inspection-required-mark" aria-hidden="true">*</span></span>
+            <select
               required
-              [ngModel]="identifiedProblem()"
-              (ngModelChange)="identifiedProblem.set($event)"
-              name="modalIdentifiedProblem"
-              placeholder="e.g. Compressor capacitor failed, causing motor overheating"
-            ></textarea>
+              [ngModel]="problemCategory()"
+              (ngModelChange)="problemCategory.set($event)"
+              name="modalProblemCategory"
+            >
+              <option value="" disabled>Select problem category</option>
+              @for (category of problemCategories; track category) {
+                <option [value]="category">{{ category }}</option>
+              }
+            </select>
           </label>
 
+          @if (problemCategory() === 'Other') {
+            <label class="modal-label">
+              <span>Specify Problem<span class="inspection-required-mark" aria-hidden="true">*</span></span>
+              <input
+                type="text"
+                required
+                maxlength="2000"
+                placeholder="Describe the problem category"
+                [ngModel]="problemOther()"
+                (ngModelChange)="problemOther.set($event)"
+                name="modalProblemOther"
+              />
+            </label>
+          }
+
           <label class="modal-label">
-            Inspection Findings *
+            <span>Diagnosis &amp; Inspection Findings<span class="inspection-required-mark" aria-hidden="true">*</span></span>
             <textarea
               rows="3"
               maxlength="2000"
@@ -2561,12 +2601,12 @@
               [ngModel]="findings()"
               (ngModelChange)="findings.set($event)"
               name="modalFindings"
-              placeholder="Detail observations found during inspection..."
+              placeholder="Describe the identified problem, inspection observations, and findings."
             ></textarea>
           </label>
 
           <label class="modal-label">
-            Required Repair Work *
+            <span>Recommended Repair Work<span class="inspection-required-mark" aria-hidden="true">*</span></span>
             <textarea
               rows="2"
               maxlength="2000"
@@ -2574,7 +2614,7 @@
               [ngModel]="requiredRepairWork()"
               (ngModelChange)="requiredRepairWork.set($event)"
               name="modalRequiredRepairWork"
-              placeholder="e.g. Replace 45uF capacitor and check refrigerant pressure"
+              placeholder="Describe the repairs or replacements required to resolve the issue."
             ></textarea>
           </label>
 

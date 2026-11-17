@@ -25,6 +25,21 @@ const DECLINE_REASONS = [
   'Other',
 ];
 
+const QUOTATION_SUMMARY_OPTIONS = [
+  'General Repair',
+  'Part Replacement',
+  'Hardware Repair',
+  'Software Repair',
+  'Electrical Repair',
+  'Screen / Display Replacement',
+  'Battery Replacement',
+  'Cleaning & Maintenance',
+  'Diagnostic & Troubleshooting',
+  'Other',
+] as const;
+
+type QuotationSummaryOption = (typeof QUOTATION_SUMMARY_OPTIONS)[number];
+
 @Component({
   selector: 'app-shop-repair-request-details-page',
   standalone: true,
@@ -56,7 +71,10 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly quotationAmount = signal<number | null>(null);
   readonly completionDays = signal<number | null>(null);
   readonly validityDays = signal<number | null>(7);
-  readonly message = signal('');
+  readonly quotationSummaries = signal<QuotationSummaryOption[]>([]);
+  readonly quotationSummarySearch = signal('');
+  readonly quotationSummaryOpen = signal(false);
+  readonly additionalRepairDetails = signal('');
   readonly quotationAttempted = signal(false);
   readonly declineReason = signal('');
   readonly customDeclineReason = signal('');
@@ -108,6 +126,19 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     'Quotation',
     'Repair & Complete',
   ];
+  readonly filteredQuotationSummaries = computed(() => {
+    const term = this.quotationSummarySearch().trim().toLowerCase();
+    return QUOTATION_SUMMARY_OPTIONS.filter(
+      (option) => !term || option.toLowerCase().includes(term),
+    );
+  });
+  readonly quotationProposedSolution = computed(() => this.quotationSummaries().join(', '));
+  readonly quotationMessage = computed(() => {
+    const details = this.additionalRepairDetails().trim();
+    return this.hasQuotationSummaryOption('Other') && details
+      ? details
+      : this.quotationProposedSolution();
+  });
   readonly currentProgressStep = computed(() => {
     const request = this.request();
     if (!request) return 1;
@@ -420,7 +451,8 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       .submitQuotation(request._id, {
         amount: this.quotationAmount()!,
         currency: 'INR',
-        message: this.message().trim(),
+        message: this.quotationMessage().trim(),
+        proposedSolution: this.quotationProposedSolution(),
         estimatedDays: this.completionDays()!,
         validUntil,
       })
@@ -447,6 +479,8 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     const amount = this.quotationAmount();
     const completionDays = this.completionDays();
     const validityDays = this.validityDays();
+    const summaries = this.quotationSummaries();
+    const otherDetails = this.additionalRepairDetails().trim();
     return (
       amount !== null &&
       Number.isFinite(amount) &&
@@ -458,8 +492,42 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       Number.isInteger(validityDays) &&
       validityDays > 0 &&
       validityDays <= 365 &&
-      !!this.message().trim()
+      summaries.length > 0 &&
+      (!summaries.includes('Other') || otherDetails.length > 0) &&
+      this.quotationMessage().length <= 1000
     );
+  }
+
+  hasQuotationSummaryOption(option: QuotationSummaryOption): boolean {
+    return this.quotationSummaries().includes(option);
+  }
+
+  toggleQuotationSummary(option: QuotationSummaryOption): void {
+    const removing = this.hasQuotationSummaryOption(option);
+    this.quotationSummaries.update((selected) =>
+      removing ? selected.filter((item) => item !== option) : [...selected, option],
+    );
+    if (option === 'Other' && removing) {
+      this.additionalRepairDetails.set('');
+    }
+    this.quotationSummarySearch.set('');
+    this.formError.set('');
+  }
+
+  removeQuotationSummary(option: QuotationSummaryOption): void {
+    this.quotationSummaries.update((selected) => selected.filter((item) => item !== option));
+    if (option === 'Other') {
+      this.additionalRepairDetails.set('');
+    }
+    this.formError.set('');
+  }
+
+  closeQuotationSummaryDropdown(event: FocusEvent): void {
+    const container = event.currentTarget as HTMLElement | null;
+    const nextTarget = event.relatedTarget as HTMLElement | null;
+    if (!container || (nextTarget && container.contains(nextTarget))) return;
+    this.quotationSummaryOpen.set(false);
+    this.quotationSummarySearch.set('');
   }
 
   declineRequest(): void {

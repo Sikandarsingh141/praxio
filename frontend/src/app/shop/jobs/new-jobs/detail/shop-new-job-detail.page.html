@@ -223,7 +223,34 @@
           <label><span>Total estimated amount (₹) <b>*</b></span><input type="number" name="quotationAmount" min="0.01" step="0.01" required [ngModel]="quotationAmount()" (ngModelChange)="quotationAmount.set($event)" />@if (quotationAttempted() && (quotationAmount() === null || quotationAmount()! <= 0)) { <small class="field-error">Enter an amount greater than ₹0.</small> }</label>
           <label><span>Estimated completion time (days) <b>*</b></span><input type="number" name="completionDays" min="1" step="1" required [ngModel]="completionDays()" (ngModelChange)="completionDays.set($event)" />@if (quotationAttempted() && (completionDays() === null || completionDays()! < 1 || completionDays()! % 1 !== 0)) { <small class="field-error">Enter a positive whole number of days.</small> }</label>
           <label><span>Quotation validity (days) <b>*</b></span><input type="number" name="validityDays" min="1" max="365" step="1" required [ngModel]="validityDays()" (ngModelChange)="validityDays.set($event)" />@if (quotationAttempted() && (validityDays() === null || validityDays()! < 1 || validityDays()! > 365 || validityDays()! % 1 !== 0)) { <small class="field-error">Enter validity from 1 to 365 days.</small> }</label>
-          <label class="full-width"><span>Quotation summary / repair details <b>*</b></span><textarea name="quotationMessage" rows="4" maxlength="1000" required [ngModel]="quotationMessage()" (ngModelChange)="quotationMessage.set($event)" placeholder="Explain the estimated repair work"></textarea>@if (quotationAttempted() && !quotationMessage().trim()) { <small class="field-error">Describe the estimated repair work.</small> }</label>
+          <label class="full-width">
+            <span>Quotation Summary / Repair Details <b>*</b></span>
+            <div class="quotation-multiselect" [class.open]="quotationSummaryOpen()" [attr.aria-invalid]="quotationAttempted() && !quotationSummaries().length" (focusout)="closeQuotationSummaryDropdown($event)">
+              <div class="quotation-chip-list">
+                @for (option of quotationSummaries(); track option) {
+                  <span class="quotation-chip">{{ option }}<button type="button" [attr.aria-label]="'Remove ' + option" (click)="removeQuotationSummary(option); $event.stopPropagation(); $event.preventDefault()">×</button></span>
+                }
+                <input type="text" name="quotationSummarySearch" [attr.placeholder]="quotationSummaries().length ? 'Search more repair activities' : 'Search repair activities'" [ngModel]="quotationSummarySearch()" (ngModelChange)="quotationSummarySearch.set($event)" (focus)="quotationSummaryOpen.set(true)" />
+              </div>
+              @if (quotationSummaryOpen()) {
+                <div class="quotation-options" role="listbox" aria-multiselectable="true">
+                  @for (option of filteredQuotationSummaries(); track option) {
+                    <button type="button" class="quotation-option" role="option" [attr.aria-selected]="hasQuotationSummaryOption(option)" (click)="toggleQuotationSummary(option); $event.preventDefault()"><span class="quotation-option-check">{{ hasQuotationSummaryOption(option) ? '✓' : '' }}</span>{{ option }}</button>
+                  } @empty {
+                    <p class="quotation-options-empty">No matching repair activities.</p>
+                  }
+                </div>
+              }
+            </div>
+            @if (quotationAttempted() && !quotationSummaries().length) { <small class="field-error">Select at least one repair activity.</small> }
+          </label>
+          @if (hasQuotationSummaryOption('Other')) {
+            <label class="full-width">
+              <span>Additional Repair Details <b>*</b></span>
+              <textarea name="additionalRepairDetails" rows="3" maxlength="1000" required [ngModel]="additionalRepairDetails()" (ngModelChange)="additionalRepairDetails.set($event); formError.set('')" placeholder="Describe the additional repair work or details." [attr.aria-invalid]="quotationAttempted() && !additionalRepairDetails().trim()"></textarea>
+              @if (quotationAttempted() && !additionalRepairDetails().trim()) { <small class="field-error">Describe the additional repair work.</small> }
+            </label>
+          }
           @if (formError()) { <p class="form-error full-width" role="alert">{{ formError() }}</p> }
           <footer class="full-width"><button type="button" class="secondary-button" (click)="quotationOpen.set(false)">Cancel</button><button type="submit" class="primary-button" [disabled]="submitting()">{{ submitting() ? 'Submitting…' : 'Submit quotation' }}</button></footer>
         </form>

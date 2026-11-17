@@ -28,6 +28,22 @@ import { ToastService } from '../../../core/toast/toast.service';
 
 type PartField = 'name' | 'quantity' | 'unitPrice';
 
+const PROBLEM_CATEGORIES = [
+  'Hardware Issue',
+  'Software Issue',
+  'Physical Damage',
+  'Electrical Issue',
+  'Battery / Power Issue',
+  'Display / Screen Issue',
+  'Connectivity / Network Issue',
+  'Performance Issue',
+  'Water / Liquid Damage',
+  'Component Failure',
+  'Other',
+] as const;
+
+type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
+
 @Component({
   selector: 'app-shop-repair-workflow',
   standalone: true,
@@ -43,6 +59,7 @@ export class ShopRepairWorkflowComponent implements OnChanges {
   readonly error = signal('');
   readonly notice = signal('');
   readonly confirmation = signal<ConfirmationDialogConfig | null>(null);
+  readonly inspectionModalOpen = signal(false);
   readonly inspectionParts = signal<RepairEstimatePartInput[]>([
     { name: '', quantity: 1, unitPrice: 0 },
   ]);
@@ -56,6 +73,9 @@ export class ShopRepairWorkflowComponent implements OnChanges {
   readonly inspectionFormOpen = signal(false);
   readonly additionalFormOpen = signal(false);
   readonly additionalDraftId = signal<string | undefined>(undefined);
+  readonly problemCategories = PROBLEM_CATEGORIES;
+  readonly problemCategory = signal<ProblemCategory | ''>('');
+  readonly problemOther = signal('');
   readonly identifiedProblem = signal('');
   readonly findings = signal('');
   readonly requiredRepairWork = signal('');
@@ -105,9 +125,28 @@ export class ShopRepairWorkflowComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['request']) return;
 
+    this.inspectionModalOpen.set(false);
     const inspection = this.job?.inspection;
     if (inspection && ['in_progress', 'draft'].includes(inspection.status)) {
-      this.identifiedProblem.set(inspection.identifiedProblem ?? '');
+      const storedProblem = inspection.identifiedProblem?.trim() || '';
+      const otherPrefix = 'Other:';
+      const otherProblem = storedProblem.startsWith(otherPrefix)
+        ? storedProblem.slice(otherPrefix.length).trim()
+        : '';
+      const matchedCategory = PROBLEM_CATEGORIES.find(
+        (category) => category === storedProblem,
+      );
+      const legacyProblem =
+        storedProblem.length > 0 &&
+        !matchedCategory &&
+        !storedProblem.startsWith(otherPrefix);
+      const useOther =
+        otherProblem.length > 0 || legacyProblem || storedProblem === otherPrefix;
+      this.identifiedProblem.set(storedProblem);
+      this.problemCategory.set(useOther ? 'Other' : matchedCategory ?? '');
+      this.problemOther.set(
+        useOther ? otherProblem || (legacyProblem ? storedProblem : '') : '',
+      );
       this.findings.set(inspection.findings ?? '');
       this.requiredRepairWork.set(inspection.requiredRepairWork ?? '');
       const inspectionParts = inspection.parts ?? [];
@@ -127,6 +166,10 @@ export class ShopRepairWorkflowComponent implements OnChanges {
       this.inspectionTimeUnit.set(inspection.estimatedTimeUnit ?? 'days');
       this.inspectionWarranty.set(inspection.warranty ?? '');
       this.inspectionMessage.set(inspection.message ?? '');
+    } else {
+      this.identifiedProblem.set('');
+      this.problemCategory.set('');
+      this.problemOther.set('');
     }
 
     const draft = this.job?.additionalChargeRequests?.find((charge) => charge.status === 'draft');
@@ -176,6 +219,15 @@ export class ShopRepairWorkflowComponent implements OnChanges {
     return (this.job?.additionalChargeRequests ?? [])
       .filter((charge) => charge.status === 'rejected')
       .reduce((total, charge) => total + charge.amount, 0);
+  }
+
+  openInspectionModal(): void {
+    this.error.set('');
+    this.inspectionModalOpen.set(true);
+  }
+
+  closeInspectionModal(): void {
+    this.inspectionModalOpen.set(false);
   }
 
   startInspection(): void {
@@ -245,20 +297,32 @@ export class ShopRepairWorkflowComponent implements OnChanges {
 
   async saveInspection(action: 'draft' | 'submit'): Promise<void> {
     if (this.submitting()) return;
+    const category = this.problemCategory();
+    const problemOther = this.problemOther().trim();
+    const identifiedProblem =
+      category === 'Other' ? `Other: ${problemOther}` : category;
+    const missingOther = category === 'Other' && !problemOther;
+
     if (
       action === 'submit' &&
-      (!this.identifiedProblem().trim() ||
+      (!category ||
+        missingOther ||
         !this.findings().trim() ||
         !this.requiredRepairWork().trim() ||
         this.inspectionTotal() <= 0)
     ) {
-      this.error.set('Complete all required diagnosis fields and enter a repair estimate.');
+      this.error.set(
+        'Select a problem category, specify it if Other, and complete Diagnosis & Inspection Findings, Recommended Repair Work, and a valid repair estimate.',
+      );
       return;
     }
+
+    this.identifiedProblem.set(identifiedProblem);
+
     try {
       const input: InspectionReportInput = {
         action,
-        identifiedProblem: this.identifiedProblem(),
+        identifiedProblem: identifiedProblem || undefined,
         findings: this.findings(),
         requiredRepairWork: this.requiredRepairWork(),
         parts: this.nonEmptyParts(this.inspectionParts()),
@@ -276,12 +340,14 @@ export class ShopRepairWorkflowComponent implements OnChanges {
       this.submitting.set(true);
       this.error.set('');
       this.requests.saveInspection(this.request._id, input).subscribe({
-        next: () =>
+        next: () => {
+          this.inspectionModalOpen.set(false);
           this.reloadRequest(
             action === 'submit'
               ? 'Inspection report sent to the customer for approval.'
               : 'Inspection draft saved.',
-          ),
+          );
+        },
         error: (error: HttpErrorResponse) =>
           this.fail(error, 'Inspection report could not be saved.'),
       });

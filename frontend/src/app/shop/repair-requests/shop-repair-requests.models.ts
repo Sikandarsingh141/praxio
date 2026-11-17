@@ -297,6 +297,7 @@ export interface ShopQuotationInput {
   amount: number;
   currency: string;
   message: string;
+  proposedSolution?: string;
   estimatedDays: number;
   validUntil: string;
 }
