@@ -174,7 +174,7 @@ describe('JobSharedService', () => {
       expect(counts).toEqual({
         new: 1,
         pending: 2,
-        assigned: 1,
+        assigned: 2,
         active: 1,
         disputed: 3,
         completed: 1,
@@ -241,7 +241,7 @@ describe('JobSharedService', () => {
     });
   });
 
-  it('categorizes accepted requests by actual technician or owner assignment', (done) => {
+  it('includes current assignments across active repair stages', (done) => {
     const awaitingAssignment = shopRequest('awaiting-assignment', 'customer_accepted', 'confirmed');
     shopApi.list.and.returnValue(of(shopPage([awaitingAssignment], 1, 1)));
     technicianApi.assignments.and.returnValue(
@@ -260,12 +260,15 @@ describe('JobSharedService', () => {
       expect(lists.assigned.map((item) => item.id)).toEqual([
         'technician-assignment',
         'owner-assignment',
+        'already-active',
       ]);
       expect(lists.assigned.map((item) => item.assignedToName)).toEqual([
         'Ravi Technician',
         'You',
+        'Ravi Technician',
       ]);
       expect(lists.assigned.map((item) => item.assignedAt)).toEqual([
+        '2026-11-16T10:24:00.000Z',
         '2026-11-16T10:24:00.000Z',
         '2026-11-16T10:24:00.000Z',
       ]);

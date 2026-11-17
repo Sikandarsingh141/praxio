@@ -643,7 +643,9 @@ export class TechniciansService {
       .find({
         shopIds: shopObjectId,
         'repairJob.activeAssignment.shopId': shopObjectId,
-        'repairJob.status': { $nin: [...TERMINAL_STATUSES] },
+        'repairJob.status': {
+          $nin: [...TERMINAL_STATUSES, 'repair_declined', 'disputed'],
+        },
       })
       .select(
         '_id appliance brand model description photos createdAt repairJob updatedAt customerId',

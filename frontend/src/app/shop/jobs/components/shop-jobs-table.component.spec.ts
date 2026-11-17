@@ -119,5 +119,7 @@ describe('ShopJobsTableComponent', () => {
     expect(text).toContain('(Shop Owner)');
     expect(text).toContain('Rahul Verma');
     expect(text).toContain('Nov 16, 2026');
+    expect(fixture.nativeElement.querySelector('.action-btn-view')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.action-btn-more').length).toBe(2);
   });
 });

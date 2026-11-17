@@ -104,7 +104,14 @@ describe('TechniciansService assignments', () => {
       shopIds: shopId,
       'repairJob.activeAssignment.shopId': shopId,
       'repairJob.status': {
-        $nin: ['repair_completed', 'ready_for_pickup', 'picked_up', 'completed'],
+        $nin: [
+          'repair_completed',
+          'ready_for_pickup',
+          'picked_up',
+          'completed',
+          'repair_declined',
+          'disputed',
+        ],
       },
     });
     expect(result).toHaveLength(2);

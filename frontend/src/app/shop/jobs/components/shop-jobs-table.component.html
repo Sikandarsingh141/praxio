@@ -120,19 +120,6 @@
             <span class="job-status" [attr.data-status]="job.status">{{ formatStatus(job.status) }}</span>
           </td>
           <td class="td-action">
-            @if (showAssignmentDetails) {
-              <a
-                class="action-btn-icon action-btn-view"
-                [routerLink]="[detailRoute, job.id]"
-                [attr.aria-label]="'View details for job ' + job.id"
-                title="View details"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </a>
-            }
             <div class="action-menu-anchor">
               <button
                 type="button"

@@ -235,9 +235,9 @@ export class JobSharedService {
 
   private assignedShopItems(assignments: TechnicianAssignment[]): JobListItem[] {
     return assignments
-      .filter((assignment) =>
-        !assignment.repairStatus ||
-        ['confirmed', 'inspection_pending'].includes(assignment.repairStatus),
+      .filter(
+        (assignment) =>
+          !['repair_declined', 'disputed'].includes(assignment.repairStatus ?? ''),
       )
       .map((assignment) => ({
         id: assignment.requestId,
