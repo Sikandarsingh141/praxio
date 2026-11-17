@@ -123,37 +123,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
             Uploaded Photos <small>({{ request.photos.length }})</small>
           </h2>
-          @if (request.photos.length) {
-            <div
-              class="photo-gallery"
-              [class.single-photo]="request.photos.length === 1"
-              aria-label="Uploaded request photos"
-            >
-              @for (photo of request.photos; track $index) {
-                @if (unavailablePhotos().has($index)) {
-                  <span class="photo-placeholder" role="img" aria-label="No image available">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
-                    <span>No image available</span>
-                  </span>
-                } @else {
-                  <button type="button" class="photo-thumbnail" (click)="openPhoto($index)" [attr.aria-label]="'Preview photo ' + ($index + 1)">
-                    <img [src]="photoSource($index, request)" [alt]="'Repair request photo ' + ($index + 1)" (error)="markPhotoUnavailable($index)" />
-                  </button>
-                }
-              }
-              @if (request.photos.length > 1) {
-                <button type="button" class="view-all-photos" (click)="openPhoto(0)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></svg>
-                  View All ({{ request.photos.length }})
-                </button>
-              }
-            </div>
-          } @else {
-            <div class="photos-empty">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
-              <span>No photos were uploaded with this request.</span>
-            </div>
-          }
+          <app-job-attachments
+            [items]="photoAttachments(request.photos)"
+            [showViewAllAction]="true"
+          />
         </section>
 
         <section class="detail-card diagnosis-card">

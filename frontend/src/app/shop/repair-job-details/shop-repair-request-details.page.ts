@@ -10,6 +10,8 @@ import { ShopRepairRequestsService } from '../repair-requests/shop-repair-reques
 import { ShopRepairRouteComponent } from './components/shop-repair-route.component';
 import { ShopRepairWorkflowComponent } from './components/shop-repair-workflow.component';
 import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
+import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
+import { JobAttachment } from '../../shared/models/job.models';
 import { JobSharedService } from '../../shared/services/job-shared.service';
 import { Technician } from '../technicians/technicians.models';
 import { TechniciansService } from '../technicians/technicians.service';
@@ -33,6 +35,7 @@ const DECLINE_REASONS = [
     JobTimelineComponent,
     ShopRepairRouteComponent,
     ShopRepairWorkflowComponent,
+    JobAttachmentsComponent,
   ],
   templateUrl: './shop-repair-request-details.page.html',
   styleUrl: './shop-repair-request-details.page.scss',
@@ -171,6 +174,14 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       .slice(0, 2)
       .map((part) => part.charAt(0).toUpperCase())
       .join('');
+  }
+
+  photoAttachments(photos: ShopRepairRequest['photos']): JobAttachment[] {
+    return (photos || []).map((photo, index) => ({
+      name: `Photo ${index + 1}`,
+      mimeType: photo.mimeType,
+      data: photo.data,
+    }));
   }
 
   photoSource(photo: ShopRepairRequest['photos'][number]): string {

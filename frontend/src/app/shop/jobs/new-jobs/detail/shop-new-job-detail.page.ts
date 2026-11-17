@@ -10,6 +10,9 @@ import { ShopJobDetailPageBase } from '../../../../shared/components/job-page-ba
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
 import { ShopRepairWorkflowComponent } from '../../../repair-job-details/components/shop-repair-workflow.component';
 import { ShopRepairRouteComponent } from '../../../repair-job-details/components/shop-repair-route.component';
+import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
+import { JobAttachment } from '../../../../shared/models/job.models';
+import { JobSharedService } from '../../../../shared/services/job-shared.service';
 import { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../../repair-requests/shop-repair-requests.service';
 
@@ -31,11 +34,13 @@ const DECLINE_REASONS = [
     JobTimelineComponent,
     ShopRepairWorkflowComponent,
     ShopRepairRouteComponent,
+    JobAttachmentsComponent,
   ],
   templateUrl: './shop-new-job-detail.page.html',
   styleUrl: './shop-new-job-detail.page.scss',
 })
 export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnInit {
+  override readonly jobs = inject(JobSharedService);
   readonly authService = inject(AuthService);
   readonly requestsService = inject(ShopRepairRequestsService);
   readonly toast = inject(ToastService);
@@ -56,6 +61,14 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
   readonly unavailablePhotos = signal(new Set<number>());
   readonly heroImageUnavailable = signal(false);
   readonly progressSteps = ['Request Submitted', 'Inspection Pending', 'Quotation', 'Repair & Complete'];
+  photoAttachments(photos: ShopRepairRequest['photos']): JobAttachment[] {
+    return (photos || []).map((photo, index) => ({
+      name: `Photo ${index + 1}`,
+      mimeType: photo.mimeType,
+      data: photo.data,
+    }));
+  }
+
   readonly customerCoordinates = computed(() => {
     const request = this.record();
     if (!request) return null;

@@ -3,6 +3,81 @@
   width: 100%;
 }
 
+.request-hero {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.request-hero-photo {
+  display: grid;
+  width: 6rem;
+  height: 4.5rem;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 0.55rem;
+  background: #f3f6f3;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.hero-image-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #708077;
+
+  svg {
+    width: 1.8rem;
+    height: 1.8rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.6;
+  }
+}
+
+.uploaded-photos-card {
+  app-job-attachments {
+    display: block;
+  }
+
+  .photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+
+    a {
+      display: block;
+      width: 7.5rem;
+      height: 6rem;
+      overflow: hidden;
+      border: 1px solid #e3e9e4;
+      border-radius: 0.65rem;
+      background: #f5f7f5;
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+}
+
 .repair-workflow:not(.workflow-active) {
   display: none;
 }
