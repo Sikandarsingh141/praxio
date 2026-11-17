@@ -5,6 +5,17 @@
   min-width: 0;
 }
 
+.table-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
 .jobs-table {
   min-width: 1140px;
 }

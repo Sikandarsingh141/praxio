@@ -71,11 +71,18 @@
 }
 
 .table-card {
-  overflow-x: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   border: 1px solid #e2e8f0;
   border-radius: 0.85rem;
   background: #fff;
   box-shadow: 0 1px 3px rgb(15 23 42 / 3%);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  width: 100%;
 }
 
 .jobs-table {

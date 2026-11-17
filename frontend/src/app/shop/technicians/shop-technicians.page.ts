@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Technician, TechnicianAvailability } from './technicians.models';
 import { TechniciansService } from './technicians.service';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-shop-technicians-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, PaginationComponent],
   templateUrl: './shop-technicians.page.html',
   styleUrl: './shop-technicians.page.scss',
 })
@@ -23,7 +24,7 @@ export class ShopTechniciansPage implements OnInit {
   readonly skillFilter = signal('');
   readonly sortBy = signal<'name' | 'workload' | 'joiningDate'>('name');
   readonly page = signal(1);
-  readonly pageSize = 10;
+  readonly pageSize = signal(10);
   readonly skillOptions = computed(() => [
     ...new Set(this.technicians().flatMap((technician) => technician.skills)),
   ].sort());
@@ -56,11 +57,11 @@ export class ShopTechniciansPage implements OnInit {
       });
   });
   readonly pageCount = computed(() =>
-    Math.max(1, Math.ceil(this.filteredTechnicians().length / this.pageSize)),
+    Math.max(1, Math.ceil(this.filteredTechnicians().length / this.pageSize())),
   );
   readonly visibleTechnicians = computed(() => {
-    const start = (this.page() - 1) * this.pageSize;
-    return this.filteredTechnicians().slice(start, start + this.pageSize);
+    const start = (this.page() - 1) * this.pageSize();
+    return this.filteredTechnicians().slice(start, start + this.pageSize());
   });
 
   constructor(private readonly service: TechniciansService) {}
@@ -126,6 +127,11 @@ export class ShopTechniciansPage implements OnInit {
 
   changePage(page: number): void {
     this.page.set(Math.min(this.pageCount(), Math.max(1, page)));
+  }
+
+  changePageSize(size: number): void {
+    this.pageSize.set(size);
+    this.page.set(1);
   }
 
   private replace(updated: Technician): void {

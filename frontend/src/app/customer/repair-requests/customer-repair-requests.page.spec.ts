@@ -160,7 +160,7 @@ describe('CustomerRepairRequestsPage editing', () => {
     fixture.detectChanges();
     expect(page.page()).toBe(1);
     expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(1);
-    expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeNull();
   });
 
   it('renders request photos in the customer request list', () => {

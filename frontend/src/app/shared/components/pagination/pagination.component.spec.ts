@@ -9,11 +9,21 @@ describe('PaginationComponent', () => {
     fixture = TestBed.createComponent(PaginationComponent);
   });
 
-  it('shows the requested range and page size control for one-page results', () => {
+  it('hides pagination when the list has ten or fewer items', () => {
+    fixture.componentInstance.total = 10;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+
     fixture.componentInstance.total = 8;
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+  });
+
+  it('shows the requested range and page size control when results span multiple pages', () => {
+    fixture.componentInstance.total = 11;
+    fixture.detectChanges();
     const nav = fixture.nativeElement.querySelector('nav') as HTMLElement;
-    expect(nav.textContent).toContain('1–8 of 8');
+    expect(nav.textContent).toContain('1–10 of 11');
     const select = nav.querySelector('select') as HTMLSelectElement;
     expect(select.value).toBe('10');
     expect(Array.from(select.options).map((option) => option.value)).toEqual(['5', '10', '25', '100']);

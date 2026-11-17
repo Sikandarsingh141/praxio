@@ -51,16 +51,17 @@
       [description]="search() ? 'Try another device, customer, or job ID.' : 'Repairs in progress will appear here.'"
     />
   } @else {
-    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Active Jobs" />
-    @if (filteredItems().length > pageSize()) {
-      <app-job-pagination
-        variant="brand"
-        [total]="filteredItems().length"
-        [page]="page()"
-        [pageSize]="pageSize()"
-        (pageChange)="setPage($event)"
-        (pageSizeChange)="setPageSize($event)"
-      />
-    }
+    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Active Jobs">
+      @if (filteredItems().length > 0) {
+        <app-job-pagination
+          variant="brand"
+          [total]="filteredItems().length"
+          [page]="page()"
+          [pageSize]="pageSize()"
+          (pageChange)="setPage($event)"
+          (pageSizeChange)="setPageSize($event)"
+        />
+      }
+    </app-shop-jobs-table>
   }
 </main>

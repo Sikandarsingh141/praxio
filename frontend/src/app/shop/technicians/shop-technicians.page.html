@@ -119,14 +119,14 @@
           </tbody>
         </table>
       </div>
-      <footer class="table-footer">
-        <span>Showing {{ (page() - 1) * pageSize + 1 }}–{{ (page() - 1) * pageSize + visibleTechnicians().length }} of {{ filteredTechnicians().length }} technicians</span>
-        <div class="pagination">
-          <button type="button" (click)="changePage(page() - 1)" [disabled]="page() === 1" aria-label="Previous page">‹</button>
-          <span>{{ page() }} / {{ pageCount() }}</span>
-          <button type="button" (click)="changePage(page() + 1)" [disabled]="page() === pageCount()" aria-label="Next page">›</button>
-        </div>
-      </footer>
+      <app-pagination
+        [total]="filteredTechnicians().length"
+        [page]="page()"
+        [pageSize]="pageSize()"
+        ariaLabel="Technicians pagination"
+        (pageChange)="changePage($event)"
+        (pageSizeChange)="changePageSize($event)"
+      />
     } @else {
       <div class="empty-state">
         <strong>{{ technicians().length ? 'No matching technicians' : 'No technicians yet' }}</strong>

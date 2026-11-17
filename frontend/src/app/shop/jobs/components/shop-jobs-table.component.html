@@ -1,5 +1,6 @@
 <section class="table-card" [attr.aria-label]="title">
-  <table class="jobs-table" [class.assignment-jobs-table]="showAssignmentDetails">
+  <div class="table-scroll">
+    <table class="jobs-table" [class.assignment-jobs-table]="showAssignmentDetails">
     <thead>
       <tr>
         <th scope="col" class="th-request-id">{{ showAssignmentDetails ? 'Job ID' : 'Request ID' }}</th>
@@ -165,4 +166,6 @@
       }
     </tbody>
   </table>
+  </div>
+  <ng-content />
 </section>

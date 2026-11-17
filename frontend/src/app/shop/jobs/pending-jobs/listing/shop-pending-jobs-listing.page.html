@@ -51,16 +51,17 @@
       [description]="search() ? 'Try another device, customer, or job ID.' : 'Requests waiting for a decision will appear here.'"
     />
   } @else {
-    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Pending Requests" />
-    @if (filteredItems().length > pageSize()) {
-      <app-job-pagination
-        variant="brand"
-        [total]="filteredItems().length"
-        [page]="page()"
-        [pageSize]="pageSize()"
-        (pageChange)="setPage($event)"
-        (pageSizeChange)="setPageSize($event)"
-      />
-    }
+    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Pending Requests">
+      @if (filteredItems().length > 0) {
+        <app-job-pagination
+          variant="brand"
+          [total]="filteredItems().length"
+          [page]="page()"
+          [pageSize]="pageSize()"
+          (pageChange)="setPage($event)"
+          (pageSizeChange)="setPageSize($event)"
+        />
+      }
+    </app-shop-jobs-table>
   }
 </main>

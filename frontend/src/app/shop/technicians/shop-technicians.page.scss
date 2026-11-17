@@ -45,10 +45,6 @@ tbody tr:hover { background: #fbfdfb; }
 .icon-action { display: inline-grid; width: 1.75rem; height: 1.75rem; place-items: center; padding: 0; border: 0; border-radius: .35rem; background: transparent; color: #526357; cursor: pointer; font: inherit; text-decoration: none; }
 .icon-action:hover { background: #eaf5ed; color: #087c3b; }
 .availability-action { max-width: 5.2rem; height: 1.7rem; border: 1px solid #e1e8e2; border-radius: .35rem; background: #fff; color: #526357; font-size: .6rem; }
-.table-footer { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .75rem .9rem; border-top: 1px solid #edf1ed; color: #68766d; font-size: .7rem; }
-.pagination { display: flex; align-items: center; gap: .5rem; }
-.pagination button { width: 1.9rem; height: 1.9rem; border: 1px solid #e1e8e2; border-radius: .4rem; background: #fff; color: #34443a; cursor: pointer; font-size: 1.2rem; }
-.pagination button:disabled { opacity: .4; cursor: default; }
 .empty-state { display: grid; min-height: 12rem; align-content: center; justify-items: center; gap: .5rem; padding: 1.5rem; color: #68766d; text-align: center; }
 .empty-state strong { color: #34443a; }
 .empty-state p { margin: 0; font-size: .8rem; }

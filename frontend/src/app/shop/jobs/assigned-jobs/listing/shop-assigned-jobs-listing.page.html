@@ -82,16 +82,17 @@
       [detailRoute]="detailRoute"
       title="Assigned Jobs"
       [showAssignmentDetails]="true"
-    />
-    @if (filteredItems().length > pageSize()) {
-      <app-job-pagination
-        variant="brand"
-        [total]="filteredItems().length"
-        [page]="page()"
-        [pageSize]="pageSize()"
-        (pageChange)="setPage($event)"
-        (pageSizeChange)="setPageSize($event)"
-      />
-    }
+    >
+      @if (filteredItems().length > 0) {
+        <app-job-pagination
+          variant="brand"
+          [total]="filteredItems().length"
+          [page]="page()"
+          [pageSize]="pageSize()"
+          (pageChange)="setPage($event)"
+          (pageSizeChange)="setPageSize($event)"
+        />
+      }
+    </app-shop-jobs-table>
   }
 </main>

@@ -825,41 +825,16 @@
           </div>
 
           <!-- Pagination Bar -->
-          <footer class="completed-pagination-row">
-            <div class="pagination-info">
-              Showing {{ completedPageStart() }}–{{ completedPageEnd() }} of {{ filteredCompletedJobs().length }} jobs
-            </div>
-            <nav class="pagination-controls" aria-label="Completed jobs pagination">
-              <button
-                type="button"
-                class="pagination-btn arrow-btn"
-                [disabled]="completedCurrentPage() <= 1"
-                (click)="setCompletedPage(completedCurrentPage() - 1)"
-                aria-label="Previous Page"
-              >
-                &lt;
-              </button>
-              @for (page of completedPagesArray(); track page) {
-                <button
-                  type="button"
-                  class="pagination-btn page-num-btn"
-                  [class.active]="page === completedCurrentPage()"
-                  (click)="setCompletedPage(page)"
-                >
-                  {{ page }}
-                </button>
-              }
-              <button
-                type="button"
-                class="pagination-btn arrow-btn"
-                [disabled]="completedCurrentPage() >= completedTotalPages()"
-                (click)="setCompletedPage(completedCurrentPage() + 1)"
-                aria-label="Next Page"
-              >
-                &gt;
-              </button>
-            </nav>
-          </footer>
+          <app-pagination
+            variant="brand"
+            [total]="filteredCompletedJobs().length"
+            [page]="completedCurrentPage()"
+            [pageSize]="completedPageSize()"
+            [pageSizeOptions]="[5, 10, 25, 100]"
+            ariaLabel="Completed jobs pagination"
+            (pageChange)="setCompletedPage($event)"
+            (pageSizeChange)="setCompletedPageSize($event)"
+          />
         } @else {
           <!-- Empty State -->
           <div class="completed-empty-card">
@@ -1246,34 +1221,16 @@
           </div>
 
           <!-- Pagination Footer -->
-          <div class="left-pagination-bar">
-            <span class="pagination-info">
-              Showing {{ pageStart() }}–{{ pageEnd() }} of {{ visibleJobs().length }}
-              {{ isActiveJobsRoute() ? (visibleJobs().length === 1 ? 'active job' : 'active jobs') : 'jobs' }}
-            </span>
-            <div class="pagination-controls" [class.active-job-pagination]="isActiveJobsRoute()">
-              <button
-                type="button"
-                class="page-nav-btn"
-                [disabled]="currentPage() === 1"
-                (click)="setPage(currentPage() - 1)"
-              >&lt;</button>
-              @for (p of pagesArray(); track p) {
-                <button
-                  type="button"
-                  class="page-num-btn"
-                  [class.active]="currentPage() === p"
-                  (click)="setPage(p)"
-                >{{ p }}</button>
-              }
-              <button
-                type="button"
-                class="page-nav-btn"
-                [disabled]="currentPage() === totalPages()"
-                (click)="setPage(currentPage() + 1)"
-              >&gt;</button>
-            </div>
-          </div>
+          <app-pagination
+            variant="brand"
+            [total]="visibleJobs().length"
+            [page]="currentPage()"
+            [pageSize]="pageSize()"
+            [pageSizeOptions]="[5, 10, 25, 100]"
+            ariaLabel="Assigned jobs pagination"
+            (pageChange)="setPage($event)"
+            (pageSizeChange)="setPageSize($event)"
+          />
         </div>
         }
 

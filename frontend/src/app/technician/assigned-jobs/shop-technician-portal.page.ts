@@ -11,6 +11,7 @@ import {
   ConfirmationDialogConfig,
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import {
   InspectionReportInput,
   RepairEstimatePartInput,
@@ -46,6 +47,7 @@ const EMPTY_SUMMARY: TechnicianJobSummary = {
     RouterLink,
     ConfirmationDialogComponent,
     AdminPageHeaderComponent,
+    PaginationComponent,
   ],
   templateUrl: './shop-technician-portal.page.html',
   styleUrl: './shop-technician-portal.page.scss',
@@ -243,6 +245,11 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
     }
   }
 
+  setPageSize(size: number): void {
+    this.pageSize.set(size);
+    this.currentPage.set(1);
+  }
+
   getCustomerName(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
     if (!repair) return 'Customer';
     if (typeof repair.customer === 'string' && repair.customer) return repair.customer;
@@ -400,6 +407,11 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
     if (page >= 1 && page <= this.completedTotalPages()) {
       this.completedCurrentPage.set(page);
     }
+  }
+
+  setCompletedPageSize(size: number): void {
+    this.completedPageSize.set(size);
+    this.completedCurrentPage.set(1);
   }
 
   resetCompletedFilters(): void {

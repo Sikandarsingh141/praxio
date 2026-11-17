@@ -43,7 +43,8 @@
     />
   } @else {
     <section class="table-card" aria-label="Active Jobs">
-      <table class="jobs-table">
+      <div class="table-scroll">
+        <table class="jobs-table">
         <thead>
           <tr>
             <th scope="col" class="th-device">Device &amp; Brand</th>
@@ -166,17 +167,18 @@
           }
         </tbody>
       </table>
-    </section>
+      </div>
 
-    @if (filteredItems().length > pageSize()) {
-      <app-job-pagination
-        variant="brand"
-        [total]="filteredItems().length"
-        [page]="page()"
-        [pageSize]="pageSize()"
-        (pageChange)="setPage($event)"
-        (pageSizeChange)="setPageSize($event)"
-      />
-    }
+      @if (filteredItems().length > 0) {
+        <app-job-pagination
+          variant="brand"
+          [total]="filteredItems().length"
+          [page]="page()"
+          [pageSize]="pageSize()"
+          (pageChange)="setPage($event)"
+          (pageSizeChange)="setPageSize($event)"
+        />
+      }
+    </section>
   }
 </main>
