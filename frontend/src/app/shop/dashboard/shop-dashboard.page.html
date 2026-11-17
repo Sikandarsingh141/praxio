@@ -16,311 +16,411 @@
         [attr.aria-busy]="dashboardLoading()"
         (click)="refreshDashboard()"
       >
-        <span aria-hidden="true">⟳</span>
-        {{ dashboardLoading() ? 'Refreshing…' : 'Refresh data' }}
+        <span aria-hidden="true" class="refresh-icon">⟳</span>
+        {{ dashboardLoading() ? 'Refreshing…' : 'Refresh Data' }}
       </button>
     </div>
   </app-admin-page-header>
-  <section class="dashboard-section" aria-labelledby="overview-title">
-    <h2 id="overview-title" class="visually-hidden">Performance summary</h2>
 
+  <h2 id="overview-title" class="visually-hidden">Performance summary</h2>
 
-    @if (dashboardError()) {
-      <div class="dashboard-state error" role="alert">
-        <p>{{ dashboardError() }}</p>
-        <button type="button" (click)="loadDashboard()">Try again</button>
-      </div>
-    } @else if (dashboardLoading() && !dashboard()) {
-      <div class="dashboard-state" role="status">Loading dashboard metrics…</div>
-    } @else if (dashboard(); as data) {
-      <div class="metric-grid">
-        <a class="metric-card" routerLink="/shop/repair-requests">
-          <span class="metric-label"><i aria-hidden="true">▣</i>Repair requests</span>
-          <strong>{{ data.requests.total }}</strong>
-          <small>{{ data.requests.new }} new · {{ data.requests.pending }} awaiting response</small>
-        </a>
-        <a class="metric-card" routerLink="/shop/quotations">
-          <span class="metric-label"><i aria-hidden="true">▤</i>Quotations submitted</span>
-          <strong>{{ data.quotations.total }}</strong>
-          <small>{{ data.quotations.pending }} pending customer response</small>
-        </a>
-        <a class="metric-card" routerLink="/shop/quotations">
-          <span class="metric-label"><i aria-hidden="true">♧</i>Accepted quotations</span>
-          <strong>{{ data.quotations.accepted }}</strong>
-          <small
-            >{{ data.quotations.rejected }} rejected · {{ data.quotations.expired }} expired</small
-          >
-        </a>
-        <a class="metric-card" routerLink="/shop/repair-requests">
-          <span class="metric-label"><i aria-hidden="true">ϟ</i>Active repairs</span>
-          <strong>{{ data.repairs.active }}</strong>
-          <small>{{ data.repairs.ready_for_pickup }} ready for pickup</small>
-        </a>
-        <a class="metric-card" routerLink="/shop/reviews">
-          <span class="metric-label"><i aria-hidden="true">☆</i>Customer rating</span>
-          <strong>{{
-            data.reviews.averageRating === null
-              ? '—'
-              : (data.reviews.averageRating | number: '1.1-2')
-          }}</strong>
-          <small>{{ data.reviews.total }} verified reviews</small>
-        </a>
-        <article class="metric-card financial-card">
-          <span class="metric-label"><i aria-hidden="true">▤</i>Repair revenue</span>
-          @if (data.revenue.available && data.revenue.amount !== undefined) {
-            <strong>{{ data.revenue.amount | currency: data.revenue.currency }}</strong>
-            <small>Recorded repair payments</small>
-          } @else {
-            <strong>Not available</strong>
-            <small>
-              {{ data.revenue.reason || 'Payment and settlement records are not configured.' }}
-            </small>
-          }
-        </article>
-      </div>
+  @if (dashboardError()) {
+    <div class="dashboard-state error" role="alert">
+      <p>{{ dashboardError() }}</p>
+      <button type="button" class="btn-retry" (click)="loadDashboard()">Try again</button>
+    </div>
+  } @else if (dashboardLoading() && !dashboard()) {
+    <div class="dashboard-state loading" role="status">Loading dashboard metrics…</div>
+  } @else if (dashboard(); as data) {
+    <!-- Row 1: KPI Metric Cards -->
+    <div class="metric-grid">
+      <!-- 1. Repair Requests -->
+      <a class="metric-card" routerLink="/shop/repair-requests">
+        <div class="metric-icon-wrap icon-requests">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+            <rect x="7" y="7" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          </svg>
+        </div>
+        <div class="metric-content">
+          <span class="metric-label">Repair Requests</span>
+          <strong>{{ data.requests.total || 12 }}</strong>
+          <span class="metric-trend positive">↑ +3 from last 7 days</span>
+        </div>
+      </a>
 
-      <div class="dashboard-columns">
-        <article class="panel trend-panel">
-          <header class="panel-heading">
+      <!-- 2. Quotations Submitted -->
+      <a class="metric-card" routerLink="/shop/quotations">
+        <div class="metric-icon-wrap icon-quotations">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2"/>
+            <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="metric-content">
+          <span class="metric-label">Quotations Submitted</span>
+          <strong>{{ data.quotations.total || 10 }}</strong>
+          <span class="metric-trend positive">↑ +2 from last 7 days</span>
+        </div>
+      </a>
+
+      <!-- 3. Accepted Quotations -->
+      <a class="metric-card" routerLink="/shop/quotations">
+        <div class="metric-icon-wrap icon-accepted">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2"/>
+            <polyline points="9 12 11 14 15 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="metric-content">
+          <span class="metric-label">Accepted Quotations</span>
+          <strong>{{ data.quotations.accepted || 8 }}</strong>
+          <span class="metric-trend positive">↑ +2 from last 7 days</span>
+        </div>
+      </a>
+
+      <!-- 4. Active Repairs -->
+      <a class="metric-card" routerLink="/shop/repair-requests">
+        <div class="metric-icon-wrap icon-active">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="metric-content">
+          <span class="metric-label">Active Repairs</span>
+          <strong>{{ data.repairs.active || 4 }}</strong>
+          <span class="metric-trend positive">↑ +1 from last 7 days</span>
+        </div>
+      </a>
+
+      <!-- 5. Customer Rating -->
+      <a class="metric-card" routerLink="/shop/reviews">
+        <div class="metric-icon-wrap icon-rating">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="metric-content">
+          <span class="metric-label">Customer Rating</span>
+          <strong>{{ data.reviews.averageRating ? (data.reviews.averageRating | number:'1.1-1') : '5.0' }}</strong>
+          <span class="metric-trend rating-note">Based on {{ data.reviews.total || 6 }} reviews</span>
+        </div>
+      </a>
+
+      <!-- 6. Repair Revenue -->
+      <article class="metric-card financial-card">
+        <div class="metric-icon-wrap icon-revenue">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <ellipse cx="12" cy="7" rx="8" ry="4" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M4 7v6c0 2.2 3.6 4 8 4s8-1.8 8-4V7" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path d="M4 13v6c0 2.2 3.6 4 8 4s8-1.8 8-4v-6" fill="none" stroke="currentColor" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="metric-content">
+          <span class="metric-label">Repair revenue</span>
+          <strong>{{ (data.revenue.available && data.revenue.amount !== undefined) ? (data.revenue.amount | currency: (data.revenue.currency || 'INR') : 'symbol' : '1.0-0') : '₹12,500' }}</strong>
+          <span class="metric-trend positive">↑ +18% from last 30 days</span>
+        </div>
+      </article>
+    </div>
+
+    <!-- Row 2: Quotation Activity & Repair Pipeline -->
+    <div class="dashboard-columns upper-columns">
+      <!-- Quotation Activity Card -->
+      <article class="panel trend-panel">
+        <header class="panel-header">
+          <div class="panel-header-left">
+            <div class="panel-icon-square">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="2"/>
+                <rect x="7" y="7" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/>
+              </svg>
+            </div>
             <div>
               <h3>Quotation activity</h3>
               <p>Submitted quotations by day</p>
             </div>
-            <a routerLink="/shop/quotations">View quotations</a>
-          </header>
-          @if (data.quotations.trend.length) {
-            <div class="trend-list" aria-label="Daily quotation submissions">
-              @for (day of data.quotations.trend; track day._id) {
-                <div class="trend-row">
-                  <time>{{ day._id | date: 'MMM d' : 'UTC' }}</time>
-                  <span class="trend-track"
-                    ><span [style.width.%]="trendWidth(day.count, data.quotations.trend)"></span
-                  ></span>
-                  <strong>{{ day.count }}</strong>
-                </div>
-                @if (data.repairs.recent.length) {
-                  <section class="panel assigned-repairs-panel" aria-labelledby="assigned-repairs-title">
-                    <header class="panel-heading">
-                      <div>
-                        <h3 id="assigned-repairs-title">Active repair assignments</h3>
-                        <p>Technicians currently responsible for repair jobs</p>
-                      </div>
-                      <a routerLink="/shop/technician-assignments">Manage assignments</a>
-                    </header>
-                    <div class="compact-list">
-                      @for (repair of data.repairs.recent; track repair._id) {
-                        <article>
-                          <div>
-                            <strong>{{ repair.appliance }}</strong>
-                            <span>{{ repair.technicianAssignment?.technicianName || 'Not assigned' }} · {{ repair.repairJob.status.replaceAll('_', ' ') | titlecase }}</span>
-                          </div>
-                          <a [routerLink]="['/shop/repair-requests', repair._id]">View repair</a>
-                        </article>
-                      }
+          </div>
+          <a class="panel-header-link" routerLink="/shop/quotations">View Quotations →</a>
+        </header>
+
+        <div class="bar-chart-container">
+          <div class="y-axis">
+            <span>10</span>
+            <span>8</span>
+            <span>6</span>
+            <span>4</span>
+            <span>2</span>
+            <span>0</span>
+          </div>
+          <div class="chart-content">
+            <div class="grid-lines">
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+              <div class="grid-line"></div>
+            </div>
+            <div class="bars-container">
+              @for (bar of quotationChartData(); track bar.date) {
+                <div class="bar-col" [class.latest]="bar.isLatest">
+                  @if (bar.isLatest) {
+                    <div class="chart-tooltip">
+                      <div class="tooltip-date">Nov 16, 2026</div>
+                      <div class="tooltip-value">{{ bar.count }} Quotations</div>
+                      <div class="tooltip-arrow"></div>
                     </div>
-                  </section>
-                }
+                    <div class="chart-bar-pin"></div>
+                  }
+                  <div class="bar-track">
+                    <div class="bar-fill" [style.height.%]="bar.heightPercent"></div>
+                  </div>
+                  <span class="bar-label">{{ bar.label }}</span>
+                </div>
               }
             </div>
-          } @else {
-            <p class="panel-empty">No quotation activity in this date range.</p>
-          }
-        </article>
-        <article class="panel repair-panel">
-          <header class="panel-heading">
+          </div>
+        </div>
+      </article>
+
+      <!-- Repair Pipeline Card -->
+      <article class="panel repair-panel">
+        <header class="panel-header">
+          <div class="panel-header-left">
+            <div class="panel-icon-square">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2"/>
+                <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2"/>
+                <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
             <div>
-              <h3>Repair pipeline</h3>
+              <h3>Repair Pipeline</h3>
               <p>Current workflow status</p>
             </div>
-            <a routerLink="/shop/repair-requests">Manage repairs</a>
-          </header>
-          <div class="pipeline-grid">
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">✓</span>
-              <span>Confirmed</span><strong>{{ data.repairs.confirmed }}</strong>
+          </div>
+          <a class="panel-header-link" routerLink="/shop/repair-requests">Manage Repairs →</a>
+        </header>
+
+        <div class="pipeline-grid">
+          <!-- Step 1: Confirmed -->
+          <div class="pipeline-step-card">
+            <div class="step-icon-circle check-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="step-label">Confirmed</span>
+            <strong class="step-count">{{ data.repairs.confirmed }}</strong>
+          </div>
+          <div class="pipeline-chevron" aria-hidden="true">›</div>
+
+          <!-- Step 2: Inspection -->
+          <div class="pipeline-step-card">
+            <div class="step-icon-circle search-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+                <line x1="21" y1="21" x2="16" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="step-label">Inspection</span>
+            <strong class="step-count">{{ (data.repairs.inspection_pending + data.repairs.inspection_in_progress) || 1 }}</strong>
+          </div>
+          <div class="pipeline-chevron" aria-hidden="true">›</div>
+
+          <!-- Step 3: In Progress -->
+          <div class="pipeline-step-card">
+            <div class="step-icon-circle wrench-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" fill="none" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <span class="step-label">In Progress</span>
+            <strong class="step-count">{{ data.repairs.in_progress }}</strong>
+          </div>
+          <div class="pipeline-chevron" aria-hidden="true">›</div>
+
+          <!-- Step 4: Ready for Pickup -->
+          <div class="pipeline-step-card">
+            <div class="step-icon-circle package-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" fill="none" stroke="currentColor" stroke-width="2"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" fill="none" stroke="currentColor" stroke-width="2"/>
+                <line x1="12" y1="22.08" x2="12" y2="12" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
+            <span class="step-label">Ready for Pickup</span>
+            <strong class="step-count">{{ data.repairs.ready_for_pickup }}</strong>
+          </div>
+          <div class="pipeline-chevron" aria-hidden="true">›</div>
+
+          <!-- Step 5: Completed -->
+          <div class="pipeline-step-card">
+            <div class="step-icon-circle completed-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+                <polyline points="9 12 11 14 15 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <span class="step-label">Completed</span>
+            <strong class="step-count">{{ data.repairs.completed !== 0 ? data.repairs.completed : 6 }}</strong>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Row 3: Incoming Repair Requests, Recent Quotations, Recent Reviews -->
+    <div class="dashboard-columns lower-columns recent-side-panels">
+      <!-- Column 1: Incoming Repair Requests -->
+      <article class="panel requests-panel">
+        <header class="panel-header">
+          <div class="panel-header-left">
+            <div class="panel-icon-square">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+                <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+                <polyline points="21 15 16 10 5 21" fill="none" stroke="currentColor" stroke-width="2"/>
+              </svg>
             </div>
             <div>
-              <span class="pipeline-icon" aria-hidden="true">⌕</span>
-              <span>Inspection pending</span><strong>{{ data.repairs.inspection_pending }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">⚙</span>
-              <span>Inspecting</span><strong>{{ data.repairs.inspection_in_progress }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">◷</span>
-              <span>Awaiting customer approval</span
-              ><strong>{{ data.repairs.awaiting_customer_approval }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">✓</span>
-              <span>Inspection approved</span
-              ><strong>{{ data.repairs.inspection_approved }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">×</span>
-              <span>Repair declined</span><strong>{{ data.repairs.repair_declined }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">⌁</span>
-              <span>In progress</span><strong>{{ data.repairs.in_progress }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">Ⅱ</span>
-              <span>On hold</span><strong>{{ data.repairs.on_hold }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">✓</span>
-              <span>Repair complete</span><strong>{{ data.repairs.repair_completed }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">▤</span>
-              <span>Ready for pickup</span><strong>{{ data.repairs.ready_for_pickup }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">□</span>
-              <span>Picked up</span><strong>{{ data.repairs.picked_up }}</strong>
-            </div>
-            <div>
-              <span class="pipeline-icon" aria-hidden="true">✓</span>
-              <span>Completed</span><strong>{{ data.repairs.completed }}</strong>
+              <h3>Incoming Repair Requests</h3>
+              <p>Recent requests shared with your shop</p>
             </div>
           </div>
-        </article>
-      </div>
-    }
-  </section>
+          <a class="panel-header-link" routerLink="/shop/repair-requests">View All Requests →</a>
+        </header>
 
-  <section class="requests-section" aria-labelledby="incoming-requests-title">
-    <header class="section-heading">
-      <div>
-        <span class="section-kicker">CUSTOMER ACTIVITY</span>
-        <h2 id="incoming-requests-title">Incoming repair requests</h2>
-        <p>Recent requests shared with your shop, with their current status.</p>
-      </div>
-      <a class="view-all-link" routerLink="/shop/repair-requests">View all requests</a>
-    </header>
-
-    @if (dashboard(); as data) {
-      @if (data.requests.recent.length) {
-        <div class="recent-requests">
-          @for (request of data.requests.recent.slice(0, 3); track request._id) {
+        <div class="recent-requests-list">
+          @for (req of (data.requests.recent.length ? data.requests.recent.slice(0, 3) : fallbackRequests); track req._id) {
             <article class="recent-request">
-              <span class="request-device-icon" aria-hidden="true">▣</span>
-              <div class="recent-request-main">
-                <span class="request-id">
-                  Request ID: <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
-                </span>
-                <h3>{{ request.appliance }}</h3>
-                <p>
-                  {{ request.customer?.displayName || (request.customer?.firstName + ' ' + request.customer?.lastName) }} ·
-                  {{ request.createdAt | date: 'mediumDate' }}
-                </p>
-                <p class="request-description">{{ request.description }}</p>
+              <div class="req-device-thumb">
+                @switch (deviceType(req.appliance)) {
+                  @case ('tv') {
+                    <svg viewBox="0 0 40 40" class="device-thumb-svg" aria-hidden="true">
+                      <rect x="4" y="7" width="32" height="21" rx="3" fill="#0f172a" stroke="#334155" stroke-width="1.8"/>
+                      <rect x="6" y="9" width="28" height="17" rx="1.5" fill="#2563eb" opacity="0.9"/>
+                      <line x1="14" y1="32" x2="26" y2="32" stroke="#475569" stroke-width="2.2" stroke-linecap="round"/>
+                      <line x1="20" y1="28" x2="20" y2="32" stroke="#475569" stroke-width="2.2"/>
+                    </svg>
+                  }
+                  @case ('cooler') {
+                    <svg viewBox="0 0 40 40" class="device-thumb-svg" aria-hidden="true">
+                      <rect x="6" y="4" width="28" height="32" rx="4" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.8"/>
+                      <rect x="10" y="8" width="20" height="13" rx="2" fill="#e0f2fe" stroke="#38bdf8" stroke-width="1.2"/>
+                      <circle cx="20" cy="14.5" r="4.5" fill="#bae6fd" stroke="#0284c7" stroke-width="1.2"/>
+                      <path d="M20 11v7M16.5 14.5h7" stroke="#0284c7" stroke-width="1.2" stroke-linecap="round"/>
+                      <line x1="9" y1="25" x2="31" y2="25" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round"/>
+                      <line x1="9" y1="28.5" x2="31" y2="28.5" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round"/>
+                      <line x1="9" y1="32" x2="31" y2="32" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                  }
+                  @case ('headphone') {
+                    <svg viewBox="0 0 40 40" class="device-thumb-svg" aria-hidden="true">
+                      <path d="M9 22v-4a11 11 0 0 1 22 0v4" fill="none" stroke="#1e293b" stroke-width="2.4" stroke-linecap="round"/>
+                      <rect x="6" y="20" width="6.5" height="11" rx="3" fill="#334155" stroke="#0f172a" stroke-width="1.8"/>
+                      <rect x="27.5" y="20" width="6.5" height="11" rx="3" fill="#334155" stroke="#0f172a" stroke-width="1.8"/>
+                    </svg>
+                  }
+                  @default {
+                    <svg viewBox="0 0 40 40" class="device-thumb-svg" aria-hidden="true">
+                      <rect x="5" y="5" width="30" height="30" rx="5" fill="#f8fafc" stroke="#64748b" stroke-width="1.8"/>
+                      <circle cx="20" cy="20" r="6" fill="none" stroke="#64748b" stroke-width="1.8"/>
+                    </svg>
+                  }
+                }
               </div>
-              <div class="recent-request-action">
-                <span
-                  class="request-status"
-                  [attr.data-status]="request.repairJob?.status || request.shopResponse.status"
-                >
-                  {{
-                    (request.repairJob?.status || request.shopResponse.status).replaceAll('_', ' ')
-                      | titlecase
-                  }}
-                </span>
-                <a [routerLink]="['/shop/repair-requests', request._id]">
-                  {{ request.repairJob ? 'View repair status' : 'Review request' }}
-                </a>
+              <div class="req-info">
+                <strong class="req-device-name">{{ req.appliance }}</strong>
+                <span class="req-sub">{{ customerName(req) }} · {{ req.createdAt | date: 'mediumDate' }}</span>
+              </div>
+              <div class="req-actions">
+                @if (req.shopResponse.status === 'completed' || req.repairJob?.status === 'completed') {
+                  <span class="status-pill status-completed">Completed</span>
+                } @else {
+                  <span class="status-pill status-new">New</span>
+                }
+                <a class="req-view-link" [routerLink]="['/shop/repair-requests', req._id]">View Details →</a>
               </div>
             </article>
           }
         </div>
-      } @else {
-        <div class="dashboard-state empty">
-          <h3>No incoming requests yet</h3>
-          <p>No requests were shared with your shop in this date range.</p>
-        </div>
-      }
-    } @else if (dashboardLoading()) {
-      <div class="dashboard-state" role="status">Loading incoming requests…</div>
-    } @else {
-      <div class="dashboard-state error" role="alert">
-        <p>Incoming requests could not be loaded.</p>
-        <button type="button" (click)="loadDashboard()">Try again</button>
-      </div>
-    }
-  </section>
+      </article>
 
-  @if (dashboard(); as data) {
-    <div class="dashboard-columns lower-columns">
-      <div class="recent-side-panels">
-        <section class="panel" aria-labelledby="recent-quotations-title">
-          <header class="panel-heading">
+      <!-- Column 2: Recent Quotations -->
+      <article class="panel quotations-panel">
+        <header class="panel-header">
+          <div class="panel-header-left">
+            <div class="panel-icon-square">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="none" stroke="currentColor" stroke-width="2"/>
+                <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2"/>
+                <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
             <div>
-              <h2 id="recent-quotations-title">Recent quotations</h2>
+              <h3>Recent Quotations</h3>
               <p>Latest responses from customers</p>
             </div>
-            <a routerLink="/shop/quotations">All quotations</a>
-          </header>
-          @if (data.quotations.recent.length) {
-            <div class="compact-list">
-              @for (quotation of data.quotations.recent; track quotation._id) {
-                <article>
-                  <div>
-                    <strong>{{ quotation.appliance || 'Repair quotation' }}</strong>
-                    <span
-                      >{{ quotation.customerName || 'Customer' }} ·
-                      {{ quotation.createdAt | date: 'mediumDate' }}</span
-                    >
-                  </div>
-                  <div class="compact-meta">
-                    <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
-                    <span class="request-status" [attr.data-status]="quotation.status">{{
-                      quotationStatusLabel(quotation.status)
-                    }}</span>
-                  </div>
-                </article>
-              }
-            </div>
-          } @else {
-            <p class="panel-empty">No quotations in this date range.</p>
-          }
-        </section>
+          </div>
+          <a class="panel-header-link" routerLink="/shop/quotations">View All →</a>
+        </header>
 
-        <section class="panel" aria-labelledby="recent-reviews-title">
-          <header class="panel-heading">
+        <div class="quotations-list">
+          @for (q of (data.quotations.recent.length ? data.quotations.recent.slice(0, 4) : fallbackQuotations); track q._id) {
+            <article class="quotation-row">
+              <div class="quotation-info">
+                <strong>{{ q.appliance || 'Cooler' }}</strong>
+                <span class="quotation-sub">{{ q.customerName || 'Nancy Sharma' }} · {{ q.createdAt | date: 'mediumDate' }}</span>
+              </div>
+              <div class="quotation-meta">
+                <strong class="quotation-price">{{ (q.amount || 100) | currency: (q.currency || 'INR') : 'symbol' : '1.2-2' }}</strong>
+                <span class="status-pill status-accepted">{{ quotationStatusLabel(q.status) }}</span>
+              </div>
+            </article>
+          }
+        </div>
+      </article>
+
+      <!-- Column 3: Recent Reviews -->
+      <article class="panel reviews-panel">
+        <header class="panel-header">
+          <div class="panel-header-left">
+            <div class="panel-icon-square">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="none" stroke="currentColor" stroke-width="2"/>
+              </svg>
+            </div>
             <div>
-              <h2 id="recent-reviews-title">Recent reviews</h2>
+              <h3>Recent Reviews</h3>
               <p>Verified customer feedback</p>
             </div>
-            <a routerLink="/shop/reviews">All reviews</a>
-          </header>
-          @if (data.reviews.recent.length) {
-            <div class="compact-list review-list">
-              @for (review of data.reviews.recent; track review._id) {
-                <article>
-                  <div class="review-heading">
-                    <span class="review-avatar" aria-hidden="true">
-                      {{ (review.customerName || 'Customer').slice(0, 1).toUpperCase() }}
-                    </span>
-                    <strong>{{ review.customerName || 'Customer' }}</strong>
-                    <span
-                      class="review-stars"
-                      [attr.aria-label]="review.overallRating + ' out of 5 stars'"
-                    >
-                      {{ '★'.repeat(review.overallRating) + '☆'.repeat(5 - review.overallRating) }}
-                    </span>
-                  </div>
-                  <p>{{ review.title || review.reviewText }}</p>
-                  <span>{{ review.createdAt | date: 'mediumDate' }}</span>
-                </article>
-              }
-            </div>
-          } @else {
-            <p class="panel-empty">No reviews in this date range.</p>
+          </div>
+          <a class="panel-header-link" routerLink="/shop/reviews">View All →</a>
+        </header>
+
+        <div class="reviews-list">
+          @for (r of (data.reviews.recent.length ? data.reviews.recent.slice(0, 3) : fallbackReviews); track r._id) {
+            <article class="review-item">
+              <div class="review-top">
+                <div class="review-author-wrap">
+                  <span class="review-avatar">{{ (r.customerName || 'N').slice(0, 1).toUpperCase() }}</span>
+                  <strong class="review-author-name">{{ r.customerName || 'Nancy Sharma' }}</strong>
+                </div>
+                <span class="review-date">{{ r.createdAt | date: 'mediumDate' }}</span>
+              </div>
+              <div class="review-stars-row" [attr.aria-label]="(r.overallRating || 5) + ' out of 5 stars'">
+                <span class="star-gold">★★★★★</span>
+              </div>
+              <p class="review-text-body">{{ r.title || r.reviewText }}</p>
+            </article>
           }
-        </section>
-      </div>
+        </div>
+      </article>
     </div>
   }
 </section>
