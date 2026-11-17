@@ -215,10 +215,6 @@
                 </div>
               </div>
             }
-            @if (job.repairJob) {
-              <app-customer-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" />
-              <a class="job-button secondary" [routerLink]="legacyDetailRoute(job._id)">Open full repair controls</a>
-            }
           </section>
         </section>
       </div>

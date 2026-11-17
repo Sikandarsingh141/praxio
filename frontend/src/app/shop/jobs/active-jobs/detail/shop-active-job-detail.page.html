@@ -10,7 +10,5 @@
       <article class="detail-section"><h2>Assigned technician</h2>@if (job.technicianAssignment?.current; as assignment) { <p class="shop-name">{{ assignment.technicianName }}</p><p>Assigned {{ assignment.assignedAt | date: 'mediumDate' }}</p>@if (assignment.note) { <p>{{ assignment.note }}</p> } } @else { <p>No technician has been assigned.</p> }</article>
       <article class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="jobs.photoAttachments(job.photos)" /></article></section>
     <section class="detail-section"><h2>Repair history</h2><app-job-timeline [items]="jobs.shopTimeline(job)" /></section>
-    @if (job.repairJob) { <section class="detail-section"><h2>Inspection and repair workflow</h2><app-shop-repair-workflow [request]="job" (requestUpdated)="refreshRecord($event)" /></section> }
-    <a class="job-button secondary" [routerLink]="legacyDetailRoute(job._id)">Open full repair controls</a>
-  }
+    }
 </main>
