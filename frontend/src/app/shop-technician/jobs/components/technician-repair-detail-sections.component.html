@@ -1,0 +1,206 @@
+<section class="detail-grid">
+  <article class="detail-section">
+    <h2>Device and repair request</h2>
+    <dl>
+      <div><dt>Device</dt><dd>{{ job.appliance }}</dd></div>
+      <div><dt>Brand and model</dt><dd>{{ job.brand || 'Not specified' }} {{ job.model || '' }}</dd></div>
+      <div><dt>Service type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : job.serviceType === 'shop_visit' ? 'Shop visit' : 'Not specified' }}</dd></div>
+      <div><dt>Submitted</dt><dd>{{ job.createdAt ? (job.createdAt | date: 'mediumDate') : 'Not recorded' }}</dd></div>
+      <div><dt>Preferred date</dt><dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'mediumDate') : 'Not specified' }}</dd></div>
+      <div><dt>Request response</dt><dd>{{ (job.shopResponse?.status || 'Not recorded') | titlecase }}</dd></div>
+    </dl>
+    <p>{{ job.description || 'No issue details were provided.' }}</p>
+  </article>
+
+  <article class="detail-section">
+    <h2>Customer</h2>
+    <p class="shop-name">{{ job.customerInfo?.name || job.customer || 'Customer' }}</p>
+    <dl>
+      <div><dt>Phone</dt><dd>{{ job.customerInfo?.phone || job.phone || 'Not provided' }}</dd></div>
+      <div><dt>Email</dt><dd>{{ job.customerInfo?.email || 'Not provided' }}</dd></div>
+      <div>
+        <dt>Location</dt>
+        <dd>
+          @if (job.customerInfo?.location; as location) {
+            {{ location.latitude }}, {{ location.longitude }}
+          } @else {
+            Not provided
+          }
+        </dd>
+      </div>
+    </dl>
+  </article>
+
+  <article class="detail-section quotation-section">
+    <h2>Quotation and payment</h2>
+    @if (job.quotations.length) {
+      @for (quotation of job.quotations; track quotation.id) {
+        <div class="quotation-row">
+          <div class="quotation-heading">
+            <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+            <app-job-status-badge [status]="quotation.status" />
+          </div>
+          <p>{{ quotation.message || 'No quotation notes were recorded.' }}</p>
+          @if (quotation.proposedSolution) { <p><strong>Proposed solution:</strong> {{ quotation.proposedSolution }}</p> }
+          @if (quotation.estimatedDays) { <p><strong>Estimated time:</strong> {{ quotation.estimatedDays }} days</p> }
+          <dl class="fee-facts">
+            <div><dt>Inspection</dt><dd>{{ quotation.inspectionCharge | currency: quotation.currency }}</dd></div>
+            <div><dt>Parts</dt><dd>{{ quotation.partsCost | currency: quotation.currency }}</dd></div>
+            <div><dt>Labour</dt><dd>{{ quotation.labourCharge | currency: quotation.currency }}</dd></div>
+            <div><dt>Additional charges</dt><dd>{{ quotation.additionalCharges | currency: quotation.currency }}</dd></div>
+          </dl>
+          @if (quotation.warrantyInformation) { <p><strong>Warranty:</strong> {{ quotation.warrantyInformation }}</p> }
+          @if (quotation.validUntil) { <p><strong>Valid until:</strong> {{ quotation.validUntil | date: 'mediumDate' }}</p> }
+          @if (quotation.rejectionReason) { <p><strong>Decision note:</strong> {{ quotation.rejectionReason }}</p> }
+        </div>
+      }
+      @if (job.repairJobDetails; as repair) {
+        <dl class="fee-facts">
+          <div><dt>Approved repair estimate</dt><dd>{{ (repair.approvedRepairAmount ?? job.quotation?.amount ?? 0) | currency: job.quotation?.currency }}</dd></div>
+          <div><dt>Approved additional charges</dt><dd>{{ (repair.approvedAdditionalCharges ?? 0) | currency: job.quotation?.currency }}</dd></div>
+        </dl>
+        <p class="payment-note">Approved amounts are shown here; payment collection status is not available in this record.</p>
+      }
+    } @else {
+      <p>No quotation information is available.</p>
+    }
+  </article>
+
+  <article class="detail-section">
+    <h2>Assigned technician</h2>
+    <p class="shop-name">{{ job.assignmentDetails?.technicianName || 'You' }}</p>
+    <p>Assigned {{ (job.assignmentDetails?.assignedAt || job.assignedAt) | date: 'mediumDate' }}</p>
+    @if (job.assignmentDetails?.note) { <p>{{ job.assignmentDetails?.note }}</p> }
+  </article>
+
+  <article class="detail-section">
+    <h2>Files and photos</h2>
+    <app-job-attachments [items]="jobs.photoAttachments(job.photos)" />
+  </article>
+
+  <article class="detail-section customer-detail-main-card route-container">
+    <section class="customer-detail-block route-section">
+      <h2 class="section-heading">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </svg>
+        Customer Location and Route
+      </h2>
+      <app-shop-repair-route
+        [requestId]="job.id"
+        [shopLocation]="job.shop?.location"
+        [customerLocation]="job.customerInfo?.location ?? job.location"
+        [directionsLoader]="directionsLoader"
+      />
+    </section>
+  </article>
+</section>
+
+<section class="detail-section workflow-section">
+  <h2>Inspection and repair workflow</h2>
+  @if (job.repairJobDetails; as repair) {
+    <dl class="workflow-summary">
+      <div><dt>Repair status</dt><dd>{{ repair.status | titlecase }}</dd></div>
+      <div><dt>Confirmed</dt><dd>{{ repair.confirmedAt ? (repair.confirmedAt | date: 'medium') : 'Not recorded' }}</dd></div>
+      <div><dt>Started</dt><dd>{{ repair.startedAt ? (repair.startedAt | date: 'medium') : 'Not recorded' }}</dd></div>
+      <div><dt>Completed</dt><dd>{{ repair.repairCompletedAt ? (repair.repairCompletedAt | date: 'medium') : 'Not recorded' }}</dd></div>
+      <div><dt>Ready for pickup</dt><dd>{{ repair.readyForPickupAt ? (repair.readyForPickupAt | date: 'medium') : 'Not recorded' }}</dd></div>
+      <div><dt>Picked up</dt><dd>{{ repair.pickedUpAt ? (repair.pickedUpAt | date: 'medium') : 'Not recorded' }}</dd></div>
+    </dl>
+
+    @if (repair.inspection; as inspection) {
+      <section class="workflow-subsection">
+        <h3>Inspection and diagnosis <span>{{ inspection.status | titlecase }}</span></h3>
+        <dl class="workflow-summary">
+          <div><dt>Identified problem</dt><dd>{{ inspection.identifiedProblem || 'Not recorded' }}</dd></div>
+          <div><dt>Findings</dt><dd>{{ inspection.findings || 'Not recorded' }}</dd></div>
+          <div><dt>Required repair work</dt><dd>{{ inspection.requiredRepairWork || 'Not recorded' }}</dd></div>
+          <div><dt>Estimated total</dt><dd>{{ inspection.estimatedTotal | currency: job.quotation?.currency }}</dd></div>
+          <div><dt>Inspection fee</dt><dd>{{ inspection.inspectionCharges | currency: job.quotation?.currency }}</dd></div>
+          <div><dt>Labour</dt><dd>{{ inspection.labourCharge | currency: job.quotation?.currency }}</dd></div>
+          <div><dt>Parts total</dt><dd>{{ inspection.partsTotal | currency: job.quotation?.currency }}</dd></div>
+          <div><dt>Other charges</dt><dd>{{ inspection.otherCharges | currency: job.quotation?.currency }}</dd></div>
+          <div><dt>Estimated time</dt><dd>{{ inspection.estimatedTimeValue || 'Not specified' }} {{ inspection.estimatedTimeUnit || '' }}</dd></div>
+          <div><dt>Warranty</dt><dd>{{ inspection.warranty || 'Not specified' }}</dd></div>
+          <div><dt>Submitted</dt><dd>{{ inspection.submittedAt ? (inspection.submittedAt | date: 'medium') : 'Not recorded' }}</dd></div>
+          <div><dt>Decision reason</dt><dd>{{ inspection.decisionReason || 'Not recorded' }}</dd></div>
+        </dl>
+        @if (inspection.parts.length) {
+          <h4>Parts estimate</h4>
+          <div class="workflow-table">
+            @for (part of inspection.parts; track $index) {
+              <div><strong>{{ part.name }}</strong><span>Qty {{ part.quantity }}</span><span>{{ part.unitPrice | currency: job.quotation?.currency }} each</span><strong>{{ part.total | currency: job.quotation?.currency }}</strong></div>
+            }
+          </div>
+        }
+        @if (inspection.message) { <p>{{ inspection.message }}</p> }
+        @if (inspection.images.length) {
+          <h4>Inspection photos</h4>
+          <app-job-attachments [items]="jobs.photoAttachments(inspection.images)" />
+        }
+      </section>
+    } @else {
+      <section class="workflow-subsection"><h3>Inspection and diagnosis</h3><p>No inspection report has been recorded.</p></section>
+    }
+
+    @if (repair.additionalChargeRequests?.length) {
+      <section class="workflow-subsection">
+        <h3>Additional charge requests</h3>
+        @for (charge of repair.additionalChargeRequests ?? []; track charge._id) {
+          <article class="charge-card">
+            <header><strong>{{ charge.amount | currency: job.quotation?.currency }}</strong><span>{{ charge.status | titlecase }}</span></header>
+            <dl class="workflow-summary">
+              <div><dt>Issue</dt><dd>{{ charge.issue || 'Not recorded' }}</dd></div>
+              <div><dt>Reason</dt><dd>{{ charge.reason || 'Not recorded' }}</dd></div>
+              <div><dt>Repair description</dt><dd>{{ charge.repairDescription || 'Not recorded' }}</dd></div>
+              <div><dt>Parts total</dt><dd>{{ charge.partsTotal | currency: job.quotation?.currency }}</dd></div>
+              <div><dt>Labour</dt><dd>{{ charge.labourCharge | currency: job.quotation?.currency }}</dd></div>
+              <div><dt>Other charges</dt><dd>{{ charge.otherCharges | currency: job.quotation?.currency }}</dd></div>
+              <div><dt>Requested</dt><dd>{{ charge.requestedAt | date: 'medium' }}</dd></div>
+              <div><dt>Decision reason</dt><dd>{{ charge.decisionReason || 'Not recorded' }}</dd></div>
+            </dl>
+            @if (charge.message) { <p>{{ charge.message }}</p> }
+            @if (charge.parts.length) {
+              <div class="workflow-table">
+                @for (part of charge.parts; track $index) {
+                  <div><strong>{{ part.name }}</strong><span>Qty {{ part.quantity }}</span><span>{{ part.unitPrice | currency: job.quotation?.currency }} each</span><strong>{{ part.total | currency: job.quotation?.currency }}</strong></div>
+                }
+              </div>
+            }
+            @if (charge.images.length) { <app-job-attachments [items]="jobs.photoAttachments(charge.images)" /> }
+          </article>
+        }
+      </section>
+    }
+
+    <section class="workflow-subsection">
+      <h3>Repair outcome</h3>
+      <dl class="workflow-summary">
+        <div><dt>Completion summary</dt><dd>{{ repair.completionDescription || 'Not recorded' }}</dd></div>
+        <div><dt>Work performed</dt><dd>{{ repair.workPerformed || 'Not recorded' }}</dd></div>
+        <div><dt>Parts replaced</dt><dd>{{ repair.partsReplaced || 'Not recorded' }}</dd></div>
+        <div><dt>Final notes</dt><dd>{{ repair.finalNotes || 'Not recorded' }}</dd></div>
+        <div><dt>Pickup instructions</dt><dd>{{ repair.pickupInstructions || 'Not recorded' }}</dd></div>
+        <div><dt>Pickup message</dt><dd>{{ repair.pickupMessage || 'Not recorded' }}</dd></div>
+      </dl>
+      @if (repair.customerVerification; as verification) {
+        <h4>Customer verification</h4>
+        <dl class="workflow-summary">
+          <div><dt>Received</dt><dd>{{ verification.received ? 'Yes' : 'No' }}</dd></div>
+          <div><dt>Inspected</dt><dd>{{ verification.inspected ? 'Yes' : 'No' }}</dd></div>
+          <div><dt>Satisfaction</dt><dd>{{ (verification.satisfaction || 'Not recorded') | titlecase }}</dd></div>
+          <div><dt>Confirmed</dt><dd>{{ verification.confirmedAt | date: 'medium' }}</dd></div>
+          <div><dt>Comments</dt><dd>{{ verification.comments || 'None' }}</dd></div>
+        </dl>
+      }
+    </section>
+  } @else {
+    <p>No repair workflow information is available yet.</p>
+  }
+</section>
+
+<section class="detail-section">
+  <h2>Repair history</h2>
+  <app-job-timeline [items]="jobs.technicianTimeline(job)" />
+</section>

@@ -17,7 +17,10 @@ import {
   CompleteRepairDto,
   RepairProgressDto,
 } from '../customer/customer-portal.dto';
-import { InspectionReportDto } from '../customer/repair-workflow.dto';
+import {
+  AdditionalChargeRequestDto,
+  InspectionReportDto,
+} from '../customer/repair-workflow.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { ShopPortalGuard } from './shop-portal.guard';
 import { TechnicianPortalGuard } from './technician-portal.guard';
@@ -278,6 +281,22 @@ export class TechnicianPortalController {
     };
   }
 
+  @Get('jobs/:id/directions')
+  async jobDirections(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+  ) {
+    const shopId = await this.technicians.technicianJobShopId(
+      this.userId(request),
+      requestId,
+    );
+    return {
+      data: {
+        route: await this.customerPortal.getShopRepairRoute(shopId, requestId),
+      },
+    };
+  }
+
   @Post('jobs/:id/start-inspection')
   async startInspection(
     @Req() request: AuthenticatedRequest,
@@ -325,6 +344,29 @@ export class TechnicianPortalController {
         repairJob: await this.customerPortal.startApprovedRepair(
           await this.technicians.technicianShopId(technicianId),
           requestId,
+          technicianId,
+        ),
+      },
+    };
+  }
+
+  @Post('jobs/:id/additional-charges')
+  async requestAdditionalCharges(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() input: AdditionalChargeRequestDto,
+  ) {
+    const technicianId = this.userId(request);
+    const shopId = await this.technicians.technicianJobShopId(
+      technicianId,
+      requestId,
+    );
+    return {
+      data: {
+        chargeRequest: await this.customerPortal.requestAdditionalCharges(
+          shopId,
+          requestId,
+          input,
           technicianId,
         ),
       },

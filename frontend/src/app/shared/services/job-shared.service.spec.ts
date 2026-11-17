@@ -13,6 +13,7 @@ import {
   TechnicianJobSummary,
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
+import { RepairRoute } from '../models/repair-route.models';
 import { RepairWorkflowJob } from '../models/repair-workflow.models';
 import { DisputeListResult } from '../models/disputes.models';
 import { DisputesService } from './disputes.service';
@@ -37,6 +38,7 @@ describe('JobSharedService', () => {
     technicianApi = jasmine.createSpyObj<TechniciansService>('TechniciansService', [
       'myJobs',
       'myJobDetails',
+      'myJobDirections',
       'assignments',
     ]);
     disputesApi = jasmine.createSpyObj<DisputesService>('DisputesService', ['list', 'get']);
@@ -235,6 +237,7 @@ describe('JobSharedService', () => {
       expect(items.map((item) => item.id)).toEqual(['assigned-job']);
       expect(items[0].assignedToName).toBe('Ravi Technician');
       expect(items[0].assignedAt).toBe('2026-11-16T10:24:00.000Z');
+      expect(items[0].serviceType).toBe('home_service');
       expect(technicianApi.assignments).toHaveBeenCalledTimes(1);
       expect(shopApi.list).not.toHaveBeenCalled();
       done();
@@ -297,7 +300,11 @@ describe('JobSharedService', () => {
       brand: 'Fixora',
       model: 'A1',
       status: 'confirmed',
+      assignedToName: 'Aman Verma',
+      assignedToImageData: 'data:image/png;base64,technician',
+      serviceType: 'home_service',
       assignedAt: '2025-01-01T00:00:00.000Z',
+      createdAt: '2024-12-31T00:00:00.000Z',
     };
     technicianApi.myJobs.and.returnValue(
       of({
@@ -314,7 +321,28 @@ describe('JobSharedService', () => {
 
     service.technicianJobs('assigned').subscribe((items) => {
       expect(items.map((item) => item.id)).toEqual(['tech-job']);
+      expect(items[0].assignedAt).toBe('2025-01-01T00:00:00.000Z');
+      expect(items[0].assignedToName).toBe('Aman Verma');
+      expect(items[0].assignedToImageData).toBe('data:image/png;base64,technician');
+      expect(items[0].serviceType).toBe('home_service');
+      expect(items[0].createdAt).toBe('2024-12-31T00:00:00.000Z');
       expect(technicianApi.myJobs).toHaveBeenCalledWith('pending');
+      done();
+    });
+  });
+
+  it('loads technician directions from the technician-scoped route service', (done) => {
+    const route: RepairRoute = {
+      distanceMeters: 4800,
+      durationSeconds: 900,
+      description: 'Fastest route',
+      path: [{ latitude: 30.72, longitude: 76.72 }],
+    };
+    technicianApi.myJobDirections.and.returnValue(of(route));
+
+    service.technicianDirections('assigned-job').subscribe((result) => {
+      expect(result).toEqual(route);
+      expect(technicianApi.myJobDirections).toHaveBeenCalledWith('assigned-job');
       done();
     });
   });
@@ -373,6 +401,7 @@ function assignmentRecord(
     description: 'Screen repair',
     photo: null,
     createdAt: '2026-11-15T12:00:00.000Z',
+    serviceType: 'home_service',
     repairStatus,
     customer: 'Ava Customer',
     assignment: {

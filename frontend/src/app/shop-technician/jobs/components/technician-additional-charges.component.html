@@ -1,0 +1,193 @@
+<section class="technician-charges" aria-labelledby="technician-charges-title">
+  <header class="charges-header">
+    <div>
+      <h3 id="technician-charges-title">Request additional charges</h3>
+      <p>Send the customer an itemized request for newly identified repair work.</p>
+    </div>
+    @if (!formOpen()) {
+      <button type="button" class="secondary-button" (click)="formOpen.set(true)">
+        New request
+      </button>
+    }
+  </header>
+
+  @if (error()) {
+    <p class="form-error" role="alert">{{ error() }}</p>
+  }
+
+  @if (formOpen()) {
+    <form (ngSubmit)="save('submit')">
+      <label>
+        Newly identified issue *
+        <input
+          required
+          maxlength="500"
+          [ngModel]="issue()"
+          (ngModelChange)="issue.set($event)"
+          name="issue"
+        />
+      </label>
+      <label>
+        Reason for additional work *
+        <textarea
+          required
+          rows="3"
+          maxlength="2000"
+          [ngModel]="reason()"
+          (ngModelChange)="reason.set($event)"
+          name="reason"
+        ></textarea>
+      </label>
+      <label>
+        Repair work required *
+        <textarea
+          required
+          rows="3"
+          maxlength="2000"
+          [ngModel]="repairDescription()"
+          (ngModelChange)="repairDescription.set($event)"
+          name="repairDescription"
+        ></textarea>
+      </label>
+
+      <fieldset>
+        <legend>Parts and materials</legend>
+        @for (part of parts(); track $index; let index = $index) {
+          <div class="part-row">
+            <label>
+              Part name
+              <input
+                maxlength="120"
+                [ngModel]="part.name"
+                (ngModelChange)="updatePart(index, 'name', $event)"
+                [name]="'part-' + index"
+              />
+            </label>
+            <label>
+              Qty
+              <input
+                type="number"
+                min="1"
+                step="1"
+                [ngModel]="part.quantity"
+                (ngModelChange)="updatePart(index, 'quantity', $event)"
+                [name]="'quantity-' + index"
+              />
+            </label>
+            <label>
+              Price each
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="part.unitPrice"
+                (ngModelChange)="updatePart(index, 'unitPrice', $event)"
+                [name]="'price-' + index"
+              />
+            </label>
+            <button type="button" class="text-button" (click)="removePart(index)" [disabled]="parts().length === 1">
+              Remove
+            </button>
+          </div>
+        }
+        <button type="button" class="text-button" (click)="addPart()">Add part</button>
+      </fieldset>
+
+      <div class="cost-grid">
+        <label>
+          Labour charges
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [ngModel]="labourCharge()"
+            (ngModelChange)="labourCharge.set(+$event || 0)"
+            name="labourCharge"
+          />
+        </label>
+        <label>
+          Other charges
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            [ngModel]="otherCharges()"
+            (ngModelChange)="otherCharges.set(+$event || 0)"
+            name="otherCharges"
+          />
+        </label>
+        <label>
+          Estimated additional time
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            [ngModel]="estimatedTimeValue()"
+            (ngModelChange)="estimatedTimeValue.set($event === '' ? null : +$event)"
+            name="estimatedTimeValue"
+          />
+        </label>
+        <label>
+          Time unit
+          <select
+            [ngModel]="estimatedTimeUnit()"
+            (ngModelChange)="estimatedTimeUnit.set($event)"
+            name="estimatedTimeUnit"
+          >
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="checkbox-label">
+        <input
+          type="checkbox"
+          [ngModel]="blocksRepair()"
+          (ngModelChange)="blocksRepair.set($event)"
+          name="blocksRepair"
+        />
+        Pause repair work until the customer approves this request
+      </label>
+      <label>
+        Supporting images
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          (change)="chooseImages($event)"
+        />
+      </label>
+      @if (imagesError()) {
+        <p class="form-error" role="alert">{{ imagesError() }}</p>
+      }
+      <p class="file-note">{{ images().length }} image(s) selected</p>
+      <label>
+        Message to customer
+        <textarea
+          rows="2"
+          maxlength="2000"
+          [ngModel]="message()"
+          (ngModelChange)="message.set($event)"
+          name="message"
+        ></textarea>
+      </label>
+
+      <div class="charges-total">
+        <span>Estimated additional total</span>
+        <strong>{{ total() | currency: currency }}</strong>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="secondary-button" [disabled]="submitting()" (click)="save('draft')">
+          Save draft
+        </button>
+        <button type="submit" class="primary-button" [disabled]="submitting()">
+          {{ submitting() ? 'Sending…' : 'Send to customer for approval' }}
+        </button>
+        <button type="button" class="text-button" [disabled]="submitting()" (click)="formOpen.set(false)">
+          Cancel
+        </button>
+      </div>
+    </form>
+  }
+</section>

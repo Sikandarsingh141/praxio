@@ -1,15 +1,19 @@
 import {
+  AdditionalChargeRequest,
   RepairEstimatePart,
   RepairEstimatePartInput,
   RepairInspectionReport,
   InspectionReportInput,
+  RepairWorkflowJob,
 } from '../../shared/models/repair-workflow.models';
 
 export type {
+  AdditionalChargeRequest,
   RepairEstimatePart,
   RepairEstimatePartInput,
   RepairInspectionReport,
   InspectionReportInput,
+  RepairWorkflowJob,
 };
 
 export type TechnicianAvailability = 'available' | 'busy' | 'on_leave' | 'inactive';
@@ -65,14 +69,18 @@ export interface TechnicianJob {
   model: string;
   status: string;
   customer?: string;
+  assignedToName?: string;
+  assignedToImageData?: string | null;
   phone?: string | null;
   address?: string | null;
   photo?: string | null;
   description?: string;
   shopName?: string;
+  serviceType?: 'shop_visit' | 'home_service' | null;
   quotationAmount?: number | null;
   quotationCurrency?: string;
   assignedAt: string;
+  createdAt?: string;
   scheduledDate?: string | null;
   startedAt?: string | null;
   completedAt?: string | null;
@@ -198,6 +206,7 @@ export interface TechnicianAssignment {
   description?: string;
   photo?: string | null;
   createdAt?: string;
+  serviceType?: 'shop_visit' | 'home_service' | null;
   repairStatus: string;
   customer: string;
   assignment: { technicianId: string; assignedAt: string; note?: string };
@@ -220,9 +229,12 @@ export interface TechnicianRepairDetails extends TechnicianJob {
   description: string;
   photos: Array<{ mimeType: string; data: string }>;
   customer: string;
+  createdAt?: string;
+  requestStatus?: string;
   phone: string | null;
-  location: { latitude: number; longitude: number } | null;
+  location?: { latitude: number; longitude: number } | null;
   serviceType: 'shop_visit' | 'home_service' | null;
+  preferredServiceDate?: string | null;
   customerInfo?: {
     name: string;
     phone: string | null;
@@ -236,6 +248,7 @@ export interface TechnicianRepairDetails extends TechnicianJob {
     email: string | null;
     address: string | null;
     city: string | null;
+    location: { latitude: number; longitude: number } | null;
   };
   quotation?: {
     id: string;
@@ -250,24 +263,46 @@ export interface TechnicianRepairDetails extends TechnicianJob {
     estimatedDays?: number | null;
     approvedAt?: string | null;
   } | null;
-  assignmentDetails?: {
+  quotations: TechnicianQuotation[];
+  shopResponse?: {
+    status: string;
+    declineReason?: string;
+    respondedAt?: string | null;
+    responseDeadline?: string | null;
+  } | null;
+  assignment?: {
     assignedAt: string;
     note: string;
     technicianName?: string;
   };
-  repairJobDetails?: {
-    status: string;
-    startedAt?: string | null;
-    repairCompletedAt?: string | null;
-    completionDescription?: string;
-    workPerformed?: string;
-    partsReplaced?: string;
-    finalNotes?: string;
-    pickupInstructions?: string;
-    inspection?: RepairInspectionReport | null;
-    approvedRepairAmount?: number | null;
+  assignmentDetails?: {
+    assignedAt: string;
+    note: string;
+    technicianName?: string;
+    profileImageData?: string | null;
   };
+  repairJob?: RepairWorkflowJob | null;
+  repairJobDetails?: RepairWorkflowJob | null;
   inspection?: RepairInspectionReport | null;
   approvedRepairAmount?: number | null;
   timeline?: TechnicianTimelineEvent[];
+}
+
+export interface TechnicianQuotation {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  message: string;
+  inspectionCharge: number;
+  partsCost: number;
+  labourCharge: number;
+  additionalCharges: number;
+  proposedSolution?: string;
+  warrantyInformation?: string;
+  estimatedDays?: number | null;
+  validUntil?: string | null;
+  rejectionReason?: string;
+  respondedAt?: string | null;
+  createdAt?: string;
 }

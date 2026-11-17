@@ -17,6 +17,8 @@ export class ShopJobsTableComponent {
   @Input() title = 'Shop requests';
   @Input() showQuotationStatus = false;
   @Input() showAssignmentDetails = false;
+  @Input() dateLabel = 'Request Date';
+  @Input() showAssignedDate = false;
 
   private readonly unavailableImages = new Set<string>();
   readonly openActionsJobId = signal<string | null>(null);
@@ -37,6 +39,10 @@ export class ShopJobsTableComponent {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  jobDate(job: JobListItem): string {
+    return this.showAssignedDate && job.assignedAt ? job.assignedAt : job.createdAt;
   }
 
   customerInitials(name?: string): string {

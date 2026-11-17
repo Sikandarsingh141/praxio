@@ -152,7 +152,7 @@
 
             <a
               class="dropdown-item"
-              routerLink="/technician/jobs"
+              routerLink="/technician/assigned-jobs"
               role="menuitem"
               (click)="closeAccountMenu()"
             >
@@ -204,7 +204,7 @@
         </a>
         <a
           class="portal-nav"
-          routerLink="/technician/jobs"
+          routerLink="/technician/assigned-jobs"
           routerLinkActive="active"
           [routerLinkActiveOptions]="{ exact: true }"
           (click)="closeSidebar()"
@@ -258,27 +258,6 @@
             </span>
           }
         </a>
-        <a
-          class="portal-nav"
-          routerLink="/technician/notifications"
-          routerLinkActive="active"
-          [routerLinkActiveOptions]="{ exact: true }"
-          (click)="closeSidebar()"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            <path d="M10 21h4" />
-          </svg>
-          Notifications
-          @if (unreadNotificationCount() > 0) {
-            <span
-              class="nav-notification-count"
-              [attr.aria-label]="unreadNotificationCount() + ' unread notifications'"
-            >
-              {{ unreadNotificationCount() > 99 ? '99+' : unreadNotificationCount() }}
-            </span>
-          }
-        </a>
       </nav>
 
       <div class="sidebar-heading">YOUR ACCOUNT</div>
@@ -298,36 +277,6 @@
         </a>
       </nav>
 
-      <section class="sidebar-support-card" aria-label="Technician support">
-        <svg class="support-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 13v-2a9 9 0 0 1 18 0v2" />
-          <rect x="2" y="12" width="4" height="7" rx="2" />
-          <rect x="18" y="12" width="4" height="7" rx="2" />
-          <path d="M20 19a4 4 0 0 1-4 3h-2" />
-        </svg>
-        <strong>Need Help?</strong>
-        <p>Contact shop admin or Fixora support.</p>
-        <a
-          routerLink="/technician/messages"
-          class="support-link"
-          (click)="closeSidebar()"
-        >
-          Get Support
-          <span aria-hidden="true">→</span>
-        </a>
-      </section>
-
-      <button
-        type="button"
-        class="portal-nav portal-logout-btn"
-        (click)="closeSidebar(); signOut()"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M10 17l5-5-5-5M15 12H3" />
-          <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7" />
-        </svg>
-        Sign Out
-      </button>
     </aside>
 
     <main class="portal-content">

@@ -123,4 +123,37 @@ describe('ShopJobsTableComponent', () => {
     expect(fixture.nativeElement.querySelector('.action-btn-view')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.action-btn-more').length).toBe(2);
   });
+
+  it('uses the assignment date label and value for technician job lists', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ShopJobsTableComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ShopJobsTableComponent);
+    fixture.componentInstance.jobs = [
+      {
+        id: 'request-tech-12345679',
+        title: 'Refrigerator',
+        status: 'active',
+        description: 'Not cooling',
+        createdAt: '2026-11-15T12:00:00.000Z',
+        assignedAt: '2026-11-16T09:40:00.000Z',
+      },
+    ];
+    fixture.componentInstance.detailRoute = '/technician/active-jobs';
+    fixture.componentInstance.title = 'Active Repairs';
+    fixture.componentInstance.dateLabel = 'Assigned On';
+    fixture.componentInstance.showAssignedDate = true;
+    fixture.detectChanges();
+
+    const headers = Array.from(
+      fixture.nativeElement.querySelectorAll('thead th') as NodeListOf<HTMLElement>,
+    ).map((header) => header.textContent?.trim());
+    const dateCell = fixture.nativeElement.querySelector('.td-date') as HTMLElement;
+    expect(headers).toContain('Assigned On');
+    expect(headers).not.toContain('Request Date');
+    expect(dateCell.textContent).toContain('Nov 16, 2026');
+    expect(dateCell.textContent).not.toContain('Nov 15, 2026');
+  });
 });

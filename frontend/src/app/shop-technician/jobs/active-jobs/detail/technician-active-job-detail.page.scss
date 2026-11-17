@@ -2,7 +2,13 @@
 @use '../../../../shared/styles/buttons' as buttons;
 
 :host { display: block; }
-.job-detail-page { @include layout.job-page; }
+.job-detail-page {
+  @include layout.job-page;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
 .breadcrumbs { display: flex; gap: .55rem; align-items: center; color: var(--fixora-color-muted); font-size: .82rem; }
 .breadcrumbs a { color: var(--fixora-color-primary); text-decoration: none; }
 .detail-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: .35rem; }

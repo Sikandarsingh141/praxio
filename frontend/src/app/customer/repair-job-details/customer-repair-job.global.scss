@@ -394,8 +394,11 @@
   .portal .customer-dispute-detail-page,
   .portal .customer-repair-request-detail-page,
   .role-portal .customer-active-job-detail-page,
+  .role-portal .technician-active-job-detail-page,
+  .role-portal .technician-assigned-job-detail-page,
   .role-portal .customer-disputed-job-detail-page,
   .role-portal .customer-completed-job-detail-page,
+  .role-portal .technician-completed-job-detail-page,
   .role-portal .customer-dispute-detail-page {
     max-width: 100%;
     gap: 0.75rem;
@@ -1108,8 +1111,11 @@
     .portal .customer-dispute-detail-page .customer-detail-layout,
     .portal .customer-repair-request-detail-page .customer-detail-layout,
     .role-portal .customer-active-job-detail-page .customer-detail-layout,
+    .role-portal .technician-active-job-detail-page .customer-detail-layout,
+    .role-portal .technician-assigned-job-detail-page .customer-detail-layout,
     .role-portal .customer-disputed-job-detail-page .customer-detail-layout,
     .role-portal .customer-completed-job-detail-page .customer-detail-layout,
+    .role-portal .technician-completed-job-detail-page .customer-detail-layout,
     .role-portal .customer-dispute-detail-page .customer-detail-layout {
       grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 1fr);
     }
@@ -1122,8 +1128,11 @@
     .portal .customer-dispute-detail-page .customer-information-row,
     .portal .customer-repair-request-detail-page .customer-information-row,
     .role-portal .customer-active-job-detail-page .customer-information-row,
+    .role-portal .technician-active-job-detail-page .customer-information-row,
+    .role-portal .technician-assigned-job-detail-page .customer-information-row,
     .role-portal .customer-disputed-job-detail-page .customer-information-row,
     .role-portal .customer-completed-job-detail-page .customer-information-row,
+    .role-portal .technician-completed-job-detail-page .customer-information-row,
     .role-portal .customer-dispute-detail-page .customer-information-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem 0.5rem;
@@ -1137,8 +1146,11 @@
     .portal .customer-dispute-detail-page .customer-information-row .customer-facts > div,
     .portal .customer-repair-request-detail-page .customer-information-row .customer-facts > div,
     .role-portal .customer-active-job-detail-page .customer-information-row .customer-facts > div,
+    .role-portal .technician-active-job-detail-page .customer-information-row .customer-facts > div,
+    .role-portal .technician-assigned-job-detail-page .customer-information-row .customer-facts > div,
     .role-portal .customer-disputed-job-detail-page .customer-information-row .customer-facts > div,
     .role-portal .customer-completed-job-detail-page .customer-information-row .customer-facts > div,
+    .role-portal .technician-completed-job-detail-page .customer-information-row .customer-facts > div,
     .role-portal .customer-dispute-detail-page .customer-information-row .customer-facts > div {
       padding-left: 0;
       border-left: 0;
@@ -1163,8 +1175,11 @@
     .portal .customer-dispute-detail-page,
     .portal .customer-repair-request-detail-page,
     .role-portal .customer-active-job-detail-page,
+    .role-portal .technician-active-job-detail-page,
+    .role-portal .technician-assigned-job-detail-page,
     .role-portal .customer-disputed-job-detail-page,
     .role-portal .customer-completed-job-detail-page,
+    .role-portal .technician-completed-job-detail-page,
     .role-portal .customer-dispute-detail-page {
       .request-hero {
         grid-template-columns: 4.5rem minmax(0, 1fr);
@@ -1308,8 +1323,11 @@
     .portal .customer-dispute-detail-page,
     .portal .customer-repair-request-detail-page,
     .role-portal .customer-active-job-detail-page,
+    .role-portal .technician-active-job-detail-page,
+    .role-portal .technician-assigned-job-detail-page,
     .role-portal .customer-disputed-job-detail-page,
     .role-portal .customer-completed-job-detail-page,
+    .role-portal .technician-completed-job-detail-page,
     .role-portal .customer-dispute-detail-page {
       .customer-information-row {
         grid-template-columns: minmax(0, 1fr);

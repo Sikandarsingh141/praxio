@@ -2825,7 +2825,7 @@ export class CustomerPortalService {
   async startRepairInspection(
     shopId: string,
     requestId: string,
-    actorId = shopId,
+    actorId: string | Types.ObjectId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireAcceptedRepairShop(shopId, requestId);
     const actorObjectId = isObjectIdOrHexString(actorId)
@@ -3253,8 +3253,11 @@ export class CustomerPortalService {
     shopId: string,
     requestId: string,
     input: import('./repair-workflow.dto').AdditionalChargeRequestDto,
+    actorId: string | Types.ObjectId = shopId,
   ): Promise<unknown> {
     const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const actorObjectId =
+      actorId instanceof Types.ObjectId ? actorId : new Types.ObjectId(actorId);
     if (input.draftId && !isObjectIdOrHexString(input.draftId)) {
       throw new NotFoundException(
         'The saved additional charge draft was not found',
@@ -3348,7 +3351,7 @@ export class CustomerPortalService {
                 ...(input.action === 'submit'
                   ? {
                       'repairJob.history': {
-                        actorId: shop._id,
+                        actorId: actorObjectId,
                         action: 'additional_charges_requested',
                         at: now,
                       },
@@ -3381,7 +3384,7 @@ export class CustomerPortalService {
           relatedEntityType: 'repair_request',
           link: `/customer/repair-requests/${request._id.toString()}`,
         },
-        shop._id,
+        actorObjectId,
       );
     }
     return savedCharge ?? request.repairJob?.additionalChargeRequests?.at(-1);

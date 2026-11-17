@@ -190,6 +190,60 @@ export abstract class ShopJobsListingPageBase extends JobListingPageBase {
 @Directive()
 export abstract class TechnicianJobsListingPageBase extends JobListingPageBase {
   protected abstract readonly category: TechnicianJobCategory;
+  readonly appliedFilters = signal<FilterValues>({});
+
+  get filterConfig(): FilterConfig {
+    const titles: Record<TechnicianJobCategory, string> = {
+      assigned: 'Assigned request filters',
+      active: 'Active repair filters',
+      completed: 'Completed repair filters',
+    };
+    return {
+      title: titles[this.category],
+      fields: [
+        { key: 'appliance', label: 'Appliance or device', type: 'text' },
+        { key: 'brand', label: 'Brand', type: 'text' },
+        { key: 'assignedDate', label: 'Assigned date', type: 'date-range' },
+      ],
+    };
+  }
+
+  applyFilters(filters: FilterValues): void {
+    this.appliedFilters.set(filters);
+    this.page.set(1);
+  }
+
+  protected override matchesPageFilters(item: JobListItem): boolean {
+    const filters = this.appliedFilters();
+    const appliance = filters['appliance'];
+    const brand = filters['brand'];
+    if (
+      typeof appliance === 'string' &&
+      appliance.trim() &&
+      !item.title.toLocaleLowerCase().includes(appliance.trim().toLocaleLowerCase())
+    ) {
+      return false;
+    }
+    if (
+      typeof brand === 'string' &&
+      brand.trim() &&
+      !(item.brand ?? '').toLocaleLowerCase().includes(brand.trim().toLocaleLowerCase())
+    ) {
+      return false;
+    }
+    const assignedDate = filters['assignedDate'];
+    if (assignedDate && typeof assignedDate === 'object' && 'from' in assignedDate) {
+      const assignedDay = (item.assignedAt ?? item.createdAt).slice(0, 10);
+      if (
+        (assignedDate.from && assignedDay < assignedDate.from) ||
+        (assignedDate.to && assignedDay > assignedDate.to)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   protected override loadItems(): Observable<JobListItem[]> {
     return this.jobs.technicianJobs(this.category);
   }
@@ -253,6 +307,9 @@ export abstract class ShopJobDetailPageBase extends JobDetailPageBase<ShopRepair
 
 @Directive()
 export abstract class TechnicianJobDetailPageBase extends JobDetailPageBase<TechnicianRepairDetails> {
+  readonly directionsLoader = (requestId: string) =>
+    this.jobs.technicianDirections(requestId);
+
   protected override loadRecord(id: string): Observable<TechnicianRepairDetails> {
     return this.jobs.technicianJob(id);
   }

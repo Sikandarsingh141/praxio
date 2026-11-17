@@ -5,6 +5,7 @@ import { CustomerPortalService } from '../../customer/services/customer-portal.s
 import { CustomerRepairRequest } from '../../customer/models/customer-portal.models';
 import { ShopRepairRequest } from '../../shop/repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../shop/repair-requests/shop-repair-requests.service';
+import { RepairRoute } from '../models/repair-route.models';
 import {
   TechnicianAssignment,
   TechnicianJob,
@@ -138,6 +139,10 @@ export class JobSharedService {
     return this.technicians.myJobDetails(id);
   }
 
+  technicianDirections(requestId: string): Observable<RepairRoute> {
+    return this.technicians.myJobDirections(requestId);
+  }
+
   customerTimeline(request: CustomerRepairRequest): JobTimelineEntry[] {
     return (request.repairJob?.history ?? []).map((event) => ({
       title: event.action.replace(/_/g, ' '),
@@ -248,6 +253,7 @@ export class JobSharedService {
         brand: assignment.brand,
         model: assignment.model,
         imageData: assignment.photo ?? null,
+        serviceType: assignment.serviceType ?? undefined,
         createdAt: assignment.createdAt ?? assignment.assignment.assignedAt,
         assignedToId: assignment.isOwner ? 'owner' : assignment.assignment.technicianId,
         assignedToName: assignment.isOwner ? 'You' : assignment.technician?.name ?? 'Technician',
@@ -423,7 +429,11 @@ export class JobSharedService {
       brand: job.brand,
       model: job.model,
       imageData: job.photo ?? null,
-      createdAt: job.assignedAt,
+      assignedToName: job.assignedToName ?? 'Technician',
+      assignedToImageData: job.assignedToImageData ?? null,
+      serviceType: job.serviceType ?? undefined,
+      createdAt: job.createdAt ?? job.assignedAt,
+      assignedAt: job.assignedAt,
       amount: job.cost ?? job.quotationAmount ?? null,
       currency: job.quotationCurrency,
     };

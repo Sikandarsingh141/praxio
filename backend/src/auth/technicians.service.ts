@@ -648,7 +648,7 @@ export class TechniciansService {
         },
       })
       .select(
-        '_id appliance brand model description photos createdAt repairJob updatedAt customerId',
+        '_id appliance brand model description photos createdAt repairJob updatedAt customerId serviceType',
       )
       .sort({ 'repairJob.activeAssignment.assignedAt': -1 })
       .limit(500)
@@ -702,6 +702,7 @@ export class TechniciansService {
         description: request.description ?? '',
         photo: request.photos?.[0]?.data ?? null,
         createdAt: request.createdAt,
+        serviceType: request.serviceType ?? null,
         repairStatus: request.repairJob!.status,
         customer:
           [customer?.firstName, customer?.lastName].filter(Boolean).join(' ') ||
@@ -752,7 +753,7 @@ export class TechniciansService {
         ...(filter === 'history' ? historyFilter : technicianIdFilter),
       })
       .select(
-        '_id appliance brand model description photos repairJob createdAt customerId preferredServiceDate acceptedQuotationId',
+        '_id appliance brand model description photos repairJob createdAt customerId preferredServiceDate acceptedQuotationId serviceType',
       )
       .sort({ 'repairJob.activeAssignment.assignedAt': -1 })
       .lean()
@@ -765,7 +766,9 @@ export class TechniciansService {
           .find({
             _id: { $in: customerIds.map((id) => new Types.ObjectId(id)) },
           })
-          .select('firstName lastName fullName mobileNumber countryCode location')
+          .select(
+            'firstName lastName fullName mobileNumber countryCode location',
+          )
           .lean()
           .exec()
       : [];
@@ -790,9 +793,7 @@ export class TechniciansService {
           .lean()
           .exec()
       : [];
-    const quotationById = new Map(
-      quotations.map((q) => [q._id.toString(), q]),
-    );
+    const quotationById = new Map(quotations.map((q) => [q._id.toString(), q]));
 
     const requestIds = requests.map((r) => r._id);
     const reviews = requestIds.length
@@ -867,6 +868,13 @@ export class TechniciansService {
         shopName,
         quotationAmount: quot?.amount ?? null,
         quotationCurrency: quot?.currency ?? 'INR',
+        assignedToName:
+          [technician.firstName, technician.lastName]
+            .filter(Boolean)
+            .join(' ') || 'Technician',
+        assignedToImageData: technician.profileImageData ?? null,
+        serviceType: request.serviceType ?? null,
+        createdAt: request.createdAt,
       };
     });
 
@@ -908,10 +916,17 @@ export class TechniciansService {
     const summary = {
       assigned: jobs.length,
       pending: jobs.filter((job) =>
-        ['confirmed', 'inspection_pending', 'awaiting_customer_approval', 'inspection_approved'].includes(job.status),
+        [
+          'confirmed',
+          'inspection_pending',
+          'awaiting_customer_approval',
+          'inspection_approved',
+        ].includes(job.status),
       ).length,
       active: jobs.filter((job) =>
-        ['in_progress', 'inspection_in_progress', 'on_hold'].includes(job.status),
+        ['in_progress', 'inspection_in_progress', 'on_hold'].includes(
+          job.status,
+        ),
       ).length,
       inProgress: jobs.filter((job) =>
         ['in_progress', 'inspection_in_progress'].includes(job.status),
@@ -933,10 +948,17 @@ export class TechniciansService {
 
     const filteredJobs = jobs.filter((job) => {
       if (filter === 'pending') {
-        return ['confirmed', 'inspection_pending', 'awaiting_customer_approval', 'inspection_approved'].includes(job.status);
+        return [
+          'confirmed',
+          'inspection_pending',
+          'awaiting_customer_approval',
+          'inspection_approved',
+        ].includes(job.status);
       }
       if (filter === 'active') {
-        return ['in_progress', 'inspection_in_progress', 'on_hold'].includes(job.status);
+        return ['in_progress', 'inspection_in_progress', 'on_hold'].includes(
+          job.status,
+        );
       }
       if (filter === 'today') {
         if (!job.scheduledDate) return false;
@@ -983,14 +1005,16 @@ export class TechniciansService {
     ];
     const customers = customerIds.length
       ? await this.users
-          .find({ _id: { $in: customerIds.map((id) => new Types.ObjectId(id)) } })
-          .select('firstName lastName fullName mobileNumber countryCode location')
+          .find({
+            _id: { $in: customerIds.map((id) => new Types.ObjectId(id)) },
+          })
+          .select(
+            'firstName lastName fullName mobileNumber countryCode location',
+          )
           .lean()
           .exec()
       : [];
-    const customerById = new Map(
-      customers.map((c) => [c._id.toString(), c]),
-    );
+    const customerById = new Map(customers.map((c) => [c._id.toString(), c]));
 
     const shopUser = await this.users
       .findById(shopObjectId)
@@ -1034,13 +1058,23 @@ export class TechniciansService {
 
     const totalAssigned = jobs.length;
     const pendingJobs = jobs.filter((job) =>
-      ['confirmed', 'inspection_pending', 'awaiting_customer_approval', 'inspection_approved'].includes(job.status),
+      [
+        'confirmed',
+        'inspection_pending',
+        'awaiting_customer_approval',
+        'inspection_approved',
+      ].includes(job.status),
     );
     const activeJobs = jobs.filter((job) =>
       ['in_progress', 'inspection_in_progress', 'on_hold'].includes(job.status),
     );
     const completedJobs = jobs.filter((job) =>
-      ['repair_completed', 'ready_for_pickup', 'picked_up', 'completed'].includes(job.status),
+      [
+        'repair_completed',
+        'ready_for_pickup',
+        'picked_up',
+        'completed',
+      ].includes(job.status),
     );
     const todayJobs = jobs.filter((job) => {
       if (!job.scheduledDate) return false;
@@ -1050,8 +1084,16 @@ export class TechniciansService {
 
     // Currently Active Job: job in in_progress or inspection_in_progress
     const currentlyActiveJob =
-      jobs.find((job) => job.status === 'in_progress' || job.status === 'inspection_in_progress') ||
-      jobs.find((job) => ['confirmed', 'inspection_pending', 'inspection_approved'].includes(job.status)) ||
+      jobs.find(
+        (job) =>
+          job.status === 'in_progress' ||
+          job.status === 'inspection_in_progress',
+      ) ||
+      jobs.find((job) =>
+        ['confirmed', 'inspection_pending', 'inspection_approved'].includes(
+          job.status,
+        ),
+      ) ||
       activeJobs[0] ||
       null;
 
@@ -1062,7 +1104,11 @@ export class TechniciansService {
         if (!job.scheduledDate) return false;
         return new Date(job.scheduledDate).getTime() >= tomorrow.getTime();
       })
-      .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime())
+      .sort(
+        (a, b) =>
+          new Date(a.scheduledDate!).getTime() -
+          new Date(b.scheduledDate!).getTime(),
+      )
       .slice(0, 5);
 
     // Recent notifications
@@ -1091,7 +1137,9 @@ export class TechniciansService {
           .select('_id appliance customerId')
           .lean()
           .exec();
-        const convReqMap = new Map(convRequests.map((r) => [r._id.toString(), r]));
+        const convReqMap = new Map(
+          convRequests.map((r) => [r._id.toString(), r]),
+        );
 
         recentMessages = convs.map((conv) => {
           const req = convReqMap.get(conv.repairRequestId.toString());
@@ -1118,7 +1166,10 @@ export class TechniciansService {
       ...requests.flatMap((r) => [
         ...(r.repairJob?.history || []).map((h) => ({
           type: h.action === 'repair_started' ? 'job_started' : 'status_update',
-          title: h.action === 'repair_started' ? 'Job started' : h.action.replace(/_/g, ' '),
+          title:
+            h.action === 'repair_started'
+              ? 'Job started'
+              : h.action.replace(/_/g, ' '),
           subtitle: `${r.appliance} (#${r._id.toString().slice(-8).toUpperCase()})`,
           at: h.at || r.createdAt,
         })),
@@ -1161,47 +1212,38 @@ export class TechniciansService {
   }
 
   async technicianJobDetails(technicianId: string, requestId: string) {
-    const technician = await this.findTechnicianForSelf(technicianId);
-    if (!isObjectIdOrHexString(requestId)) {
-      throw new NotFoundException('Assigned repair request was not found');
-    }
-    const request = await this.repairRequests
-      .findOne({
-        _id: requestId,
-        shopIds: technician.technicianDetails!.shopId,
-        $or: [
-          {
-            'repairJob.activeAssignment.shopId':
-              technician.technicianDetails!.shopId,
-            'repairJob.activeAssignment.technicianId': technician._id,
-          },
-          { 'repairJob.assignmentHistory.technicianId': technician._id },
-          {
-            'repairJob.assignmentHistory.previousTechnicianId': technician._id,
-          },
-        ],
-      })
-      .lean()
-      .exec();
-    if (!request) {
-      throw new NotFoundException('Assigned repair request was not found');
-    }
+    const { technician, request } = await this.findAssignedTechnicianRequest(
+      technicianId,
+      requestId,
+    );
 
     const customer = await this.users
       .findById(request.customerId)
-      .select('firstName lastName fullName email countryCode mobileNumber location')
+      .select(
+        'firstName lastName fullName email countryCode mobileNumber location',
+      )
       .lean()
       .exec();
 
     const shop = await this.users
       .findById(technician.technicianDetails!.shopId)
-      .select('firstName lastName fullName email mobileNumber countryCode shopDetails')
+      .select(
+        'firstName lastName fullName email mobileNumber countryCode shopDetails',
+      )
       .lean()
       .exec();
 
-    const quotation = request.acceptedQuotationId
-      ? await this.quotations.findById(request.acceptedQuotationId).lean().exec()
-      : null;
+    const quotations = await this.quotations
+      .find({
+        repairRequestId: request._id,
+        shopId: technician.technicianDetails!.shopId,
+      })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    const quotation = quotations.find(
+      (item) => item._id.toString() === request.acceptedQuotationId?.toString(),
+    );
 
     const latitude = request.customerLatitude ?? customer?.location?.latitude;
     const longitude =
@@ -1209,7 +1251,11 @@ export class TechniciansService {
 
     // Build timeline from history
     const historyEvents = request.repairJob?.history || [];
-    const actorIds = [...new Set(historyEvents.map((h) => h.actorId?.toString()).filter(Boolean))];
+    const actorIds = [
+      ...new Set(
+        historyEvents.map((h) => h.actorId?.toString()).filter(Boolean),
+      ),
+    ];
     const actors = actorIds.length
       ? await this.users
           .find({ _id: { $in: actorIds.map((id) => new Types.ObjectId(id)) } })
@@ -1220,7 +1266,9 @@ export class TechniciansService {
     const actorById = new Map(actors.map((a) => [a._id.toString(), a]));
 
     const timeline = historyEvents.map((event) => {
-      const actor = event.actorId ? actorById.get(event.actorId.toString()) : null;
+      const actor = event.actorId
+        ? actorById.get(event.actorId.toString())
+        : null;
       let actorName = 'Fixora System';
       let actorRole = 'system';
       if (actor) {
@@ -1228,9 +1276,15 @@ export class TechniciansService {
         if (actor.accountType === 'shop') {
           actorName = actor.shopDetails?.shopName || 'Shop Admin';
         } else if (actor.accountType === 'technician') {
-          actorName = [actor.firstName, actor.lastName].filter(Boolean).join(' ') || actor.fullName || 'Technician';
+          actorName =
+            [actor.firstName, actor.lastName].filter(Boolean).join(' ') ||
+            actor.fullName ||
+            'Technician';
         } else {
-          actorName = [actor.firstName, actor.lastName].filter(Boolean).join(' ') || actor.fullName || 'Customer';
+          actorName =
+            [actor.firstName, actor.lastName].filter(Boolean).join(' ') ||
+            actor.fullName ||
+            'Customer';
         }
       }
       return {
@@ -1248,6 +1302,53 @@ export class TechniciansService {
       .lean()
       .exec();
 
+    const customerName =
+      [customer?.firstName, customer?.lastName].filter(Boolean).join(' ') ||
+      customer?.fullName ||
+      'Customer';
+    const customerInfo = {
+      name: customerName,
+      phone: customer?.mobileNumber
+        ? `${customer.countryCode ?? ''} ${customer.mobileNumber}`.trim()
+        : null,
+      email: customer?.email ?? null,
+      location:
+        typeof latitude === 'number' && typeof longitude === 'number'
+          ? { latitude, longitude }
+          : null,
+    };
+    const repairJobDetails = request.repairJob
+      ? {
+          status: request.repairJob.status,
+          confirmedAt: request.repairJob.confirmedAt,
+          startedAt: request.repairJob.startedAt ?? null,
+          repairCompletedAt: request.repairJob.repairCompletedAt ?? null,
+          completionDescription: request.repairJob.completionDescription ?? '',
+          workPerformed: request.repairJob.workPerformed ?? '',
+          partsReplaced: request.repairJob.partsReplaced ?? '',
+          finalNotes: request.repairJob.finalNotes ?? '',
+          pickupInstructions: request.repairJob.pickupInstructions ?? '',
+          pickupMessage: request.repairJob.pickupMessage ?? '',
+          readyForPickupAt: request.repairJob.readyForPickupAt ?? null,
+          pickedUpAt: request.repairJob.pickedUpAt ?? null,
+          completedAt: request.repairJob.completedAt ?? null,
+          disputeDescription: request.repairJob.disputeDescription ?? '',
+          disputeResolution: request.repairJob.disputeResolution ?? '',
+          inspection: request.repairJob.inspection ?? null,
+          additionalChargeRequests:
+            request.repairJob.additionalChargeRequests ?? [],
+          approvedRepairAmount: request.repairJob.approvedRepairAmount ?? null,
+          approvedAdditionalCharges:
+            request.repairJob.approvedAdditionalCharges ?? 0,
+          customerVerification: request.repairJob.customerVerification ?? null,
+        }
+      : null;
+    const shopResponse = request.shopResponses?.find(
+      (response) =>
+        response.shopId.toString() ===
+        technician.technicianDetails!.shopId.toString(),
+    );
+
     return {
       id: request._id.toString(),
       shopId: technician.technicianDetails!.shopId.toString(),
@@ -1256,25 +1357,16 @@ export class TechniciansService {
       model: request.model ?? '',
       description: request.description,
       photos: request.photos ?? [],
+      createdAt: request.createdAt,
       status: request.repairJob?.status ?? 'confirmed',
+      requestStatus: request.status,
       assignedAt:
         request.repairJob?.activeAssignment?.assignedAt ?? request.createdAt,
       scheduledDate: request.preferredServiceDate ?? null,
+      preferredServiceDate: request.preferredServiceDate ?? null,
       serviceType: request.serviceType ?? null,
-      customer: {
-        name:
-          [customer?.firstName, customer?.lastName].filter(Boolean).join(' ') ||
-          customer?.fullName ||
-          'Customer',
-        phone: customer?.mobileNumber
-          ? `${customer.countryCode ?? ''} ${customer.mobileNumber}`.trim()
-          : null,
-        email: customer?.email ?? null,
-        location:
-          typeof latitude === 'number' && typeof longitude === 'number'
-            ? { latitude, longitude }
-            : null,
-      },
+      customer: customerName,
+      customerInfo,
       shop: {
         id: shop?._id.toString(),
         name: shop?.shopDetails?.shopName || 'Repair Shop',
@@ -1284,6 +1376,7 @@ export class TechniciansService {
         email: shop?.email ?? null,
         address: shop?.shopDetails?.address ?? null,
         city: shop?.shopDetails?.city ?? null,
+        location: shop?.shopDetails?.location ?? null,
       },
       quotation: quotation
         ? {
@@ -1300,35 +1393,71 @@ export class TechniciansService {
             approvedAt: quotation.updatedAt ?? null,
           }
         : null,
+      quotations: quotations.map((item) => ({
+        id: item._id.toString(),
+        amount: item.amount,
+        currency: item.currency || 'INR',
+        status: item.status,
+        message: item.message || item.additionalNotes || '',
+        inspectionCharge: item.inspectionCharge ?? 0,
+        partsCost: item.partsCost ?? 0,
+        labourCharge: item.labourCharge ?? 0,
+        additionalCharges: item.additionalCharges ?? 0,
+        proposedSolution: item.proposedSolution ?? '',
+        warrantyInformation: item.warrantyInformation ?? '',
+        estimatedDays: item.estimatedDays ?? null,
+        validUntil: item.validUntil ?? null,
+        rejectionReason: item.rejectionReason ?? '',
+        respondedAt: item.respondedAt ?? null,
+        createdAt: item.createdAt,
+      })),
+      shopResponse: shopResponse
+        ? {
+            status: shopResponse.status,
+            declineReason: shopResponse.declineReason ?? '',
+            respondedAt: shopResponse.respondedAt ?? null,
+            responseDeadline: shopResponse.responseDeadline ?? null,
+          }
+        : null,
       assignment: {
-        assignedAt: request.repairJob?.activeAssignment?.assignedAt ?? request.createdAt,
+        assignedAt:
+          request.repairJob?.activeAssignment?.assignedAt ?? request.createdAt,
         note: request.repairJob?.activeAssignment?.note ?? '',
         technicianName: technician.firstName
           ? `${technician.firstName} ${technician.lastName}`.trim()
           : 'Technician',
       },
-      repairJob: {
-        status: request.repairJob?.status ?? 'confirmed',
-        startedAt: request.repairJob?.startedAt ?? null,
-        repairCompletedAt: request.repairJob?.repairCompletedAt ?? null,
-        completionDescription: request.repairJob?.completionDescription ?? '',
-        workPerformed: request.repairJob?.workPerformed ?? '',
-        partsReplaced: request.repairJob?.partsReplaced ?? '',
-        finalNotes: request.repairJob?.finalNotes ?? '',
-        pickupInstructions: request.repairJob?.pickupInstructions ?? '',
-        inspection: request.repairJob?.inspection ?? null,
-        approvedRepairAmount: request.repairJob?.approvedRepairAmount ?? null,
+      assignmentDetails: {
+        assignedAt:
+          request.repairJob?.activeAssignment?.assignedAt ?? request.createdAt,
+        note: request.repairJob?.activeAssignment?.note ?? '',
+        technicianName: technician.firstName
+          ? `${technician.firstName} ${technician.lastName}`.trim()
+          : 'Technician',
+        profileImageData: technician.profileImageData ?? null,
       },
+      repairJob: repairJobDetails,
+      repairJobDetails,
+      startedAt: repairJobDetails?.startedAt ?? null,
+      completedAt:
+        repairJobDetails?.completedAt ??
+        repairJobDetails?.repairCompletedAt ??
+        null,
+      completionDescription: repairJobDetails?.completionDescription ?? '',
+      workPerformed: repairJobDetails?.workPerformed ?? '',
+      partsReplaced: repairJobDetails?.partsReplaced ?? '',
+      finalNotes: repairJobDetails?.finalNotes ?? '',
+      pickupInstructions: repairJobDetails?.pickupInstructions ?? '',
       inspection: request.repairJob?.inspection ?? null,
       timeline,
-      phone: customer?.mobileNumber
-        ? `${customer.countryCode ?? ''} ${customer.mobileNumber}`.trim()
-        : null,
+      phone: customerInfo.phone,
       location:
         typeof latitude === 'number' && typeof longitude === 'number'
           ? { latitude, longitude }
           : null,
-      cost: request.repairJob?.approvedRepairAmount ?? quotation?.amount ?? null,
+      cost:
+        request.repairJob?.approvedRepairAmount ?? quotation?.amount ?? null,
+      approvedRepairAmount: request.repairJob?.approvedRepairAmount ?? null,
       rating: review?.overallRating ?? null,
       reviewText: review?.reviewText ?? null,
       review: review
@@ -1377,21 +1506,25 @@ export class TechniciansService {
     });
     if (input.notes?.trim()) {
       request.repairJob.finalNotes = (
-        (request.repairJob.finalNotes ? request.repairJob.finalNotes + '\n' : '') +
-        `[${now.toLocaleDateString()}] ${input.notes.trim()}`
+        (request.repairJob.finalNotes
+          ? request.repairJob.finalNotes + '\n'
+          : '') + `[${now.toLocaleDateString()}] ${input.notes.trim()}`
       ).slice(0, 2000);
     }
     await request.save();
 
     // Notify shop
-    await this.notifications.notifyUsers([technician.technicianDetails!.shopId], {
-      title: 'Technician Progress Note',
-      message: `${technician.firstName || 'Technician'} added a progress note on ${request.appliance}: ${noteText.slice(0, 100)}`,
-      type: 'repair_started',
-      relatedEntityId: request._id,
-      relatedEntityType: 'repair_request',
-      link: `/shop/repair-requests/${request._id.toString()}`,
-    });
+    await this.notifications.notifyUsers(
+      [technician.technicianDetails!.shopId],
+      {
+        title: 'Technician Progress Note',
+        message: `${technician.firstName || 'Technician'} added a progress note on ${request.appliance}: ${noteText.slice(0, 100)}`,
+        type: 'repair_started',
+        relatedEntityId: request._id,
+        relatedEntityType: 'repair_request',
+        link: `/shop/repair-requests/${request._id.toString()}`,
+      },
+    );
 
     return { success: true, notes: noteText, at: now };
   }
@@ -1447,6 +1580,49 @@ export class TechniciansService {
   async technicianShopId(technicianId: string): Promise<string> {
     const technician = await this.findTechnicianForSelf(technicianId);
     return technician.technicianDetails!.shopId.toString();
+  }
+
+  async technicianJobShopId(
+    technicianId: string,
+    requestId: string,
+  ): Promise<string> {
+    const { technician } = await this.findAssignedTechnicianRequest(
+      technicianId,
+      requestId,
+    );
+    return technician.technicianDetails!.shopId.toString();
+  }
+
+  private async findAssignedTechnicianRequest(
+    technicianId: string,
+    requestId: string,
+  ) {
+    const technician = await this.findTechnicianForSelf(technicianId);
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Assigned repair request was not found');
+    }
+    const shopId = technician.technicianDetails!.shopId;
+    const request = await this.repairRequests
+      .findOne({
+        _id: requestId,
+        shopIds: shopId,
+        $or: [
+          {
+            'repairJob.activeAssignment.shopId': shopId,
+            'repairJob.activeAssignment.technicianId': technician._id,
+          },
+          { 'repairJob.assignmentHistory.technicianId': technician._id },
+          {
+            'repairJob.assignmentHistory.previousTechnicianId': technician._id,
+          },
+        ],
+      })
+      .lean()
+      .exec();
+    if (!request) {
+      throw new NotFoundException('Assigned repair request was not found');
+    }
+    return { technician, request };
   }
 
   private async findTechnician(shopId: string, technicianId: string) {

@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { ApiEnvelope } from '../../core/auth/auth.models';
 import { environment } from '../../../environments/environment';
+import { RepairRoute } from '../../shared/models/repair-route.models';
 import {
   InspectionReportInput,
   Technician,
@@ -15,6 +16,7 @@ import {
   TechnicianRepairDetails,
   TechnicianSearchResult,
 } from './technicians.models';
+import { AdditionalChargeRequestInput } from '../../shared/models/repair-workflow.models';
 
 @Injectable({ providedIn: 'root' })
 export class TechniciansService {
@@ -150,6 +152,14 @@ export class TechniciansService {
       .pipe(map((response) => response.data.request));
   }
 
+  myJobDirections(id: string): Observable<RepairRoute> {
+    return this.http
+      .get<ApiEnvelope<{ route: RepairRoute }>>(
+        `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/directions`,
+      )
+      .pipe(map((response) => response.data.route));
+  }
+
   startJob(id: string, notes: string): Observable<void> {
     return this.http
       .patch<ApiEnvelope<unknown>>(
@@ -214,5 +224,14 @@ export class TechniciansService {
         {},
       )
       .pipe(map(() => undefined));
+  }
+
+  requestAdditionalCharges(id: string, input: AdditionalChargeRequestInput) {
+    return this.http
+      .post<ApiEnvelope<{ chargeRequest: { _id: string } }>>(
+        `${environment.apiBaseUrl}/technician/jobs/${encodeURIComponent(id)}/additional-charges`,
+        input,
+      )
+      .pipe(map((response) => response.data.chargeRequest));
   }
 }
