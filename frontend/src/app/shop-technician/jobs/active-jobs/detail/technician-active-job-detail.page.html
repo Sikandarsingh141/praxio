@@ -1,22 +1,679 @@
-<main class="job-detail-page technician-active-job-detail-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <a [routerLink]="backRoute">{{ backLabel }}</a>
-    <span aria-hidden="true">/</span>
-    <span aria-current="page">Repair details</span>
-  </nav>
+<main
+  class="job-detail-page technician-active-job-detail-page"
+  aria-labelledby="request-details-title"
+>
+  <a class="detail-back-link back-link" [routerLink]="backRoute">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+    Back to {{ backLabel }}
+  </a>
   @if (loading()) {
-    <p class="state" role="status">Loading repair details...</p>
+    <div class="state-card" role="status">Loading repair request...</div>
   } @else if (error()) {
-    <p class="state error" role="alert">{{ error() }}</p>
+    <div class="state-card error" role="alert">{{ error() }}</div>
   } @else if (record(); as job) {
-    <header class="detail-heading">
-      <div>
-        <p class="eyebrow">ACTIVE REPAIR #{{ job.id.slice(-8).toUpperCase() }}</p>
-        <h1>{{ pageTitle }}</h1>
-        <p>{{ job.appliance }} {{ job.brand }} {{ job.model }}</p>
+    <h1 class="detail-page-title" id="request-details-title">{{ pageTitle }}</h1>
+
+    <section class="request-hero" aria-label="Repair request summary">
+      <div class="request-hero-photo">
+        @if (job.photos[0]; as photo) {
+          @if (!heroImageUnavailable()) {
+            <img
+              [src]="photoSource(photo)"
+              [alt]="job.appliance + ' photo'"
+              (error)="heroImageUnavailable.set(true)"
+            />
+          } @else {
+            <span class="hero-image-placeholder" role="img" aria-label="No image available">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <circle cx="8.5" cy="9" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </span>
+          }
+        } @else {
+          <span class="hero-image-placeholder" role="img" aria-label="No image available">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="8.5" cy="9" r="1.5" />
+              <path d="m21 15-5-5L5 21" />
+            </svg>
+          </span>
+        }
       </div>
-      <app-job-status-badge [status]="job.repairJobDetails?.status ?? job.status" />
-    </header>
-    <app-technician-repair-detail-sections [job]="job" />
+      <div class="request-hero-copy">
+        <h2>{{ job.appliance }}</h2>
+        <span class="request-id">
+          Request ID: <strong>#{{ job.id.slice(-8).toUpperCase() }}</strong>
+        </span>
+      </div>
+      <span
+        class="detail-status"
+        [attr.data-status]="job.repairJobDetails?.status ?? job.shopResponse?.status ?? job.status"
+      >
+        <span class="status-dot" aria-hidden="true"></span>{{ statusLabel(job) }}
+      </span>
+    </section>
+
+    <ol class="request-progress" aria-label="Repair request progress">
+      @for (step of progressSteps; track step; let index = $index) {
+        <li
+          [class.completed]="isRepairComplete(job) || index + 1 < currentProgressStep(job)"
+          [class.current]="!isRepairComplete(job) && index + 1 === currentProgressStep(job)"
+          [attr.aria-current]="index + 1 === currentProgressStep(job) ? 'step' : null"
+        >
+          <span class="progress-marker" aria-hidden="true">
+            @if (isRepairComplete(job) || index + 1 < currentProgressStep(job)) {
+              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+            } @else {
+              {{ index + 1 }}
+            }
+          </span>
+          <strong>{{ step }}</strong>
+          @if (progressDate(job, index); as stepDate) {
+            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
+          }
+        </li>
+      }
+    </ol>
+
+    <section class="technician-assignment-card detail-section" aria-labelledby="technician-assignment-title">
+      <header>
+        <div>
+          <h2 id="technician-assignment-title">Technician Assignment</h2>
+          <p>Technician assigned to this repair request.</p>
+        </div>
+        <span class="assignment-readonly">Read only</span>
+      </header>
+      @if (job.assignmentDetails; as assignment) {
+        <div class="assigned-technician">
+          @if (assignment.profileImageData) {
+            <img [src]="assignment.profileImageData" [alt]="assignment.technicianName || 'Technician'" />
+          } @else {
+            <span class="assignment-avatar" aria-hidden="true">
+              {{ (assignment.technicianName || 'T').slice(0, 1).toUpperCase() }}
+            </span>
+          }
+          <div>
+            <strong>{{ assignment.technicianName || 'Assigned technician' }}</strong>
+            <small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>
+            @if (assignment.note) {
+              <small>{{ assignment.note }}</small>
+            }
+          </div>
+        </div>
+      } @else if (job.assignment; as assignment) {
+        <div class="assigned-technician">
+          <span class="assignment-avatar" aria-hidden="true">
+            {{ (assignment.technicianName || 'T').slice(0, 1).toUpperCase() }}
+          </span>
+          <div>
+            <strong>{{ assignment.technicianName || 'Assigned technician' }}</strong>
+            <small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>
+            @if (assignment.note) {
+              <small>{{ assignment.note }}</small>
+            }
+          </div>
+        </div>
+      } @else {
+        <p class="unassigned-message">Technician assignment details are not available.</p>
+      }
+    </section>
+
+    @if (job.repairJobDetails ?? job.repairJob; as repair) {
+      <section
+        class="repair-workflow detail-section"
+        [class.workflow-active]="repair.status !== 'confirmed' && repair.status !== 'inspection_pending'"
+        aria-labelledby="repair-workflow-title"
+      >
+        <header class="workflow-heading">
+          <div>
+            <span class="section-kicker">REPAIR AUTHORIZATION</span>
+            <h2 id="repair-workflow-title">Repair Inspection</h2>
+            <p class="authorization-intro">
+              Inspect the customer's device and identify the actual issue before starting repair.
+            </p>
+          </div>
+          <span class="status-badge" [attr.data-status]="repair.status">
+            {{ repair.status.replaceAll('_', ' ') | titlecase }}
+          </span>
+          @if (repair.status === 'confirmed' || repair.status === 'inspection_pending') {
+            <button
+              type="button"
+              class="job-button primary"
+              [disabled]="inspectionActionPending()"
+              (click)="startInspection()"
+            >
+              {{ inspectionActionPending() ? 'Starting…' : 'Start Inspection / Checking' }}
+            </button>
+          }
+        </header>
+
+        <section class="authorization-device" aria-label="Customer device information">
+          <h3>Customer device information</h3>
+          <dl>
+            <div>
+              <dt>Customer</dt>
+              <dd>{{ customerName(job) }}</dd>
+            </div>
+            <div>
+              <dt>Device</dt>
+              <dd>
+                {{ job.appliance }}{{ job.brand ? ' · ' + job.brand : '' }}{{ job.model ? ' · ' + job.model : '' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Request ID</dt>
+              <dd><strong>#{{ job.id.slice(-8).toUpperCase() }}</strong></dd>
+            </div>
+            @if (job.quotation; as quotation) {
+              <div>
+                <dt>Original accepted quotation</dt>
+                <dd>{{ quotation.amount | currency: quotation.currency }}</dd>
+              </div>
+            }
+          </dl>
+          <p class="authorization-problem">
+            <strong>Customer's original problem:</strong>
+            {{ job.description || 'No issue details were provided.' }}
+          </p>
+        </section>
+
+        <section class="customer-detail-block diagnosis-card" aria-labelledby="initial-diagnosis-title">
+          <h3 class="section-heading" id="initial-diagnosis-title">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m-9-9h18" /></svg>
+            Initial Diagnosis
+          </h3>
+          @if ((job.repairJobDetails?.inspection ?? job.repairJob?.inspection ?? job.inspection); as inspection) {
+            <div class="diagnosis-summary">
+              <strong>{{ inspection.identifiedProblem || 'Diagnosis in progress' }}</strong>
+              @if (inspection.findings) { <p>{{ inspection.findings }}</p> }
+              @if (inspection.requiredRepairWork) {
+                <p><b>Recommended repair:</b> {{ inspection.requiredRepairWork }}</p>
+              }
+              @if (inspection.parts.length) {
+                <div class="inspection-parts">
+                  <strong>Estimated parts</strong>
+                  @for (part of inspection.parts; track part.name) {
+                    <span>
+                      {{ part.name }} × {{ part.quantity }} ·
+                      {{ part.total | currency: job.quotation?.currency || 'USD' }}
+                    </span>
+                  }
+                </div>
+              }
+              <dl class="inspection-costs">
+                <div><dt>Parts</dt><dd>{{ inspection.partsTotal | currency: job.quotation?.currency || 'USD' }}</dd></div>
+                <div><dt>Labour</dt><dd>{{ inspection.labourCharge | currency: job.quotation?.currency || 'USD' }}</dd></div>
+                <div><dt>Inspection</dt><dd>{{ inspection.inspectionCharges | currency: job.quotation?.currency || 'USD' }}</dd></div>
+                <div><dt>Other</dt><dd>{{ inspection.otherCharges | currency: job.quotation?.currency || 'USD' }}</dd></div>
+                <div><dt>Estimated total</dt><dd>{{ inspection.estimatedTotal | currency: job.quotation?.currency || 'USD' }}</dd></div>
+              </dl>
+              @if (inspection.warranty) { <p><b>Warranty:</b> {{ inspection.warranty }}</p> }
+              @if (inspection.message) { <p>{{ inspection.message }}</p> }
+              @if (inspection.decisionReason) { <p><b>Decision:</b> {{ inspection.decisionReason }}</p> }
+              <span class="quotation-status" [attr.data-status]="inspection.status">
+                {{ inspection.status | titlecase }}
+              </span>
+            </div>
+          } @else {
+            <div class="diagnosis-pending">
+              <strong>Pending Inspection</strong>
+              <p>The inspection and diagnosis will appear here when available.</p>
+            </div>
+          }
+        </section>
+
+        @if (repair.status === 'confirmed' || repair.status === 'inspection_pending') {
+          <div class="authorization-callout">
+            <p>Complete an inspection report before any repair work begins.</p>
+            @if (inspectionActionError()) {
+              <span role="alert">{{ inspectionActionError() }}</span>
+            }
+          </div>
+        }
+
+        <dl class="repair-summary">
+          @if (repair.approvedRepairAmount != null) {
+            <div>
+              <dt>Approved repair amount</dt>
+              <dd>{{ repair.approvedRepairAmount | currency: job.quotation?.currency || 'USD' }}</dd>
+            </div>
+          }
+          @if (repair.approvedAdditionalCharges != null) {
+            <div>
+              <dt>Approved additional charges</dt>
+              <dd>{{ repair.approvedAdditionalCharges | currency: job.quotation?.currency || 'USD' }}</dd>
+            </div>
+          }
+          @if (repair.startedAt) {
+            <div><dt>Repair started</dt><dd>{{ repair.startedAt | date: 'medium' }}</dd></div>
+          }
+          @if (repair.repairCompletedAt) {
+            <div><dt>Repair completed</dt><dd>{{ repair.repairCompletedAt | date: 'medium' }}</dd></div>
+          }
+          @if (repair.completionDescription) {
+            <div><dt>Completion summary</dt><dd>{{ repair.completionDescription }}</dd></div>
+          }
+          @if (repair.workPerformed) {
+            <div><dt>Work performed</dt><dd>{{ repair.workPerformed }}</dd></div>
+          }
+          @if (repair.partsReplaced) {
+            <div><dt>Parts replaced</dt><dd>{{ repair.partsReplaced }}</dd></div>
+          }
+          @if (repair.finalNotes) {
+            <div><dt>Final notes</dt><dd>{{ repair.finalNotes }}</dd></div>
+          }
+          @if (repair.customerVerification; as verification) {
+            <div>
+              <dt>Customer verification</dt>
+              <dd>
+                {{ verification.received ? 'Received' : 'Not received' }}
+                @if (verification.inspected) { · Inspected }
+                @if (verification.satisfaction) { · {{ verification.satisfaction }} }
+              </dd>
+            </div>
+            @if (verification.comments) {
+              <div><dt>Customer comments</dt><dd>{{ verification.comments }}</dd></div>
+            }
+          }
+        </dl>
+
+        @if (repair.pickupInstructions) {
+          <p class="pickup-summary"><strong>Pickup instructions:</strong> {{ repair.pickupInstructions }}</p>
+        }
+
+        @if (repair.additionalChargeRequests?.length) {
+          <div class="additional-charges">
+            <h3>Additional charge requests</h3>
+            @for (charge of repair.additionalChargeRequests; track charge._id) {
+              <article class="additional-charge">
+                <div>
+                  <strong>{{ charge.issue || charge.reason || 'Additional repair work' }}</strong>
+                  <span class="quotation-status" [attr.data-status]="charge.status">
+                    {{ charge.status | titlecase }}
+                  </span>
+                </div>
+                @if (charge.repairDescription) { <p>{{ charge.repairDescription }}</p> }
+                @if (charge.message) { <p>{{ charge.message }}</p> }
+                <p class="charge-meta">
+                  Requested {{ charge.requestedAt | date: 'medium' }} ·
+                  {{ charge.amount | currency: job.quotation?.currency || 'USD' }}
+                </p>
+                @if (charge.decisionReason) { <p><strong>Decision:</strong> {{ charge.decisionReason }}</p> }
+              </article>
+            }
+          </div>
+        }
+
+        @if (repair.status === 'in_progress' || repair.status === 'on_hold') {
+          <app-technician-additional-charges
+            [requestId]="job.id"
+            [repairJob]="repair"
+            [currency]="job.quotation?.currency || 'USD'"
+            (requestUpdated)="refreshRecord($event)"
+          />
+        }
+
+        @if (!repair.completionDescription && !repair.workPerformed && !repair.additionalChargeRequests?.length) {
+          <div class="workflow-empty-state">
+            <p class="workflow-note">Repair updates and customer approvals will appear here as work progresses.</p>
+            @if (repair.status === 'inspection_approved') {
+              <button
+                type="button"
+                class="job-button primary"
+                [disabled]="repairActionPending()"
+                (click)="confirmStartRepair()"
+              >
+                {{ repairActionPending() ? 'Starting…' : 'Start Repair' }}
+              </button>
+            }
+          </div>
+        }
+        @if (repairActionError()) {
+          <p class="workflow-error" role="alert">{{ repairActionError() }}</p>
+        }
+        @if (repairConfirmation(); as confirmation) {
+          <app-confirmation-dialog
+            [config]="confirmation"
+            (confirmed)="startApprovedRepair()"
+            (cancelled)="cancelStartRepair()"
+          />
+        }
+      </section>
+
+      @if (repair.status !== 'confirmed' && repair.status !== 'inspection_pending') {
+        <section
+          class="repair-workflow detail-section confirmed-repair-progress"
+          aria-labelledby="confirmed-repair-progress-title"
+        >
+          <header class="workflow-heading">
+            <div>
+              <span class="section-kicker">CONFIRMED REPAIR</span>
+              <h2 id="confirmed-repair-progress-title">Repair progress</h2>
+            </div>
+            <span class="status-badge" [attr.data-status]="repair.status">
+              {{ repair.status.replaceAll('_', ' ') | titlecase }}
+            </span>
+          </header>
+
+          @if (repairActionError()) {
+            <p class="workflow-error" role="alert">{{ repairActionError() }}</p>
+          }
+
+          @if (repair.status === 'inspection_approved') {
+            <div class="workflow-empty-state">
+              <p class="workflow-note">
+                The repair has been approved. Start work to begin tracking progress.
+              </p>
+              <button
+                type="button"
+                class="job-button primary"
+                [disabled]="repairActionPending()"
+                (click)="confirmStartRepair()"
+              >
+                {{ repairActionPending() ? 'Starting…' : 'Start Repair' }}
+              </button>
+            </div>
+          } @else if (repair.status === 'in_progress') {
+            <div class="workflow-actions">
+              <label>
+                <span>Progress note (optional)</span>
+                <input
+                  type="text"
+                  maxlength="1000"
+                  [ngModel]="progressNotes()"
+                  (ngModelChange)="progressNotes.set($event)"
+                  placeholder="Share an update on the repair"
+                />
+              </label>
+              <button
+                type="button"
+                class="job-button secondary"
+                [disabled]="repairActionPending()"
+                (click)="holdRepair()"
+              >
+                Place on hold
+              </button>
+            </div>
+            <form class="workflow-form" (ngSubmit)="completeRepair()">
+              <h3>Record repair completion</h3>
+              <label>
+                <span>Completion summary *</span>
+                <textarea
+                  rows="2"
+                  maxlength="2000"
+                  required
+                  [ngModel]="completionDescription()"
+                  (ngModelChange)="completionDescription.set($event)"
+                ></textarea>
+              </label>
+              <label>
+                <span>Work performed *</span>
+                <textarea
+                  rows="2"
+                  maxlength="2000"
+                  required
+                  [ngModel]="workPerformed()"
+                  (ngModelChange)="workPerformed.set($event)"
+                ></textarea>
+              </label>
+              <label>
+                <span>Parts replaced (optional)</span>
+                <input
+                  type="text"
+                  maxlength="1000"
+                  [ngModel]="partsReplaced()"
+                  (ngModelChange)="partsReplaced.set($event)"
+                />
+              </label>
+              <label>
+                <span>Final notes (optional)</span>
+                <textarea
+                  rows="2"
+                  maxlength="2000"
+                  [ngModel]="finalNotes()"
+                  (ngModelChange)="finalNotes.set($event)"
+                ></textarea>
+              </label>
+              <button type="submit" class="job-button primary" [disabled]="repairActionPending()">
+                {{ repairActionPending() ? 'Saving…' : 'Mark repair complete' }}
+              </button>
+            </form>
+          } @else if (repair.status === 'on_hold') {
+            <div class="workflow-actions">
+              <label>
+                <span>Progress note (optional)</span>
+                <input
+                  type="text"
+                  maxlength="1000"
+                  [ngModel]="progressNotes()"
+                  (ngModelChange)="progressNotes.set($event)"
+                  placeholder="Explain why the repair is paused"
+                />
+              </label>
+              <button
+                type="button"
+                class="job-button primary"
+                [disabled]="repairActionPending()"
+                (click)="resumeRepair()"
+              >
+                {{ repairActionPending() ? 'Resuming…' : 'Resume repair' }}
+              </button>
+            </div>
+          } @else {
+            <p class="workflow-note">
+              @if (repair.status === 'repair_completed') {
+                The repair has been completed. Waiting for the shop to verify and arrange pickup.
+              } @else if (repair.status === 'ready_for_pickup') {
+                The customer has been notified. Waiting for pickup confirmation.
+              } @else if (repair.status === 'picked_up') {
+                Pickup is confirmed. Waiting for the customer's repair review.
+              } @else if (repair.status === 'completed') {
+                This repair is complete.
+              } @else {
+                This repair is not yet complete.
+              }
+            </p>
+          }
+        </section>
+      }
+    }
+
+    <div class="customer-detail-layout">
+      <div class="customer-detail-main">
+        <section class="detail-section customer-detail-main-card" aria-label="Customer and repair details">
+          <section class="customer-detail-block customer-information-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
+              Customer Information
+            </h2>
+            <div class="customer-information-row">
+              <div class="customer-identity">
+                <span class="customer-avatar" aria-hidden="true">{{ customerInitials(job) }}</span>
+                <strong>{{ customerName(job) }}</strong>
+              </div>
+              <dl class="customer-facts">
+                <div><dt>Email</dt><dd>{{ job.customerInfo?.email || 'Not provided' }}</dd></div>
+                <div><dt>Phone</dt><dd>{{ job.customerInfo?.phone || job.phone || 'Not provided' }}</dd></div>
+                <div>
+                  <dt>Location</dt>
+                  <dd>
+                    @if (customerMapUrl(); as mapUrl) {
+                      <a [href]="mapUrl" target="_blank" rel="noopener noreferrer">View on Map</a>
+                    } @else {
+                      Location not provided
+                    }
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <section class="customer-inline-subsection" aria-labelledby="quotation-details-title">
+              <h3 class="inline-section-title" id="quotation-details-title">Quotation Details</h3>
+              @if (job.quotations.length) {
+                <div class="quotation-table-wrap">
+                  <table class="quotation-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Quotation #</th>
+                        <th scope="col">Shop Name</th>
+                        <th scope="col">Service &amp; Parts</th>
+                        <th scope="col">Total Amount</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (quotation of job.quotations; track quotation.id; let index = $index) {
+                        <tr>
+                          <td>QTN-{{ (index + 1).toString().padStart(3, '0') }}</td>
+                          <td>{{ job.shop?.name || 'Assigned shop' }}</td>
+                          <td>{{ quotation.proposedSolution || quotation.message || 'Repair quotation' }}</td>
+                          <td class="quotation-amount">{{ quotation.amount | currency: quotation.currency }}</td>
+                          <td>
+                            <span class="quotation-status" [attr.data-status]="quotation.status">
+                              {{ quotation.status | titlecase }}
+                            </span>
+                          </td>
+                          <td>
+                            <details class="quotation-details">
+                              <summary>View Details</summary>
+                              <div>
+                                <p>{{ quotation.message }}</p>
+                                <span>Inspection: {{ quotation.inspectionCharge | currency: quotation.currency }}</span>
+                                <span>Labour: {{ quotation.labourCharge | currency: quotation.currency }}</span>
+                                <span>Parts: {{ quotation.partsCost | currency: quotation.currency }}</span>
+                                @if (quotation.additionalCharges) {
+                                  <span>Additional charges: {{ quotation.additionalCharges | currency: quotation.currency }}</span>
+                                }
+                                @if (quotation.estimatedDays) {
+                                  <span>Estimated completion: {{ quotation.estimatedDays }} days</span>
+                                }
+                                @if (quotation.warrantyInformation) {
+                                  <span>Warranty: {{ quotation.warrantyInformation }}</span>
+                                }
+                                @if (quotation.validUntil) {
+                                  <span>Valid until: {{ quotation.validUntil | date: 'mediumDate' }}</span>
+                                }
+                                @if (quotation.respondedAt) {
+                                  <span>Customer response: {{ quotation.respondedAt | date: 'medium' }}</span>
+                                }
+                                @if (quotation.rejectionReason) {
+                                  <span>Rejection reason: {{ quotation.rejectionReason }}</span>
+                                }
+                              </div>
+                            </details>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="workflow-note">No quotation has been recorded for this request yet.</p>
+              }
+            </section>
+            <section class="customer-inline-subsection" aria-labelledby="problem-description-title">
+              <h3 class="inline-section-title" id="problem-description-title">Problem Description</h3>
+              <p class="customer-inline-copy">{{ job.description || 'No issue details were provided.' }}</p>
+            </section>
+            <section
+              class="customer-inline-subsection route-section"
+              aria-labelledby="customer-route-title"
+            >
+              <h3 class="inline-section-title" id="customer-route-title">
+                Customer Location and Route
+              </h3>
+              <app-shop-repair-route
+                [requestId]="job.id"
+                [shopLocation]="job.shop?.location"
+                [customerLocation]="job.customerInfo?.location ?? job.location"
+                [directionsLoader]="directionsLoader"
+              />
+              @if ((job.customerInfo?.location ?? job.location); as location) {
+                <p class="coordinates">
+                  {{ location.latitude | number: '1.4-6' }}, {{ location.longitude | number: '1.4-6' }}
+                </p>
+              }
+            </section>
+            @if (job.timeline?.length) {
+              <section class="customer-inline-subsection" aria-labelledby="repair-history-title">
+                <h3 class="inline-section-title" id="repair-history-title">Repair History</h3>
+                <app-job-timeline [items]="jobs.technicianTimeline(job)" />
+              </section>
+            }
+          </section>
+        </section>
+      </div>
+
+      <aside class="customer-detail-sidebar">
+        <section class="detail-section customer-detail-sidebar-card" aria-label="Device and service details">
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>
+              Device Information
+            </h2>
+            <dl class="sidebar-facts">
+              <div><dt>Device</dt><dd>{{ job.appliance }}</dd></div>
+              <div><dt>Brand</dt><dd>{{ job.brand || 'Not specified' }}</dd></div>
+              <div><dt>Model</dt><dd>{{ job.model || 'Not specified' }}</dd></div>
+              <div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'MMM d, y' }}</dd></div>
+            </dl>
+          </section>
+
+          <section class="customer-detail-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" /><path d="m14 14 6 6M17 13l3-3" /></svg>
+              Service Details
+            </h2>
+            <dl class="sidebar-facts">
+              <div>
+                <dt>Service Type</dt>
+                <dd>{{ job.serviceType === 'home_service' ? 'Home service' : job.serviceType === 'shop_visit' ? 'Shop visit' : 'Not specified' }}</dd>
+              </div>
+              <div>
+                <dt>Preferred Date</dt>
+                <dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'MMM d, y') : 'Not specified' }}</dd>
+              </div>
+              <div>
+                <dt>Shop</dt>
+                <dd>{{ job.shop?.name || 'Not specified' }}</dd>
+              </div>
+              @if (job.shop?.address || job.shop?.city) {
+                <div>
+                  <dt>Shop Address</dt>
+                  <dd>{{ shopAddress(job) }}</dd>
+                </div>
+              }
+              @if (job.shopResponse?.responseDeadline) {
+                <div>
+                  <dt>Response Deadline</dt>
+                  <dd>{{ job.shopResponse?.responseDeadline | date: 'MMM d, y, h:mm a' }}</dd>
+                </div>
+              }
+              @if (job.shopResponse?.declineReason) {
+                <div>
+                  <dt>Shop Response</dt>
+                  <dd>{{ job.shopResponse?.declineReason }}</dd>
+                </div>
+              }
+            </dl>
+          </section>
+
+          <section class="customer-detail-block uploaded-photos-card">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+              Uploaded Photos <small>({{ job.photos.length }})</small>
+            </h2>
+            <app-job-attachments
+              [items]="jobs.photoAttachments(job.photos)"
+              [showViewAllAction]="true"
+            />
+          </section>
+
+        </section>
+      </aside>
+    </div>
+
   }
 </main>
