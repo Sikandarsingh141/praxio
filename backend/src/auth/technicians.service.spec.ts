@@ -2,6 +2,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
 import { ChatConversation } from '../chat/schemas/chat.schema';
+import { Dispute } from '../disputes/schemas/dispute.schema';
 import {
   RepairQuotation,
   RepairRequest,
@@ -100,6 +101,10 @@ describe('TechniciansService assignments', () => {
         { provide: getModelToken(RepairQuotation.name), useValue: {} },
         { provide: getModelToken(ChatConversation.name), useValue: {} },
         { provide: getModelToken(RepairReview.name), useValue: {} },
+        {
+          provide: getModelToken(Dispute.name),
+          useValue: { exists: jest.fn().mockReturnValue(createQuery(false)) },
+        },
         { provide: NotificationsService, useValue: {} },
       ],
     }).compile();
@@ -169,14 +174,18 @@ describe('TechniciansService assignments', () => {
     };
     const users = {
       findOne: jest.fn().mockReturnValue(createQuery(technician)),
-      findById: jest.fn().mockReturnValue(
-        createQuery({ shopDetails: { shopName: 'Repair Shop' } }),
-      ),
-      find: jest.fn().mockReturnValue(
-        createQuery([
-          { _id: customerId, firstName: 'Sikandar', lastName: 'Customer' },
-        ]),
-      ),
+      findById: jest
+        .fn()
+        .mockReturnValue(
+          createQuery({ shopDetails: { shopName: 'Repair Shop' } }),
+        ),
+      find: jest
+        .fn()
+        .mockReturnValue(
+          createQuery([
+            { _id: customerId, firstName: 'Sikandar', lastName: 'Customer' },
+          ]),
+        ),
     };
     const repairRequests = {
       find: jest.fn().mockReturnValue(
@@ -216,6 +225,10 @@ describe('TechniciansService assignments', () => {
         },
         { provide: getModelToken(ChatConversation.name), useValue: {} },
         { provide: getModelToken(RepairReview.name), useValue: reviews },
+        {
+          provide: getModelToken(Dispute.name),
+          useValue: { exists: jest.fn().mockReturnValue(createQuery(false)) },
+        },
         { provide: NotificationsService, useValue: {} },
       ],
     }).compile();
@@ -375,6 +388,10 @@ describe('TechniciansService assignments', () => {
           },
           { provide: getModelToken(ChatConversation.name), useValue: {} },
           { provide: getModelToken(RepairReview.name), useValue: reviews },
+          {
+            provide: getModelToken(Dispute.name),
+            useValue: { exists: jest.fn().mockReturnValue(createQuery(false)) },
+          },
           { provide: NotificationsService, useValue: {} },
         ],
       }).compile();
@@ -389,10 +406,12 @@ describe('TechniciansService assignments', () => {
         repairRequestId: requestId,
         shopId,
       });
-      expect(await service.technicianJobShopId(
-        technicianId.toString(),
-        requestId.toString(),
-      )).toBe(shopId.toString());
+      expect(
+        await service.technicianJobShopId(
+          technicianId.toString(),
+          requestId.toString(),
+        ),
+      ).toBe(shopId.toString());
       expect(result).toMatchObject({
         id: requestId.toString(),
         createdAt,
@@ -421,6 +440,107 @@ describe('TechniciansService assignments', () => {
           customerVerification: { received: true, inspected: true },
         },
       });
+    });
+
+    it('allows assignment on a completed repair when an active dispute exists', async () => {
+      const shopId = new Types.ObjectId();
+      const actorId = new Types.ObjectId();
+      const technicianId = new Types.ObjectId();
+      const requestId = new Types.ObjectId();
+      const acceptedQuotationId = new Types.ObjectId();
+      const request = {
+        _id: requestId,
+        acceptedQuotationId,
+        appliance: 'Phone',
+        repairJob: { status: 'repair_completed' },
+      };
+      let updateFilter: Record<string, unknown> | undefined;
+      const users = {
+        findOne: jest
+          .fn()
+          .mockImplementation((filter: { _id: Types.ObjectId }) =>
+            createQuery(
+              filter._id.toString() === shopId.toString()
+                ? { _id: shopId }
+                : {
+                    _id: technicianId,
+                    accountLifecycleStatus: 'active',
+                    technicianDetails: { availabilityPreference: undefined },
+                  },
+            ),
+          ),
+      };
+      const repairRequests = {
+        findOne: jest.fn().mockReturnValue(createQuery(request)),
+        findOneAndUpdate: jest
+          .fn()
+          .mockImplementation((filter: Record<string, unknown>) => {
+            updateFilter = filter;
+            return createQuery({
+              ...request,
+              repairJob: {
+                ...request.repairJob,
+                activeAssignment: { technicianId, assignedAt: new Date() },
+              },
+            });
+          }),
+        find: jest.fn().mockReturnValue(createQuery([])),
+      };
+      const quotations = {
+        exists: jest.fn().mockReturnValue(createQuery(true)),
+      };
+      const disputes = {
+        exists: jest
+          .fn()
+          .mockReturnValue(createQuery({ _id: new Types.ObjectId() })),
+      };
+      const notifications = {
+        notifyUsers: jest.fn().mockResolvedValue(undefined),
+      };
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          TechniciansService,
+          { provide: getModelToken(User.name), useValue: users },
+          {
+            provide: getModelToken(RepairRequest.name),
+            useValue: repairRequests,
+          },
+          {
+            provide: getModelToken(RepairQuotation.name),
+            useValue: quotations,
+          },
+          { provide: getModelToken(ChatConversation.name), useValue: {} },
+          { provide: getModelToken(RepairReview.name), useValue: {} },
+          { provide: getModelToken(Dispute.name), useValue: disputes },
+          { provide: NotificationsService, useValue: notifications },
+        ],
+      }).compile();
+
+      await moduleRef
+        .get(TechniciansService)
+        .setAssignment(
+          shopId.toString(),
+          requestId.toString(),
+          actorId.toString(),
+          {
+            technicianId: technicianId.toString(),
+            note: 'Handle reinspection.',
+          },
+        );
+
+      expect(disputes.exists).toHaveBeenCalledWith({
+        repairRequestId: requestId,
+        shopId,
+        status: {
+          $nin: ['CLOSED', 'RESOLVED', 'REJECTED', 'CUSTOMER_CONFIRMED'],
+        },
+      });
+      expect(updateFilter).not.toHaveProperty('repairJob.status');
+      expect(updateFilter?.['repairJob.activeAssignment.technicianId']).toEqual(
+        {
+          $exists: false,
+        },
+      );
     });
   });
 });

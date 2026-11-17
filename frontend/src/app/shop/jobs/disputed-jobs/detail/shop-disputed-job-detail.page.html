@@ -497,6 +497,46 @@
               <h2>Reinspection submission</h2>
               <p>Submit findings or request customer-approved additional charges.</p>
             </div>
+            <div class="sidebar-assigned-technician" aria-label="Assigned technician">
+              @if (repairRequest()?.technicianAssignment?.current; as assignment) {
+                @if (!assignment.isOwner && assignment.technicianId) {
+                  <a
+                    class="assigned-technician assigned-technician-link"
+                    [routerLink]="['/shop/technicians', assignment.technicianId]"
+                    [attr.aria-label]="'View ' + assignment.technicianName + ' profile'"
+                  >
+                    @if (assignment.profileImageData) {
+                      <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" />
+                    } @else {
+                      <span class="assignment-avatar" aria-hidden="true">{{ assignment.technicianName.slice(0, 1) }}</span>
+                    }
+                    <span class="assigned-technician-copy">
+                      <strong>{{ assignment.technicianName }}</strong>
+                      <small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>
+                      @if (assignment.note) {
+                        <small>{{ assignment.note }}</small>
+                      }
+                    </span>
+                  </a>
+                } @else {
+                  <div class="assigned-technician">
+                    <span class="assignment-avatar" aria-hidden="true">♙</span>
+                    <span class="assigned-technician-copy">
+                      <strong>Shop owner</strong>
+                      <small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>
+                      @if (assignment.note) {
+                        <small>{{ assignment.note }}</small>
+                      }
+                    </span>
+                  </div>
+                }
+              } @else {
+                <p class="muted-copy">No technician has been assigned.</p>
+              }
+              <button class="button secondary" type="button" (click)="openAssignment()">
+                {{ hasCurrentAssignment() ? 'Reassign Technician' : 'Assign Technician' }}
+              </button>
+            </div>
             <div class="sidebar-action-buttons">
               <button
                 class="button primary"
@@ -1375,6 +1415,139 @@
               </button>
             </footer>
           </form>
+        </section>
+      </div>
+    }
+
+    @if (assignmentModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeAssignment()">
+        <section
+          class="issue-modal issue-modal-wide"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="dispute-assignment-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">REPAIR ASSIGNMENT</span>
+              <h2 id="dispute-assignment-title">
+                {{ hasCurrentAssignment() ? 'Reassign Technician' : 'Assign Technician' }}
+              </h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close assignment dialog"
+              (click)="closeAssignment()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="issue-modal-form">
+            <button
+              type="button"
+              class="technician-option self-assignment"
+              [class.selected]="selectedTechnicianId() === ''"
+              (click)="selectedTechnicianId.set('')"
+            >
+              <span class="assignment-avatar owner-avatar" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 21a7 7 0 0 1 14 0" />
+                </svg>
+              </span>
+              <span>
+                <strong>Assign to myself</strong>
+                <small>You will handle this repair personally</small>
+              </span>
+              <span class="assignment-status" data-status="owner">Shop owner</span>
+              <i>{{ selectedTechnicianId() === '' ? '●' : '○' }}</i>
+            </button>
+            <label class="assignment-search">
+              <span>Or select a technician</span>
+              <input
+                type="search"
+                placeholder="Search name, employee ID, or skill"
+                [ngModel]="assignmentSearch()"
+                (ngModelChange)="assignmentSearch.set($event)"
+              />
+            </label>
+            @if (assignmentLoading()) {
+              <p role="status">Loading technicians…</p>
+            }
+            <div class="assignment-options">
+              @for (technician of filteredAssignmentTechnicians(); track technician.id) {
+                <button
+                  type="button"
+                  class="technician-option"
+                  [class.selected]="selectedTechnicianId() === technician.id"
+                  [disabled]="technician.status !== 'active' || technician.availability === 'on_leave'"
+                  (click)="selectedTechnicianId.set(technician.id)"
+                >
+                  @if (technician.profileImageData) {
+                    <img [src]="technician.profileImageData" [alt]="technician.name" />
+                  } @else {
+                    <span class="assignment-avatar">{{ technician.name.slice(0, 1) }}</span>
+                  }
+                  <span>
+                    <strong>{{ technician.name }}</strong>
+                    <small>{{ technician.employeeId }} · {{ technician.skills.slice(0, 2).join(' · ') }}</small>
+                  </span>
+                  <span class="assignment-status" [attr.data-status]="technician.availability">
+                    {{ technician.availability.replace('_', ' ') | titlecase }} · {{ technician.workload }} requests
+                  </span>
+                  <i>{{ selectedTechnicianId() === technician.id ? '●' : '○' }}</i>
+                </button>
+              }
+              @if (!assignmentLoading() && !filteredAssignmentTechnicians().length) {
+                <p class="muted-copy">No matching technicians.</p>
+              }
+            </div>
+            @if (isSelectedTechnicianBusy()) {
+              <p class="assignment-warning" role="status">
+                This technician already has active work. Confirm only if they can take another repair.
+              </p>
+            }
+            <label class="assignment-search">
+              <span>Assignment note (optional)</span>
+              <textarea
+                rows="2"
+                maxlength="500"
+                placeholder="Add any assignment instructions."
+                [ngModel]="assignmentNote()"
+                (ngModelChange)="assignmentNote.set($event)"
+              ></textarea>
+            </label>
+            @if (hasCurrentAssignment()) {
+              <label class="assignment-search">
+                <span>Reassignment reason <b>*</b></span>
+                <textarea
+                  rows="2"
+                  maxlength="500"
+                  placeholder="Explain why this repair is being reassigned."
+                  [ngModel]="assignmentReason()"
+                  (ngModelChange)="assignmentReason.set($event)"
+                ></textarea>
+              </label>
+            }
+            @if (assignmentError()) {
+              <p class="action-feedback error" role="alert">{{ assignmentError() }}</p>
+            }
+            <footer class="issue-modal-footer">
+              <button type="button" class="button secondary" (click)="closeAssignment()">
+                Cancel
+              </button>
+              <button
+                class="button primary"
+                type="button"
+                [disabled]="assignmentSubmitting() || assignmentLoading()"
+                (click)="submitAssignment()"
+              >
+                {{ assignmentSubmitting() ? 'Saving…' : 'Confirm Assignment' }}
+              </button>
+            </footer>
+          </div>
         </section>
       </div>
     }

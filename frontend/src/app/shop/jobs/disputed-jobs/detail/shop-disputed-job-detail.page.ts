@@ -20,6 +20,8 @@ import type { RepairRoute } from '../../../../shared/models/repair-route.models'
 import { DisputesService } from '../../../../shared/services/disputes.service';
 import type { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../../repair-requests/shop-repair-requests.service';
+import type { Technician } from '../../../technicians/technicians.models';
+import { TechniciansService } from '../../../technicians/technicians.service';
 
 type ShopDisputeAttachmentTarget =
   | 'conversation'
@@ -48,9 +50,10 @@ export class ShopDisputedJobDetailPage
 {
   private readonly disputes = inject(DisputesService);
   private readonly repairRequests = inject(ShopRepairRequestsService);
+  private readonly technicians = inject(TechniciansService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly repairRequest = signal<ShopRepairRequest | null>(null);
+  protected readonly repairRequest = signal<ShopRepairRequest | null>(null);
   readonly shopLocation = signal<MapCoordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
@@ -68,6 +71,15 @@ export class ShopDisputedJobDetailPage
   readonly additionalChargesModalOpen = signal(false);
   readonly reworkProgressModalOpen = signal(false);
   readonly completeReworkModalOpen = signal(false);
+  readonly assignmentModalOpen = signal(false);
+  readonly assignmentLoading = signal(false);
+  readonly assignmentSubmitting = signal(false);
+  readonly assignmentError = signal('');
+  readonly assignmentTechnicians = signal<Technician[]>([]);
+  readonly selectedTechnicianId = signal('');
+  readonly assignmentSearch = signal('');
+  readonly assignmentNote = signal('');
+  readonly assignmentReason = signal('');
   readonly directionsLoader = (requestId: string): Observable<RepairRoute> =>
     this.repairRequests.getDirections(requestId);
   readonly backRoute = '/shop/jobs/disputed-jobs';
@@ -412,6 +424,104 @@ export class ShopDisputedJobDetailPage
   closeCompleteReworkModal(): void {
     this.completeReworkModalOpen.set(false);
     this.actionError.set('');
+  }
+
+  openAssignment(): void {
+    const current = this.repairRequest()?.technicianAssignment?.current;
+    this.selectedTechnicianId.set(current?.isOwner ? '' : current?.technicianId ?? '');
+    this.assignmentSearch.set('');
+    this.assignmentNote.set('');
+    this.assignmentReason.set('');
+    this.assignmentError.set('');
+    this.assignmentTechnicians.set([]);
+    this.assignmentModalOpen.set(true);
+    this.assignmentLoading.set(true);
+    this.technicians
+      .list()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.assignmentTechnicians.set(result.technicians);
+          this.assignmentLoading.set(false);
+        },
+        error: (error: unknown) => {
+          this.assignmentError.set(
+            this.jobs.errorMessage(error, 'Technician list could not be loaded.'),
+          );
+          this.assignmentLoading.set(false);
+        },
+      });
+  }
+
+  closeAssignment(): void {
+    this.assignmentModalOpen.set(false);
+    this.assignmentError.set('');
+  }
+
+  hasCurrentAssignment(): boolean {
+    return Boolean(this.repairRequest()?.technicianAssignment?.current);
+  }
+
+  filteredAssignmentTechnicians(): Technician[] {
+    const query = this.assignmentSearch().trim().toLocaleLowerCase();
+    return this.assignmentTechnicians().filter((technician) =>
+      [technician.name, technician.employeeId, technician.skills.join(' '), technician.specialization]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(query),
+    );
+  }
+
+  isSelectedTechnicianBusy(): boolean {
+    const selectedId = this.selectedTechnicianId();
+    return this.assignmentTechnicians().some(
+      (technician) => technician.id === selectedId && technician.availability === 'busy',
+    );
+  }
+
+  submitAssignment(): void {
+    const requestId = this.repairRequest()?._id ?? this.record()?.repairRequestId;
+    if (!requestId) return;
+    const current = this.repairRequest()?.technicianAssignment?.current;
+    const selected = this.selectedTechnicianId();
+    if (
+      current &&
+      (current.technicianId === selected || (current.isOwner && selected === ''))
+    ) {
+      this.assignmentError.set('Select a different technician.');
+      return;
+    }
+    if (current && !this.assignmentReason().trim()) {
+      this.assignmentError.set('Enter a reason to reassign this repair.');
+      return;
+    }
+    this.assignmentSubmitting.set(true);
+    this.assignmentError.set('');
+    this.technicians
+      .assign(requestId, {
+        ...(selected ? { technicianId: selected } : {}),
+        note: this.assignmentNote().trim(),
+        ...(current ? { reason: this.assignmentReason().trim() } : {}),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.assignmentSubmitting.set(false);
+          this.assignmentModalOpen.set(false);
+          this.actionNotice.set(
+            result.warning
+              ? `Technician assigned. Warning: ${result.warning}`
+              : 'Technician assignment updated.',
+          );
+          this.loadCustomerLocation(requestId);
+        },
+        error: (error: unknown) => {
+          this.assignmentError.set(
+            this.jobs.errorMessage(error, 'Technician could not be assigned.'),
+          );
+          this.assignmentSubmitting.set(false);
+        },
+      });
   }
 
   proposeResolution(dispute: RepairDispute): void {

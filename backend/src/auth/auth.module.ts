@@ -33,6 +33,7 @@ import {
 } from '../customer/repair-request.schema';
 import { CustomerPortalController } from '../customer/customer-portal.controller';
 import { CustomerPortalService } from '../customer/customer-portal.service';
+import { Dispute, DisputeSchema } from '../disputes/schemas/dispute.schema';
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ShopRepairRequestsController } from '../customer/shop-repair-requests.controller';
 import {
@@ -59,6 +60,7 @@ import {
       { name: RepairQuotation.name, schema: RepairQuotationSchema },
       { name: RepairReview.name, schema: RepairReviewSchema },
       { name: ChatConversation.name, schema: ChatConversationSchema },
+      { name: Dispute.name, schema: DisputeSchema },
     ]),
     RegistrationsModule,
     StripePaymentsModule,

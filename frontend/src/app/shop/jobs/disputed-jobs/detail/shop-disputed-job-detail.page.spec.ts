@@ -10,6 +10,8 @@ import { RepairDispute } from '../../../../shared/models/disputes.models';
 import { DisputesService } from '../../../../shared/services/disputes.service';
 import { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../../repair-requests/shop-repair-requests.service';
+import { Technician } from '../../../technicians/technicians.models';
+import { TechniciansService } from '../../../technicians/technicians.service';
 import { ShopDisputedJobDetailPage } from './shop-disputed-job-detail.page';
 
 describe('ShopDisputedJobDetailPage', () => {
@@ -75,8 +77,31 @@ describe('ShopDisputedJobDetailPage', () => {
     },
   };
 
+  const technician: Technician = {
+    id: 'technician-1',
+    name: 'Technician One',
+    firstName: 'Technician',
+    lastName: 'One',
+    email: 'technician@example.com',
+    phone: '',
+    countryCode: '+1',
+    mobileNumber: '5550111',
+    profileImageData: null,
+    employeeId: 'FX-TCH-1001',
+    skills: ['Screen repair'],
+    specialization: 'Phone repair',
+    experienceYears: 3,
+    employmentType: 'full_time',
+    joiningDate: null,
+    status: 'active',
+    availability: 'available',
+    workload: 1,
+    accountCreatedAt: null,
+  };
+
   function createRepairRequest(
     location: ShopRepairRequest['customer']['location'],
+    technicianAssignment: ShopRepairRequest['technicianAssignment'] = null,
   ): ShopRepairRequest {
     return {
       _id: 'request-45678901',
@@ -94,12 +119,14 @@ describe('ShopDisputedJobDetailPage', () => {
       },
       shopResponse: { status: 'new' },
       quotations: [],
+      technicianAssignment,
     };
   }
 
   async function renderPage(
     location: ShopRepairRequest['customer']['location'],
     loadedDispute: RepairDispute = dispute,
+    technicianAssignment: ShopRepairRequest['technicianAssignment'] = null,
   ) {
     const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', [
       'get',
@@ -133,7 +160,18 @@ describe('ShopDisputedJobDetailPage', () => {
       'ShopRepairRequestsService',
       ['get'],
     );
-    repairRequests.get.and.returnValue(of(createRepairRequest(location)));
+    repairRequests.get.and.returnValue(of(createRepairRequest(location, technicianAssignment)));
+    const technicians = jasmine.createSpyObj<TechniciansService>('TechniciansService', [
+      'list',
+      'assign',
+    ]);
+    technicians.list.and.returnValue(
+      of({
+        technicians: [technician],
+        summary: { total: 1, available: 1, busy: 0, onLeave: 0, inactive: 0 },
+      }),
+    );
+    technicians.assign.and.returnValue(of({ warning: null }));
     const authService = jasmine.createSpyObj<AuthService>('AuthService', ['getMyShopProfile']);
     const shopProfile: ShopProfile = {
       shopName: 'Repair Shop',
@@ -173,6 +211,7 @@ describe('ShopDisputedJobDetailPage', () => {
         ]),
         { provide: DisputesService, useValue: disputes },
         { provide: ShopRepairRequestsService, useValue: repairRequests },
+        { provide: TechniciansService, useValue: technicians },
         { provide: AuthService, useValue: authService },
         {
           provide: JobSharedService,
@@ -188,6 +227,7 @@ describe('ShopDisputedJobDetailPage', () => {
       component: harness.routeDebugElement?.componentInstance as ShopDisputedJobDetailPage,
       harness,
       disputes,
+      technicians,
     };
   }
 
@@ -532,5 +572,77 @@ describe('ShopDisputedJobDetailPage', () => {
 
     expect(disputes.startReinspection).toHaveBeenCalledWith('dispute-123');
     expect(disputes.startRework).toHaveBeenCalledOnceWith('dispute-123');
+  });
+
+  it('assigns a technician from Reinspection submission', async () => {
+    const reinspectionDispute: RepairDispute = { ...dispute, status: 'REINSPECTION_IN_PROGRESS' };
+    const { page, component, harness, technicians } = await renderPage(null, reinspectionDispute);
+    const assignmentCard = page.querySelector(
+      '.reinspection-submit-action-card .sidebar-assigned-technician',
+    );
+
+    expect(assignmentCard?.textContent).toContain('No technician has been assigned.');
+    expect(assignmentCard?.textContent).toContain('Assign Technician');
+
+    component.openAssignment();
+    harness.detectChanges();
+    expect(page.querySelector('#dispute-assignment-title')).not.toBeNull();
+    expect(page.querySelector('.issue-modal .section-kicker')?.textContent?.trim()).toBe(
+      'REPAIR ASSIGNMENT',
+    );
+    expect(page.querySelector('.issue-modal')?.textContent).not.toContain(
+      'Assign this repair to yourself or a technician on your team.',
+    );
+    expect(page.textContent).toContain('Technician One');
+    component.selectedTechnicianId.set('technician-1');
+    component.submitAssignment();
+    harness.detectChanges();
+
+    expect(technicians.assign).toHaveBeenCalledWith('request-45678901', {
+      technicianId: 'technician-1',
+      note: '',
+    });
+    expect(component.assignmentModalOpen()).toBeFalse();
+  });
+
+  it('shows the assigned technician and requires a reason to reassign', async () => {
+    const reinspectionDispute: RepairDispute = { ...dispute, status: 'REINSPECTION_IN_PROGRESS' };
+    const { page, component, harness, technicians } = await renderPage(null, reinspectionDispute, {
+      current: {
+        technicianId: 'technician-2',
+        technicianName: 'Technician Two',
+        assignedAt: '2026-11-17T10:00:00.000Z',
+        note: 'Handle the reinspection.',
+        profileImageData: 'data:image/png;base64,iVBORw0KGgo=',
+        isOwner: false,
+      },
+      history: [],
+    });
+    const assignmentCard = page.querySelector(
+      '.reinspection-submit-action-card .sidebar-assigned-technician',
+    );
+
+    expect(assignmentCard?.querySelector('img')?.getAttribute('alt')).toBe(
+      'Technician Two profile photo',
+    );
+    expect(assignmentCard?.textContent).toContain('Technician Two');
+    expect(assignmentCard?.textContent).toContain('Nov 17, 2026');
+    expect(assignmentCard?.textContent).toContain('Handle the reinspection.');
+    expect(assignmentCard?.textContent).toContain('Reassign Technician');
+
+    component.openAssignment();
+    harness.detectChanges();
+    component.selectedTechnicianId.set('technician-1');
+    component.submitAssignment();
+    expect(technicians.assign).not.toHaveBeenCalled();
+    expect(component.assignmentError()).toBe('Enter a reason to reassign this repair.');
+
+    component.assignmentReason.set('Technician Two is unavailable.');
+    component.submitAssignment();
+    expect(technicians.assign).toHaveBeenCalledWith('request-45678901', {
+      technicianId: 'technician-1',
+      note: '',
+      reason: 'Technician Two is unavailable.',
+    });
   });
 });

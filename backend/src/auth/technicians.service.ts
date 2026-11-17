@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { isObjectIdOrHexString, Model, Types } from 'mongoose';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ChatConversation } from '../chat/schemas/chat.schema';
+import { Dispute } from '../disputes/schemas/dispute.schema';
 import {
   RepairQuotation,
   RepairRequest,
@@ -28,6 +29,12 @@ const TERMINAL_STATUSES = [
   'ready_for_pickup',
   'picked_up',
   'completed',
+] as const;
+const DISPUTE_TERMINAL_STATUSES = [
+  'CLOSED',
+  'RESOLVED',
+  'REJECTED',
+  'CUSTOMER_CONFIRMED',
 ] as const;
 const ACTIVE_STATUSES = [
   'confirmed',
@@ -51,6 +58,7 @@ export class TechniciansService {
     private readonly conversations: Model<ChatConversation>,
     @InjectModel(RepairReview.name)
     private readonly reviews: Model<RepairReview>,
+    @InjectModel(Dispute.name) private readonly disputes: Model<Dispute>,
     private readonly notifications: NotificationsService,
   ) {}
 
@@ -505,11 +513,20 @@ export class TechniciansService {
       assignedAt: now,
       ...(input.note?.trim() ? { note: input.note.trim() } : {}),
     };
+    const hasActiveDispute = await this.disputes
+      .exists({
+        repairRequestId: request._id,
+        shopId: shopObjectId,
+        status: { $nin: [...DISPUTE_TERMINAL_STATUSES] },
+      })
+      .exec();
     const filter: Record<string, unknown> = {
       _id: request._id,
       shopIds: shopObjectId,
       acceptedQuotationId: request.acceptedQuotationId,
-      'repairJob.status': { $nin: [...TERMINAL_STATUSES] },
+      ...(hasActiveDispute
+        ? {}
+        : { 'repairJob.status': { $nin: [...TERMINAL_STATUSES] } }),
       'repairJob.activeAssignment.technicianId': existingId
         ? existingId
         : { $exists: false },
