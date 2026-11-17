@@ -8,6 +8,7 @@ import {
 } from '../../shop/repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../shop/repair-requests/shop-repair-requests.service';
 import {
+  TechnicianAssignment,
   TechnicianJob,
   TechnicianJobSummary,
 } from '../../shop/technicians/technicians.models';
@@ -36,6 +37,7 @@ describe('JobSharedService', () => {
     technicianApi = jasmine.createSpyObj<TechniciansService>('TechniciansService', [
       'myJobs',
       'myJobDetails',
+      'assignments',
     ]);
     disputesApi = jasmine.createSpyObj<DisputesService>('DisputesService', ['list', 'get']);
 
@@ -154,6 +156,12 @@ describe('JobSharedService', () => {
         ),
       ),
     );
+    technicianApi.assignments.and.returnValue(
+      of([
+        assignmentRecord('assigned-count', 'confirmed', false),
+        assignmentRecord('active-assignment', 'in_progress', false),
+      ]),
+    );
     disputesApi.list.and.returnValue(
       of({
         items: [],
@@ -165,7 +173,7 @@ describe('JobSharedService', () => {
     service.shopJobCounts().subscribe((counts) => {
       expect(counts).toEqual({
         new: 1,
-        pending: 1,
+        pending: 2,
         assigned: 1,
         active: 1,
         disputed: 3,
@@ -176,6 +184,7 @@ describe('JobSharedService', () => {
         limit: 50,
         page: 1,
       });
+      expect(technicianApi.assignments).toHaveBeenCalledTimes(1);
       expect(disputesApi.list).toHaveBeenCalledOnceWith('shop', { page: 1, limit: 1 });
       done();
     });
@@ -217,19 +226,50 @@ describe('JobSharedService', () => {
     });
   });
 
-  it('loads shop request pages beyond the first page before categorizing jobs', (done) => {
-    const firstPageItems = Array.from({ length: 50 }, (_, index) =>
-      shopRequest(`new-${index}`, 'new'),
-    );
-    shopApi.list.and.returnValues(
-      of(shopPage(firstPageItems, 1, 51)),
-      of(shopPage([shopRequest('assigned-next-page', 'customer_accepted', 'confirmed')], 2, 51)),
+  it('loads assigned jobs from the dedicated technician assignments API', (done) => {
+    technicianApi.assignments.and.returnValue(
+      of([assignmentRecord('assigned-job', 'inspection_pending', false)]),
     );
 
     service.shopJobs('assigned').subscribe((items) => {
-      expect(items.map((item) => item.id)).toEqual(['assigned-next-page']);
-      expect(shopApi.list.calls.count()).toBe(2);
-      expect(shopApi.list.calls.argsFor(1)[0].page).toBe(2);
+      expect(items.map((item) => item.id)).toEqual(['assigned-job']);
+      expect(items[0].assignedToName).toBe('Ravi Technician');
+      expect(items[0].assignedAt).toBe('2026-11-16T10:24:00.000Z');
+      expect(technicianApi.assignments).toHaveBeenCalledTimes(1);
+      expect(shopApi.list).not.toHaveBeenCalled();
+      done();
+    });
+  });
+
+  it('categorizes accepted requests by actual technician or owner assignment', (done) => {
+    const awaitingAssignment = shopRequest('awaiting-assignment', 'customer_accepted', 'confirmed');
+    shopApi.list.and.returnValue(of(shopPage([awaitingAssignment], 1, 1)));
+    technicianApi.assignments.and.returnValue(
+      of([
+        assignmentRecord('technician-assignment', 'confirmed', false),
+        assignmentRecord('owner-assignment', 'inspection_pending', true),
+        assignmentRecord('already-active', 'in_progress', false),
+      ]),
+    );
+
+    forkJoin({
+      pending: service.shopJobs('pending'),
+      assigned: service.shopJobs('assigned'),
+    }).subscribe((lists) => {
+      expect(lists.pending.map((item) => item.id)).toEqual(['awaiting-assignment']);
+      expect(lists.assigned.map((item) => item.id)).toEqual([
+        'technician-assignment',
+        'owner-assignment',
+      ]);
+      expect(lists.assigned.map((item) => item.assignedToName)).toEqual([
+        'Ravi Technician',
+        'You',
+      ]);
+      expect(lists.assigned.map((item) => item.assignedAt)).toEqual([
+        '2026-11-16T10:24:00.000Z',
+        '2026-11-16T10:24:00.000Z',
+      ]);
+      expect(lists.assigned.every((item) => item.status === 'assigned')).toBeTrue();
       done();
     });
   });
@@ -314,6 +354,52 @@ function shopRequest(
     shopResponse: { status: responseStatus },
     quotations: [],
     repairJob: repairStatus ? { status: repairStatus } : undefined,
+  };
+}
+
+function assignmentRecord(
+  id: string,
+  repairStatus: RepairWorkflowJob['status'],
+  isOwner: boolean,
+): TechnicianAssignment {
+  return {
+    requestId: id,
+    appliance: 'Laptop',
+    brand: 'Fixora',
+    model: 'A1',
+    description: 'Screen repair',
+    photo: null,
+    createdAt: '2026-11-15T12:00:00.000Z',
+    repairStatus,
+    customer: 'Ava Customer',
+    assignment: {
+      technicianId: isOwner ? 'shop-1' : 'technician-1',
+      assignedAt: '2026-11-16T10:24:00.000Z',
+    },
+    isOwner,
+    technician: isOwner
+      ? { id: 'shop-1', name: 'You', availability: 'available', workload: 0 }
+      : {
+          id: 'technician-1',
+          name: 'Ravi Technician',
+          firstName: 'Ravi',
+          lastName: 'Technician',
+          email: 'ravi@example.test',
+          phone: '',
+          countryCode: '+91',
+          mobileNumber: '',
+          profileImageData: null,
+          employeeId: 'TECH-1',
+          skills: [],
+          specialization: '',
+          experienceYears: 0,
+          employmentType: 'full_time',
+          joiningDate: null,
+          status: 'active',
+          availability: 'available',
+          workload: 0,
+          accountCreatedAt: null,
+        },
   };
 }
 

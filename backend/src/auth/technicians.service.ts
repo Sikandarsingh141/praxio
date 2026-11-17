@@ -645,7 +645,9 @@ export class TechniciansService {
         'repairJob.activeAssignment.shopId': shopObjectId,
         'repairJob.status': { $nin: [...TERMINAL_STATUSES] },
       })
-      .select('_id appliance brand model repairJob updatedAt customerId')
+      .select(
+        '_id appliance brand model description photos createdAt repairJob updatedAt customerId',
+      )
       .sort({ 'repairJob.activeAssignment.assignedAt': -1 })
       .limit(500)
       .lean()
@@ -695,12 +697,16 @@ export class TechniciansService {
         appliance: request.appliance,
         brand: request.brand ?? '',
         model: request.model ?? '',
+        description: request.description ?? '',
+        photo: request.photos?.[0]?.data ?? null,
+        createdAt: request.createdAt,
         repairStatus: request.repairJob!.status,
         customer:
           [customer?.firstName, customer?.lastName].filter(Boolean).join(' ') ||
           customer?.fullName ||
           'Customer',
         assignment,
+        isOwner,
         technician: isOwner
           ? {
               id: shopObjectId.toString(),

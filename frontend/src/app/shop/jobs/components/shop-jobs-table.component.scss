@@ -9,6 +9,15 @@
   min-width: 1140px;
 }
 
+.jobs-table.assignment-jobs-table {
+  min-width: 1220px;
+}
+
+.assignment-jobs-table .job-status[data-status='assigned'] {
+  background: #e8f0ff;
+  color: #2464de;
+}
+
 .th-request-id,
 .td-request-id {
   min-width: 7.25rem;
@@ -52,6 +61,70 @@
   font-size: 0.82rem;
   font-weight: 700;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.th-assignee,
+.td-assignee {
+  min-width: 9.5rem;
+}
+
+.assignee-cell {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assignee-avatar {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.owner-avatar {
+  background: #e5f6e8;
+  color: #12732b;
+}
+
+.owner-avatar svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.technician-avatar {
+  background: #e9f1fb;
+  color: #315f9b;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.assignee-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.assignee-copy strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assignee-copy small {
+  color: #64748b;
+  font-size: 0.68rem;
   white-space: nowrap;
 }
 

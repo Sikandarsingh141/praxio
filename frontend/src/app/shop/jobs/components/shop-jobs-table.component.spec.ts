@@ -70,4 +70,54 @@ describe('ShopJobsTableComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Quotation');
     expect(fixture.nativeElement.textContent).toContain('Submitted');
   });
+
+  it('shows assignee and assignment date in the assigned-jobs table', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ShopJobsTableComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ShopJobsTableComponent);
+    fixture.componentInstance.jobs = [
+      {
+        id: 'request-owner-12345678',
+        title: 'Television',
+        status: 'assigned',
+        description: 'No display',
+        customerName: 'Ava Customer',
+        assignedToId: 'owner',
+        assignedToName: 'You',
+        assignedToOwner: true,
+        assignedAt: '2026-11-16T10:24:00.000Z',
+        createdAt: '2026-11-15T12:00:00.000Z',
+      },
+      {
+        id: 'request-tech-12345679',
+        title: 'Refrigerator',
+        status: 'assigned',
+        description: 'Not cooling',
+        customerName: 'Sam Customer',
+        assignedToId: 'tech-1',
+        assignedToName: 'Rahul Verma',
+        assignedAt: '2026-11-16T09:40:00.000Z',
+        createdAt: '2026-11-15T12:00:00.000Z',
+      },
+    ];
+    fixture.componentInstance.detailRoute = '/shop/jobs/assigned-jobs';
+    fixture.componentInstance.showAssignmentDetails = true;
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    const headers = Array.from(
+      fixture.nativeElement.querySelectorAll('thead th') as NodeListOf<HTMLElement>,
+    ).map((header) => header.textContent?.trim());
+    expect(headers).toContain('Job ID');
+    expect(headers).toContain('Assigned To');
+    expect(headers).toContain('Assigned On');
+    expect(headers).not.toContain('Request Date');
+    expect(text).toContain('You');
+    expect(text).toContain('(Shop Owner)');
+    expect(text).toContain('Rahul Verma');
+    expect(text).toContain('Nov 16, 2026');
+  });
 });

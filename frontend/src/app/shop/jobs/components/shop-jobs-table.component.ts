@@ -16,6 +16,7 @@ export class ShopJobsTableComponent {
   @Input({ required: true }) detailRoute = '';
   @Input() title = 'Shop jobs';
   @Input() showQuotationStatus = false;
+  @Input() showAssignmentDetails = false;
 
   private readonly unavailableImages = new Set<string>();
   readonly openActionsJobId = signal<string | null>(null);
@@ -46,6 +47,16 @@ export class ShopJobsTableComponent {
       .map((part) => part[0].toLocaleUpperCase())
       .join('');
     return initials || 'CU';
+  }
+
+  assigneeInitials(name?: string): string {
+    const initials = (name ?? '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0].toLocaleUpperCase())
+      .join('');
+    return initials || 'T';
   }
 
   imageSource(job: JobListItem): string | null {

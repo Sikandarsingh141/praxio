@@ -195,12 +195,23 @@ export interface TechnicianAssignment {
   appliance: string;
   brand: string;
   model: string;
+  description?: string;
+  photo?: string | null;
+  createdAt?: string;
   repairStatus: string;
   customer: string;
   assignment: { technicianId: string; assignedAt: string; note?: string };
+  isOwner: boolean;
   technician:
     | Technician
-    | { id: string; name: string; availability: string; workload: number; employeeId?: string }
+    | {
+        id: string;
+        name: string;
+        availability: string;
+        workload: number;
+        employeeId?: string;
+        profileImageData?: string | null;
+      }
     | null;
 }
 

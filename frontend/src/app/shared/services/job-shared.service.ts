@@ -5,7 +5,11 @@ import { CustomerPortalService } from '../../customer/services/customer-portal.s
 import { CustomerRepairRequest } from '../../customer/models/customer-portal.models';
 import { ShopRepairRequest } from '../../shop/repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../shop/repair-requests/shop-repair-requests.service';
-import { TechnicianJob, TechnicianRepairDetails } from '../../shop/technicians/technicians.models';
+import {
+  TechnicianAssignment,
+  TechnicianJob,
+  TechnicianRepairDetails,
+} from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { DisputeRole, RepairDispute } from '../models/disputes.models';
 import {
@@ -81,12 +85,13 @@ export class JobSharedService {
   shopJobCounts(): Observable<ShopJobCounts> {
     return forkJoin({
       requests: this.allShopRequests(),
+      assignments: this.technicians.assignments(),
       disputes: this.disputes.list('shop', { page: 1, limit: 1 }),
     }).pipe(
-      map(({ requests, disputes }) => ({
+      map(({ requests, assignments, disputes }) => ({
         new: requests.filter((request) => this.matchesShopCategory(request, 'new')).length,
         pending: requests.filter((request) => this.matchesShopCategory(request, 'pending')).length,
-        assigned: requests.filter((request) => this.matchesShopCategory(request, 'assigned')).length,
+        assigned: this.assignedShopItems(assignments).length,
         active: requests.filter((request) => this.matchesShopCategory(request, 'active')).length,
         disputed: disputes.pagination.total,
         completed: requests.filter((request) => this.matchesShopCategory(request, 'completed'))
@@ -102,6 +107,11 @@ export class JobSharedService {
   shopJobs(category: ShopJobCategory): Observable<JobListItem[]> {
     if (category === 'disputed') {
       return this.allDisputes('shop').pipe(map((items) => items.map(disputeToJobListItem)));
+    }
+    if (category === 'assigned') {
+      return this.technicians
+        .assignments()
+        .pipe(map((assignments) => this.assignedShopItems(assignments)));
     }
 
     return this.allShopRequests().pipe(
@@ -187,7 +197,8 @@ export class JobSharedService {
         const direction = sort === 'newest' ? -1 : 1;
         return (
           direction *
-          (new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
+          (new Date(left.assignedAt ?? left.createdAt).getTime() -
+            new Date(right.assignedAt ?? right.createdAt).getTime())
         );
       });
   }
@@ -220,6 +231,32 @@ export class JobSharedService {
       ),
       reduce((all, result) => all.concat(result.items), [] as RepairDispute[]),
     );
+  }
+
+  private assignedShopItems(assignments: TechnicianAssignment[]): JobListItem[] {
+    return assignments
+      .filter((assignment) =>
+        !assignment.repairStatus ||
+        ['confirmed', 'inspection_pending'].includes(assignment.repairStatus),
+      )
+      .map((assignment) => ({
+        id: assignment.requestId,
+        title: assignment.appliance,
+        status: 'assigned',
+        description: assignment.description ?? '',
+        customerName: assignment.customer,
+        brand: assignment.brand,
+        model: assignment.model,
+        imageData: assignment.photo ?? null,
+        createdAt: assignment.createdAt ?? assignment.assignment.assignedAt,
+        assignedToId: assignment.isOwner ? 'owner' : assignment.assignment.technicianId,
+        assignedToName: assignment.isOwner ? 'You' : assignment.technician?.name ?? 'Technician',
+        assignedToOwner: assignment.isOwner,
+        assignedToImageData: assignment.isOwner
+          ? null
+          : assignment.technician?.profileImageData ?? null,
+        assignedAt: assignment.assignment.assignedAt,
+      }));
   }
 
   private matchesCustomerCategory(
@@ -273,10 +310,15 @@ export class JobSharedService {
         return request.status === 'open' && responseStatus === 'new';
       case 'pending':
         return request.status === 'open' &&
-          (responseStatus === 'pending' || responseStatus === 'quotation_submitted');
+          (responseStatus === 'pending' ||
+            responseStatus === 'quotation_submitted' ||
+            (responseStatus === 'customer_accepted' &&
+              !request.technicianAssignment?.current &&
+              (!status || ['confirmed', 'inspection_pending'].includes(status))));
       case 'assigned':
         return request.status === 'open' &&
           responseStatus === 'customer_accepted' &&
+          !!request.technicianAssignment?.current &&
           (!status || ['confirmed', 'inspection_pending'].includes(status));
       case 'active':
         return request.status === 'open' &&
@@ -338,10 +380,15 @@ export class JobSharedService {
 
   private shopListItem(request: ShopRepairRequest): JobListItem {
     const quotations = request.quotations ?? [];
+    const assignment = request.technicianAssignment?.current;
+    const repairStatus = request.repairJob?.status;
     return {
       id: request._id,
       title: request.appliance,
-      status: request.repairJob?.status ?? request.shopResponse.status,
+      status:
+        assignment && (!repairStatus || ['confirmed', 'inspection_pending'].includes(repairStatus))
+          ? 'assigned'
+          : repairStatus ?? request.shopResponse.status,
       description: request.description,
       customerName: request.customer.displayName ??
         `${request.customer.firstName} ${request.customer.lastName}`.trim(),
@@ -357,6 +404,11 @@ export class JobSharedService {
         ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
           request.shopResponse.status,
         ),
+      assignedToId: assignment?.isOwner ? 'owner' : assignment?.technicianId,
+      assignedToName: assignment?.isOwner ? 'You' : assignment?.technicianName,
+      assignedToOwner: assignment?.isOwner ?? false,
+      assignedToImageData: assignment?.profileImageData ?? null,
+      assignedAt: assignment?.assignedAt,
     };
   }
 

@@ -2,40 +2,66 @@
   <app-admin-page-header>
     <h1 adminPageTitle class="admin-page-title" id="shop-assigned-jobs-title">{{ title }}</h1>
     <p adminPageDescription class="admin-page-description">{{ description }}</p>
-    <div adminPageActions class="header-actions">
-      <label class="search-control">
-        <input
-          type="search"
-          placeholder="Search ID, device, brand, customer or issue"
-          aria-label="Search assigned jobs by ID, device, brand, customer, or issue"
-          [value]="search()"
-          (input)="setSearch($any($event.target).value)"
-        />
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg>
-      </label>
-      <app-common-filter
-        [config]="filterConfig"
-        [appliedFilters]="appliedFilters()"
-        (filtersChange)="applyFilters($event)"
-      />
-      <label class="toolbar-select">
-        <span>Status</span>
-        <select [value]="statusFilter()" (change)="setStatusFilter($any($event.target).value)">
-          <option value="">All statuses</option>
-          @for (status of statusOptions(); track status) {
-            <option [value]="status">{{ status.replaceAll('_', ' ') | titlecase }}</option>
-          }
-        </select>
-      </label>
-      <label class="toolbar-select">
-        <span>Sort by</span>
-        <select [value]="sort()" (change)="setSort($any($event.target).value)">
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-        </select>
-      </label>
-    </div>
+    <a adminPageActions class="assign-job-button" routerLink="/shop/jobs/pending-jobs">
+      <span aria-hidden="true">+</span>
+      Assign Job
+    </a>
   </app-admin-page-header>
+
+  <section class="assignment-summary" aria-label="Assignment totals">
+    <article class="summary-card">
+      <span class="summary-icon total-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="m12 3 9 4.5-9 4.5-9-4.5L12 3Z" /><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5" /></svg>
+      </span>
+      <span class="summary-copy"><span>Total Assigned</span><strong>{{ items().length }}</strong></span>
+    </article>
+    <article class="summary-card">
+      <span class="summary-icon owner-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5" /><path d="M3 21a7 7 0 0 1 14 0M18 8v6M15 11h6" /></svg>
+      </span>
+      <span class="summary-copy"><span>Assigned to Me</span><strong>{{ assignedToMeCount() }}</strong></span>
+    </article>
+    <article class="summary-card">
+      <span class="summary-icon technician-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M15 15a5 5 0 0 1 6.5 5" /></svg>
+      </span>
+      <span class="summary-copy"><span>Assigned to Technicians</span><strong>{{ assignedToTechniciansCount() }}</strong></span>
+    </article>
+  </section>
+
+  <div class="assignment-toolbar">
+    <label class="search-control">
+      <input
+        type="search"
+        placeholder="Search by job ID, customer, device, or issue..."
+        aria-label="Search assigned jobs by ID, customer, device, or issue"
+        [value]="search()"
+        (input)="setSearch($any($event.target).value)"
+      />
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4 4" /></svg>
+    </label>
+    <label class="assignment-select">
+      <select aria-label="Filter by technician" [value]="assigneeFilter()" (change)="setAssigneeFilter($any($event.target).value)">
+        <option value="">All Technicians</option>
+        @for (option of assigneeOptions(); track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </label>
+    <label class="assignment-select">
+      <select aria-label="Filter by device" [value]="deviceFilter()" (change)="setDeviceFilter($any($event.target).value)">
+        <option value="">All Devices</option>
+        @for (device of deviceOptions(); track device) {
+          <option [value]="device">{{ device }}</option>
+        }
+      </select>
+    </label>
+    <app-common-filter
+      [config]="filterConfig"
+      [appliedFilters]="appliedFilters()"
+      (filtersChange)="applyFilters($event)"
+    />
+  </div>
 
   @if (loading()) {
     <p class="loading-state" role="status">Loading assigned jobs...</p>
@@ -48,10 +74,15 @@
   } @else if (!filteredItems().length) {
     <app-empty-state
       [title]="search() ? 'No matching jobs' : 'No assigned jobs'"
-      [description]="search() ? 'Try another device, customer, or job ID.' : 'Jobs assigned to your team will appear here.'"
+      [description]="search() || assigneeFilter() || deviceFilter() ? 'Try changing your search or filters.' : 'Assign an accepted request to yourself or a technician and it will appear here.'"
     />
   } @else {
-    <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Assigned Jobs" />
+    <app-shop-jobs-table
+      [jobs]="pageItems()"
+      [detailRoute]="detailRoute"
+      title="Assigned Jobs"
+      [showAssignmentDetails]="true"
+    />
     @if (filteredItems().length > pageSize()) {
       <app-job-pagination
         variant="brand"

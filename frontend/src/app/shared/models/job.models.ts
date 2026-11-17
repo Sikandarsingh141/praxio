@@ -36,6 +36,11 @@ export interface JobListItem {
   currency?: string;
   quotationSubmitted?: boolean;
   pendingQuotations?: PendingJobQuotation[];
+  assignedToId?: string;
+  assignedToName?: string;
+  assignedToOwner?: boolean;
+  assignedToImageData?: string | null;
+  assignedAt?: string;
 }
 
 export interface JobTimelineEntry {
