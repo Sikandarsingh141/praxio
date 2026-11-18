@@ -168,8 +168,22 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(fixture.nativeElement.querySelector('.customer-detail-layout')).not.toBeNull();
     expect(text).toContain('Customer Information');
     expect(text).toContain('Device Information');
-    expect(text).toContain('Accept & Submit Quotation');
+    expect(text).toContain('Submit Quotation');
     expect(text).toContain('Decline Request');
+    expect(text).toContain(
+      'Please review the request and choose to submit a quotation or decline it.',
+    );
+    expect(text.indexOf('Submit Quotation')).toBeLessThan(
+      text.indexOf('Device Information'),
+    );
+    expect(text.indexOf('Decline Request')).toBeLessThan(
+      text.indexOf('Device Information'),
+    );
+    expect(
+      fixture.nativeElement
+        .querySelector('.request-response-actions')
+        ?.closest('.customer-detail-sidebar-card'),
+    ).not.toBeNull();
   });
 
   it('uses the assigned-jobs context when opened from that stage', () => {
@@ -232,9 +246,14 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
     component.quotationOpen.set(true);
+    component.quotationSummaryOpen.set(true);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('input[name="quotationSummarySearch"]')).not.toBeNull();
+    const options: HTMLElement | null = fixture.nativeElement.querySelector('.quotation-options');
+    expect(options).not.toBeNull();
+    expect(getComputedStyle(options!).position).toBe('static');
+    expect(getComputedStyle(options!).overflowY).toBe('visible');
 
     component.quotationSummarySearch.set('battery');
     expect(component.filteredQuotationSummaries().map((option) => option)).toEqual([

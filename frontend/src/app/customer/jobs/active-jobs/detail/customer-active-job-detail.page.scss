@@ -24,3 +24,73 @@
 
 @include buttons.job-buttons;
 
+.estimate-approval-card .original-quote {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  border: 1px solid #e4ebe5;
+  border-radius: 0.65rem;
+}
+
+.estimate-approval-card .original-quote strong {
+  color: #17643b;
+  font-size: 1rem;
+}
+
+.estimate-approval-card .original-quote small,
+.quotation-helper-text,
+.decision-state {
+  color: #66746b;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.quotation-helper-text {
+  margin: 0.65rem 0 0;
+}
+
+.decision-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.decision-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.45rem;
+  padding: 0.58rem 0.85rem;
+  border: 1px solid transparent;
+  border-radius: 0.52rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 690;
+}
+
+.estimate-approval-card .primary-button {
+  border-color: #087c3b;
+  background: #087c3b;
+  color: #fff;
+}
+
+.estimate-approval-card .primary-button:hover {
+  border-color: #076a32;
+  background: #076a32;
+}
+
+.estimate-approval-card .decline-button {
+  border-color: #ef6a62;
+  background: #fff;
+  color: #cf3027;
+}
+
+.estimate-approval-card .decline-button:hover {
+  background: #fff5f3;
+}
+
+.decision-state {
+  margin: 0.65rem 0 0;
+}
+

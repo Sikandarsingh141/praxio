@@ -143,6 +143,19 @@
 
       <aside class="customer-detail-sidebar">
         <section class="detail-section customer-detail-sidebar-card" aria-label="Device and service details">
+          @if (canRespond()) {
+            <p class="response-helper-text">
+              Please review the request and choose to submit a quotation or decline it.
+            </p>
+            <div class="primary-actions request-response-actions">
+              <button type="button" class="primary-button" (click)="quotationOpen.set(true)">
+                <span aria-hidden="true">✓</span> Submit Quotation
+              </button>
+              <button type="button" class="decline-button" (click)="declineOpen.set(true)">
+                <span aria-hidden="true">×</span> Decline Request
+              </button>
+            </div>
+          }
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>
@@ -420,16 +433,6 @@
     }
     @if (request.shopResponse.status === 'expired') {
       <p class="decline-note">This request has expired and cannot be answered.</p>
-    }
-    @if (canRespond()) {
-      <div class="primary-actions">
-        <button type="button" class="primary-button" (click)="quotationOpen.set(true)">
-          <span aria-hidden="true">✓</span> Accept &amp; Submit Quotation
-        </button>
-        <button type="button" class="decline-button" (click)="declineOpen.set(true)">
-          <span aria-hidden="true">×</span> Decline Request
-        </button>
-      </div>
     }
   }
 

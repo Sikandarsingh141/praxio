@@ -142,11 +142,41 @@
             }
           </section>
 
+          <section class="customer-detail-block timeline-section">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+              Repair Progress and Inspection
+            </h2>
+            @if (jobs.customerTimeline(job).length) {
+              <app-job-timeline [items]="jobs.customerTimeline(job)" />
+            } @else {
+              <div class="timeline-empty">
+                <span class="timeline-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                </span>
+                <div>
+                  <strong>No repair history yet</strong>
+                  <p>Repair activity will appear here once the shop starts working on your request.</p>
+                </div>
+              </div>
+            }
+          </section>
+        </section>
+      </div>
+
+      <aside class="customer-detail-sidebar">
+        <section
+          class="detail-section customer-detail-sidebar-card"
+          aria-label="Device and repair shop information"
+        >
           <section class="customer-detail-block quotation-section">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" /><path d="M8 2v3m8-3v3" /></svg>
               Quotation and Payment
             </h2>
+            <p class="quotation-helper-text">
+              Please review the quotation and choose to accept or decline.
+            </p>
             @if (job.acceptedQuotation; as quotation) {
               <article class="quotation-entry">
                 <div class="quotation-heading">
@@ -154,7 +184,7 @@
                   <span class="quotation-status accepted">Accepted</span>
                 </div>
                 <p>{{ quotation.message }}</p>
-                @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+                @if (quotation.proposedSolution && quotation.proposedSolution !== quotation.message) { <p>{{ quotation.proposedSolution }}</p> }
               </article>
             } @else if (job.quotations.length) {
               <div class="quotation-list">
@@ -165,7 +195,7 @@
                       <span class="quotation-status" [attr.data-status]="quotation.status">{{ formatStatus(quotation.status) }}</span>
                     </div>
                     <p>{{ quotation.message }}</p>
-                    @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+                    @if (quotation.proposedSolution && quotation.proposedSolution !== quotation.message) { <p>{{ quotation.proposedSolution }}</p> }
                     @if (canRespondToQuotation(job, quotation)) {
                       <div class="quotation-response-buttons">
                         <button
@@ -197,33 +227,6 @@
             }
           </section>
 
-          <section class="customer-detail-block timeline-section">
-            <h2 class="section-heading">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-              Repair Progress and Inspection
-            </h2>
-            @if (jobs.customerTimeline(job).length) {
-              <app-job-timeline [items]="jobs.customerTimeline(job)" />
-            } @else {
-              <div class="timeline-empty">
-                <span class="timeline-empty-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                </span>
-                <div>
-                  <strong>No repair history yet</strong>
-                  <p>Repair activity will appear here once the shop starts working on your request.</p>
-                </div>
-              </div>
-            }
-          </section>
-        </section>
-      </div>
-
-      <aside class="customer-detail-sidebar">
-        <section
-          class="detail-section customer-detail-sidebar-card"
-          aria-label="Device and repair shop information"
-        >
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" /></svg>

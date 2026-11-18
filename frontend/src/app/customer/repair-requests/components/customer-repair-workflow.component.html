@@ -114,16 +114,18 @@
           </p>
         </section>
 
-        <section class="cost-summary original-quote">
-          <h3>Original accepted quotation</h3>
-          <p>
-            {{ request.acceptedQuotation?.amount | currency: request.acceptedQuotation?.currency }}
-          </p>
-          <small
-            >The shop's inspection estimate is shown separately. The original quotation has not been
-            overwritten.</small
-          >
-        </section>
+        @if (showApprovalSummaryInFlow) {
+          <section class="cost-summary original-quote">
+            <h3>Original accepted quotation</h3>
+            <p>
+              {{ request.acceptedQuotation?.amount | currency: request.acceptedQuotation?.currency }}
+            </p>
+            <small
+              >The shop's inspection estimate is shown separately. The original quotation has not been
+              overwritten.</small
+            >
+          </section>
+        }
 
         <dl class="device-summary">
           @if (report.estimatedTimeValue) {
@@ -167,33 +169,35 @@
           </section>
         }
 
-        @if (job.status === 'awaiting_customer_approval') {
-          <div class="decision-actions">
-            <button
-              type="button"
-              class="primary-button"
-              [disabled]="submitting()"
-              (click)="approvalDialogOpen.set(true)"
-            >
-              Approve Estimate
-            </button>
-            <button
-              type="button"
-              class="decline-button"
-              [disabled]="submitting()"
-              (click)="declineDialogOpen.set(true)"
-            >
-              Decline Repair
-            </button>
-          </div>
-        } @else if (job.status === 'inspection_approved') {
-          <p class="decision-state" role="status">
-            You approved this estimate. The shop will start the repair after it confirms the start.
-          </p>
-        } @else if (job.status === 'repair_declined') {
-          <p class="decision-state" role="status">You declined this inspection estimate.</p>
-          @if (report.decisionReason) {
-            <p><strong>Your reason:</strong> {{ report.decisionReason }}</p>
+        @if (showApprovalSummaryInFlow) {
+          @if (job.status === 'awaiting_customer_approval') {
+            <div class="decision-actions">
+              <button
+                type="button"
+                class="primary-button"
+                [disabled]="submitting()"
+                (click)="openApprovalDialog()"
+              >
+                Approve Estimate
+              </button>
+              <button
+                type="button"
+                class="decline-button"
+                [disabled]="submitting()"
+                (click)="openDeclineDialog()"
+              >
+                Decline Repair
+              </button>
+            </div>
+          } @else if (job.status === 'inspection_approved') {
+            <p class="decision-state" role="status">
+              You approved this estimate. The shop will start the repair after it confirms the start.
+            </p>
+          } @else if (job.status === 'repair_declined') {
+            <p class="decision-state" role="status">You declined this inspection estimate.</p>
+            @if (report.decisionReason) {
+              <p><strong>Your reason:</strong> {{ report.decisionReason }}</p>
+            }
           }
         }
       </section>

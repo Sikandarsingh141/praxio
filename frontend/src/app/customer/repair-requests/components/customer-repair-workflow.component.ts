@@ -26,6 +26,7 @@ type RepairRatingKey =
 })
 export class CustomerRepairWorkflowComponent {
   @Input({ required: true }) request!: CustomerRepairRequest;
+  @Input() showApprovalSummaryInFlow = true;
   @Output() readonly requestUpdated = new EventEmitter<CustomerRepairRequest>();
 
   readonly submitting = signal(false);
@@ -41,6 +42,14 @@ export class CustomerRepairWorkflowComponent {
   readonly satisfaction = signal('satisfied');
   readonly pickupComments = signal('');
   readonly pickupIssueDescription = signal('');
+
+  openApprovalDialog(): void {
+    this.approvalDialogOpen.set(true);
+  }
+
+  openDeclineDialog(): void {
+    this.declineDialogOpen.set(true);
+  }
   readonly overallRating = signal(5);
   readonly repairQuality = signal(5);
   readonly communication = signal(5);

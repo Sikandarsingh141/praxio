@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
@@ -39,6 +46,7 @@ interface CustomerShopSummary {
 })
 export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
   readonly authService = inject(AuthService);
+  readonly workflowRef = viewChild(CustomerRepairWorkflowComponent);
   readonly heroImageUnavailable = signal(false);
   readonly shopLogoUnavailable = signal<string | null>(null);
   readonly shopLocation = signal<Coordinates | null>(null);
