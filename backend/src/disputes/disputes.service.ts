@@ -1135,11 +1135,13 @@ export class DisputesService {
       this.repairRequests.findById(dispute.repairRequestId).lean(),
       this.users
         .findById(dispute.customerId)
-        .select('firstName lastName fullName email')
+        .select('firstName lastName fullName email profileImageData')
         .lean(),
       this.users
         .findById(dispute.shopId)
-        .select('firstName lastName fullName email shopDetails.shopName')
+        .select(
+          'firstName lastName fullName email profileImageData shopDetails.shopName',
+        )
         .lean(),
     ]);
     if (!request) {
@@ -1159,6 +1161,7 @@ export class DisputesService {
           ? {
               id: customer._id.toString(),
               name: formatUserName(customer),
+              profileImageUrl: customer.profileImageData ?? null,
               ...(actor.role === 'admin' ? { email: customer.email } : {}),
             }
           : null,
@@ -1166,6 +1169,7 @@ export class DisputesService {
           ? {
               id: shop._id.toString(),
               name: shop.shopDetails?.shopName ?? formatUserName(shop),
+              profileImageUrl: shop.profileImageData ?? null,
               ...(actor.role === 'admin' ? { email: shop.email } : {}),
             }
           : null,

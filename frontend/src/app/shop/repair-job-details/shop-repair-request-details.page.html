@@ -99,7 +99,16 @@
             </h2>
             <div class="customer-information-row">
               <div class="customer-identity">
-                <span class="customer-avatar" aria-hidden="true">{{ customerInitials(request) }}</span>
+                @if (customerPhotoSource(request.customer.profileImageUrl); as photo) {
+                  <img
+                    class="customer-avatar"
+                    [src]="photo"
+                    [alt]="customerName(request) + ' profile photo'"
+                    (error)="customerImageUnavailable.set(true)"
+                  />
+                } @else {
+                  <span class="customer-avatar" aria-hidden="true">{{ customerInitials(request) }}</span>
+                }
                 <strong>{{ customerName(request) }}</strong>
               </div>
               <dl class="customer-facts">

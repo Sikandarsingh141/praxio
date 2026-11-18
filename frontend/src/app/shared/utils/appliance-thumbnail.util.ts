@@ -27,3 +27,17 @@ export function getCustomerUploadedPhoto(request: {
   }
   return `data:${first.mimeType || 'image/jpeg'};base64,${data}`;
 }
+
+export function profileImageSource(value?: string | null): string | null {
+  if (!value) return null;
+  const source = value.trim();
+  if (!source) return null;
+  if (/^data:image\/[a-z0-9.+-]+;base64,/i.test(source)) return source;
+  if (/^https?:\/\//i.test(source) || source.startsWith('/') || source.startsWith('blob:')) {
+    return source;
+  }
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(source)) {
+    return `data:image/jpeg;base64,${source}`;
+  }
+  return null;
+}

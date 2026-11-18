@@ -12,6 +12,7 @@ import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerRepairRequest } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { CustomerRepairWorkflowComponent } from '../repair-requests/components/customer-repair-workflow.component';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 import { ToastService } from '../../core/toast/toast.service';
 
 @Component({
@@ -128,6 +129,11 @@ export class CustomerRepairJobPage implements OnInit {
       return data;
     }
     return `data:${photo.mimeType || 'image/jpeg'};base64,${data}`;
+  }
+
+  customerPhotoSource(value?: string | null): string | null {
+    const source = profileImageSource(value);
+    return source && !this.customerAvatarUnavailable() ? source : null;
   }
 
   customerName(user: UserProfile): string {

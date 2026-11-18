@@ -557,7 +557,16 @@
             </h2>
             <div class="customer-information-row">
               <div class="customer-identity">
-                <span class="customer-avatar" aria-hidden="true">{{ customerInitials(job) }}</span>
+                @if (customerPhotoSource(job.customerInfo?.profileImageUrl); as photo) {
+                  <img
+                    class="customer-avatar"
+                    [src]="photo"
+                    [alt]="customerName(job) + ' profile photo'"
+                    (error)="onCustomerImageError()"
+                  />
+                } @else {
+                  <span class="customer-avatar" aria-hidden="true">{{ customerInitials(job) }}</span>
+                }
                 <strong>{{ customerName(job) }}</strong>
               </div>
               <dl class="customer-facts">

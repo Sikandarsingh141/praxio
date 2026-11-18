@@ -53,6 +53,7 @@ describe('ShopRepairRequestDetailsPage directions', () => {
       firstName: 'Ava',
       lastName: 'Customer',
       displayName: 'Ava Customer',
+      profileImageUrl: 'Y3VzdG9tZXI=',
       location: { latitude: 30.7, longitude: 76.7 },
     },
     shopResponse: { status: 'new' },
@@ -167,6 +168,9 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(fixture.nativeElement.querySelector('.customer-detail-layout')).not.toBeNull();
     expect(text).toContain('Customer Information');
+    expect(
+      fixture.nativeElement.querySelector('.customer-identity img')?.getAttribute('src'),
+    ).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(text).toContain('Device Information');
     expect(text).toContain('Submit Quotation');
     expect(text).toContain('Decline Request');

@@ -80,9 +80,18 @@
             </h2>
             <div class="customer-information-row">
               <div class="customer-identity">
-                <span class="customer-avatar" aria-hidden="true">
-                  {{ initials(customerName(dispute)) }}
-                </span>
+                @if (customerPhotoSource(dispute.parties?.customer?.profileImageUrl); as photo) {
+                  <img
+                    class="customer-avatar"
+                    [src]="photo"
+                    [alt]="customerName(dispute) + ' profile photo'"
+                    (error)="onCustomerImageError()"
+                  />
+                } @else {
+                  <span class="customer-avatar" aria-hidden="true">
+                    {{ initials(customerName(dispute)) }}
+                  </span>
+                }
                 <strong>{{ customerName(dispute) }}</strong>
               </div>
               <dl class="customer-facts">

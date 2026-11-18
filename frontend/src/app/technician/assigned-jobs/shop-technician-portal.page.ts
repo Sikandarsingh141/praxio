@@ -23,6 +23,7 @@ import {
   TechnicianRepairDetails,
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 export type JobFilter = 'all' | 'pending' | 'active' | 'completed' | 'today';
 export type TechnicianPageView = 'dashboard' | 'jobs' | 'active' | 'completed' | 'history' | 'job-detail';
@@ -83,6 +84,7 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
   readonly summary = signal<TechnicianJobSummary>(EMPTY_SUMMARY);
   readonly selectedJobId = signal<string>('');
   readonly details = signal<TechnicianRepairDetails | null>(null);
+  readonly customerImageUnavailable = signal(false);
 
   readonly loading = signal(false);
   readonly detailLoading = signal(false);
@@ -267,6 +269,23 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
   setPageSize(size: number): void {
     this.pageSize.set(size);
     this.currentPage.set(1);
+  }
+
+  customerPhotoSource(repair?: TechnicianRepairDetails | TechnicianJob | null): string | null {
+    const value =
+      (repair as TechnicianRepairDetails)?.customerInfo?.profileImageUrl ??
+      (repair as TechnicianJob)?.customerProfileImageUrl ??
+      null;
+    const source = profileImageSource(value);
+    return source && !this.customerImageUnavailable() ? source : null;
+  }
+
+  customerInitials(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
+    return this.getCustomerName(repair)
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
   }
 
   getCustomerName(repair?: TechnicianRepairDetails | TechnicianJob | null): string {
@@ -846,6 +865,7 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
     this.service.myJobDetails(jobId).subscribe({
       next: (details) => {
         this.details.set(details);
+        this.customerImageUnavailable.set(false);
         this.populateInspectionForm(details.inspection || details.repairJobDetails?.inspection);
         this.detailLoading.set(false);
       },

@@ -1923,7 +1923,7 @@ export class CustomerPortalService {
     ];
     const customers = await this.users
       .find({ _id: { $in: customerIds } })
-      .select('firstName lastName fullName location')
+      .select('firstName lastName fullName location profileImageData')
       .lean()
       .exec();
     const customerMap = new Map(
@@ -2062,6 +2062,7 @@ export class CustomerPortalService {
         customer: {
           ...userNameParts(customer ?? {}),
           displayName: formatUserName(customer ?? {}) || 'Customer',
+          profileImageUrl: customer?.profileImageData ?? null,
           location:
             request.customerLatitude !== undefined &&
             request.customerLongitude !== undefined
@@ -2181,7 +2182,7 @@ export class CustomerPortalService {
     const customer = await this.users
       .findById(request.customerId)
       .select(
-        'firstName lastName fullName email countryCode mobileNumber location',
+        'firstName lastName fullName email countryCode mobileNumber location profileImageData',
       )
       .lean()
       .exec();
@@ -2243,6 +2244,7 @@ export class CustomerPortalService {
       customer: {
         ...userNameParts(customer),
         displayName: formatUserName(customer) || 'Customer',
+        profileImageUrl: customer.profileImageData ?? null,
         email: customer.email,
         phone:
           customer.countryCode && customer.mobileNumber

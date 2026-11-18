@@ -351,7 +351,7 @@
                   @if (role() === 'shop' || role() === 'admin') {
                     <td class="dispute-customer-cell">
                       <div class="dispute-customer-content">
-                        @if (item.parties?.customer?.profileImageUrl; as profileImageUrl) {
+                        @if (normalizedImageSource(item.parties?.customer?.profileImageUrl); as profileImageUrl) {
                           <img
                             class="dispute-customer-avatar"
                             [src]="profileImageUrl"
@@ -394,7 +394,7 @@
                   <td class="dispute-shop-cell">
                     @if (role() === 'admin') {
                       <div class="dispute-shop-content">
-                        @if (item.parties?.shop?.shopImageUrl; as shopImageUrl) {
+                        @if (normalizedImageSource(item.parties?.shop?.shopImageUrl); as shopImageUrl) {
                           <img
                             class="dispute-shop-logo"
                             [src]="shopImageUrl"
@@ -408,7 +408,7 @@
                         <div class="dispute-shop-copy">
                           <strong>{{ item.parties?.shop?.name || 'Assigned shop' }}</strong>
                           <span class="dispute-shop-owner">
-                            @if (item.parties?.shop?.profileImageUrl; as shopProfileImageUrl) {
+                            @if (normalizedImageSource(item.parties?.shop?.profileImageUrl); as shopProfileImageUrl) {
                               <img
                                 class="dispute-shop-owner-avatar"
                                 [src]="shopProfileImageUrl"
@@ -662,9 +662,9 @@
               </h2>
               <div class="customer-information-row">
                 <div class="customer-identity">
-                  @if (repair.customer.profileImageUrl && !adminCustomerImageUnavailable()) {
+                  @if (adminCustomerPhotoSource(repair.customer.profileImageUrl); as photo) {
                     <img
-                      [src]="repair.customer.profileImageUrl"
+                      [src]="photo"
                       [alt]="adminCustomerName(repair) + ' profile photo'"
                       (error)="adminCustomerImageUnavailable.set(true)"
                     />
@@ -2056,10 +2056,10 @@
                 <div class="dispute-participant">
                   <div class="dispute-party-person">
                     @if (adminRepairDetails(); as fullRepair) {
-                      @if (fullRepair.customer.profileImageUrl && !adminCustomerImageUnavailable()) {
+                      @if (adminCustomerPhotoSource(fullRepair.customer.profileImageUrl); as photo) {
                         <img
                           class="dispute-party-avatar"
-                          [src]="fullRepair.customer.profileImageUrl"
+                          [src]="photo"
                           [alt]="adminCustomerName(fullRepair)"
                           (error)="adminCustomerImageUnavailable.set(true)"
                         />
@@ -2069,10 +2069,10 @@
                         </span>
                       }
                     } @else {
-                      @if (item.parties?.customer?.profileImageUrl) {
+                      @if (normalizedImageSource(item.parties?.customer?.profileImageUrl); as photo) {
                         <img
                           class="dispute-party-avatar"
-                          [src]="item.parties?.customer?.profileImageUrl"
+                          [src]="photo"
                           [alt]="item.parties?.customer?.name || 'Customer'"
                         />
                       } @else {
@@ -2101,10 +2101,10 @@
                 <div class="dispute-participant">
                   <div class="dispute-party-person">
                     @if (adminRepairDetails(); as fullRepair) {
-                      @if (fullRepair.shop?.profileImageUrl && !adminShopImageUnavailable()) {
+                      @if (adminShopPhotoSource(fullRepair.shop?.profileImageUrl); as photo) {
                         <img
                           class="dispute-party-avatar"
-                          [src]="fullRepair.shop?.profileImageUrl || ''"
+                          [src]="photo"
                           [alt]="fullRepair.shopName || 'Repair shop'"
                           (error)="adminShopImageUnavailable.set(true)"
                         />
@@ -2114,10 +2114,15 @@
                         </span>
                       }
                     } @else {
-                      @if (item.parties?.shop?.profileImageUrl || item.parties?.shop?.shopImageUrl) {
+                      @if (
+                        normalizedImageSource(
+                          item.parties?.shop?.profileImageUrl || item.parties?.shop?.shopImageUrl
+                        );
+                        as photo
+                      ) {
                         <img
                           class="dispute-party-avatar"
-                          [src]="item.parties?.shop?.profileImageUrl || item.parties?.shop?.shopImageUrl"
+                          [src]="photo"
                           [alt]="item.parties?.shop?.personName || item.parties?.shop?.name || 'Repair shop'"
                         />
                       } @else {

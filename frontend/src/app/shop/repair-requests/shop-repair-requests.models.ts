@@ -35,6 +35,7 @@ export interface ShopRepairRequest {
     lastName: string;
     displayName?: string;
     email?: string;
+    profileImageUrl?: string | null;
     phone?: string | null;
     location?: { latitude: number; longitude: number } | null;
   };

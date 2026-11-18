@@ -161,6 +161,14 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
       'Customer';
   }
 
+  customerInitials(request: ShopRepairRequest): string {
+    return this.customerName(request)
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
   customerAddress(): string {
     const location = this.customerCoordinates();
     return this.isValidCoordinates(location)

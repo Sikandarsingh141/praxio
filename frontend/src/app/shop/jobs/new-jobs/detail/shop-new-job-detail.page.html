@@ -84,6 +84,16 @@
             Customer Information
           </h2>
           <div class="customer-contact-row">
+            @if (customerPhotoSource(request.customer.profileImageUrl); as photo) {
+              <img
+                class="customer-avatar"
+                [src]="photo"
+                [alt]="customerName(request) + ' profile photo'"
+                (error)="onCustomerImageError()"
+              />
+            } @else {
+              <span class="customer-avatar" aria-hidden="true">{{ customerInitials(request) }}</span>
+            }
             <strong class="customer-name">{{ customerName(request) }}</strong>
             @if (request.customer.phone) {
               <a [href]="'tel:' + request.customer.phone">

@@ -4,6 +4,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ShopRepairRouteComponent } from '../../shop/repair-job-details/components/shop-repair-route.component';
 import { AdminMapEntity, AdminRepairJob, AdminService } from '../services/admin.service';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -65,6 +66,11 @@ export class AdminRepairJobDetailsPage implements OnInit {
     ]
       .filter((part): part is string => Boolean(part))
       .join(', ');
+  }
+
+  customerPhotoSource(value?: string | null): string | null {
+    const source = profileImageSource(value);
+    return source && !this.customerImageUnavailable() ? source : null;
   }
 
   customerName(job: AdminRepairJob): string {

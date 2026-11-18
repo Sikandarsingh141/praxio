@@ -79,9 +79,18 @@
             @if (dispute.parties?.customer; as customer) {
               <div class="customer-information-row">
                 <div class="customer-identity">
-                  <span class="customer-avatar" aria-hidden="true">
-                    {{ initials(customer.name, customer.email) }}
-                  </span>
+                  @if (customerPhotoSource(customer.profileImageUrl); as photo) {
+                    <img
+                      class="customer-avatar"
+                      [src]="photo"
+                      [alt]="(customer.name || 'Customer') + ' profile photo'"
+                      (error)="onCustomerImageError()"
+                    />
+                  } @else {
+                    <span class="customer-avatar" aria-hidden="true">
+                      {{ initials(customer.name, customer.email) }}
+                    </span>
+                  }
                   <strong>{{ customer.name || 'Customer' }}</strong>
                 </div>
                 <dl class="customer-facts">

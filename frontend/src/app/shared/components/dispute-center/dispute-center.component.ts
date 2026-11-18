@@ -23,6 +23,7 @@ import {
 } from '../../models/disputes.models';
 import { DisputesService } from '../../services/disputes.service';
 import { environment } from '../../../../environments/environment';
+import { profileImageSource } from '../../utils/appliance-thumbnail.util';
 import {
   CommonFilterComponent,
   FilterConfig,
@@ -379,6 +380,20 @@ export class DisputeCenterComponent implements OnInit {
     const baseRoute =
       currentRoute === roleListRoute ? roleListRoute : `/${this.role()}/disputes`;
     return [baseRoute, disputeId];
+  }
+
+  normalizedImageSource(value?: string | null): string | null {
+    return profileImageSource(value);
+  }
+
+  adminCustomerPhotoSource(value?: string | null): string | null {
+    const source = profileImageSource(value);
+    return source && !this.adminCustomerImageUnavailable() ? source : null;
+  }
+
+  adminShopPhotoSource(value?: string | null): string | null {
+    const source = profileImageSource(value);
+    return source && !this.adminShopImageUnavailable() ? source : null;
   }
 
   customerInitials(name?: string): string {

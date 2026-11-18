@@ -1533,6 +1533,16 @@
                       <div class="info-rows-list">
                         <div class="info-field-row">
                           <span class="field-label">Name</span>
+                          @if (customerPhotoSource(repair); as photo) {
+                            <img
+                              class="customer-avatar"
+                              [src]="photo"
+                              [alt]="getCustomerName(repair) + ' profile photo'"
+                              (error)="customerImageUnavailable.set(true)"
+                            />
+                          } @else {
+                            <span class="customer-avatar" aria-hidden="true">{{ customerInitials(repair) }}</span>
+                          }
                           <strong class="field-value">{{ getCustomerName(repair) }}</strong>
                         </div>
                         <div class="info-field-row">

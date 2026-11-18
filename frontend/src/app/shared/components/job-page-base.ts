@@ -15,6 +15,7 @@ import {
   TechnicianJobCategory,
 } from '../models/job.models';
 import { JobSharedService } from '../services/job-shared.service';
+import { profileImageSource } from '../utils/appliance-thumbnail.util';
 
 @Directive()
 export abstract class JobListingPageBase implements OnInit {
@@ -257,6 +258,7 @@ export abstract class JobDetailPageBase<T> implements OnInit {
   readonly record = signal<T | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
+  readonly customerImageUnavailable = signal(false);
   protected readonly id = this.route.snapshot.paramMap.get('id') ?? '';
   abstract readonly backRoute: string;
   abstract readonly backLabel: string;
@@ -273,6 +275,7 @@ export abstract class JobDetailPageBase<T> implements OnInit {
     this.loadRecord(this.id).subscribe({
       next: (record) => {
         this.record.set(record);
+        this.customerImageUnavailable.set(false);
         this.loading.set(false);
       },
       error: (error: unknown) => {
@@ -288,6 +291,16 @@ export abstract class JobDetailPageBase<T> implements OnInit {
 
   refreshRecord(record: T): void {
     this.record.set(record);
+    this.customerImageUnavailable.set(false);
+  }
+
+  customerPhotoSource(value?: string | null): string | null {
+    const source = profileImageSource(value);
+    return source && !this.customerImageUnavailable() ? source : null;
+  }
+
+  onCustomerImageError(): void {
+    this.customerImageUnavailable.set(true);
   }
 }
 

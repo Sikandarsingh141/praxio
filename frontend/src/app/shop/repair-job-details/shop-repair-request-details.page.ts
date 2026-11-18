@@ -16,6 +16,7 @@ import { JobSharedService } from '../../shared/services/job-shared.service';
 import { Technician } from '../technicians/technicians.models';
 import { TechniciansService } from '../technicians/technicians.service';
 import { ToastService } from '../../core/toast/toast.service';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 const DECLINE_REASONS = [
   'Service not offered',
@@ -81,6 +82,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly request = signal<ShopRepairRequest | null>(null);
   readonly shopProfile = signal<ShopProfile | null>(null);
   readonly heroImageUnavailable = signal(false);
+  readonly customerImageUnavailable = signal(false);
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -242,6 +244,12 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   setRequest(request: ShopRepairRequest): void {
     this.request.set(request);
     this.heroImageUnavailable.set(false);
+    this.customerImageUnavailable.set(false);
+  }
+
+  customerPhotoSource(value?: string | null): string | null {
+    const source = profileImageSource(value);
+    return source && !this.customerImageUnavailable() ? source : null;
   }
 
   customerName(request: ShopRepairRequest): string {

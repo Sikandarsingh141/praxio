@@ -59,7 +59,7 @@ describe('AdminRepairJobDetailsPage', () => {
               email: 'customer@example.com',
               countryCode: '+91',
               mobileNumber: '9876543210',
-              profileImageUrl: 'data:image/png;base64,Y3VzdG9tZXI=',
+              profileImageUrl: 'Y3VzdG9tZXI=',
             },
             shopName: 'Repair Shop',
             shop: {
@@ -128,7 +128,7 @@ describe('AdminRepairJobDetailsPage', () => {
     expect(text).toContain('Customer Example');
     expect(
       harness.routeNativeElement?.querySelector('.customer-identity img')?.getAttribute('src'),
-    ).toBe('data:image/png;base64,Y3VzdG9tZXI=');
+    ).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(text).toContain('12.97160, 77.59460');
     expect(text).toContain('Repair Shop');
     expect(text).toContain('Replace the drive belt.');

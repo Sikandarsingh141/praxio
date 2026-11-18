@@ -784,7 +784,7 @@ export class TechniciansService {
             _id: { $in: customerIds.map((id) => new Types.ObjectId(id)) },
           })
           .select(
-            'firstName lastName fullName mobileNumber countryCode location',
+            'firstName lastName fullName mobileNumber countryCode location profileImageData',
           )
           .lean()
           .exec()
@@ -876,6 +876,7 @@ export class TechniciansService {
           [cust?.firstName, cust?.lastName].filter(Boolean).join(' ') ||
           cust?.fullName ||
           'Customer',
+        customerProfileImageUrl: cust?.profileImageData ?? null,
         phone: cust?.mobileNumber
           ? `${cust.countryCode ?? ''} ${cust.mobileNumber}`.trim()
           : null,
@@ -1237,7 +1238,7 @@ export class TechniciansService {
     const customer = await this.users
       .findById(request.customerId)
       .select(
-        'firstName lastName fullName email countryCode mobileNumber location',
+        'firstName lastName fullName email countryCode mobileNumber location profileImageData',
       )
       .lean()
       .exec();
@@ -1329,6 +1330,7 @@ export class TechniciansService {
         ? `${customer.countryCode ?? ''} ${customer.mobileNumber}`.trim()
         : null,
       email: customer?.email ?? null,
+      profileImageUrl: customer?.profileImageData ?? null,
       location:
         typeof latitude === 'number' && typeof longitude === 'number'
           ? { latitude, longitude }

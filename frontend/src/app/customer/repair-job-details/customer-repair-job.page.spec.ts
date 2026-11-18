@@ -19,6 +19,7 @@ describe('CustomerRepairJobPage', () => {
             email: 'nancy@example.test',
             firstName: 'Nancy',
             lastName: 'Sharma',
+            profileImageUrl: 'Y3VzdG9tZXI=',
             createdAt: '2026-11-09T15:00:00.000Z',
           }),
         },
@@ -255,6 +256,9 @@ describe('CustomerRepairJobPage', () => {
     expect(text).toContain('Shop visit');
     expect(text).toContain('Amit Sharma');
     expect(text).toContain('AS');
+    expect(
+      fixture.nativeElement.querySelector('.customer-identity img')?.getAttribute('src'),
+    ).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(text).toContain('View Quotations');
     expect(text).toContain('Repair Progress and Inspection');
     expect(text).toContain('Location and Route');

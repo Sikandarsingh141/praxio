@@ -587,6 +587,9 @@ describe('DisputeCenterComponent customer views', () => {
     harness.detectChanges();
 
     expect(page.textContent).toContain('Customer Information');
+    expect(
+      page.querySelector('.customer-identity img')?.getAttribute('src'),
+    ).toBe('data:image/png;base64,customer');
     expect(page.textContent).toContain('taylor@example.com');
     expect(page.textContent).toContain('555-0199');
     expect(page.textContent).toContain('The screen is broken.');

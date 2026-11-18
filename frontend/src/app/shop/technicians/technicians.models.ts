@@ -69,6 +69,7 @@ export interface TechnicianJob {
   model: string;
   status: string;
   customer?: string;
+  customerProfileImageUrl?: string | null;
   assignedToName?: string;
   assignedToImageData?: string | null;
   phone?: string | null;
@@ -239,6 +240,7 @@ export interface TechnicianRepairDetails extends TechnicianJob {
     name: string;
     phone: string | null;
     email: string | null;
+    profileImageUrl?: string | null;
     location: { latitude: number; longitude: number } | null;
   };
   shop?: {

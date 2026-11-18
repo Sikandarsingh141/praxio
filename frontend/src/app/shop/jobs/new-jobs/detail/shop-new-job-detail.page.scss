@@ -45,6 +45,7 @@
 .section-heading svg { width: 1.15rem; height: 1.15rem; flex: 0 0 auto; color: #087c3b; stroke-width: 1.8; }
 .section-heading small { color: #617067; font-size: .68rem; font-weight: 500; }
 .customer-contact-row { display: flex; min-width: 0; align-items: center; gap: .7rem; }
+.customer-avatar { width: 2.25rem; height: 2.25rem; flex: 0 0 auto; border-radius: 50%; object-fit: cover; display: inline-grid; place-items: center; overflow: hidden; background: #e3f2e7; color: #087c3b; font-size: .72rem; font-weight: 700; }
 .customer-name { color: #17212b; font-size: .83rem; white-space: nowrap; }
 .customer-contact-row a { display: inline-flex; min-width: 0; align-items: center; gap: .35rem; color: #26372d; font-size: .7rem; text-decoration: none; }
 .customer-contact-row a:hover { color: #087c3b; text-decoration: underline; }
