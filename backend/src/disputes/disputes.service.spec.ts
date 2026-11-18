@@ -73,6 +73,7 @@ describe('DisputesService', () => {
       findOne: jest.fn(),
       findOneAndUpdate: jest.fn(),
       findByIdAndUpdate: jest.fn(),
+      updateOne: jest.fn(),
       aggregate: jest.fn(),
       countDocuments: jest.fn(),
       find: jest.fn(),
@@ -240,6 +241,65 @@ describe('DisputesService', () => {
     );
     expect(save).toHaveBeenCalledTimes(1);
     expect(legacyRequest.repairJob.status).toBe('disputed');
+  });
+
+  it('finalizes existing customer-confirmed disputes during startup', async () => {
+    const disputeId = new Types.ObjectId();
+    const confirmedAt = new Date('2026-10-02T00:00:00.000Z');
+    const confirmedDispute = {
+      _id: disputeId,
+      customerId,
+      statusHistory: [
+        {
+          from: 'CUSTOMER_VERIFICATION_PENDING',
+          to: 'CUSTOMER_CONFIRMED',
+          actorId: customerId,
+          actorRole: 'customer',
+          at: confirmedAt,
+        },
+      ],
+      verificationHistory: [
+        {
+          confirmedBy: customerId,
+          confirmedAt,
+        },
+      ],
+    };
+    const queryFor = (items: unknown[]) => ({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(items),
+    });
+    disputes.find.mockImplementation((filter: Record<string, unknown>) =>
+      filter.status === 'CUSTOMER_CONFIRMED'
+        ? queryFor([confirmedDispute])
+        : queryFor([]),
+    );
+    requests.find.mockReturnValue({
+      lean: () => ({ exec: jest.fn().mockResolvedValue([]) }),
+    });
+    disputes.updateOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+    });
+
+    await service.onModuleInit();
+
+    expect(disputes.updateOne).toHaveBeenCalledWith(
+      { _id: disputeId, status: 'CUSTOMER_CONFIRMED' },
+      expect.objectContaining({
+        $set: { status: 'RESOLVED' },
+        $push: {
+          statusHistory: expect.objectContaining({
+            from: 'CUSTOMER_CONFIRMED',
+            to: 'RESOLVED',
+            actorId: customerId,
+            actorRole: 'customer',
+            at: confirmedAt,
+          }),
+        },
+        $unset: { activeIssueKey: 1 },
+      }),
+    );
   });
 
   it('does not disclose repair requests that do not belong to the customer', async () => {
@@ -419,6 +479,18 @@ describe('DisputesService', () => {
     expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  it('does not require or allow the shop to close after customer confirmation', async () => {
+    await expect(
+      service.closeDispute(
+        { userId: shopId.toString(), role: 'shop' },
+        new Types.ObjectId().toString(),
+        { reason: 'The customer confirmed the repair.' },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(disputes.findOne).not.toHaveBeenCalled();
+    expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it('does not allow a shop to accept a dispute assigned to another shop', async () => {
     const shopQuery = {
       select: jest.fn().mockReturnThis(),
@@ -534,7 +606,7 @@ describe('DisputesService', () => {
     });
   });
 
-  it('accepts customer confirmation for a completion recorded in the same update', async () => {
+  it('resolves the dispute and notifies both parties after customer confirmation', async () => {
     const dispute = {
       _id: new Types.ObjectId(),
       reference: 'DSP-1',
@@ -592,8 +664,16 @@ describe('DisputesService', () => {
     );
 
     expect(recordedUpdate?.$set).toMatchObject({
-      status: 'CUSTOMER_CONFIRMED',
+      status: 'RESOLVED',
     });
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(
+      [customerId],
+      expect.objectContaining({ type: 'dispute_resolved' }),
+    );
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(
+      [shopId],
+      expect.objectContaining({ type: 'dispute_resolved' }),
+    );
   });
 
   it('rejects customer confirmation backed by a stale rework completion', async () => {

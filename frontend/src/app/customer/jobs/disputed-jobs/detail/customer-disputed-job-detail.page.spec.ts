@@ -324,6 +324,7 @@ describe('CustomerDisputedJobDetailPage', () => {
       message: confirmation,
     });
     expect(component.inspectionTestModalOpen()).toBeFalse();
+    expect(page.textContent).toContain('Thank you. This dispute is now resolved.');
 
     component.openInspectionTestModal();
     harness.fixture.detectChanges();

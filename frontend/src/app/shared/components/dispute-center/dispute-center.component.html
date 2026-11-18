@@ -1856,8 +1856,8 @@
         (item.status === 'CUSTOMER_CONFIRMED' || item.status === 'RESOLVED')
       ) {
         <section class="panel">
-          <h2>Awaiting shop closure</h2>
-          <p>You confirmed the issue is resolved. The shop must perform the final closure.</p>
+          <h2>Dispute resolved</h2>
+          <p>The issue has been marked resolved. No further confirmation is required.</p>
         </section>
       }
 
@@ -1865,22 +1865,12 @@
         role() === 'shop' &&
         (item.status === 'CUSTOMER_CONFIRMED' || item.status === 'RESOLVED')
       ) {
-        <section class="panel action-panel">
-          <h2>Customer confirmed resolution</h2>
+        <section class="panel">
+          <h2>Dispute resolved</h2>
           @if (latestVerification?.comments) {
             <p>{{ latestVerification?.comments }}</p>
           }
-          <label
-            >Final closure note<input [(ngModel)]="closeReason" name="closeReason" maxlength="1000"
-          /></label>
-          <button
-            class="button primary"
-            type="button"
-            [disabled]="saving()"
-            (click)="closeDispute()"
-          >
-            Close dispute
-          </button>
+          <p>No further shop confirmation is required.</p>
         </section>
       }
         </div>

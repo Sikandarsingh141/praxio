@@ -33,7 +33,6 @@ import { ToastService } from '../../../core/toast/toast.service';
 
 type DisputeConfirmationAction =
   | 'confirmResolution'
-  | 'closeDispute'
   | 'closeAdminDispute';
 
 const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
@@ -922,8 +921,6 @@ export class DisputeCenterComponent implements OnInit {
     this.closeConfirmation();
     if (action === 'confirmResolution') {
       this.submitResolutionConfirmation();
-    } else if (action === 'closeDispute') {
-      this.submitDisputeClosure();
     } else if (action === 'closeAdminDispute') {
       this.submitAdminDisputeClosure();
     }
@@ -944,7 +941,7 @@ export class DisputeCenterComponent implements OnInit {
     if (!dispute || !this.verificationNotes.trim()) return;
     this.run(
       this.disputes.confirmResolution(dispute._id, { message: this.verificationNotes.trim() }),
-      'Thank you. The shop can now close the dispute.',
+      'Thank you. This dispute is now resolved.',
       (updated) => this.dispute.set(updated),
     );
   }
@@ -966,32 +963,6 @@ export class DisputeCenterComponent implements OnInit {
         this.conversationAttachments = [];
         this.dispute.set(updated);
       },
-    );
-  }
-
-  closeDispute(): void {
-    const dispute = this.dispute();
-    if (!dispute || !this.closeReason.trim()) {
-      this.error.set('Enter a final closure note.');
-      return;
-    }
-    this.confirmationAction = 'closeDispute';
-    this.confirmation.set({
-      title: 'Close dispute?',
-      message: 'The customer has confirmed the repair is resolved. Close this dispute?',
-      confirmLabel: 'Close dispute',
-      cancelLabel: 'Cancel',
-      destructive: true,
-    });
-  }
-
-  private submitDisputeClosure(): void {
-    const dispute = this.dispute();
-    if (!dispute || !this.closeReason.trim()) return;
-    this.run(
-      this.disputes.close(dispute._id, this.closeReason.trim()),
-      'Dispute closed.',
-      (updated) => this.dispute.set(updated),
     );
   }
 

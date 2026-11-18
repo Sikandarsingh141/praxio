@@ -102,7 +102,7 @@ const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
     'CLOSED',
   ],
   REPAIR_IN_PROGRESS: ['CUSTOMER_VERIFICATION_PENDING', 'CLOSED'],
-  CUSTOMER_VERIFICATION_PENDING: ['CUSTOMER_CONFIRMED', 'REOPENED', 'CLOSED'],
+  CUSTOMER_VERIFICATION_PENDING: ['RESOLVED', 'REOPENED', 'CLOSED'],
   CUSTOMER_CONFIRMED: ['REOPENED', 'CLOSED'],
   REOPENED: [
     'UNDER_REVIEW',
@@ -292,6 +292,53 @@ export class DisputesService {
         }
         throw error;
       }
+    }
+    await this.resolvePreviouslyConfirmedDisputes();
+  }
+
+  private async resolvePreviouslyConfirmedDisputes(): Promise<void> {
+    const confirmedDisputes = await this.disputes
+      .find({ status: 'CUSTOMER_CONFIRMED' })
+      .select('_id customerId statusHistory verificationHistory')
+      .lean()
+      .exec();
+
+    for (const dispute of confirmedDisputes) {
+      const statusHistory = dispute.statusHistory ?? [];
+      if (statusHistory.length >= MAX_DISPUTE_HISTORY) {
+        this.logger.warn(
+          `Customer-confirmed dispute ${dispute._id.toString()} was not finalized because its status history is full.`,
+        );
+        continue;
+      }
+
+      const verification = dispute.verificationHistory?.at(-1);
+      const confirmationEvent = statusHistory.at(-1);
+      await this.disputes
+        .updateOne(
+          { _id: dispute._id, status: 'CUSTOMER_CONFIRMED' },
+          {
+            $set: { status: 'RESOLVED' },
+            $push: {
+              statusHistory: {
+                from: 'CUSTOMER_CONFIRMED',
+                to: 'RESOLVED',
+                actorId:
+                  verification?.confirmedBy ??
+                  confirmationEvent?.actorId ??
+                  dispute.customerId,
+                actorRole: 'customer',
+                reason: 'Customer confirmation finalized dispute resolution.',
+                at:
+                  verification?.confirmedAt ??
+                  confirmationEvent?.at ??
+                  new Date(),
+              } satisfies DisputeEvent,
+            },
+            $unset: { activeIssueKey: 1 },
+          },
+        )
+        .exec();
     }
   }
 
@@ -922,17 +969,15 @@ export class DisputesService {
           },
         },
       },
-      dispute.status === 'AWAITING_CUSTOMER_RESPONSE'
-        ? 'RESOLVED'
-        : 'CUSTOMER_CONFIRMED',
+      'RESOLVED',
       dto.message.trim(),
     );
     await this.notifyRoles(
-      ['shop'],
+      ['customer', 'shop'],
       updated,
-      'Customer confirmed the repair',
-      `${updated.reference}: The customer confirmed that the issue is resolved. Close the dispute when ready.`,
-      'dispute_customer_confirmed',
+      'Dispute resolved',
+      `${updated.reference}: The customer confirmed that the issue is resolved.`,
+      'dispute_resolved',
     );
     return this.visible(updated, actor.role);
   }
@@ -1618,21 +1663,12 @@ export class DisputesService {
   }
 
   async closeDispute(actor: DisputeActor, id: string, dto: CloseDisputeDto) {
-    if (actor.role !== 'admin' && actor.role !== 'shop') {
+    if (actor.role !== 'admin') {
       throw new ForbiddenException(
-        'Only the assigned shop or an administrator can close a dispute.',
+        'Only an administrator can close a dispute. Customer verification resolves it.',
       );
     }
     const dispute = await this.findAccessible(actor, id);
-    if (
-      actor.role === 'shop' &&
-      dispute.status !== 'CUSTOMER_CONFIRMED' &&
-      dispute.status !== 'RESOLVED'
-    ) {
-      throw new BadRequestException(
-        'The shop can close the dispute only after the customer confirms the rework.',
-      );
-    }
     const updated = await this.atomicUpdate(
       dispute,
       actor,

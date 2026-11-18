@@ -335,7 +335,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
     }
     this.runCustomerAction(
       this.disputes.confirmResolution(dispute._id, { message }),
-      'Thank you. The shop can now close the dispute.',
+      'Thank you. This dispute is now resolved.',
       () => {
         this.verificationNotes = '';
         this.closeInspectionTestModal();
