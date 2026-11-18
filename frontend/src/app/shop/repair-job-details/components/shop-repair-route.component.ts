@@ -110,6 +110,9 @@ export class ShopRepairRouteComponent
   ngOnDestroy(): void {
     this.requestSequence += 1;
     this.map?.remove();
+    this.map = undefined;
+    this.routeLine = undefined;
+    this.viewReady = false;
   }
 
   hasRouteCoordinates(): boolean {
@@ -168,7 +171,12 @@ export class ShopRepairRouteComponent
     })
       .bindTooltip(this.reverseDirections ? this.originLabel : this.destinationLabel)
       .addTo(this.map);
-    requestAnimationFrame(() => this.map?.invalidateSize());
+    const map = this.map;
+    requestAnimationFrame(() => {
+      if (map && this.map === map && map.getContainer().isConnected) {
+        map.invalidateSize();
+      }
+    });
   }
 
   private loadDirections(): void {

@@ -1,10 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, WritableSignal, signal } from '@angular/core';
+import { Component, OnInit, WritableSignal, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CustomerPortalService } from '../../../customer/services/customer-portal.service';
 import { CustomerRepairRequest } from '../../../customer/models/customer-portal.models';
+import { ShopRepairRouteComponent } from '../../../shop/repair-job-details/components/shop-repair-route.component';
+import {
+  AdminMapEntity,
+  AdminRepairJob,
+  AdminService,
+} from '../../../admin/services/admin.service';
 import {
   DisputeAccessRole,
   DisputeAttachment,
@@ -84,11 +90,13 @@ const DISPUTE_COMPLETE_PROGRESS_STATUSES: DisputeStatus[] = [
     JobPaginationComponent,
     PaginationComponent,
     AdminPageHeaderComponent,
+    ShopRepairRouteComponent,
   ],
   templateUrl: './dispute-center.component.html',
   styleUrl: './dispute-center.component.scss',
 })
 export class DisputeCenterComponent implements OnInit {
+  private readonly adminService = inject(AdminService);
   readonly role = signal<DisputeAccessRole>('customer');
   readonly mode = signal<'list' | 'detail' | 'create'>('list');
   readonly loading = signal(true);
@@ -99,6 +107,14 @@ export class DisputeCenterComponent implements OnInit {
   readonly confirmation = signal<ConfirmationDialogConfig | null>(null);
   readonly list = signal<DisputeListResult | null>(null);
   readonly dispute = signal<RepairDispute | null>(null);
+  readonly mapLocations = signal<AdminMapEntity | null>(null);
+  readonly mapLoading = signal(false);
+  readonly mapError = signal('');
+  readonly adminRepairDetails = signal<AdminRepairJob | null>(null);
+  readonly adminRepairDetailsLoading = signal(false);
+  readonly adminRepairDetailsError = signal('');
+  readonly adminCustomerImageUnavailable = signal(false);
+  readonly adminShopImageUnavailable = signal(false);
   readonly repairSummary = signal<{
     appliance: string;
     brand?: string;
@@ -111,6 +127,8 @@ export class DisputeCenterComponent implements OnInit {
   readonly eligibleRepairRequestsError = signal('');
   readonly raiseDisputeFormError = signal('');
   readonly categories = DISPUTE_CATEGORIES;
+  readonly adminDirectionsLoader = (requestId: string) =>
+    this.adminService.getMapRoute(requestId);
   readonly disputeProgressSteps = [
     'Dispute submitted',
     'Under review',
@@ -380,6 +398,9 @@ export class DisputeCenterComponent implements OnInit {
     if (this.role() === 'technician') {
       return ['/technician/assigned-jobs', repairId];
     }
+    if (this.role() === 'admin') {
+      return ['/admin/repair-jobs', repairId];
+    }
     return [
       this.role() === 'customer' ? '/customer/repair-requests' : '/shop/repair-requests',
       repairId,
@@ -431,11 +452,21 @@ export class DisputeCenterComponent implements OnInit {
 
   loadDetail(id: string): void {
     this.loading.set(true);
+    this.mapLocations.set(null);
+    this.mapLoading.set(false);
+    this.mapError.set('');
+    this.adminRepairDetails.set(null);
+    this.adminRepairDetailsLoading.set(false);
+    this.adminRepairDetailsError.set('');
     this.disputes.get(this.role(), id).subscribe({
       next: (dispute) => {
         this.dispute.set(dispute);
         this.adminStatus = dispute.status;
         this.selectedPriority = dispute.priority;
+        if (this.role() === 'admin') {
+          this.loadMapLocations(dispute.repairRequestId);
+          this.loadAdminRepairDetails(dispute.repairRequestId);
+        }
         this.loading.set(false);
       },
       error: (error: HttpErrorResponse) =>
@@ -1068,6 +1099,157 @@ export class DisputeCenterComponent implements OnInit {
 
   repairStatus(repair: NonNullable<RepairDispute['repair']>): string {
     return String(repair.repairJob?.['status'] || repair.status);
+  }
+
+  customerCoordinates(): { latitude: number; longitude: number } | null {
+    const location = this.mapLocations()?.location;
+    return this.isValidCoordinates(location) ? location : null;
+  }
+
+  shopCoordinates(): { latitude: number; longitude: number } | null {
+    const location = this.mapLocations()?.shopLocation;
+    return this.isValidCoordinates(location) ? location : null;
+  }
+
+  hasRouteCoordinates(): boolean {
+    return !!this.customerCoordinates() && !!this.shopCoordinates();
+  }
+
+  adminCustomerName(repair: AdminRepairJob): string {
+    return (
+      repair.customer.displayName ||
+      [repair.customer.firstName, repair.customer.lastName].filter(Boolean).join(' ') ||
+      'Customer'
+    );
+  }
+
+  adminCustomerInitials(repair: AdminRepairJob): string {
+    const name = this.adminCustomerName(repair);
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  adminCustomerPhone(repair: AdminRepairJob): string {
+    return (
+      [repair.customer.countryCode, repair.customer.mobileNumber].filter(Boolean).join(' ') ||
+      'Not provided'
+    );
+  }
+
+  adminShopPhone(repair: AdminRepairJob): string {
+    return (
+      [repair.shop?.countryCode, repair.shop?.mobileNumber].filter(Boolean).join(' ') ||
+      'Not provided'
+    );
+  }
+
+  adminShopLocation(repair: AdminRepairJob): string {
+    const address = repair.shop?.address?.trim() || '';
+    const addressLower = address.toLowerCase();
+    const remainingParts = [
+      repair.shop?.city,
+      repair.shop?.state,
+      repair.shop?.postalCode,
+    ].filter((part): part is string => {
+      const value = part?.trim();
+      if (!value) return false;
+      return !addressLower.includes(value.toLowerCase());
+    });
+    return [address, ...remainingParts].filter(Boolean).join(', ');
+  }
+
+  customerLocationLabel(): string {
+    const location = this.customerCoordinates();
+    return location
+      ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+      : 'Not provided';
+  }
+
+  repairDocuments(
+    repair: AdminRepairJob,
+  ): Array<{ mimeType: string; data: string; label: string }> {
+    return [
+      ...(repair.photos ?? []).map((document, index) => ({
+        ...document,
+        label: `Repair request photo ${index + 1}`,
+      })),
+      ...(repair.repairJob.inspection?.images ?? []).map((document, index) => ({
+        ...document,
+        label: `Inspection photo ${index + 1}`,
+      })),
+    ];
+  }
+
+  private isValidCoordinates(
+    location:
+      | { latitude: number; longitude: number }
+      | null
+      | undefined,
+  ): location is { latitude: number; longitude: number } {
+    return (
+      !!location &&
+      Number.isFinite(location.latitude) &&
+      location.latitude >= -90 &&
+      location.latitude <= 90 &&
+      Number.isFinite(location.longitude) &&
+      location.longitude >= -180 &&
+      location.longitude <= 180
+    );
+  }
+
+  private loadMapLocations(requestId: string): void {
+    this.mapLoading.set(true);
+    this.adminService.getMapRequest(requestId).subscribe({
+      next: (locations) => {
+        this.mapLocations.set(locations);
+        this.mapLoading.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.mapError.set(
+          error.error?.message || 'Repair location details could not be loaded.',
+        );
+        this.mapLoading.set(false);
+      },
+    });
+  }
+
+  private loadAdminRepairDetails(requestId: string): void {
+    this.adminRepairDetailsLoading.set(true);
+    this.adminRepairDetailsError.set('');
+    this.adminService.getRepairJobDetails(requestId).subscribe({
+      next: (repair) => {
+        this.adminRepairDetails.set(repair);
+        this.adminRepairDetailsLoading.set(false);
+        if (!repair) {
+          this.adminRepairDetailsError.set('The linked repair details could not be found.');
+          return;
+        }
+        this.adminCustomerImageUnavailable.set(false);
+        this.adminShopImageUnavailable.set(false);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.adminRepairDetailsLoading.set(false);
+        this.adminRepairDetailsError.set(
+          error.error?.message || 'The linked repair details could not be loaded.',
+        );
+      },
+    });
+  }
+
+  repairPhotoSource(photo: { mimeType: string; data: string }): string {
+    const data = photo.data.trim();
+    if (
+      data.startsWith('data:') ||
+      /^https?:\/\//i.test(data) ||
+      data.startsWith('/') ||
+      data.startsWith('blob:')
+    ) {
+      return data;
+    }
+    return `data:${photo.mimeType || 'image/jpeg'};base64,${data}`;
   }
 
   repairWork(repair: NonNullable<RepairDispute['repair']>): string {

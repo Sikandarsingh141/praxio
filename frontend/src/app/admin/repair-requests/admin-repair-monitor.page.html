@@ -1,7 +1,9 @@
 <section class="repair-monitor" aria-labelledby="monitor-title">
   <app-admin-page-header>
-    <h1 adminPageTitle class="admin-page-title" id="monitor-title">Repair monitoring</h1>
-    <p adminPageDescription class="admin-page-description">Review repair progress, customer-reported issues, and verified feedback.</p>
+    <h1 adminPageTitle class="admin-page-title" id="monitor-title">Repair Monitoring</h1>
+    <p adminPageDescription class="admin-page-description">
+      Track and manage all repair requests, their progress, and customer feedback.
+    </p>
     @if (view() !== 'reviews') {
       <button adminPageActions type="button" class="export-button" [disabled]="!jobs().length" (click)="exportRepairs()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3" /></svg>
@@ -15,11 +17,11 @@
       <article class="summary-card">
         <span class="summary-icon total-icon" aria-hidden="true">⚒</span>
         <strong>{{ overview()?.repairs?.total ?? '—' }}</strong>
-        <span>Total repairs</span>
+        <span>Total Requests</span>
       </article>
       <article class="summary-card">
         <span class="summary-icon progress-icon" aria-hidden="true">⟳</span>
-        <strong>        {{
+        <strong>{{
           overview()
             ? countStatus(
                 'confirmed',
@@ -32,11 +34,11 @@
               )
             : '—'
         }}</strong>
-        <span>In progress</span>
+        <span>In Progress</span>
       </article>
       <article class="summary-card">
         <span class="summary-icon completed-icon" aria-hidden="true">✓</span>
-        <strong>        {{
+        <strong>{{
           overview()
             ? countStatus(
                 'repair_completed',
@@ -48,11 +50,31 @@
         }}</strong>
         <span>Completed</span>
       </article>
+      <article class="summary-card rating-summary-card">
+        <span class="summary-icon rating-icon" aria-hidden="true">★</span>
+        <strong>
+          {{
+            reviewSummary()?.averageRating !== null &&
+            reviewSummary()?.averageRating !== undefined
+              ? reviewSummary()?.averageRating?.toFixed(1)
+              : '—'
+          }}
+        </strong>
+        <span>Average Customer Rating</span>
+        <small role="status">
+          {{
+            reviewSummaryError() ||
+              (reviewSummary()?.total === 1
+                ? '1 verified review'
+                : `${reviewSummary()?.total ?? 0} verified reviews`)
+          }}
+        </small>
+      </article>
     </section>
   }
 
   <nav class="monitor-tabs" aria-label="Repair monitoring views">
-    <button type="button" [class.active]="view() === 'jobs'" [attr.aria-pressed]="view() === 'jobs'" (click)="setView('jobs')"><span aria-hidden="true">⚒</span> Repair jobs</button>
+    <button type="button" [class.active]="view() === 'jobs'" [attr.aria-pressed]="view() === 'jobs'" (click)="setView('jobs')"><span aria-hidden="true">⚒</span> All Repairs</button>
     <button type="button" [class.active]="view() === 'completed'" [attr.aria-pressed]="view() === 'completed'" (click)="setView('completed')"><span aria-hidden="true">✓</span> Completed repairs</button>
     <button type="button" [class.active]="view() === 'reviews'" [attr.aria-pressed]="view() === 'reviews'" (click)="setView('reviews')"><span aria-hidden="true">☆</span> Customer reviews</button>
   </nav>
@@ -87,6 +109,48 @@
             <option value="disputed">Disputed</option>
           </select>
         </label>
+      } @else {
+        <label class="toolbar-select item-select">
+          <span>Repair item</span>
+          <select [value]="repairItem()" (change)="setRepairItem($event)">
+            <option value="all">All Items</option>
+            <option value="computer">Computers</option>
+            <option value="mobile">Mobile Devices</option>
+            <option value="appliance">Home Appliances</option>
+            <option value="other">Other Items</option>
+          </select>
+        </label>
+        <label class="shop-filter toolbar-select">
+          <span>Shop</span>
+          <input
+            type="search"
+            [value]="shopFilter()"
+            (input)="updateShopFilter($any($event.target).value)"
+            placeholder="All shops"
+          />
+        </label>
+        <p class="completed-range-note">Showing completed repairs across all dates.</p>
+      }
+      @if (view() === 'jobs') {
+        <label class="toolbar-select item-select">
+          <span>Repair item</span>
+          <select [value]="repairItem()" (change)="setRepairItem($event)">
+            <option value="all">All Items</option>
+            <option value="computer">Computers</option>
+            <option value="mobile">Mobile Devices</option>
+            <option value="appliance">Home Appliances</option>
+            <option value="other">Other Items</option>
+          </select>
+        </label>
+        <label class="shop-filter toolbar-select">
+          <span>Shop</span>
+          <input
+            type="search"
+            [value]="shopFilter()"
+            (input)="updateShopFilter($any($event.target).value)"
+            placeholder="All shops"
+          />
+        </label>
         <label class="toolbar-select date-select">
           <span>Date</span>
           <select [value]="dateRange()" (change)="setDateRange($event)">
@@ -95,8 +159,6 @@
             <option value="month">This month</option>
           </select>
         </label>
-      } @else {
-        <p class="completed-range-note">Showing completed repairs across all dates.</p>
       }
     </div>
   }
@@ -116,104 +178,218 @@
     <div class="state-card">No verified repair reviews have been submitted yet.</div>
   } @else {
     @if (view() !== 'reviews') {
-      <div class="monitor-list">
-        @for (job of jobs(); track job._id) {
-          <article class="monitor-card" [class.completed-card]="job.repairJob.status === 'completed' || job.repairJob.status === 'repair_completed'">
-            <div class="repair-main-row">
-              <span class="appliance-icon" aria-hidden="true">⚙</span>
-              <div class="appliance-info">
-                <span class="request-id">
-                  Request ID: <strong class="request-reference">{{ job._id.slice(-8).toUpperCase() }}</strong>
-                </span>
-                <h2>{{ job.appliance }}</h2>
-                <p class="description">{{ job.description }}</p>
-              </div>
-              <div class="repair-meta">
-                <div class="meta-person"><span aria-hidden="true">♙</span><div>{{ job.customer.displayName || (job.customer.firstName + ' ' + job.customer.lastName) }}<small>{{ job.customer.email || 'Contact unavailable' }}</small></div></div>
-                <div class="meta-shop"><span aria-hidden="true">⌂</span>{{ job.shopName || 'Repair shop' }}</div>
-                <div class="meta-amount"><span aria-hidden="true">₹</span>{{ job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : '—' }}</div>
-                <div class="meta-date"><span aria-hidden="true">▣</span>{{ job.createdAt | date: 'MMM d, y' }}</div>
-              </div>
-              <span class="status-badge" [attr.data-status]="job.repairJob.status">
-                {{ job.repairJob.status.replaceAll('_', ' ') | titlecase }}
-              </span>
-              <a class="details-link" [routerLink]="['/admin/repair-jobs', job._id]">View details <span aria-hidden="true">→</span></a>
-              <details class="card-menu">
-                <summary aria-label="Repair actions">⋮</summary>
-                <div><a [routerLink]="['/admin/repair-jobs', job._id]">View repair details</a></div>
-              </details>
-            </div>
-            @if (job.repairJob.history?.length) {
-              <ol class="repair-timeline" aria-label="Repair progress">
-                @for (event of job.repairJob.history | slice: 0:4; track $index) {
-                  <li>
-                    <span class="timeline-check" aria-hidden="true">✓</span>
-                    <div><strong>{{ event.action.replaceAll('_', ' ') | titlecase }}</strong><time>{{ event.at | date: 'MMM d, h:mm a' }}</time></div>
-                  </li>
-                }
-              </ol>
-            }
-            @if (job.repairJob.completionDescription) {
-              <p class="completion-note"><strong>Completion summary:</strong> {{ job.repairJob.completionDescription }}</p>
-            }
-            @if (view() === 'completed') {
-              <dl class="completed-details" aria-label="Completed repair details">
-                <div>
-                  <dt>Completed</dt>
-                  <dd>{{ job.repairJob.completedAt ? (job.repairJob.completedAt | date: 'medium') : 'Date unavailable' }}</dd>
-                </div>
-                <div>
-                  <dt>Approved amount</dt>
-                  <dd>{{ job.repairJob.approvedRepairAmount !== undefined ? (job.repairJob.approvedRepairAmount | currency: (job.quotation?.currency || 'INR')) : (job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : 'Not available') }}</dd>
-                </div>
-                <div>
-                  <dt>Work performed</dt>
-                  <dd>{{ job.repairJob.workPerformed || 'Not provided' }}</dd>
-                </div>
-                <div>
-                  <dt>Parts replaced</dt>
-                  <dd>{{ job.repairJob.partsReplaced || 'None recorded' }}</dd>
-                </div>
-              </dl>
-            }
-            @if (job.repairJob.history?.length) {
-              <details>
-                <summary>View status history</summary>
-                <ol class="history-list">
-                  @for (event of job.repairJob.history; track $index) {
-                    <li><strong>{{ event.action.replaceAll('_', ' ') | titlecase }}</strong><time>{{ event.at | date: 'medium' }}</time>@if (event.notes) { <p>{{ event.notes }}</p> }</li>
+      <div class="table-scroll">
+        <table class="repair-table">
+          <thead>
+            <tr>
+              <th scope="col">Repair Request</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Shop</th>
+              <th scope="col">Request Details</th>
+              <th scope="col">Progress</th>
+              <th scope="col">Requested On</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (job of jobs(); track job._id) {
+              <tr>
+                <td class="repair-cell">
+                  <div class="device-cell">
+                    @if (repairPhoto(job); as photoUrl) {
+                      <img class="device-photo" [src]="photoUrl" [alt]="job.appliance" />
+                    } @else {
+                      <span class="device-placeholder" aria-hidden="true">
+                        {{ applianceEmoji(job.appliance) }}
+                      </span>
+                    }
+                    <div class="device-copy">
+                      <span class="request-id">
+                        #{{ job._id.slice(-8).toUpperCase() }}
+                      </span>
+                      <h2>{{ job.appliance }}</h2>
+                      <p>{{ deviceSubtitle(job) }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="person-cell">
+                  <div class="person-heading">
+                    @if (job.customer.profileImageUrl) {
+                      <img class="person-avatar" [src]="job.customer.profileImageUrl" [alt]="customerName(job)" />
+                    } @else {
+                      <span class="person-avatar avatar-fallback" aria-hidden="true">
+                        {{ customerInitials(job) }}
+                      </span>
+                    }
+                    <strong>{{ customerName(job) }}</strong>
+                  </div>
+                  <span class="person-subline">{{ job.customer.countryCode }} {{ job.customer.mobileNumber || 'Phone unavailable' }}</span>
+                  <span class="person-subline">{{ job.customer.email || 'Email unavailable' }}</span>
+                </td>
+                <td class="shop-cell">
+                  <div class="shop-heading">
+                    @if (job.shop?.profileImageUrl) {
+                      <img
+                        class="shop-avatar"
+                        [src]="job.shop?.profileImageUrl"
+                        [alt]="job.shopName || 'Repair shop'"
+                      />
+                    } @else {
+                      <span class="shop-avatar shop-avatar-fallback" aria-hidden="true">⌂</span>
+                    }
+                    <strong>{{ job.shopName || 'Repair shop' }}</strong>
+                  </div>
+                  <span class="shop-rating">
+                    <span aria-hidden="true">★</span>
+                    {{ job.shop?.averageRating?.toFixed(1) ?? 'Not rated' }}
+                    @if (job.shop?.reviewCount) {
+                      <small>({{ job.shop?.reviewCount }} reviews)</small>
+                    }
+                  </span>
+                </td>
+                <td class="request-details-cell">
+                  <span class="repair-category">{{ repairCategory(job) }}</span>
+                  <p class="issue-text">{{ job.description }}</p>
+                  <span class="quotation-amount">
+                    {{ job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : 'Quotation pending' }}
+                  </span>
+                  @if (view() === 'completed' && job.repairJob.completionDescription) {
+                    <small class="completion-note">{{ job.repairJob.completionDescription }}</small>
                   }
-                </ol>
-              </details>
+                  @if (view() === 'completed') {
+                    <div class="completed-summary">
+                      <span>
+                        Completed:
+                        {{ job.repairJob.completedAt ? (job.repairJob.completedAt | date: 'MMM d, y') : 'Date unavailable' }}
+                      </span>
+                      <span>
+                        Approved amount:
+                        {{
+                          job.repairJob.approvedRepairAmount !== undefined
+                            ? (job.repairJob.approvedRepairAmount | currency: (job.quotation?.currency || 'INR'))
+                            : (job.quotation ? (job.quotation.amount | currency: job.quotation.currency) : 'Not available')
+                        }}
+                      </span>
+                      <span>Work performed: {{ job.repairJob.workPerformed || 'Not provided' }}</span>
+                      <span>Parts replaced: {{ job.repairJob.partsReplaced || 'None recorded' }}</span>
+                    </div>
+                  }
+                  @if (job.repairJob.history?.length) {
+                    <details class="row-history">
+                      <summary>View status history</summary>
+                      <ol class="history-list">
+                        @for (event of job.repairJob.history; track $index) {
+                          <li>
+                            <strong>{{ event.action.replaceAll('_', ' ') | titlecase }}</strong>
+                            <time>{{ event.at | date: 'medium' }}</time>
+                            @if (event.notes) { <p>{{ event.notes }}</p> }
+                          </li>
+                        }
+                      </ol>
+                    </details>
+                  }
+                </td>
+                <td class="progress-cell">
+                  <ol class="progress-tracker" aria-label="Repair progress">
+                    @for (stage of progressStages; track $index) {
+                      <li
+                        [attr.data-state]="
+                          $index < progressStage(job)
+                            ? 'done'
+                            : $index === progressStage(job)
+                              ? 'current'
+                              : 'upcoming'
+                        "
+                      >
+                        <span class="progress-marker" aria-hidden="true">
+                          {{ $index <= progressStage(job) ? '✓' : '' }}
+                        </span>
+                        <span>{{ stage }}</span>
+                      </li>
+                    }
+                  </ol>
+                </td>
+                <td class="date-cell">
+                  <time>{{ job.createdAt | date: 'MMM d, y' }}</time>
+                </td>
+                <td>
+                  <span class="status-badge" [attr.data-status]="job.repairJob.status">
+                    {{ job.repairJob.status.replaceAll('_', ' ') | titlecase }}
+                  </span>
+                </td>
+                <td class="action-cell">
+                  <a
+                    class="details-link"
+                    [routerLink]="['/admin/repair-jobs', job._id]"
+                    [attr.aria-label]="'View details for ' + job.appliance"
+                  >
+                    View details <span aria-hidden="true">→</span>
+                  </a>
+                </td>
+              </tr>
             }
-          </article>
-        }
+          </tbody>
+        </table>
       </div>
     } @else {
       <div class="monitor-list">
         @for (review of reviews(); track review._id) {
           <article class="monitor-card review-card">
-            <header class="card-heading">
-              <div>
-                <span class="request-id">{{ review.appliance || 'Repair' }} · {{ review.createdAt | date: 'mediumDate' }}</span>
-                <h2>{{ review.title || 'Customer review' }}</h2>
+            <header class="review-header">
+              <div class="review-customer">
+                @if (review.customerProfileImageUrl) {
+                  <img
+                    class="review-avatar"
+                    [src]="review.customerProfileImageUrl"
+                    [alt]="review.customerName || 'Customer'"
+                  />
+                } @else {
+                  <span class="review-avatar review-avatar-fallback" aria-hidden="true">
+                    {{ reviewInitials(review.customerName) }}
+                  </span>
+                }
+                <div class="review-identity">
+                  <h2>{{ review.customerName || 'Customer' }}</h2>
+                  <p>{{ review.appliance || 'Repair' }} · {{ review.createdAt | date: 'mediumDate' }}</p>
+                </div>
               </div>
-              <span class="rating-badge">{{ review.overallRating }}/5</span>
+              <div class="review-main">
+                <div class="review-title-row">
+                  <h3>Customer feedback</h3>
+                  <span class="verified-review">Verified · {{ review.verifiedAt | date: 'mediumDate' }}</span>
+                </div>
+                <div class="review-meta-line">
+                  <strong class="review-subject">{{ review.title || 'Customer review' }}</strong>
+                  <span>Repair shop <strong>{{ review.shopName || 'Repair shop' }}</strong></span>
+                  <span>Would recommend <strong>{{ review.wouldRecommend ? 'Yes' : 'No' }}</strong></span>
+                </div>
+                @if (review.reviewText) {
+                  <p class="review-excerpt">{{ review.reviewText }}</p>
+                }
+              </div>
+              <div class="review-rating" [attr.aria-label]="review.overallRating + ' out of 5 stars'">
+                <span class="review-stars" aria-hidden="true">{{ '★'.repeat(review.overallRating) }}</span>
+                <span><strong>{{ review.overallRating }}</strong> / 5</span>
+              </div>
             </header>
-            <p class="review-text">{{ review.reviewText }}</p>
-            <dl class="job-data">
-              <div><dt>Customer</dt><dd>{{ review.customerName || 'Customer' }}</dd></div>
-              <div><dt>Shop</dt><dd>{{ review.shopName || 'Repair shop' }}</dd></div>
-              <div><dt>Verified</dt><dd>{{ review.verifiedAt | date: 'mediumDate' }}</dd></div>
-              <div><dt>Recommend shop</dt><dd>{{ review.wouldRecommend ? 'Yes' : 'No' }}</dd></div>
-            </dl>
-            <p class="rating-details">
-              Quality {{ review.repairQuality }}/5 · Communication {{ review.communication }}/5 ·
-              Professionalism {{ review.professionalism }}/5 · Timeliness {{ review.timeliness }}/5 ·
-              Value {{ review.valueForMoney }}/5
-            </p>
-            @if (review.liked) { <p class="review-detail"><strong>Liked:</strong> {{ review.liked }}</p> }
-            @if (review.improvement) { <p class="review-detail"><strong>Improvement:</strong> {{ review.improvement }}</p> }
+            <div class="review-breakdown" aria-label="Rating breakdown">
+              <span><strong>{{ review.repairQuality }}/5</strong> Quality</span>
+              <span><strong>{{ review.communication }}/5</strong> Communication</span>
+              <span><strong>{{ review.professionalism }}/5</strong> Professionalism</span>
+              <span><strong>{{ review.timeliness }}/5</strong> Timeliness</span>
+              <span><strong>{{ review.valueForMoney }}/5</strong> Value</span>
+            </div>
+            @if (review.liked || review.improvement) {
+              <div class="review-notes">
+                @if (review.liked) {
+                  <p><strong>Liked:</strong> {{ review.liked }}</p>
+                }
+                @if (review.improvement) {
+                  <p><strong>Could improve:</strong> {{ review.improvement }}</p>
+                }
+              </div>
+            }
           </article>
         }
       </div>

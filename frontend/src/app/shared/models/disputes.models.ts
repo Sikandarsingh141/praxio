@@ -179,7 +179,16 @@ export interface RepairDispute {
           profileImageUrl?: string;
         }
       | null;
-    shop: { id: string; name?: string; email?: string } | null;
+    shop:
+      | {
+          id: string;
+          name?: string;
+          email?: string;
+          personName?: string;
+          profileImageUrl?: string;
+          shopImageUrl?: string;
+        }
+      | null;
   };
   repair?: {
     id: string;

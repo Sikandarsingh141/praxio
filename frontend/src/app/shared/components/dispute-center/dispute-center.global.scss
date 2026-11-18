@@ -1,0 +1,792 @@
+@mixin disputeCenterStyles {
+.admin-portal .dispute-page {
+  width: 100%;
+  padding: 0;
+}
+
+.admin-portal .dispute-page.admin-dispute-detail-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.admin-dispute-detail-page .route-section app-shop-repair-route,
+.admin-dispute-detail-page .route-section app-shop-repair-route .route-card {
+  height: auto;
+}
+
+.admin-portal .dispute-page.admin-dispute-list-page {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-portal .dispute-page.admin-dispute-list-page > app-admin-page-header {
+  margin-bottom: 0.25rem;
+}
+
+.admin-portal .dispute-page.admin-dispute-list-page > app-admin-page-header .admin-page-header {
+  margin-bottom: 0;
+}
+
+.admin-dispute-detail-page {
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+
+.admin-dispute-detail-page .detail-back-link {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.4rem;
+  color: #176b34;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-dispute-detail-page .detail-back-link svg {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.admin-dispute-detail-page .detail-page-title {
+  margin: 0.1rem 0 0.4rem;
+  color: #17212b;
+  font-size: clamp(1.3rem, 2.3vw, 1.65rem);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.admin-dispute-detail-page .request-hero {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.admin-dispute-detail-page .request-hero-photo {
+  display: grid;
+  width: 6rem;
+  height: 4.5rem;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 0.55rem;
+  background: #f3f6f3;
+}
+
+.admin-dispute-detail-page .request-hero-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-dispute-detail-page .hero-image-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  color: #708077;
+}
+
+.admin-dispute-detail-page .hero-image-placeholder svg {
+  width: 1.8rem;
+  height: 1.8rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.admin-dispute-detail-page .request-hero-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.admin-dispute-detail-page .request-hero-copy h2 {
+  overflow: hidden;
+  margin: 0;
+  color: #17212b;
+  font-size: 1.15rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-dispute-detail-page .request-id {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  background: #e8f7eb;
+  color: #176b34;
+  font-size: 0.68rem;
+}
+
+.admin-dispute-detail-page .request-id strong {
+  color: #176b34;
+  font-weight: 800;
+}
+
+.admin-dispute-detail-page .detail-status {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: #e8f7eb;
+  color: #176b34;
+  font-size: 0.75rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.admin-dispute-detail-page .status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.admin-dispute-detail-page .request-progress {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 0.1rem 0 0;
+  padding: 0.35rem 0.6rem 0.5rem;
+  list-style: none;
+}
+
+.admin-dispute-detail-page .request-progress::before {
+  position: absolute;
+  top: 1.4rem;
+  right: 12.5%;
+  left: 12.5%;
+  height: 2px;
+  background: #dce5de;
+  content: '';
+}
+
+.admin-dispute-detail-page .request-progress li {
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  color: #5b665f;
+  text-align: center;
+}
+
+.admin-dispute-detail-page .progress-marker {
+  display: grid;
+  width: 1.9rem;
+  height: 1.9rem;
+  place-items: center;
+  border: 1px solid #cbd6cf;
+  border-radius: 50%;
+  background: #fff;
+  color: #56665c;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.admin-dispute-detail-page .progress-marker svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.admin-dispute-detail-page .request-progress li.completed .progress-marker,
+.admin-dispute-detail-page .request-progress li.current .progress-marker {
+  border-color: #16842e;
+  background: #16842e;
+  color: #fff;
+}
+
+.admin-dispute-detail-page .request-progress li strong {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.admin-dispute-detail-page .request-progress li.current strong {
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  background: #e8f7eb;
+  color: #176b34;
+}
+
+.admin-dispute-detail-page .request-progress time {
+  color: #68756d;
+  font-size: 0.63rem;
+}
+
+.admin-dispute-detail-page .customer-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(17rem, 0.9fr);
+  align-items: start;
+  gap: 1rem;
+}
+
+.admin-dispute-detail-page .customer-detail-main,
+.admin-dispute-detail-page .customer-detail-sidebar {
+  display: grid;
+  min-width: 0;
+  gap: 1rem;
+}
+
+.admin-dispute-detail-page .customer-detail-sidebar-card {
+  display: grid;
+  min-width: 0;
+  gap: 0;
+  padding: 0.8rem;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.admin-dispute-detail-page .customer-detail-sidebar-card > .customer-detail-block {
+  display: grid;
+  min-width: 0;
+  gap: 0.55rem;
+  padding: 0.8rem 0;
+}
+
+.admin-dispute-detail-page .customer-detail-sidebar-card > .customer-detail-block:first-child {
+  padding-top: 0;
+}
+
+.admin-dispute-detail-page .customer-detail-sidebar-card > .customer-detail-block:last-child {
+  padding-bottom: 0;
+}
+
+.admin-dispute-detail-page .customer-detail-sidebar-card > .customer-detail-block + .customer-detail-block {
+  border-top: 1px solid #e8eee9;
+}
+
+.admin-dispute-detail-page .section-heading {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: #edf8ef;
+  color: #173c26;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.admin-dispute-detail-page .section-heading svg {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: #087c3b;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.admin-dispute-detail-page .sidebar-facts {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.admin-dispute-detail-page .sidebar-facts div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.admin-dispute-detail-page .sidebar-facts dt {
+  color: #68756d;
+  font-size: 0.68rem;
+}
+
+.admin-dispute-detail-page .sidebar-facts dd {
+  margin: 0;
+  color: #263b32;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-dispute-detail-page .dispute-subject {
+  overflow: hidden;
+  color: #66746b;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-dispute-detail-page .dispute-party-person {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.admin-dispute-detail-page .dispute-party-avatar {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #e3f2e7;
+  color: #087c3b;
+  font-size: 0.72rem;
+  font-weight: 750;
+  object-fit: cover;
+}
+
+.admin-dispute-detail-page .dispute-party-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.admin-dispute-detail-page .dispute-party-copy span {
+  overflow-wrap: anywhere;
+}
+
+.admin-dispute-detail-page .detail-grid.dispute-detail-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.admin-dispute-detail-page .dispute-sidebar-copy {
+  margin: 0;
+  color: #43564a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.admin-dispute-detail-page .dispute-participant {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #edf1ee;
+  color: #17212b;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-dispute-detail-page .dispute-participant:last-child {
+  border-bottom: 0;
+}
+
+.admin-dispute-detail-page .dispute-repair-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.75rem, 1fr));
+  gap: 0.4rem;
+}
+
+.admin-dispute-detail-page .dispute-repair-photos a {
+  display: block;
+  height: 3.75rem;
+  overflow: hidden;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.5rem;
+  background: #f8faf8;
+}
+
+.admin-dispute-detail-page .dispute-repair-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-dispute-detail-page .detail-grid > .panel,
+.admin-dispute-detail-page .customer-detail-main > .panel {
+  min-width: 0;
+  margin: 0;
+  padding: 0.8rem;
+  border-color: #e2e8e4;
+  border-radius: 0.85rem;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.admin-dispute-detail-page .customer-detail-main > .panel > h2:not(.panel-title) {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  margin: 0 0 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: #edf8ef;
+  color: #173c26;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.admin-dispute-detail-page .panel-title {
+  display: flex;
+  min-height: 2.2rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.65rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  background: #edf8ef;
+  color: #173c26;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.admin-dispute-detail-page .panel-icon {
+  color: #087c3b;
+}
+
+.admin-dispute-detail-page .panel-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.admin-dispute-detail-page .history-list {
+  gap: 0;
+}
+
+.admin-dispute-detail-page .history-list li {
+  position: relative;
+  min-width: 0;
+  padding: 0.35rem 0 0.75rem 1.3rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.admin-dispute-detail-page .history-card .history-list li > div > span {
+  margin-left: 0.35rem;
+}
+
+.admin-portal .admin-dispute-detail-page .dispute-detail-main-card .history-list li {
+  padding-left: 1.6rem;
+}
+
+.admin-dispute-detail-page .history-list li:not(:last-child)::before {
+  position: absolute;
+  top: 0.8rem;
+  bottom: -0.15rem;
+  left: 0.25rem;
+  width: 1px;
+  background: #dce8df;
+  content: '';
+}
+
+.admin-portal .admin-dispute-detail-page .dispute-detail-main-card .history-list li:not(:last-child)::before {
+  left: 0.675rem;
+}
+
+.admin-dispute-detail-page .history-dot {
+  position: absolute;
+  top: 0.45rem;
+  left: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #16803c;
+  box-shadow: 0 0 0 1px #b8d7c0;
+}
+
+.admin-portal .admin-dispute-detail-page .dispute-detail-main-card .history-dot {
+  left: 0.4rem;
+}
+
+.admin-dispute-detail-page .detail-status[data-status='UNDER_REVIEW'],
+.admin-dispute-detail-page .detail-status[data-status='AWAITING_CUSTOMER_RESPONSE'],
+.admin-dispute-detail-page .detail-status[data-status='AWAITING_SHOP_RESPONSE'] {
+  background: #fff2d9;
+  color: #815b10;
+}
+
+.admin-dispute-detail-page .detail-status[data-status='RESOLVED'],
+.admin-dispute-detail-page .detail-status[data-status='CLOSED'],
+.admin-dispute-detail-page .detail-status[data-status='CUSTOMER_CONFIRMED'] {
+  background: #e5f6e8;
+  color: #17643b;
+}
+
+.admin-dispute-detail-page .detail-status[data-status*='REJECT'] {
+  background: #fff0ed;
+  color: #9c3d31;
+}
+
+@media (max-width: 900px) {
+  .admin-dispute-detail-page .customer-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-dispute-detail-page .request-hero {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    gap: 0.6rem;
+  }
+
+  .admin-dispute-detail-page .request-hero-photo {
+    width: 4.5rem;
+    height: 4rem;
+  }
+
+  .admin-dispute-detail-page .detail-status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .admin-dispute-detail-page .request-progress {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .admin-dispute-detail-page .request-progress::before {
+    top: 1.5rem;
+    right: auto;
+    bottom: 1.5rem;
+    left: 1.55rem;
+    width: 2px;
+    height: auto;
+  }
+
+  .admin-dispute-detail-page .request-progress li {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    justify-items: start;
+    gap: 0.1rem 0.65rem;
+    padding: 0.4rem 0;
+    text-align: left;
+  }
+
+  .admin-dispute-detail-page .progress-marker {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .admin-dispute-detail-page .request-progress li strong,
+  .admin-dispute-detail-page .request-progress time {
+    grid-column: 2;
+  }
+}
+
+.admin-dispute-detail-page .route-empty {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.25rem;
+  color: #66746b;
+}
+
+.admin-dispute-detail-page .route-empty svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: #087c3b;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.admin-dispute-detail-page .route-empty p {
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card {
+  display: grid;
+  min-width: 0;
+  gap: 0;
+  padding: 0.8rem;
+  border: 1px solid #e2e8e4;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card > .customer-detail-block,
+.admin-dispute-detail-page .dispute-detail-main-card .detail-grid.dispute-detail-grid > .panel,
+.admin-dispute-detail-page .dispute-detail-main-card > .panel {
+  min-width: 0;
+  margin: 0;
+  padding: 0.75rem 0;
+  border: 0;
+  border-bottom: 1px solid #e8eee9;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card > :last-child,
+.admin-dispute-detail-page .dispute-detail-main-card .detail-grid.dispute-detail-grid > .panel:last-child {
+  border-bottom: 0;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-information-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.7fr);
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6rem;
+  color: #17212b;
+  font-size: 0.87rem;
+  font-weight: 750;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-identity img,
+.admin-dispute-detail-page .dispute-detail-main-card .customer-avatar {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #e3f2e7;
+  color: #087c3b;
+  font-size: 0.75rem;
+  font-weight: 750;
+  object-fit: cover;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-facts div {
+  min-width: 0;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-facts dt {
+  color: #68756d;
+  font-size: 0.68rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-facts dd {
+  margin: 0.15rem 0 0;
+  color: #263b32;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .section-heading {
+  margin-bottom: 0.65rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-detail-block > p,
+.admin-dispute-detail-page .dispute-detail-main-card .panel > p {
+  margin: 0;
+  color: #43564a;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .customer-detail-block > p + p,
+.admin-dispute-detail-page .dispute-detail-main-card .panel > p + p {
+  margin-top: 0.55rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .quotation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+  color: #173c26;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .document-grid figure {
+  min-width: 0;
+  margin: 0;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .document-grid img {
+  display: block;
+  width: 100%;
+  height: 4.5rem;
+  border-radius: 0.5rem;
+  background: #f3f6f3;
+  object-fit: cover;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .document-grid figcaption {
+  margin-top: 0.25rem;
+  color: #68756d;
+  font-size: 0.64rem;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .repair-detail-error {
+  margin: 0;
+}
+
+.admin-dispute-detail-page .dispute-detail-main-card .repair-details-loading {
+  margin: 0;
+  padding: 0.75rem 0;
+  color: #68756d;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 600px) {
+  .admin-dispute-detail-page .dispute-detail-main-card .customer-information-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-dispute-detail-page .dispute-detail-main-card .customer-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+}

@@ -2,7 +2,9 @@
   class="dispute-page"
   [class.customer-dispute-list-page]="(role() === 'customer' || role() === 'technician') && mode() === 'list'"
   [class.customer-dispute-detail-page]="role() !== 'admin' && mode() === 'detail'"
+  [class.admin-dispute-detail-page]="role() === 'admin' && mode() === 'detail'"
   [class.shop-dispute-list-page]="role() === 'shop' && mode() === 'list'"
+  [class.admin-dispute-list-page]="role() === 'admin' && mode() === 'list'"
   [class.technician-dispute-page]="role() === 'technician'"
   [attr.aria-busy]="loading()"
 >
@@ -303,14 +305,13 @@
     @if (loading()) {
       <p class="state-card" role="status">Loading disputes…</p>
     } @else if (list()?.items?.length) {
-      @if (role() !== 'admin') {
-        <section class="customer-dispute-table-card" aria-label="Dispute cases">
-          <table class="customer-dispute-table">
+      <section class="customer-dispute-table-card" aria-label="Dispute cases">
+        <table class="customer-dispute-table">
             <thead>
               <tr>
                 <th scope="col">Request ID</th>
                 <th scope="col">Device &amp; Brand</th>
-                @if (role() === 'shop') {
+                @if (role() === 'shop' || role() === 'admin') {
                   <th scope="col">Customer</th>
                 }
                 <th scope="col">Issue / Problem</th>
@@ -347,7 +348,7 @@
                       </div>
                     </div>
                   </td>
-                  @if (role() === 'shop') {
+                  @if (role() === 'shop' || role() === 'admin') {
                     <td class="dispute-customer-cell">
                       <div class="dispute-customer-content">
                         @if (item.parties?.customer?.profileImageUrl; as profileImageUrl) {
@@ -391,7 +392,40 @@
                     </div>
                   </td>
                   <td class="dispute-shop-cell">
-                    {{ item.parties?.shop?.name || 'Assigned shop' }}
+                    @if (role() === 'admin') {
+                      <div class="dispute-shop-content">
+                        @if (item.parties?.shop?.shopImageUrl; as shopImageUrl) {
+                          <img
+                            class="dispute-shop-logo"
+                            [src]="shopImageUrl"
+                            [alt]="(item.parties?.shop?.name || 'Shop') + ' logo'"
+                          />
+                        } @else {
+                          <span class="dispute-shop-logo dispute-shop-logo-fallback" aria-hidden="true">
+                            {{ customerInitials(item.parties?.shop?.name) }}
+                          </span>
+                        }
+                        <div class="dispute-shop-copy">
+                          <strong>{{ item.parties?.shop?.name || 'Assigned shop' }}</strong>
+                          <span class="dispute-shop-owner">
+                            @if (item.parties?.shop?.profileImageUrl; as shopProfileImageUrl) {
+                              <img
+                                class="dispute-shop-owner-avatar"
+                                [src]="shopProfileImageUrl"
+                                [alt]="(item.parties?.shop?.personName || 'Shop contact') + ' profile photo'"
+                              />
+                            } @else {
+                              <span class="dispute-shop-owner-avatar dispute-shop-owner-initials" aria-hidden="true">
+                                {{ customerInitials(item.parties?.shop?.personName || item.parties?.shop?.name) }}
+                              </span>
+                            }
+                            <span>{{ item.parties?.shop?.personName || 'Shop contact' }}</span>
+                          </span>
+                        </div>
+                      </div>
+                    } @else {
+                      {{ item.parties?.shop?.name || 'Assigned shop' }}
+                    }
                   </td>
                   <td>
                     <span class="job-status" [attr.data-status]="item.status">
@@ -421,42 +455,8 @@
                 </tr>
               }
             </tbody>
-          </table>
-        </section>
-      } @else {
-        <section class="dispute-list" aria-label="Dispute cases">
-          @for (item of list()?.items; track item._id) {
-            <article class="dispute-row">
-              <span class="dispute-card-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-                  <path d="M10 6h4m-2 11h.01" />
-                </svg>
-              </span>
-              <div class="row-main">
-                <span class="reference">{{ item.reference }}</span>
-                <h2>{{ item.subject }}</h2>
-                <p>{{ item.category.replaceAll('_', ' ') | titlecase }} · {{ item.description }}</p>
-                @if (item.parties?.customer?.name || item.parties?.shop?.name) {
-                  <small
-                    >{{ item.parties?.customer?.name || 'Customer' }} ·
-                    {{ item.parties?.shop?.name || 'Assigned shop' }}</small
-                  >
-                }
-              </div>
-              <div class="row-meta">
-                <span class="status dispute-list-status" [attr.data-status]="item.status"><span class="status-dot" aria-hidden="true"></span>{{
-                  item.status.replaceAll('_', ' ') | titlecase
-                }}</span>
-                <span>Updated {{ item.updatedAt | date: 'mediumDate' }}</span>
-                <a class="view-dispute-link" [routerLink]="['/', role(), 'disputes', item._id]">
-                  View details <span aria-hidden="true">›</span>
-                </a>
-              </div>
-            </article>
-          }
-        </section>
-      }
+        </table>
+      </section>
       @if (role() !== 'admin') {
         @if ((list()?.pagination?.total ?? 0) > pageSize) {
           <app-job-pagination
@@ -471,7 +471,6 @@
           />
         }
       } @else {
-        <p class="result-count">{{ list()?.pagination?.total }} case(s)</p>
         <app-pagination
           [total]="list()?.pagination?.total ?? 0"
           [page]="list()?.pagination?.page ?? 1"
@@ -576,17 +575,10 @@
   }
 
   @if (mode() === 'detail') {
-    @if (role() !== 'admin') {
-      <a class="detail-back-link" [routerLink]="disputeListLink()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
-        Back to Issue Resolution
-      </a>
-    } @else {
-      <a class="back-link detail-back-link" [routerLink]="disputeListLink()">
-        <span aria-hidden="true">←</span>
-        {{ role() === 'admin' ? 'All disputes' : 'Issue Resolution' }}
-      </a>
-    }
+    <a class="detail-back-link" [routerLink]="disputeListLink()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
+      {{ role() === 'admin' ? 'Back to all disputes' : 'Back to Issue Resolution' }}
+    </a>
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
@@ -595,123 +587,325 @@
         {{ role() === 'admin' ? 'Loading dispute details…' : 'Loading issue details…' }}
       </p>
     } @else if (dispute(); as item) {
-      @if (role() !== 'admin') {
-        <h1 class="detail-page-title">Issue Resolution Details</h1>
-        <section class="request-hero" aria-label="Dispute summary">
-          <div class="request-hero-photo">
-            @if (item.repair?.photos?.[0]; as photo) {
-              <img
-                [src]="photo.data"
-                [alt]="(item.repair?.appliance || 'Repair item') + ' photo'"
-              />
-            } @else {
-              <span class="hero-image-placeholder" role="img" aria-label="No image available">
+      <h1 class="detail-page-title">
+        {{ role() === 'admin' ? 'Dispute Details' : 'Issue Resolution Details' }}
+      </h1>
+      <section class="request-hero" aria-label="Dispute summary">
+        <div class="request-hero-photo">
+          @if (item.repair?.photos?.[0]; as photo) {
+            <img
+              [src]="repairPhotoSource(photo)"
+              [alt]="(item.repair?.appliance || 'Repair item') + ' photo'"
+            />
+          } @else {
+            <span class="hero-image-placeholder" role="img" aria-label="No image available">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="3" y="4" width="18" height="16" rx="2" />
+                <circle cx="8.5" cy="9" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            </span>
+          }
+        </div>
+        <div class="request-hero-copy">
+          <h2>{{ item.repair?.appliance || item.subject }}</h2>
+          <span class="dispute-subject">{{ item.subject }}</span>
+          <span class="request-id">Dispute ID: <strong>{{ item.reference }}</strong></span>
+          <span class="request-id">
+            Request ID: <strong>#{{ item.repairRequestId.slice(-8).toUpperCase() }}</strong>
+          </span>
+        </div>
+        <span class="detail-status" [attr.data-status]="item.status">
+          <span class="status-dot" aria-hidden="true"></span>
+          {{ item.status.replaceAll('_', ' ') | titlecase }}
+        </span>
+      </section>
+      <ol class="request-progress" aria-label="Dispute progress">
+        @for (step of disputeProgressSteps; track step; let index = $index) {
+          <li
+            [class.completed]="isDisputeComplete(item) || index + 1 < disputeProgressStep(item)"
+            [class.current]="!isDisputeComplete(item) && index + 1 === disputeProgressStep(item)"
+            [attr.aria-current]="
+              !isDisputeComplete(item) && index + 1 === disputeProgressStep(item) ? 'step' : null
+            "
+          >
+            <span class="progress-marker" aria-hidden="true">
+              @if (isDisputeComplete(item) || index + 1 < disputeProgressStep(item)) {
+                <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+              } @else {
+                {{ index + 1 }}
+              }
+            </span>
+            <strong>{{ step }}</strong>
+            @if (disputeProgressDate(item, index); as stepDate) {
+              <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
+            }
+          </li>
+        }
+      </ol>
+
+      <div class="customer-detail-layout">
+        <div class="customer-detail-main">
+        <section
+          class="detail-section customer-detail-main-card dispute-detail-main-card"
+          aria-label="Dispute and repair details"
+        >
+        @if (role() === 'admin') {
+          @if (adminRepairDetails(); as repair) {
+            <section class="customer-detail-block customer-information-card">
+              <h2 class="section-heading">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <circle cx="8.5" cy="9" r="1.5" />
-                  <path d="m21 15-5-5L5 21" />
+                  <circle cx="12" cy="8" r="3.5" />
+                  <path d="M5 21a7 7 0 0 1 14 0" />
+                </svg>
+                Customer Information
+              </h2>
+              <div class="customer-information-row">
+                <div class="customer-identity">
+                  @if (repair.customer.profileImageUrl && !adminCustomerImageUnavailable()) {
+                    <img
+                      [src]="repair.customer.profileImageUrl"
+                      [alt]="adminCustomerName(repair) + ' profile photo'"
+                      (error)="adminCustomerImageUnavailable.set(true)"
+                    />
+                  } @else {
+                    <span class="customer-avatar" aria-hidden="true">
+                      {{ adminCustomerInitials(repair) }}
+                    </span>
+                  }
+                  <strong>{{ adminCustomerName(repair) }}</strong>
+                </div>
+                <dl class="customer-facts">
+                  <div><dt>Email</dt><dd>{{ repair.customer.email || 'Not provided' }}</dd></div>
+                  <div><dt>Phone</dt><dd>{{ adminCustomerPhone(repair) }}</dd></div>
+                  <div><dt>Location</dt><dd>{{ customerLocationLabel() }}</dd></div>
+                </dl>
+              </div>
+            </section>
+
+          } @else if (adminRepairDetailsError()) {
+            <p class="feedback error repair-detail-error" role="alert">
+              {{ adminRepairDetailsError() }}
+            </p>
+          } @else if (adminRepairDetailsLoading()) {
+            <p class="repair-details-loading" role="status">Loading linked repair details…</p>
+          }
+        }
+
+        @if (role() === 'admin') {
+          <section class="panel route-section">
+            <h2 class="panel-title">
+              <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                  <circle cx="12" cy="10" r="2.5" />
                 </svg>
               </span>
-            }
-          </div>
-          <div class="request-hero-copy">
-            <h2>{{ item.subject }}</h2>
-            <span class="request-id">
-              Dispute ID: <strong>{{ item.reference }}</strong>
-            </span>
-            <span class="request-id">
-              Request ID: <strong>#{{ item.repairRequestId.slice(-8).toUpperCase() }}</strong>
-            </span>
-          </div>
-          <span class="detail-status" [attr.data-status]="item.status">
-            <span class="status-dot" aria-hidden="true"></span>
-            {{ item.status.replaceAll('_', ' ') | titlecase }}
-          </span>
-        </section>
-        <ol class="request-progress" aria-label="Dispute progress">
-          @for (step of disputeProgressSteps; track step; let index = $index) {
-            <li
-              [class.completed]="isDisputeComplete(item) || index + 1 < disputeProgressStep(item)"
-              [class.current]="!isDisputeComplete(item) && index + 1 === disputeProgressStep(item)"
-              [attr.aria-current]="
-                !isDisputeComplete(item) && index + 1 === disputeProgressStep(item) ? 'step' : null
-              "
-            >
-              <span class="progress-marker" aria-hidden="true">
-                @if (isDisputeComplete(item) || index + 1 < disputeProgressStep(item)) {
-                  <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-                } @else {
-                  {{ index + 1 }}
-                }
-              </span>
-              <strong>{{ step }}</strong>
-              @if (disputeProgressDate(item, index); as stepDate) {
-                <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
-              }
-            </li>
-          }
-        </ol>
-      } @else {
-        @if (role() !== 'admin') {
-          <div class="detail-breadcrumb">
-            <span>Issue Resolution</span><span aria-hidden="true">/</span><strong>Issue Details</strong>
-          </div>
-        }
-        <app-admin-page-header>
-          <h1 adminPageTitle class="admin-page-title">
-            {{ role() === 'admin' ? 'Dispute details' : 'Issue details' }}
-          </h1>
-          <p adminPageDescription class="admin-page-description dispute-reference">
-            {{ item.reference }}
-          </p>
-          <span adminPageActions class="status detail-status" [attr.data-status]="item.status">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="8.5" />
-              <path d="M12 7v5l3 2" />
-            </svg>
-            {{ item.status.replaceAll('_', ' ') | titlecase }}
-          </span>
-        </app-admin-page-header>
-        @if (item.repair; as repair) {
-          <section class="panel repair-overview">
-            <div class="repair-device">
-              @if (repair.photos[0]; as photo) {
-                <img [src]="photo.data" [alt]="repair.appliance + ' repair'" />
-              } @else {
-                <span class="device-placeholder" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <rect x="7" y="2.5" width="10" height="19" rx="2" />
-                    <path d="M10 5h4m-2 13h.01" />
-                  </svg>
-                </span>
-              }
-              <div>
-                <span class="repair-kind">{{ repair.appliance }}</span>
-                <h2>{{ repair.brand || repair.appliance }}{{ repair.model ? ' ' + repair.model : '' }}</h2>
-                <p><span aria-hidden="true">⌁</span> {{ repairWork(repair) }}</p>
+              Location and Route
+            </h2>
+            @if (hasRouteCoordinates()) {
+              <app-shop-repair-route
+                [requestId]="item.repairRequestId"
+                [shopLocation]="shopCoordinates()"
+                [customerLocation]="customerCoordinates()"
+                [directionsLoader]="adminDirectionsLoader"
+                heading="Route to Repair Shop"
+                description="Driving route from the customer location to the assigned repair shop."
+                originLabel="Customer location"
+                destinationLabel="Repair shop"
+                [reverseDirections]="true"
+              />
+            } @else {
+              <div class="route-empty" [attr.role]="mapError() ? 'alert' : 'status'">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+                <p>
+                  {{
+                    mapLoading()
+                      ? 'Loading location details…'
+                      : mapError() || 'Customer and shop locations are not available for this repair.'
+                  }}
+                </p>
               </div>
-            </div>
-            <div class="repair-fact">
-              <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>
-              <div><small>Repair Status</small><strong class="repair-status">{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</strong></div>
-            </div>
-            <div class="repair-fact">
-              <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5" /></svg></span>
-              <div><small>Accepted Quote</small><strong>{{ repair.quotation ? (repair.quotation.amount | currency: repair.quotation.currency) : 'Not available' }}</strong></div>
-            </div>
-            <div class="repair-fact">
-              <span class="fact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4m8-4v4M4 10h16" /></svg></span>
-              <div><small>Repaired On</small><strong>{{ repairCompletedAt(repair) ? (repairCompletedAt(repair)! | date: 'MMM d, y') : '—' }}</strong></div>
-            </div>
+            }
           </section>
         }
-      }
 
-      <div
-        class="customer-detail-layout"
-        [class.customer-layout-disabled]="role() === 'admin'"
-      >
-        <div class="customer-detail-main">
+        @if (role() === 'admin' && adminRepairDetails(); as repair) {
+            <section class="customer-detail-block problem-description-card">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6M8 13h8m-8 4h8" />
+                </svg>
+                Problem Description
+              </h2>
+              <p>{{ repair.description || 'No issue details provided.' }}</p>
+            </section>
+
+            @if (repair.quotation; as quotation) {
+              <section class="customer-detail-block quotation-section">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" />
+                    <path d="M8 2v3m8-3v3" />
+                  </svg>
+                  Accepted Quotation
+                </h2>
+                <div class="quotation-heading">
+                  <strong>{{ quotation.amount | currency: quotation.currency }}</strong>
+                  <span class="quotation-status" [attr.data-status]="quotation.status">
+                    {{ quotation.status | titlecase }}
+                  </span>
+                </div>
+                @if (quotation.proposedSolution || quotation.message) {
+                  <p>{{ quotation.proposedSolution || quotation.message }}</p>
+                }
+                <dl class="sidebar-facts">
+                  <div>
+                    <dt>Submitted</dt>
+                    <dd>{{ quotation.createdAt ? (quotation.createdAt | date: 'MMM d, y, h:mm a') : '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Valid until</dt>
+                    <dd>{{ quotation.validUntil ? (quotation.validUntil | date: 'MMM d, y') : '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Estimated duration</dt>
+                    <dd>{{ quotation.estimatedDays !== undefined ? quotation.estimatedDays + ' days' : '—' }}</dd>
+                  </div>
+                </dl>
+              </section>
+            } @else {
+              <section class="customer-detail-block quotation-section">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" />
+                    <path d="M8 2v3m8-3v3" />
+                  </svg>
+                  Accepted Quotation
+                </h2>
+                <p>No accepted quotation details are available for this repair.</p>
+              </section>
+            }
+
+            @if (repair.repairJob.inspection; as inspection) {
+              <section class="customer-detail-block inspection-section">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="10.5" cy="10.5" r="6.5" />
+                    <path d="m16 16 5 5M8 10h5m-5 3h3" />
+                  </svg>
+                  Inspection Report
+                </h2>
+                <dl class="sidebar-facts">
+                  <div><dt>Identified problem</dt><dd>{{ inspection.identifiedProblem || '—' }}</dd></div>
+                  <div><dt>Findings</dt><dd>{{ inspection.findings || '—' }}</dd></div>
+                  <div><dt>Recommended repair</dt><dd>{{ inspection.requiredRepairWork || '—' }}</dd></div>
+                  <div>
+                    <dt>Estimate total</dt>
+                    <dd>{{ inspection.estimatedTotal !== undefined ? (inspection.estimatedTotal | currency: (repair.quotation?.currency || 'INR')) : '—' }}</dd>
+                  </div>
+                </dl>
+                @if (inspection.message || inspection.decisionReason) {
+                  <p>{{ inspection.message || inspection.decisionReason }}</p>
+                }
+              </section>
+            } @else {
+              <section class="customer-detail-block inspection-section">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="10.5" cy="10.5" r="6.5" />
+                    <path d="m16 16 5 5M8 10h5m-5 3h3" />
+                  </svg>
+                  Inspection Report
+                </h2>
+                <p>No inspection report is available for this repair.</p>
+              </section>
+            }
+
+            <section class="customer-detail-block completion-section">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>
+                Repair and Completion
+              </h2>
+              @if (
+              repair.repairJob.workPerformed ||
+              repair.repairJob.partsReplaced ||
+              repair.repairJob.completionDescription ||
+              repair.repairJob.finalNotes ||
+              repair.repairJob.pickupInstructions ||
+              repair.repairJob.approvedRepairAmount !== undefined
+              ) {
+                <dl class="sidebar-facts">
+                  <div>
+                    <dt>Approved repair amount</dt>
+                    <dd>{{ repair.repairJob.approvedRepairAmount !== undefined ? (repair.repairJob.approvedRepairAmount | currency: (repair.quotation?.currency || 'INR')) : '—' }}</dd>
+                  </div>
+                  <div><dt>Work performed</dt><dd>{{ repair.repairJob.workPerformed || '—' }}</dd></div>
+                  <div><dt>Parts replaced</dt><dd>{{ repair.repairJob.partsReplaced || '—' }}</dd></div>
+                  <div><dt>Completion summary</dt><dd>{{ repair.repairJob.completionDescription || '—' }}</dd></div>
+                  <div><dt>Pickup instructions</dt><dd>{{ repair.repairJob.pickupInstructions || '—' }}</dd></div>
+                  <div><dt>Pickup message</dt><dd>{{ repair.repairJob.pickupMessage || '—' }}</dd></div>
+                  <div><dt>Final notes</dt><dd>{{ repair.repairJob.finalNotes || '—' }}</dd></div>
+                </dl>
+              } @else {
+                <p>Repair completion details are not available yet.</p>
+              }
+            </section>
+
+            <section class="customer-detail-block timeline-section">
+              <h2 class="section-heading">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                Repair Status History
+                <small>({{ repair.repairJob.history?.length ?? 0 }} activities)</small>
+              </h2>
+              @if (repair.repairJob.history?.length) {
+                <ol class="history-list">
+                  @for (event of repair.repairJob.history; track $index) {
+                    <li>
+                      <span class="history-dot" aria-hidden="true"></span>
+                      <span class="history-action">{{ event.action.replaceAll('_', ' ') | titlecase }}</span>
+                      <span class="history-note">{{ event.notes || '—' }}</span>
+                      <time>{{ event.at | date: 'MMM d, y, h:mm:ss a' }}</time>
+                    </li>
+                  }
+                </ol>
+              } @else {
+                <p>No repair status history is available.</p>
+              }
+            </section>
+
+            @if (repairDocuments(repair); as documents) {
+              <section class="customer-detail-block uploaded-photos-card">
+                <h2 class="section-heading">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <path d="m21 15-5-5L5 21" />
+                  </svg>
+                  Uploaded Photos <small>({{ documents.length }})</small>
+                </h2>
+                @if (documents.length) {
+                  <div class="document-grid">
+                    @for (document of documents; track $index) {
+                      <figure>
+                        <img [src]="repairPhotoSource(document)" [alt]="document.label" />
+                        <figcaption>{{ document.label }}</figcaption>
+                      </figure>
+                    }
+                  </div>
+                } @else {
+                  <p>No photos have been added to this repair.</p>
+                }
+              </section>
+            }
+        }
+
       <div class="detail-grid dispute-detail-grid">
         <section class="panel detail-card complaint-card">
           <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3z" /><path d="M9 9h6m-6 3h4" /></svg></span>Original Complaint</h2>
@@ -729,7 +923,7 @@
           }
         </section>
 
-        @if (item.repair; as repair) {
+        @if (role() !== 'admin' && item.repair; as repair) {
           <section class="panel detail-card original-repair-card">
             <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m14 6 4-4 4 4-4 4m-3-3L4 18v3h3L18 10M5 5l2-2 4 4-2 2z" /></svg></span>Original Repair</h2>
             <ul class="repair-work-list">
@@ -745,42 +939,6 @@
             @if (role() === 'shop') {
               <a class="text-link repair-details-link" [routerLink]="['/shop/repair-requests', repair.id]">View repair details <span aria-hidden="true">→</span></a>
             }
-          </section>
-        }
-
-        @if (role() === 'admin') {
-          <section class="panel detail-card participants-card">
-            <h2 class="panel-title">
-              <span class="panel-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="9" cy="8" r="3" />
-                  <path d="M3.5 19v-1.2A4.8 4.8 0 0 1 8.3 13h1.4a4.8 4.8 0 0 1 4.8 4.8V19zm12-8.5a3 3 0 1 0 0-6m1 8.5h.8a3.7 3.7 0 0 1 3.7 3.7v.8h-4" />
-                </svg>
-              </span>
-              Participants
-            </h2>
-            <div class="participant">
-              <span class="participant-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="8" r="3.5" />
-                  <path d="M5 20a7 7 0 0 1 14 0" />
-                </svg>
-              </span>
-              <p>
-                <strong>Customer</strong><span>{{ item.parties?.customer?.name || 'Customer' }}</span>
-              </p>
-            </div>
-            <div class="participant">
-              <span class="participant-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M3 10 12 4l9 6v10H3zM8 20v-6h8v6M7 10h.01M12 10h.01M17 10h.01" />
-                </svg>
-              </span>
-              <p>
-                <strong>Repair Shop</strong
-                ><span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span>
-              </p>
-            </div>
           </section>
         }
 
@@ -1873,9 +2031,9 @@
           <p>No further shop confirmation is required.</p>
         </section>
       }
+        </section>
         </div>
-        @if (role() !== 'admin') {
-          <aside class="customer-detail-sidebar">
+        <aside class="customer-detail-sidebar">
             <section
               class="detail-section customer-detail-sidebar-card"
               aria-label="Dispute and repair information"
@@ -1923,32 +2081,59 @@
                     <svg viewBox="0 0 24 24" aria-hidden="true">
                       <path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5M3 16l9 5 9-5" />
                     </svg>
-                    Original Repair
+                    Device and Service Details
                   </h2>
-                  <dl class="sidebar-facts">
-                    <div><dt>Device</dt><dd>{{ repair.appliance }}</dd></div>
-                    <div><dt>Brand</dt><dd>{{ repair.brand || 'Not specified' }}</dd></div>
-                    <div><dt>Model</dt><dd>{{ repair.model || 'Not specified' }}</dd></div>
-                    <div>
-                      <dt>Repair status</dt>
-                      <dd>{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</dd>
-                    </div>
-                    <div><dt>Submitted</dt><dd>{{ repair.createdAt | date: 'MMM d, y' }}</dd></div>
-                    @if (repair.quotation) {
+                  @if (adminRepairDetails(); as fullRepair) {
+                    <dl class="sidebar-facts">
+                      <div><dt>Device</dt><dd>{{ fullRepair.appliance }}</dd></div>
+                      <div><dt>Brand</dt><dd>{{ fullRepair.brand || 'Not specified' }}</dd></div>
+                      <div><dt>Model</dt><dd>{{ fullRepair.model || 'Not specified' }}</dd></div>
                       <div>
-                        <dt>Accepted quote</dt>
-                        <dd>{{ repair.quotation.amount | currency: repair.quotation.currency }}</dd>
+                        <dt>Repair status</dt>
+                        <dd>{{ fullRepair.repairJob.status.replaceAll('_', ' ') | titlecase }}</dd>
+                      </div>
+                      <div><dt>Service type</dt><dd>{{ fullRepair.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div>
+                      <div>
+                        <dt>Preferred date</dt>
+                        <dd>{{ fullRepair.preferredServiceDate ? (fullRepair.preferredServiceDate | date: 'MMM d, y') : 'Not specified' }}</dd>
+                      </div>
+                      <div><dt>Submitted</dt><dd>{{ fullRepair.createdAt | date: 'MMM d, y' }}</dd></div>
+                      <div><dt>Last updated</dt><dd>{{ fullRepair.updatedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
+                      <div><dt>Shop location</dt><dd>{{ adminShopLocation(fullRepair) || 'Not provided' }}</dd></div>
+                    </dl>
+                  } @else {
+                    <dl class="sidebar-facts">
+                      <div><dt>Device</dt><dd>{{ repair.appliance }}</dd></div>
+                      <div><dt>Brand</dt><dd>{{ repair.brand || 'Not specified' }}</dd></div>
+                      <div><dt>Model</dt><dd>{{ repair.model || 'Not specified' }}</dd></div>
+                      <div><dt>Repair work</dt><dd>{{ repairWork(repair) }}</dd></div>
+                      <div>
+                        <dt>Repair status</dt>
+                        <dd>{{ repairStatus(repair).replaceAll('_', ' ') | titlecase }}</dd>
+                      </div>
+                      <div><dt>Submitted</dt><dd>{{ repair.createdAt | date: 'MMM d, y' }}</dd></div>
+                      @if (repairCompletedAt(repair); as completedAt) {
+                        <div><dt>Repaired on</dt><dd>{{ completedAt | date: 'MMM d, y' }}</dd></div>
+                      }
+                      @if (repair.quotation) {
+                        <div>
+                          <dt>Accepted quote</dt>
+                          <dd>{{ repair.quotation.amount | currency: repair.quotation.currency }}</dd>
+                        </div>
+                      }
+                    </dl>
+                    @if (repair.photos.length) {
+                      <div class="dispute-repair-photos" aria-label="Original repair photos">
+                        @for (photo of repair.photos; track $index) {
+                          <a [href]="repairPhotoSource(photo)" target="_blank" rel="noopener">
+                            <img
+                              [src]="repairPhotoSource(photo)"
+                              [alt]="repair.appliance + ' repair photo'"
+                            />
+                          </a>
+                        }
                       </div>
                     }
-                  </dl>
-                  @if (repair.photos.length) {
-                    <div class="dispute-repair-photos" aria-label="Original repair photos">
-                      @for (photo of repair.photos; track $index) {
-                        <a [href]="photo.data" target="_blank" rel="noopener">
-                          <img [src]="photo.data" [alt]="repair.appliance + ' repair photo'" />
-                        </a>
-                      }
-                    </div>
                   }
                   <a class="shop-link" [routerLink]="repairDetailsLink(repair.id)">
                     View repair details
@@ -1965,18 +2150,99 @@
                   Participants
                 </h2>
                 <div class="dispute-participant">
-                  <strong>Customer</strong>
-                  <span>{{ item.parties?.customer?.name || 'Customer' }}</span>
-                  @if (role() === 'customer' && item.parties?.customer?.email) {
-                    <span>{{ item.parties?.customer?.email }}</span>
-                  }
+                  <div class="dispute-party-person">
+                    @if (adminRepairDetails(); as fullRepair) {
+                      @if (fullRepair.customer.profileImageUrl && !adminCustomerImageUnavailable()) {
+                        <img
+                          class="dispute-party-avatar"
+                          [src]="fullRepair.customer.profileImageUrl"
+                          [alt]="adminCustomerName(fullRepair)"
+                          (error)="adminCustomerImageUnavailable.set(true)"
+                        />
+                      } @else {
+                        <span class="dispute-party-avatar avatar-fallback" aria-hidden="true">
+                          {{ adminCustomerInitials(fullRepair) }}
+                        </span>
+                      }
+                    } @else {
+                      @if (item.parties?.customer?.profileImageUrl) {
+                        <img
+                          class="dispute-party-avatar"
+                          [src]="item.parties?.customer?.profileImageUrl"
+                          [alt]="item.parties?.customer?.name || 'Customer'"
+                        />
+                      } @else {
+                        <span class="dispute-party-avatar avatar-fallback" aria-hidden="true">
+                          {{ customerInitials(item.parties?.customer?.name) }}
+                        </span>
+                      }
+                    }
+                    <div class="dispute-party-copy">
+                      <strong>Customer</strong>
+                      @if (adminRepairDetails(); as fullRepair) {
+                        <span>{{ adminCustomerName(fullRepair) }}</span>
+                        @if (fullRepair.customer.email) {
+                          <span>{{ fullRepair.customer.email }}</span>
+                        }
+                        <span>{{ adminCustomerPhone(fullRepair) }}</span>
+                      } @else {
+                        <span>{{ item.parties?.customer?.name || 'Customer' }}</span>
+                        @if ((role() === 'customer' || role() === 'admin') && item.parties?.customer?.email) {
+                          <span>{{ item.parties?.customer?.email }}</span>
+                        }
+                      }
+                    </div>
+                  </div>
                 </div>
                 <div class="dispute-participant">
-                  <strong>Repair Shop</strong>
-                  <span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span>
-                  @if (role() === 'customer' && item.parties?.shop?.email) {
-                    <span>{{ item.parties?.shop?.email }}</span>
-                  }
+                  <div class="dispute-party-person">
+                    @if (adminRepairDetails(); as fullRepair) {
+                      @if (fullRepair.shop?.profileImageUrl && !adminShopImageUnavailable()) {
+                        <img
+                          class="dispute-party-avatar"
+                          [src]="fullRepair.shop?.profileImageUrl || ''"
+                          [alt]="fullRepair.shopName || 'Repair shop'"
+                          (error)="adminShopImageUnavailable.set(true)"
+                        />
+                      } @else {
+                        <span class="dispute-party-avatar avatar-fallback" aria-hidden="true">
+                          {{ customerInitials(fullRepair.shopName || fullRepair.shop?.displayName) }}
+                        </span>
+                      }
+                    } @else {
+                      @if (item.parties?.shop?.profileImageUrl || item.parties?.shop?.shopImageUrl) {
+                        <img
+                          class="dispute-party-avatar"
+                          [src]="item.parties?.shop?.profileImageUrl || item.parties?.shop?.shopImageUrl"
+                          [alt]="item.parties?.shop?.personName || item.parties?.shop?.name || 'Repair shop'"
+                        />
+                      } @else {
+                        <span class="dispute-party-avatar avatar-fallback" aria-hidden="true">
+                          {{ customerInitials(item.parties?.shop?.personName || item.parties?.shop?.name) }}
+                        </span>
+                      }
+                    }
+                    <div class="dispute-party-copy">
+                      <strong>Repair Shop</strong>
+                      @if (adminRepairDetails(); as fullRepair) {
+                        <span>{{ fullRepair.shopName || 'Assigned shop' }}</span>
+                        <span>{{ fullRepair.shop?.displayName || 'Shop contact' }}</span>
+                        @if (fullRepair.shop?.email; as shopEmail) {
+                          <span>{{ shopEmail }}</span>
+                        }
+                        <span>{{ adminShopPhone(fullRepair) }}</span>
+                        <span>{{ adminShopLocation(fullRepair) || 'Location not provided' }}</span>
+                      } @else {
+                        <span>{{ item.parties?.shop?.name || 'Assigned shop' }}</span>
+                        @if (item.parties?.shop?.personName) {
+                          <span>{{ item.parties?.shop?.personName }}</span>
+                        }
+                        @if ((role() === 'customer' || role() === 'admin') && item.parties?.shop?.email) {
+                          <span>{{ item.parties?.shop?.email }}</span>
+                        }
+                      }
+                    </div>
+                  </div>
                   @if (role() === 'customer' && item.parties?.shop?.id) {
                     <a class="shop-link" [routerLink]="['/customer/shops', item.parties?.shop?.id]">
                       View shop
@@ -2077,8 +2343,7 @@
                 </section>
               }
             </section>
-          </aside>
-        }
+        </aside>
       </div>
     }
   }

@@ -55,15 +55,16 @@ describe('AdminRepairJobDetailsPage', () => {
             updatedAt: '2026-03-03T10:00:00.000Z',
             customer: {
               firstName: 'Customer',
-                lastName: 'Example',
+              lastName: 'Example',
               email: 'customer@example.com',
               countryCode: '+91',
               mobileNumber: '9876543210',
+              profileImageUrl: 'data:image/png;base64,Y3VzdG9tZXI=',
             },
             shopName: 'Repair Shop',
             shop: {
               firstName: 'Owner',
-                lastName: 'Example',
+              lastName: 'Example',
               email: 'shop@example.com',
               countryCode: '+91',
               mobileNumber: '9876543211',
@@ -99,26 +100,44 @@ describe('AdminRepairJobDetailsPage', () => {
         total: 1,
       },
     });
+    httpTestingController
+      .expectOne(
+        `${environment.apiBaseUrl}/admin/map/repair-requests/507f1f77bcf86cd709a3ca32`,
+      )
+      .flush({
+        data: {
+          id: '507f1f77bcf86cd709a3ca32',
+          type: 'request',
+          name: 'Washing machine',
+          location: { latitude: 12.9716, longitude: 77.5946 },
+          address: '',
+          city: '',
+          state: '',
+          email: 'customer@example.com',
+          phone: '+91 9876543210',
+          status: 'in_progress',
+          shopLocation: null,
+        },
+      });
     harness.detectChanges();
 
     const text = harness.routeNativeElement?.textContent as string;
+    expect(text).toContain('Repair Job Details');
     expect(text).toContain('Washing machine');
-    expect(text).toContain('Request ID: 09A3CA32');
+    expect(text).toContain('Request ID: #09A3CA32');
     expect(text).toContain('Customer Example');
+    expect(
+      harness.routeNativeElement?.querySelector('.customer-identity img')?.getAttribute('src'),
+    ).toBe('data:image/png;base64,Y3VzdG9tZXI=');
+    expect(text).toContain('12.97160, 77.59460');
     expect(text).toContain('Repair Shop');
     expect(text).toContain('Replace the drive belt.');
     expect(text).toContain('Repair Started');
     expect(text).toContain('Back to repair monitoring');
-    expect(text).toContain('Documents (2)');
-    expect(text).toContain('Notes (0)');
-    expect(page.loading()).toBeFalse();
-
-    const documentsTab = Array.from(
-      harness.routeNativeElement?.querySelectorAll('button') ?? [],
-    ).find((button) => button.textContent?.includes('Documents')) as HTMLButtonElement;
-    documentsTab.click();
-    harness.detectChanges();
+    expect(text).toContain('Uploaded Photos (2)');
+    expect(harness.routeNativeElement?.querySelectorAll('.request-progress li').length).toBe(4);
     expect(harness.routeNativeElement?.querySelectorAll('.document-grid img').length).toBe(2);
+    expect(page.loading()).toBeFalse();
   });
 
   it('shows a not-found message when the repair does not exist', async () => {
@@ -131,6 +150,23 @@ describe('AdminRepairJobDetailsPage', () => {
           request.params.get('requestId') === 'missing-id',
       )
       .flush({ data: { jobs: [], page: 1, limit: 1, total: 0 } });
+    httpTestingController
+      .expectOne(`${environment.apiBaseUrl}/admin/map/repair-requests/missing-id`)
+      .flush({
+        data: {
+          id: 'missing-id',
+          type: 'request',
+          name: 'Repair request',
+          location: null,
+          address: '',
+          city: '',
+          state: '',
+          email: '',
+          phone: '',
+          status: 'pending',
+          shopLocation: null,
+        },
+      });
     harness.detectChanges();
 
     expect(harness.routeNativeElement?.textContent).toContain('Repair job could not be found.');

@@ -399,7 +399,9 @@
   .role-portal .customer-disputed-job-detail-page,
   .role-portal .customer-completed-job-detail-page,
   .role-portal .technician-completed-job-detail-page,
-  .role-portal .customer-dispute-detail-page {
+  .role-portal .customer-dispute-detail-page,
+  .admin-portal .admin-dispute-detail-page,
+  .admin-portal .admin-repair-job-details-page {
     max-width: 100%;
     gap: 0.75rem;
 
@@ -723,6 +725,17 @@
       font-size: 0.85rem;
     }
 
+    .customer-identity img {
+      display: block;
+      width: 2rem;
+      height: 2rem;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 50%;
+      background: #e3f2e7;
+      object-fit: cover;
+    }
+
     .customer-information-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
@@ -769,7 +782,8 @@
       white-space: nowrap;
     }
 
-    .customer-information-row .customer-avatar {
+    .customer-information-row .customer-avatar,
+    .customer-information-row .customer-identity img {
       width: 1.75rem;
       height: 1.75rem;
     }
@@ -1126,7 +1140,9 @@
     .role-portal .customer-disputed-job-detail-page .customer-detail-layout,
     .role-portal .customer-completed-job-detail-page .customer-detail-layout,
     .role-portal .technician-completed-job-detail-page .customer-detail-layout,
-    .role-portal .customer-dispute-detail-page .customer-detail-layout {
+    .role-portal .customer-dispute-detail-page .customer-detail-layout,
+    .admin-portal .admin-dispute-detail-page .customer-detail-layout,
+    .admin-portal .admin-repair-job-details-page .customer-detail-layout {
       grid-template-columns: minmax(0, 1.4fr) minmax(16rem, 1fr);
     }
 
@@ -1143,7 +1159,9 @@
     .role-portal .customer-disputed-job-detail-page .customer-information-row,
     .role-portal .customer-completed-job-detail-page .customer-information-row,
     .role-portal .technician-completed-job-detail-page .customer-information-row,
-    .role-portal .customer-dispute-detail-page .customer-information-row {
+    .role-portal .customer-dispute-detail-page .customer-information-row,
+    .admin-portal .admin-dispute-detail-page .customer-information-row,
+    .admin-portal .admin-repair-job-details-page .customer-information-row {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem 0.5rem;
     }
@@ -1161,7 +1179,9 @@
     .role-portal .customer-disputed-job-detail-page .customer-information-row .customer-facts > div,
     .role-portal .customer-completed-job-detail-page .customer-information-row .customer-facts > div,
     .role-portal .technician-completed-job-detail-page .customer-information-row .customer-facts > div,
-    .role-portal .customer-dispute-detail-page .customer-information-row .customer-facts > div {
+    .role-portal .customer-dispute-detail-page .customer-information-row .customer-facts > div,
+    .admin-portal .admin-dispute-detail-page .customer-information-row .customer-facts > div,
+    .admin-portal .admin-repair-job-details-page .customer-information-row .customer-facts > div {
       padding-left: 0;
       border-left: 0;
     }
@@ -1190,7 +1210,9 @@
     .role-portal .customer-disputed-job-detail-page,
     .role-portal .customer-completed-job-detail-page,
     .role-portal .technician-completed-job-detail-page,
-    .role-portal .customer-dispute-detail-page {
+    .role-portal .customer-dispute-detail-page,
+    .admin-portal .admin-dispute-detail-page,
+    .admin-portal .admin-repair-job-details-page {
       .request-hero {
         grid-template-columns: 4.5rem minmax(0, 1fr);
         gap: 0.6rem;
@@ -1338,7 +1360,9 @@
     .role-portal .customer-disputed-job-detail-page,
     .role-portal .customer-completed-job-detail-page,
     .role-portal .technician-completed-job-detail-page,
-    .role-portal .customer-dispute-detail-page {
+    .role-portal .customer-dispute-detail-page,
+    .admin-portal .admin-dispute-detail-page,
+    .admin-portal .admin-repair-job-details-page {
       .customer-information-row {
         grid-template-columns: minmax(0, 1fr);
       }

@@ -1107,7 +1107,9 @@ export class DisputesService {
     const listedItems =
       actor.role === 'shop'
         ? await this.shopDisputeListItems(items)
-        : items.map((item) => this.visible(item, actor.role));
+        : actor.role === 'admin'
+          ? await this.adminDisputeListItems(items)
+          : items.map((item) => this.visible(item, actor.role));
 
     return {
       items: listedItems,
@@ -2196,6 +2198,84 @@ export class DisputesService {
               }
             : null,
           shop: null,
+        },
+        ...(repair
+          ? {
+              repair: {
+                id: repair._id.toString(),
+                appliance: repair.appliance,
+                brand: repair.brand,
+                model: repair.model,
+                description: repair.description,
+                photos: repair.photos?.slice(0, 1) ?? [],
+                status: repair.status,
+                createdAt: repair.createdAt,
+              },
+            }
+          : {}),
+      };
+    });
+  }
+
+  private async adminDisputeListItems(items: Dispute[]) {
+    if (!items.length) {
+      return [];
+    }
+
+    const [repairs, users] = await Promise.all([
+      this.repairRequests
+        .find({ _id: { $in: items.map((item) => item.repairRequestId) } })
+        .select('_id appliance brand model description photos status createdAt')
+        .lean()
+        .exec(),
+      this.users
+        .find({
+          _id: {
+            $in: items.flatMap((item) => [item.customerId, item.shopId]),
+          },
+        })
+        .select(
+          '_id firstName lastName fullName profileImageData shopDetails.shopName shopDetails.shopImageData',
+        )
+        .lean()
+        .exec(),
+    ]);
+    const repairsById = new Map(
+      repairs.map((repair) => [repair._id.toString(), repair]),
+    );
+    const usersById = new Map(
+      users.map((user) => [user._id.toString(), user]),
+    );
+
+    return items.map((item) => {
+      const repair = repairsById.get(item.repairRequestId.toString());
+      const customer = usersById.get(item.customerId.toString());
+      const shop = usersById.get(item.shopId.toString());
+      return {
+        ...this.visible(item, 'admin'),
+        parties: {
+          customer: customer
+            ? {
+                id: customer._id.toString(),
+                name: formatUserName(customer),
+                ...(customer.profileImageData
+                  ? { profileImageUrl: customer.profileImageData }
+                  : {}),
+              }
+            : null,
+          shop: shop
+            ? {
+                id: shop._id.toString(),
+                name: shop.shopDetails?.shopName || formatUserName(shop),
+                personName: formatUserName(shop),
+                ...(shop.profileImageData
+                  ? { profileImageUrl: shop.profileImageData }
+                  : {}),
+                ...(shop.shopDetails?.shopImageData
+                  ? { shopImageUrl: shop.shopDetails.shopImageData }
+                  : {}),
+              }
+            : null,
         },
         ...(repair
           ? {

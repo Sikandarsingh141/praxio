@@ -304,6 +304,7 @@ export interface AdminRepairJob {
     email?: string;
     countryCode?: string;
     mobileNumber?: string;
+    profileImageUrl?: string | null;
   };
   shopName?: string;
   shop?: {
@@ -317,6 +318,9 @@ export interface AdminRepairJob {
     city?: string;
     state?: string;
     postalCode?: string;
+    profileImageUrl?: string | null;
+    averageRating?: number | null;
+    reviewCount?: number;
   };
   quotation?: {
     id?: string;
@@ -353,8 +357,14 @@ export interface AdminRepairReview {
   verifiedAt: string;
   createdAt: string;
   customerName?: string;
+  customerProfileImageUrl?: string | null;
   shopName?: string;
   appliance?: string;
+}
+
+export interface AdminRepairReviewSummary {
+  averageRating: number | null;
+  total: number;
 }
 
 export interface AdminMonitorPage<T> {
@@ -582,6 +592,7 @@ export class AdminService {
     from?: string,
     to?: string,
     requestOptions: { silent?: boolean } = {},
+    filters: { repairItem?: string; shop?: string } = {},
   ): Observable<AdminMonitorPage<AdminRepairJob>> {
     let params = new HttpParams().set('status', status).set('page', page).set('limit', limit);
     if (requestId) {
@@ -595,6 +606,12 @@ export class AdminService {
     }
     if (to) {
       params = params.set('to', to);
+    }
+    if (filters.repairItem && filters.repairItem !== 'all') {
+      params = params.set('repairItem', filters.repairItem);
+    }
+    if (filters.shop?.trim()) {
+      params = params.set('shop', filters.shop.trim());
     }
     return this.http
       .get<ApiEnvelope<AdminMonitorPage<AdminRepairJob>>>(
@@ -617,6 +634,14 @@ export class AdminService {
       .get<ApiEnvelope<AdminMonitorPage<AdminRepairReview>>>(
         `${environment.apiBaseUrl}/admin/repair-reviews`,
         { params },
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  getRepairReviewSummary(): Observable<AdminRepairReviewSummary> {
+    return this.http
+      .get<ApiEnvelope<AdminRepairReviewSummary>>(
+        `${environment.apiBaseUrl}/admin/repair-reviews/summary`,
       )
       .pipe(map((response) => response.data));
   }

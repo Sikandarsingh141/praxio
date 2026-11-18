@@ -1,8 +1,52 @@
+import { ElementRef } from '@angular/core';
 import { of, throwError } from 'rxjs';
 import { ShopRepairRouteComponent } from './shop-repair-route.component';
 import { ShopRepairRequestsService } from '../../repair-requests/shop-repair-requests.service';
 
 describe('ShopRepairRouteComponent', () => {
+  it('does not resize the Leaflet map after the route component is destroyed', () => {
+    const requests = jasmine.createSpyObj<ShopRepairRequestsService>(
+      'ShopRepairRequestsService',
+      ['getDirections'],
+    );
+    const component = new ShopRepairRouteComponent(requests);
+    const container = document.createElement('div');
+    container.style.width = '320px';
+    container.style.height = '240px';
+    document.body.appendChild(container);
+    const animationFrames: FrameRequestCallback[] = [];
+    spyOn(window, 'requestAnimationFrame').and.callFake((callback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+
+    component['mapElementRef'] = new ElementRef(container);
+    component.requestId = 'request-id';
+    component.shopLocation = { latitude: 30.72, longitude: 76.72 };
+    component.customerLocation = { latitude: 30.7, longitude: 76.7 };
+    component.directionsLoader = () =>
+      of({
+        distanceMeters: 2400,
+        durationSeconds: 300,
+        description: 'Fastest route',
+        path: [
+          { latitude: 30.72, longitude: 76.72 },
+          { latitude: 30.7, longitude: 76.7 },
+        ],
+      });
+
+    try {
+      component.ngAfterViewInit();
+      const resizeMap = animationFrames[animationFrames.length - 1];
+      component.ngOnDestroy();
+
+      expect(() => resizeMap(0)).not.toThrow();
+    } finally {
+      component.ngOnDestroy();
+      container.remove();
+    }
+  });
+
   it('uses a supplied route loader and reverses directions for a customer view', () => {
     const requests = jasmine.createSpyObj<ShopRepairRequestsService>(
       'ShopRepairRequestsService',

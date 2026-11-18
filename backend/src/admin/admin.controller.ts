@@ -55,6 +55,8 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('requestId') requestId?: string,
     @Query('search') search?: string,
+    @Query('repairItem') repairItem?: string,
+    @Query('shop') shop?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page = 1,
@@ -67,12 +69,22 @@ export class AdminController {
         status,
         requestId,
         search,
+        repairItem,
+        shop,
         from,
         to,
         page,
         limit,
       }),
     };
+  }
+
+  @Get('repair-reviews/summary')
+  @ApiOperation({ summary: 'Get the average verified repair rating' })
+  async getRepairReviewSummary(): Promise<{
+    data: Awaited<ReturnType<AdminService['getRepairReviewSummary']>>;
+  }> {
+    return { data: await this.adminService.getRepairReviewSummary() };
   }
 
   @Get('repair-reviews')

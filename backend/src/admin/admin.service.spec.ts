@@ -342,6 +342,17 @@ describe('AdminService', () => {
       shop: {
         email: '$shop.email',
         mobileNumber: '$shop.mobileNumber',
+        profileImageUrl: {
+          $ifNull: [
+            '$shop.shopDetails.shopImageData',
+            '$shop.profileImageData',
+          ],
+        },
+        averageRating: '$shopRating.averageRating',
+        reviewCount: '$shopRating.reviewCount',
+      },
+      customer: {
+        profileImageUrl: '$customer.profileImageData',
       },
       repairJob: {
         inspection: {
@@ -431,6 +442,76 @@ describe('AdminService', () => {
           { 'shop.shopDetails.shopName': /AC \(repair\)/i },
         ]),
       },
+    });
+  });
+
+  it('filters repair jobs by item category and shop name', async () => {
+    repairRequestsModel.aggregate.mockReturnValue({
+      exec: jest
+        .fn()
+        .mockResolvedValue([{ jobs: [], metadata: [{ total: 0 }] }]),
+    });
+
+    await service.getRepairJobMonitor({
+      repairItem: 'computer',
+      shop: 'Mohali Repairs',
+    });
+
+    const pipeline = repairRequestsModel.aggregate.mock.calls[0][0];
+    expect(pipeline[0].$match.appliance).toEqual(
+      /laptop|notebook|desktop|computer|macbook|imac|\bpc\b/i,
+    );
+    expect(pipeline).toContainEqual({
+      $match: { 'shop.shopDetails.shopName': /Mohali Repairs/i },
+    });
+  });
+
+  it('returns the rounded average rating and verified review count', async () => {
+    repairReviewsModel.aggregate.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue([{ total: 3, averageRating: 4.833 }]),
+    });
+
+    await expect(service.getRepairReviewSummary()).resolves.toEqual({
+      averageRating: 4.8,
+      total: 3,
+    });
+    expect(repairReviewsModel.aggregate).toHaveBeenCalledWith([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          averageRating: { $avg: '$overallRating' },
+        },
+      },
+    ]);
+
+    repairReviewsModel.aggregate.mockReturnValueOnce({
+      exec: jest.fn().mockResolvedValue([]),
+    });
+    await expect(service.getRepairReviewSummary()).resolves.toEqual({
+      averageRating: null,
+      total: 0,
+    });
+  });
+
+  it('includes the customer profile photo in verified repair reviews', async () => {
+    await service.getRepairReviewMonitor({ page: 1, limit: 10 });
+
+    const pipeline = repairReviewsModel.aggregate.mock.calls[0][0];
+    expect(pipeline[3].$lookup).toMatchObject({
+      pipeline: [
+        {
+          $project: {
+            firstName: 1,
+            lastName: 1,
+            fullName: 1,
+            profileImageData: 1,
+          },
+        },
+      ],
+    });
+    expect(pipeline.at(-1)?.$project).toMatchObject({
+      customerProfileImageUrl: '$customer.profileImageData',
     });
   });
 

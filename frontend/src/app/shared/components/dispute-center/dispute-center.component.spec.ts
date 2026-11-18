@@ -4,10 +4,107 @@ import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { CustomerRepairRequest } from '../../../customer/models/customer-portal.models';
 import { CustomerPortalService } from '../../../customer/services/customer-portal.service';
+import {
+  AdminMapEntity,
+  AdminMapRoute,
+  AdminRepairJob,
+  AdminService,
+} from '../../../admin/services/admin.service';
 import { DisputeListResult, RepairDispute } from '../../models/disputes.models';
 import { DisputesService } from '../../services/disputes.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { DisputeCenterComponent } from './dispute-center.component';
+
+function createAdminServiceStub() {
+  const service = jasmine.createSpyObj<AdminService>('AdminService', [
+    'getMapRequest',
+    'getMapRoute',
+    'getRepairJobDetails',
+  ]);
+  service.getRepairJobDetails.and.returnValue(
+    of({
+      _id: 'repair-request-12345678',
+      appliance: 'Air conditioner',
+      description: 'The screen is broken.',
+      brand: 'Fixroa',
+      model: 'AC-100',
+      serviceType: 'shop_visit',
+      preferredServiceDate: '2026-11-18T00:00:00.000Z',
+      photos: [{ mimeType: 'image/png', data: 'data:image/png;base64,repair-photo' }],
+      createdAt: '2026-11-10T00:00:00.000Z',
+      updatedAt: '2026-11-18T00:00:00.000Z',
+      repairJob: {
+        status: 'completed',
+        approvedRepairAmount: 450,
+        workPerformed: 'Replaced the display.',
+        partsReplaced: 'Display panel',
+        completionDescription: 'Device works correctly.',
+        history: [
+          { action: 'repair_completed', notes: 'Tested successfully.', at: '2026-11-18T00:00:00.000Z' },
+        ],
+        inspection: {
+          identifiedProblem: 'Broken display',
+          findings: 'Display panel is damaged.',
+          requiredRepairWork: 'Replace display panel.',
+          estimatedTotal: 450,
+          images: [],
+        },
+      },
+      customer: {
+        displayName: 'Taylor Morgan',
+        email: 'taylor@example.com',
+        countryCode: '+1',
+        mobileNumber: '555-0199',
+        profileImageUrl: 'data:image/png;base64,customer',
+      },
+      shopName: 'Repair Shop',
+      shop: {
+        displayName: 'Sam Shop',
+        email: 'shop@example.com',
+        countryCode: '+1',
+        mobileNumber: '555-0123',
+        address: 'Mohali, Punjab, 140062',
+        city: 'mohali',
+        state: 'Punjab',
+        postalCode: '140062',
+        profileImageUrl: 'data:image/png;base64,shop-owner',
+      },
+      quotation: {
+        amount: 450,
+        currency: 'INR',
+        status: 'accepted',
+        proposedSolution: 'Replace the display panel.',
+        createdAt: '2026-11-17T00:00:00.000Z',
+        validUntil: '2026-11-24T00:00:00.000Z',
+        estimatedDays: 2,
+      },
+    } satisfies AdminRepairJob),
+  );
+  service.getMapRequest.and.returnValue(
+    of({
+      id: 'repair-request-12345678',
+      type: 'request',
+      name: 'Air conditioner',
+      location: null,
+      address: '',
+      city: '',
+      state: '',
+      email: '',
+      phone: '',
+      status: 'completed',
+      shopLocation: null,
+    } satisfies AdminMapEntity),
+  );
+  service.getMapRoute.and.returnValue(
+    of({
+      distanceMeters: 1000,
+      durationSeconds: 600,
+      description: 'Route',
+      path: [{ latitude: 12, longitude: 77 }],
+    } satisfies AdminMapRoute),
+  );
+  return service;
+}
 
 describe('DisputeCenterComponent customer views', () => {
   it('keeps dispute summaries and the raise-dispute action in the redesigned listing', async () => {
@@ -44,7 +141,13 @@ describe('DisputeCenterComponent customer views', () => {
           name: 'Taylor Morgan',
           profileImageUrl: 'data:image/png;base64,profile',
         },
-        shop: { id: 'shop-id', name: 'Repair Shop' },
+        shop: {
+          id: 'shop-id',
+          name: 'Repair Shop',
+          personName: 'Sam Shop',
+          profileImageUrl: 'data:image/png;base64,shop-owner',
+          shopImageUrl: 'data:image/png;base64,shop-logo',
+        },
       },
       repair: {
         id: 'repair-id',
@@ -52,7 +155,7 @@ describe('DisputeCenterComponent customer views', () => {
         brand: 'Fixroa',
         model: 'AC-100',
         description: 'Not cooling',
-        photos: [],
+        photos: [{ mimeType: 'image/png', data: 'data:image/png;base64,repair-photo' }],
         status: 'completed',
         createdAt: '2026-11-10T00:00:00.000Z',
       },
@@ -72,6 +175,7 @@ describe('DisputeCenterComponent customer views', () => {
         provideRouter([]),
         { provide: DisputesService, useValue: disputes },
         { provide: CustomerPortalService, useValue: { getRepairJob: jasmine.createSpy() } },
+        { provide: AdminService, useValue: createAdminServiceStub() },
       ],
     }).compileComponents();
 
@@ -122,6 +226,37 @@ describe('DisputeCenterComponent customer views', () => {
     expect(
       (fixture.nativeElement.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,
     ).toContain('/shop/disputes/dispute-id');
+
+    fixture.componentInstance.role.set('admin');
+    fixture.detectChanges();
+
+    const adminTable = fixture.nativeElement.querySelector(
+      '.admin-dispute-list-page .customer-dispute-table',
+    ) as HTMLTableElement;
+    expect(adminTable).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.result-count')).toBeNull();
+    expect(Array.from(adminTable.querySelectorAll('th')).map((header) => header.textContent?.trim()))
+      .toContain('Customer');
+    expect(adminTable.querySelector('.dispute-customer-name')?.textContent).toContain('Taylor Morgan');
+    expect(
+      (adminTable.querySelector('.dispute-customer-avatar') as HTMLImageElement).src,
+    ).toContain('data:image/png;base64,profile');
+    expect(
+      (adminTable.querySelector('.dispute-device-thumbnail img') as HTMLImageElement).src,
+    ).toContain('data:image/png;base64,repair-photo');
+    expect(adminTable.querySelector('.dispute-shop-copy > strong')?.textContent).toContain(
+      'Repair Shop',
+    );
+    expect(adminTable.querySelector('.dispute-shop-owner')?.textContent).toContain('Sam Shop');
+    expect(
+      (adminTable.querySelector('.dispute-shop-logo') as HTMLImageElement).src,
+    ).toContain('data:image/png;base64,shop-logo');
+    expect(
+      (adminTable.querySelector('.dispute-shop-owner-avatar') as HTMLImageElement).src,
+    ).toContain('data:image/png;base64,shop-owner');
+    expect(
+      (adminTable.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,
+    ).toContain('/admin/disputes/dispute-id');
   });
 
   it('opens the raise-dispute form with the completed repair ID and submits against it', async () => {
@@ -160,6 +295,7 @@ describe('DisputeCenterComponent customer views', () => {
         { provide: DisputesService, useValue: disputes },
         { provide: CustomerPortalService, useValue: customerPortal },
         { provide: ToastService, useValue: toastService },
+        { provide: AdminService, useValue: createAdminServiceStub() },
       ],
     }).compileComponents();
 
@@ -240,8 +376,20 @@ describe('DisputeCenterComponent customer views', () => {
       updatedAt: '2026-11-17T00:00:00.000Z',
       disputeClosedAt: '2026-11-17T00:00:00.000Z',
       parties: {
-        customer: { id: 'customer-id', name: 'Customer', email: 'customer@example.com' },
-        shop: { id: 'shop-id', name: 'Repair Shop', email: 'shop@example.com' },
+        customer: {
+          id: 'customer-id',
+          name: 'Customer',
+          email: 'customer@example.com',
+          profileImageUrl: 'data:image/png;base64,customer',
+        },
+        shop: {
+          id: 'shop-id',
+          name: 'Repair Shop',
+          personName: 'Sam Shop',
+          email: 'shop@example.com',
+          profileImageUrl: 'data:image/png;base64,shop-owner',
+          shopImageUrl: 'data:image/png;base64,shop-logo',
+        },
       },
       repair: {
         id: 'repair-id',
@@ -249,13 +397,14 @@ describe('DisputeCenterComponent customer views', () => {
         brand: 'Fixroa',
         model: 'AC-100',
         description: 'Not cooling',
-        photos: [],
+        photos: [{ mimeType: 'image/png', data: 'repair-photo' }],
         status: 'completed',
         createdAt: '2026-11-01T00:00:00.000Z',
       },
     } as RepairDispute;
     const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['get']);
     disputes.get.and.returnValue(of(dispute));
+    const adminService = createAdminServiceStub();
 
     await TestBed.configureTestingModule({
       imports: [DisputeCenterComponent],
@@ -263,6 +412,7 @@ describe('DisputeCenterComponent customer views', () => {
         provideRouter([{ path: 'customer/disputes/:id', component: DisputeCenterComponent }]),
         { provide: DisputesService, useValue: disputes },
         { provide: CustomerPortalService, useValue: { getRepairJob: jasmine.createSpy() } },
+        { provide: AdminService, useValue: adminService },
       ],
     }).compileComponents();
 
@@ -294,5 +444,61 @@ describe('DisputeCenterComponent customer views', () => {
     expect((page.querySelector('.repair-details-link') as HTMLAnchorElement).href).toContain(
       '/shop/repair-requests/repair-id',
     );
+
+    component.role.set('admin');
+    component.loadDetail('dispute-id');
+    harness.detectChanges();
+
+    expect(adminService.getMapRequest).toHaveBeenCalledWith('repair-request-12345678');
+    expect(adminService.getRepairJobDetails).toHaveBeenCalledWith('repair-request-12345678');
+    expect(page.querySelector('.route-section')).not.toBeNull();
+    expect(
+      page
+        .querySelector('.customer-information-card')!
+        .compareDocumentPosition(page.querySelector('.route-section')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(page.textContent).toContain(
+      'Customer and shop locations are not available for this repair.',
+    );
+    expect(page.querySelector('main')?.classList.contains('admin-dispute-detail-page')).toBeTrue();
+    expect(page.querySelector('.detail-page-title')?.textContent).toContain('Dispute Details');
+    expect(page.querySelector('.request-hero h2')?.textContent).toContain('Air conditioner');
+    expect(page.querySelector('.request-progress')).not.toBeNull();
+    expect(
+      getComputedStyle(page.querySelector('.request-hero-photo') as HTMLElement).width,
+    ).toBe('96px');
+    expect(getComputedStyle(page.querySelector('.detail-back-link svg') as Element).width).toBe(
+      '16px',
+    );
+    expect(page.querySelector('.customer-detail-sidebar')).not.toBeNull();
+    expect(page.querySelector('.customer-layout-disabled')).toBeNull();
+    const partyAvatars = page.querySelectorAll<HTMLImageElement>('img.dispute-party-avatar');
+    expect(partyAvatars.length).toBe(2);
+    expect(partyAvatars[0].src).toContain('data:image/png;base64,customer');
+    expect(partyAvatars[1].src).toContain('data:image/png;base64,shop-owner');
+    expect((page.querySelector('.request-hero-photo img') as HTMLImageElement).src).toContain(
+      'data:image/png;base64,repair-photo',
+    );
+    expect((page.querySelector('.shop-link') as HTMLAnchorElement).href).toContain(
+      '/admin/repair-jobs/repair-id',
+    );
+    expect(page.textContent).toContain('Investigation notes');
+    expect(page.textContent).toContain('Customer Information');
+    expect(page.textContent).toContain('taylor@example.com');
+    expect(page.textContent).toContain('555-0199');
+    expect(page.textContent).toContain('The screen is broken.');
+    expect(page.textContent).toContain('Accepted Quotation');
+    expect(page.textContent).toContain('Inspection Report');
+    expect(page.textContent).toContain('Repair and Completion');
+    expect(page.textContent).toContain('Service type');
+    expect(page.textContent).toContain('Mohali, Punjab, 140062');
+    expect(page.textContent).not.toContain('Mohali, Punjab, 140062, mohali');
+    expect(page.querySelector('.dispute-detail-main-card')).not.toBeNull();
+    expect(
+      getComputedStyle(
+        page.querySelector('.dispute-detail-main-card .complaint-card') as HTMLElement,
+      ).boxShadow,
+    ).toBe('none');
   });
 });

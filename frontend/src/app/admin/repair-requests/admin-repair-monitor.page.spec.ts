@@ -95,6 +95,11 @@ describe('AdminRepairMonitorPage', () => {
     httpTestingController
       .expectOne((request) => request.url === `${environment.apiBaseUrl}/admin/repair-jobs`)
       .flush({ data: { jobs: [], page: 1, limit: 10, total: 0 } });
+    httpTestingController
+      .expectOne(
+        (request) => request.url === `${environment.apiBaseUrl}/admin/repair-reviews/summary`,
+      )
+      .flush({ data: { averageRating: 4.8, total: 12 } });
   }
 
   it('loads the selected-period statistics and repair list', () => {
@@ -124,13 +129,81 @@ describe('AdminRepairMonitorPage', () => {
       expect(statusOptions).toContain(status);
     }
     expect(text).toContain('12');
-    expect(text).toContain('Total repairs');
-    expect(text).toContain('In progress');
+    expect(text).toContain('Total Requests');
+    expect(text).toContain('In Progress');
     expect(text).toContain('Completed');
+    expect(text).toContain('Average Customer Rating');
+    expect(metrics[3].textContent?.trim()).toBe('4.8');
     expect(metrics[1].textContent?.trim()).toBe('7');
     expect(metrics[2].textContent?.trim()).toBe('5');
     expect(text).toContain('1');
     expect(text).toContain('No repair jobs match this status.');
+  });
+
+  it('shows customer profile photos and polished review details', () => {
+    const fixture = TestBed.createComponent(AdminRepairMonitorPage);
+    fixture.detectChanges();
+    flushInitialRequests();
+
+    const reviewsTab = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.monitor-tabs button',
+      ) as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Customer reviews'));
+    reviewsTab?.click();
+    fixture.detectChanges();
+
+    const reviewsRequest = httpTestingController.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/admin/repair-reviews`,
+    );
+    reviewsRequest.flush({
+      data: {
+        reviews: [
+          {
+            _id: 'review-1',
+            overallRating: 5,
+            repairQuality: 5,
+            communication: 4,
+            professionalism: 5,
+            timeliness: 4,
+            valueForMoney: 5,
+            title: 'Excellent repair',
+            reviewText: 'The laptop was repaired quickly and works perfectly.',
+            wouldRecommend: true,
+            verifiedAt: '2026-03-02T10:00:00.000Z',
+            createdAt: '2026-03-01T10:00:00.000Z',
+            customerName: 'Nancy Sharma',
+            customerProfileImageUrl: 'data:image/png;base64,bmFuY3k=',
+            shopName: 'Mohali Repair Shop',
+            appliance: 'Laptop',
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 1,
+      },
+    });
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement.querySelector('.review-avatar') as HTMLImageElement).src,
+    ).toContain('bmFuY3k=');
+    expect(fixture.nativeElement.querySelector('.review-identity h2')?.textContent).toContain(
+      'Nancy Sharma',
+    );
+    expect(fixture.nativeElement.querySelector('.review-title-row h3')?.textContent).toContain(
+      'Customer feedback',
+    );
+    expect(fixture.nativeElement.querySelector('.review-subject')?.textContent).toContain(
+      'Excellent repair',
+    );
+    expect(fixture.nativeElement.querySelector('.review-meta-line')?.textContent).toContain(
+      'Mohali Repair Shop',
+    );
+    expect(fixture.nativeElement.querySelector('.review-rating')?.textContent).toContain('5');
+    expect(fixture.nativeElement.querySelector('.review-breakdown')?.textContent).toContain(
+      'Communication',
+    );
   });
 
   it('links each repair card to its dedicated details route', () => {
@@ -149,9 +222,27 @@ describe('AdminRepairMonitorPage', () => {
               _id: '507f1f77bcf86cd709a3ca32',
               appliance: 'Laptop',
               description: 'Screen is cracked.',
+              photos: [{ mimeType: 'image/png', data: 'cGhvdG8=' }],
               createdAt: '2026-03-01T10:00:00.000Z',
               updatedAt: '2026-03-02T10:00:00.000Z',
-              customer: { firstName: 'Customer', lastName: 'Example', email: 'customer@example.com' },
+              customer: {
+                firstName: 'Customer',
+                lastName: 'Example',
+                email: 'customer@example.com',
+                countryCode: '+91',
+                mobileNumber: '9876543210',
+                profileImageUrl: 'data:image/png;base64,Y3VzdG9tZXI=',
+                location: { latitude: 27.136, longitude: 78.017 },
+              },
+              shopName: 'Mohali Repair Shop',
+              shop: {
+                city: 'Mohali',
+                state: 'Punjab',
+                profileImageUrl: 'data:image/png;base64,c2hvcA==',
+                averageRating: 4.7,
+                reviewCount: 8,
+              },
+              quotation: { amount: 850, currency: 'INR', status: 'accepted' },
               repairJob: { status: 'confirmed' },
             },
           ],
@@ -160,14 +251,34 @@ describe('AdminRepairMonitorPage', () => {
           total: 1,
         },
       });
+    httpTestingController
+      .expectOne(
+        (request) => request.url === `${environment.apiBaseUrl}/admin/repair-reviews/summary`,
+      )
+      .flush({ data: { averageRating: 4.8, total: 12 } });
     fixture.detectChanges();
 
     const link = fixture.nativeElement.querySelector('.details-link') as HTMLAnchorElement;
     expect(link.textContent).toContain('View details');
     expect(link.getAttribute('href')).toBe('/admin/repair-jobs/507f1f77bcf86cd709a3ca32');
     expect(fixture.nativeElement.querySelector('.request-id')?.textContent?.trim()).toBe(
-      'Request ID: 09A3CA32',
+      '#09A3CA32',
     );
+    expect(
+      (fixture.nativeElement.querySelector('.device-photo') as HTMLImageElement).src,
+    ).toContain('cGhvdG8=');
+    expect(fixture.nativeElement.querySelector('.person-heading strong')?.textContent).toContain(
+      'Customer Example',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Mohali Repair Shop');
+    expect(fixture.nativeElement.textContent).not.toContain('27.136, 78.017');
+    expect(fixture.nativeElement.textContent).not.toContain('Mohali, Punjab');
+    expect(
+      (fixture.nativeElement.querySelector('.shop-avatar') as HTMLImageElement).src,
+    ).toContain('c2hvcA==');
+    expect(fixture.nativeElement.textContent).toContain('4.7');
+    expect(fixture.nativeElement.textContent).toContain('Screen is cracked.');
+    expect(fixture.nativeElement.querySelectorAll('.progress-tracker li').length).toBe(4);
   });
 
   it('shows all completed repairs with completion details and a full-details link', () => {
@@ -285,5 +396,37 @@ describe('AdminRepairMonitorPage', () => {
     );
     expect(repairRequest.request.params.get('search')).toBe('washer');
     repairRequest.flush({ data: { jobs: [], page: 1, limit: 10, total: 0 } });
+  }));
+
+  it('filters by repair item and shop', fakeAsync(() => {
+    const fixture = TestBed.createComponent(AdminRepairMonitorPage);
+    fixture.detectChanges();
+    flushInitialRequests();
+
+    const itemSelect = fixture.nativeElement.querySelector(
+      '.item-select select',
+    ) as HTMLSelectElement;
+    itemSelect.value = 'computer';
+    itemSelect.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    const itemRequest = httpTestingController.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/admin/repair-jobs`,
+    );
+    expect(itemRequest.request.params.get('repairItem')).toBe('computer');
+    itemRequest.flush({ data: { jobs: [], page: 1, limit: 10, total: 0 } });
+
+    const shopInput = fixture.nativeElement.querySelector(
+      '.shop-filter input',
+    ) as HTMLInputElement;
+    shopInput.value = 'Mohali Repair';
+    shopInput.dispatchEvent(new Event('input'));
+    tick(300);
+
+    const shopRequest = httpTestingController.expectOne(
+      (request) => request.url === `${environment.apiBaseUrl}/admin/repair-jobs`,
+    );
+    expect(shopRequest.request.params.get('shop')).toBe('Mohali Repair');
+    expect(shopRequest.request.params.get('repairItem')).toBe('computer');
+    shopRequest.flush({ data: { jobs: [], page: 1, limit: 10, total: 0 } });
   }));
 });

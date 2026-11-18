@@ -192,6 +192,104 @@ describe('DisputesService', () => {
     });
   });
 
+  it('includes repair, customer, and shop profiles in the admin dispute list', async () => {
+    const dispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1003',
+      repairRequestId: requestId,
+      customerId,
+      shopId,
+      category: 'repair_quality',
+      subject: 'Repair issue',
+      description: 'The device is still not working.',
+      status: 'OPEN',
+      priority: 'normal',
+      createdAt: new Date('2026-11-17T00:00:00.000Z'),
+      updatedAt: new Date('2026-11-17T00:00:00.000Z'),
+    };
+    disputes.find.mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([dispute]),
+    });
+    disputes.countDocuments.mockResolvedValue(1);
+    disputes.aggregate.mockResolvedValue([{ _id: 'OPEN', count: 1 }]);
+    users.findById.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        accountType: 'admin',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      }),
+    });
+    users.find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        {
+          _id: customerId,
+          firstName: 'Taylor',
+          lastName: 'Morgan',
+          profileImageData: 'data:image/png;base64,customer',
+        },
+        {
+          _id: shopId,
+          firstName: 'Sikandar',
+          lastName: 'Singh',
+          profileImageData: 'data:image/png;base64,owner',
+          shopDetails: {
+            shopName: 'Sikandar Repairing Shop',
+            shopImageData: 'data:image/png;base64,shop',
+          },
+        },
+      ]),
+    });
+    requests.find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        {
+          _id: requestId,
+          appliance: 'Mobile Phone',
+          brand: 'Motorola',
+          model: 'Edge 60 Pro',
+          description: 'Cracked screen',
+          photos: [{ mimeType: 'image/png', data: 'data:image/png;base64,repair' }],
+          status: 'completed',
+          createdAt: new Date('2026-11-10T00:00:00.000Z'),
+        },
+      ]),
+    });
+
+    const result = await service.listDisputes(
+      { userId: new Types.ObjectId().toString(), role: 'admin' },
+      {},
+    );
+
+    expect(result.items[0]).toMatchObject({
+      parties: {
+        customer: {
+          name: 'Taylor Morgan',
+          profileImageUrl: 'data:image/png;base64,customer',
+        },
+        shop: {
+          name: 'Sikandar Repairing Shop',
+          personName: 'Sikandar Singh',
+          profileImageUrl: 'data:image/png;base64,owner',
+          shopImageUrl: 'data:image/png;base64,shop',
+        },
+      },
+      repair: {
+        appliance: 'Mobile Phone',
+        brand: 'Motorola',
+        model: 'Edge 60 Pro',
+        photos: [{ mimeType: 'image/png', data: 'data:image/png;base64,repair' }],
+      },
+    });
+  });
+
   it('creates a dispute without changing the repair job status', async () => {
     const result = await service.createCustomerDispute(
       { userId: customerId.toString(), role: 'customer' },

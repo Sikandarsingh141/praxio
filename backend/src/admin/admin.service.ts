@@ -380,6 +380,8 @@ export class AdminService {
     status?: string;
     requestId?: string;
     search?: string;
+    repairItem?: string;
+    shop?: string;
     from?: string;
     to?: string;
     page?: number;
@@ -464,12 +466,34 @@ export class AdminService {
       }
       match._id = new Types.ObjectId(query.requestId);
     }
+    const itemPatterns: Record<string, RegExp> = {
+      computer: /laptop|notebook|desktop|computer|macbook|imac|\bpc\b/i,
+      mobile: /mobile|phone|smartphone|iphone|android|tablet|ipad/i,
+      appliance:
+        /washing machine|refrigerator|fridge|fan|microwave|oven|air conditioner|\bac\b|television|\btv\b/i,
+      other:
+        /laptop|notebook|desktop|computer|macbook|imac|\bpc\b|mobile|phone|smartphone|iphone|android|tablet|ipad|washing machine|refrigerator|fridge|fan|microwave|oven|air conditioner|\bac\b|television|\btv\b/i,
+    };
+    if (query.repairItem && query.repairItem !== 'all') {
+      const itemPattern = itemPatterns[query.repairItem];
+      if (!itemPattern) {
+        throw new BadRequestException('Invalid repair item filter');
+      }
+      match.appliance =
+        query.repairItem === 'other'
+          ? { $not: itemPattern }
+          : itemPattern;
+    }
     if (status !== 'all' && status !== 'completed') {
       match['repairJob.status'] = status;
     }
     const search = query.search?.trim();
     const searchPattern = search
       ? new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      : null;
+    const shopName = query.shop?.trim();
+    const shopPattern = shopName
+      ? new RegExp(shopName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
       : null;
     const [result] = await this.repairRequests
       .aggregate<{
@@ -491,6 +515,7 @@ export class AdminService {
                   email: 1,
                   countryCode: 1,
                   mobileNumber: 1,
+                  profileImageData: 1,
                 },
               },
             ],
@@ -542,6 +567,7 @@ export class AdminService {
                   email: 1,
                   countryCode: 1,
                   mobileNumber: 1,
+                  profileImageData: 1,
                   shopDetails: 1,
                 },
               },
@@ -550,6 +576,24 @@ export class AdminService {
           },
         },
         { $unwind: { path: '$shop', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'repair_reviews',
+            localField: 'quotation.shopId',
+            foreignField: 'shopId',
+            pipeline: [
+              {
+                $group: {
+                  _id: null,
+                  averageRating: { $avg: '$overallRating' },
+                  reviewCount: { $sum: 1 },
+                },
+              },
+            ],
+            as: 'shopRating',
+          },
+        },
+        { $unwind: { path: '$shopRating', preserveNullAndEmptyArrays: true } },
         ...(searchPattern
           ? [
               {
@@ -572,6 +616,9 @@ export class AdminService {
                 },
               },
             ]
+          : []),
+        ...(shopPattern
+          ? [{ $match: { 'shop.shopDetails.shopName': shopPattern } }]
           : []),
         {
           $addFields: {
@@ -665,6 +712,7 @@ export class AdminService {
                     email: '$customer.email',
                     countryCode: '$customer.countryCode',
                     mobileNumber: '$customer.mobileNumber',
+                    profileImageUrl: '$customer.profileImageData',
                   },
                   shopName: '$shop.shopDetails.shopName',
                   shop: {
@@ -682,6 +730,14 @@ export class AdminService {
                     city: '$shop.shopDetails.city',
                     state: '$shop.shopDetails.state',
                     postalCode: '$shop.shopDetails.postalCode',
+                    profileImageUrl: {
+                      $ifNull: [
+                        '$shop.shopDetails.shopImageData',
+                        '$shop.profileImageData',
+                      ],
+                    },
+                    averageRating: '$shopRating.averageRating',
+                    reviewCount: '$shopRating.reviewCount',
                   },
                   quotation: {
                     $cond: [
@@ -755,7 +811,14 @@ export class AdminService {
               localField: 'customerId',
               foreignField: '_id',
               pipeline: [
-                { $project: { firstName: 1, lastName: 1, fullName: 1 } },
+                {
+                  $project: {
+                    firstName: 1,
+                    lastName: 1,
+                    fullName: 1,
+                    profileImageData: 1,
+                  },
+                },
               ],
               as: 'customer',
             },
@@ -802,6 +865,7 @@ export class AdminService {
                 '$customer.lastName',
                 '$customer.fullName',
               ),
+              customerProfileImageUrl: '$customer.profileImageData',
               shopName: '$shop.shopDetails.shopName',
               appliance: '$repair.appliance',
             },
@@ -810,6 +874,33 @@ export class AdminService {
         .exec(),
     ]);
     return { reviews, page, limit, total };
+  }
+
+  async getRepairReviewSummary(): Promise<{
+    averageRating: number | null;
+    total: number;
+  }> {
+    const [summary] = await this.repairReviews
+      .aggregate<{
+        total: number;
+        averageRating: number | null;
+      }>([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            averageRating: { $avg: '$overallRating' },
+          },
+        },
+      ])
+      .exec();
+    return {
+      averageRating:
+        summary?.averageRating == null
+          ? null
+          : Math.round(summary.averageRating * 10) / 10,
+      total: summary?.total ?? 0,
+    };
   }
 
   async getDashboardOverview(

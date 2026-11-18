@@ -6,6 +6,7 @@
 @use './app/shop/shop-design-system' as shopDesignSystem;
 @use './app/customer/shop-details/customer-shop-details.design-system' as customerShopDetails;
 @use './app/customer/repair-job-details/customer-repair-job.global' as customerRepairJob;
+@use './app/shared/components/dispute-center/dispute-center.global' as disputeCenter;
 @use './app/auth/register/customer-registration.global' as customerRegistration;
 @use './app/auth/register/shop-registration.global' as shopRegistration;
 @use './app/shared/components/chat-center/chat-center.component' as chatCenter;
@@ -18,6 +19,7 @@
 @include shopDesignSystem.shopPortalLayoutStyles;
 @include customerShopDetails.customerShopDetailsStyles;
 @include customerRepairJob.customerRepairJobStyles;
+@include disputeCenter.disputeCenterStyles;
 @include customerRegistration.customerRegistrationStyles;
 @include shopRegistration.shopRegistrationStyles;
 
@@ -3907,6 +3909,26 @@ a {
   gap: 0.75rem;
 }
 
+.admin-dispute-list-page {
+  display: flex;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-dispute-list-page .summary-grid {
+  margin: 0;
+  border-color: #e2e8e4;
+  border-radius: 0.85rem;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+}
+
+.admin-dispute-list-page .dispute-list-controls {
+  margin: 0;
+}
+
 .customer-dispute-list-page .summary-grid {
   margin: 0;
   border-color: #e2e8e4;
@@ -3935,6 +3957,7 @@ a {
 }
 
 @media (min-width: 1400px) {
+  .admin-dispute-list-page .customer-dispute-table-card,
   .customer-dispute-list-page .customer-dispute-table-card,
   .shop-dispute-list-page .customer-dispute-table-card {
     overflow: visible;
@@ -3988,12 +4011,22 @@ a {
   font-size: 0.78rem;
 }
 
+.admin-dispute-list-page .dispute-request-id-cell strong {
+  color: #17231c;
+  font-size: 0.78rem;
+}
+
 .shop-dispute-list-page .dispute-request-id-cell strong {
   color: #17231c;
   font-size: 0.78rem;
 }
 
 .customer-dispute-list-page .dispute-request-id-cell span {
+  color: #68756d;
+  font-size: 0.65rem;
+}
+
+.admin-dispute-list-page .dispute-request-id-cell span {
   color: #68756d;
   font-size: 0.65rem;
 }
@@ -4098,7 +4131,8 @@ a {
 }
 
 .dispute-device-copy span,
-.customer-dispute-list-page .dispute-issue-cell small {
+.customer-dispute-list-page .dispute-issue-cell small,
+.admin-dispute-list-page .dispute-issue-cell small {
   color: #64748b;
   font-size: 0.68rem;
 }
@@ -4139,6 +4173,11 @@ a {
   margin-top: 0.2rem;
 }
 
+.admin-dispute-list-page .dispute-issue-cell small {
+  display: block;
+  margin-top: 0.2rem;
+}
+
 .shop-dispute-list-page .dispute-issue-cell small {
   display: block;
   margin-top: 0.2rem;
@@ -4156,6 +4195,77 @@ a {
 
 .dispute-shop-cell {
   min-width: 8.5rem;
+}
+
+.admin-dispute-list-page .dispute-shop-cell {
+  min-width: 13rem;
+}
+
+.dispute-shop-content {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dispute-shop-logo {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #dce8df;
+  border-radius: 0.55rem;
+  background: #edf8ef;
+  object-fit: cover;
+}
+
+.dispute-shop-logo-fallback,
+.dispute-shop-owner-initials {
+  color: #17643b;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.dispute-shop-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.dispute-shop-copy > strong {
+  overflow: hidden;
+  color: #33443a;
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dispute-shop-owner {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  color: #68756d;
+  font-size: 0.68rem;
+}
+
+.dispute-shop-owner > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dispute-shop-owner-avatar {
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #dce8df;
+  border-radius: 50%;
+  background: #edf8ef;
+  object-fit: cover;
 }
 
 .customer-dispute-table .job-status {
