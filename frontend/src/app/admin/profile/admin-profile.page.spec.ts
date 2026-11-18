@@ -48,6 +48,13 @@ describe('AdminProfilePage', () => {
       fixture.nativeElement.querySelector('app-admin-page-header h1')?.textContent.trim(),
     ).toBe('Edit Admin Profile');
     expect(fixture.nativeElement.querySelector('app-profile-editor')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.profile-editor.borderless')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('[name="currentPassword"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.back-link')).toBeNull();
+    (fixture.nativeElement.querySelector('.cancel-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('app-admin-page-header h1')?.textContent.trim(),
+    ).toBe('My profile');
   });
 });

@@ -23,6 +23,15 @@ export class AdminLayout {
     this.accountMenuOpen.update((open) => !open);
   }
 
+  @HostListener('window:keydown', ['$event'])
+  focusAdminSearch(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+
+    event.preventDefault();
+    const input = document.getElementById('admin-global-search');
+    if (input instanceof HTMLInputElement) input.focus();
+  }
+
   @HostListener('document:click', ['$event'])
   closeHeaderMenusOutside(event: MouseEvent): void {
     const target = event.target;

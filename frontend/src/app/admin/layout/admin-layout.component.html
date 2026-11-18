@@ -11,6 +11,7 @@
       </svg>
       <span class="inline-search-input">
         <input
+          id="admin-global-search"
           name="search"
           aria-label="Search administration"
           placeholder="Search users, shops, repair requests, quotations..."
@@ -46,8 +47,17 @@
         @if (accountMenuOpen()) {
           <div class="account-dropdown" role="menu">
             <div class="dropdown-identity">
-              <strong>{{ getUserDisplayName() }}</strong>
-              <span>{{ authService.currentUser()?.email }}</span>
+              @if (authService.currentUser()?.profileImageUrl; as profileImageUrl) {
+                <img class="dropdown-avatar" [src]="profileImageUrl" alt="" />
+              } @else {
+                <span class="dropdown-avatar avatar-placeholder" aria-hidden="true">
+                  {{ getUserInitial() }}
+                </span>
+              }
+              <div class="dropdown-user-details">
+                <strong>{{ getUserDisplayName() }}</strong>
+                <span>{{ authService.currentUser()?.email }}</span>
+              </div>
             </div>
             <a
               class="dropdown-item"

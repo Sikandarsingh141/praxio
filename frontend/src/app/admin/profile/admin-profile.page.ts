@@ -12,12 +12,6 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
     <section class="admin-profile-page" aria-labelledby="admin-profile-title">
       <app-admin-page-header>
         @if (editing()) {
-          <button adminPageLeading class="back-link" type="button" (click)="editing.set(false)">
-            <span aria-hidden="true">←</span> My profile <span aria-hidden="true">›</span> Edit
-            profile
-          </button>
-        }
-        @if (editing()) {
           <h1 adminPageTitle class="admin-page-title" id="admin-profile-title">Edit Admin Profile</h1>
         } @else {
           <h1 adminPageTitle class="admin-page-title" id="admin-profile-title">My profile</h1>
@@ -62,7 +56,7 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
 
           <main class="profile-details">
             @if (editing()) {
-              <app-profile-editor [allowPasswordChange]="true" />
+              <app-profile-editor [allowPasswordChange]="true" [borderless]="true" />
               <div class="actions">
                 <button class="cancel-button" type="button" (click)="editing.set(false)">
                   Done

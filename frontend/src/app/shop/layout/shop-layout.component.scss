@@ -15,17 +15,19 @@
   right: 0;
   left: 0;
   display: flex;
-  min-height: 76px;
+  min-height: 68px;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0 clamp(1rem, 4vw, 3rem);
-  border-bottom: 1px solid #e5ebe5;
+  border-bottom: 1px solid #e3e9e4;
   background: #fff;
+  box-shadow: 0 2px 8px rgb(20 40 28 / 4%);
 }
 
 .portal-brand {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.7rem;
   color: #20302b;
@@ -44,14 +46,15 @@
 .global-search {
   position: relative;
   display: flex;
-  width: min(45rem, 55vw);
-  min-width: 14rem;
-  flex: 1 1 22rem;
+  width: min(42vw, 34rem);
+  min-width: 13rem;
+  flex: 0 1 34rem;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.3rem;
-  border: 1px solid #e1e8e2;
-  border-radius: 0.75rem;
+  gap: 0.55rem;
+  margin-inline: auto;
+  padding: 0 0.7rem;
+  border: 1px solid #e0e8e1;
+  border-radius: 0.7rem;
   background: #f9fbf9;
 }
 
@@ -62,8 +65,8 @@
 .global-search input {
   width: 100%;
   min-width: 0;
-  min-height: 2.2rem;
-  padding: 0.45rem 0.6rem;
+  min-height: 2.55rem;
+  padding: 0.45rem 0;
   border: 0;
   outline: 0;
   background: transparent;
@@ -72,12 +75,36 @@
   font-size: 0.76rem;
 }
 
+.global-search .search-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: #78867d;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
+.global-search kbd {
+  flex: 0 0 auto;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid #e5ebe5;
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #7d8981;
+  font: inherit;
+  font-size: 0.58rem;
+  white-space: nowrap;
+}
+
 .global-search:focus-within {
-  border-color: #9dc9aa;
-  box-shadow: 0 0 0 3px rgb(61 137 81 / 10%);
+  border-color: #8bc59b;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(8 124 59 / 9%);
 }
 
 .global-search > button[type='submit'] {
+  display: none;
   min-height: 2.2rem;
   padding: 0.45rem 0.85rem;
   border: 0;
@@ -248,7 +275,7 @@
   z-index: 40;
   top: calc(100% + 0.55rem);
   right: 0;
-  width: min(17rem, calc(100vw - 2rem));
+  width: min(18rem, calc(100vw - 2rem));
   overflow: hidden;
   padding: 0.4rem;
   border: 1px solid #e3e9e5;
@@ -258,32 +285,42 @@
 }
 
 .dropdown-identity {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.85rem 0.75rem;
   border-bottom: 1px solid #edf1ed;
 }
 
-.dropdown-identity strong,
-.dropdown-identity span {
+.dropdown-user-details {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.dropdown-user-details strong,
+.dropdown-user-details span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dropdown-identity strong {
+.dropdown-user-details strong {
   color: #30434f;
-  font-size: 0.8rem;
+  font-size: 0.84rem;
 }
 
-.dropdown-identity span {
+.dropdown-user-details span {
   color: #7b8991;
   font-size: 0.7rem;
 }
 
-.dropdown-identity .shop-name-error {
+.dropdown-user-details .shop-name-error {
+  overflow: visible;
   color: #a34842;
   font-size: 0.66rem;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .dropdown-item {
@@ -327,6 +364,22 @@
   object-fit: cover;
 }
 
+.dropdown-avatar {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 2px solid #fff;
+  outline: 1px solid #d5e4d9;
+  border-radius: 50%;
+  background: #edf4ee;
+  color: #315d4b;
+  font-size: 1rem;
+  font-weight: 750;
+  object-fit: cover;
+}
+
 .avatar-placeholder {
   background: #edf4ee;
   color: #315d4b;
@@ -334,26 +387,15 @@
   font-weight: 750;
 }
 
-.header-account button {
-  min-height: 2.4rem;
-  padding: 0.5rem 0.8rem;
-  border: 1px solid #dfe7df;
-  border-radius: 0.65rem;
-  background: #fff;
-  color: #365a45;
-  cursor: pointer;
-  font-weight: 650;
-}
-
 .portal-body {
   display: flex;
-  min-height: calc(100vh - 76px);
-  padding-top: 76px;
+  min-height: calc(100vh - 68px);
+  padding-top: 68px;
 }
 
 .portal-sidebar {
   position: fixed;
-  top: 76px;
+  top: 68px;
   bottom: 0;
   z-index: 10;
   height: auto;
@@ -466,6 +508,8 @@ button.portal-nav:hover:not(.active) {
   .global-search {
     width: 100%;
     min-width: 0;
+    flex: 1 1 auto;
+    margin: 0;
     grid-column: 1 / -1;
     grid-row: 2;
   }
@@ -564,10 +608,6 @@ button.portal-nav:hover:not(.active) {
 
   .account-name {
     max-width: 72px;
-  }
-
-  .global-search > button[type='submit'] {
-    padding-inline: 0.6rem;
   }
 
   .portal-sidebar {

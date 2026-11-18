@@ -121,6 +121,15 @@ export class ShopLayout implements OnInit, OnDestroy {
     this.accountMenuOpen.update((open) => !open);
   }
 
+  @HostListener('window:keydown', ['$event'])
+  focusActivitySearch(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+
+    event.preventDefault();
+    const input = document.getElementById('shop-global-search');
+    if (input instanceof HTMLInputElement) input.focus();
+  }
+
   @HostListener('document:click', ['$event'])
   closeHeaderMenusOutside(event: MouseEvent): void {
     const target = event.target;

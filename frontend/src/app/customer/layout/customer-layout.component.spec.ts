@@ -85,12 +85,20 @@ describe('CustomerLayout', () => {
     const logo = fixture.nativeElement.querySelector('.brand-mark img') as HTMLImageElement;
     expect(logo.alt).toBe('Fixroa');
     expect(logo.getAttribute('src')).toBe('/fixroa-logo.png');
+    expect(fixture.nativeElement.querySelector('.brand small')?.textContent).toContain(
+      'CUSTOMER PORTAL',
+    );
     expect(fixture.nativeElement.querySelector('.account-name')?.textContent).toContain(
       'Taylor Example',
     );
     expect((fixture.nativeElement.querySelector('.profile-avatar') as HTMLImageElement).src).toBe(
       'data:image/png;base64,abc',
     );
+    (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('.dropdown-avatar') as HTMLImageElement).src,
+    ).toBe('data:image/png;base64,abc');
     expect(fixture.nativeElement.textContent).toContain('Find repair shops');
     expect(fixture.nativeElement.textContent).toContain('My Requests');
     expect(fixture.nativeElement.textContent).not.toContain('My repair requests');
@@ -194,6 +202,15 @@ describe('CustomerLayout', () => {
     const input = fixture.nativeElement.querySelector(
       '.search-placeholder input',
     ) as HTMLInputElement;
+    const shortcut = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(shortcut);
+    expect(shortcut.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(input);
     input.value = 'Delhi';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     fixture.detectChanges();

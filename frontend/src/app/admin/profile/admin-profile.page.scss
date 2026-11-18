@@ -3,32 +3,9 @@
 }
 
 .admin-profile-page {
-  width: min(100%, 1320px);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   color: #17231b;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  margin: 0 0 0.35rem;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #536158;
-  font: inherit;
-  font-size: 0.76rem;
-  cursor: pointer;
-}
-
-.back-link span:first-child {
-  color: #17231b;
-  font-size: 1.2rem;
-}
-
-.back-link span:last-child {
-  color: #9aa59e;
 }
 
 .profile-layout {

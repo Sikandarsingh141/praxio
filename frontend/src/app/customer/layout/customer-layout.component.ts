@@ -155,6 +155,31 @@ export class CustomerLayout implements OnInit, OnDestroy {
     this.menuOpen.update((open) => !open);
   }
 
+  @HostListener('window:keydown', ['$event'])
+  focusShopSearch(event: KeyboardEvent): void {
+    if (
+      this.profileOnly() ||
+      !(event.ctrlKey || event.metaKey) ||
+      event.key.toLowerCase() !== 'k'
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    const mobile = window.innerWidth <= 560;
+    if (!mobile) {
+      const input = document.getElementById('customer-global-search');
+      if (input instanceof HTMLInputElement) input.focus();
+      return;
+    }
+
+    this.mobileSearchOpen.set(true);
+    setTimeout(() => {
+      const input = document.getElementById('customer-mobile-search');
+      if (input instanceof HTMLInputElement) input.focus();
+    });
+  }
+
   closeMenu(): void {
     this.menuOpen.set(false);
   }

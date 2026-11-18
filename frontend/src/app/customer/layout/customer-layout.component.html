@@ -17,13 +17,12 @@
       </svg>
     </button>
 
-    <a class="brand" routerLink="/customer" aria-label="Fixroa dashboard" (click)="closeMenu()">
+    <a class="brand" routerLink="/customer" aria-label="Fixroa customer portal" (click)="closeMenu()">
       <span class="brand-mark"><img src="/fixroa-logo.png" alt="Fixroa" /></span>
+      <small>CUSTOMER PORTAL</small>
     </a>
 
     @if (!profileOnly()) {
-      <div class="topbar-note">Find. Repair. Relax.</div>
-
       <form
         class="search-placeholder"
         (submit)="$event.preventDefault(); submitShopSearch()"
@@ -34,6 +33,7 @@
         </svg>
         <span class="inline-search-input">
           <input
+            id="customer-global-search"
             type="search"
             aria-label="Search repair shops"
             placeholder="Search repair shops"
@@ -45,6 +45,7 @@
             <span class="inline-search-spinner" role="status" aria-label="Searching shops"></span>
           }
         </span>
+        <kbd>Ctrl + K</kbd>
         <button type="submit" aria-label="Search shops">Search</button>
       </form>
 
@@ -67,6 +68,7 @@
         >
           <span class="inline-search-input">
             <input
+              id="customer-mobile-search"
               type="search"
               aria-label="Search repair shops"
               placeholder="Search shops by name, service or city"
@@ -84,15 +86,6 @@
     }
 
     <div class="topbar-actions">
-      @if (!profileOnly()) {
-        <a class="location-note" routerLink="/customer/shops">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
-            <circle cx="12" cy="10" r="2.2" />
-          </svg>
-          Search nearby shops
-        </a>
-      }
       <app-notification-center (opened)="closeAccountMenu()" />
       <div class="account-menu">
         <button
@@ -115,8 +108,17 @@
         @if (accountMenuOpen()) {
           <div class="account-dropdown" role="menu">
             <div class="dropdown-identity">
-              <strong>{{ getUserDisplayName() }}</strong>
-              <span>{{ authService.currentUser()?.email }}</span>
+              @if (authService.currentUser()?.profileImageUrl; as profileImageUrl) {
+                <img class="dropdown-avatar" [src]="profileImageUrl" alt="" />
+              } @else {
+                <span class="dropdown-avatar avatar-placeholder" aria-hidden="true">
+                  {{ getUserInitial() }}
+                </span>
+              }
+              <div class="dropdown-user-details">
+                <strong>{{ getUserDisplayName() }}</strong>
+                <span>{{ authService.currentUser()?.email }}</span>
+              </div>
             </div>
             <a
               class="dropdown-item"

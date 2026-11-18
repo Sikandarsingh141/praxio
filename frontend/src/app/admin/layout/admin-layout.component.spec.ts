@@ -47,6 +47,19 @@ describe('AdminLayout', () => {
       .flush({ data: { notifications: [] } });
     fixture.detectChanges();
 
+    const searchInput = fixture.nativeElement.querySelector(
+      '#admin-global-search',
+    ) as HTMLInputElement;
+    const shortcut = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(shortcut);
+    expect(shortcut.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(searchInput);
+
     expect(fixture.nativeElement.querySelector('.account-name')?.textContent).toContain(
       'Admin Example',
     );
@@ -56,6 +69,9 @@ describe('AdminLayout', () => {
 
     (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
     fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('.dropdown-avatar') as HTMLImageElement).src,
+    ).toBe('data:image/png;base64,abc');
     expect(fixture.nativeElement.querySelector('.dropdown-identity')?.textContent).toContain(
       'admin@example.com',
     );

@@ -20,7 +20,7 @@
     <a class="portal-brand" routerLink="/technician" aria-label="Fixora technician portal">
       <span class="brand-mark"><img src="/fixroa-logo.png" alt="Fixroa" /></span>
     </a>
-    <span class="topbar-note">TECHNICIAN PORTAL</span>
+    <small class="topbar-note">TECHNICIAN PORTAL</small>
 
     <form
       class="global-search"
@@ -45,7 +45,7 @@
           <span class="inline-search-spinner" role="status" aria-label="Searching assigned jobs"></span>
         }
       </span>
-      <span class="search-shortcut" aria-hidden="true">Ctrl + K</span>
+      <kbd>Ctrl + K</kbd>
       <button class="search-submit" type="submit">Search</button>
 
       @if (searchResults() !== null || searchLoading() || searchError()) {
@@ -112,7 +112,6 @@
           }
           <span class="account-identity">
             <span class="account-name">{{ getUserDisplayName() }}</span>
-            <span class="account-role">Technician</span>
           </span>
           <svg class="account-chevron" viewBox="0 0 20 20" aria-hidden="true">
             <path d="m5 7.5 5 5 5-5" />
@@ -122,9 +121,20 @@
         @if (accountMenuOpen()) {
           <div class="account-dropdown" role="menu">
             <div class="dropdown-identity">
-              <strong>{{ getUserDisplayName() }}</strong>
-              <span>{{ technician()?.employeeId || 'Technician' }}</span>
-              <span>{{ auth.currentUser()?.email || technician()?.email }}</span>
+              <div class="dropdown-profile">
+                @if (technician()?.profileImageData || auth.currentUser()?.profileImageUrl; as avatarUrl) {
+                  <img class="dropdown-avatar" [src]="avatarUrl" alt="" />
+                } @else {
+                  <span class="dropdown-avatar avatar-placeholder" aria-hidden="true">
+                    {{ getUserInitial() }}
+                  </span>
+                }
+                <div class="dropdown-user-details">
+                  <strong>{{ getUserDisplayName() }}</strong>
+                  <span>{{ technician()?.employeeId || 'Technician' }}</span>
+                  <span>{{ auth.currentUser()?.email || technician()?.email }}</span>
+                </div>
+              </div>
               <div class="dropdown-availability">
                 <span class="avail-badge" [attr.data-status]="technician()?.availability">
                   {{ technician()?.availability?.replace('_', ' ') | titlecase }}

@@ -90,9 +90,24 @@ describe('ShopLayout', () => {
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
     expect(fixture.nativeElement.textContent).toContain('Business profile');
+    expect(fixture.nativeElement.querySelector('.portal-brand small')?.textContent).toContain(
+      'SHOP PORTAL',
+    );
+    const headerSearchInput = fixture.nativeElement.querySelector(
+      '#shop-global-search',
+    ) as HTMLInputElement;
     expect(
-      (fixture.nativeElement.querySelector('#shop-global-search') as HTMLInputElement).placeholder,
+      headerSearchInput.placeholder,
     ).toBe('Search requests, quotations, or customers...');
+    const shortcut = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(shortcut);
+    expect(shortcut.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(headerSearchInput);
 
     const requestToggle = fixture.nativeElement.querySelector(
       '.request-nav-toggle',
@@ -169,6 +184,9 @@ describe('ShopLayout', () => {
     );
     (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
     fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('.dropdown-avatar') as HTMLImageElement).src,
+    ).toBe(updatedPhoto);
     expect(fixture.nativeElement.querySelector('.dropdown-identity strong')?.textContent).toContain(
       'Updated Shop Owner',
     );

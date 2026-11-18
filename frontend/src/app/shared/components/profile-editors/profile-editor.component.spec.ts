@@ -77,6 +77,17 @@ describe('ProfileEditorComponent', () => {
     fixture.componentRef.setInput('allowPasswordChange', true);
     fixture.detectChanges();
     const component = fixture.componentInstance;
+    expect(
+      (fixture.nativeElement.querySelector('[name="currentPassword"]') as HTMLInputElement)
+        .placeholder,
+    ).toBe('Enter current password');
+    expect(
+      (fixture.nativeElement.querySelector('[name="newPassword"]') as HTMLInputElement).placeholder,
+    ).toBe('Enter new password');
+    expect(
+      (fixture.nativeElement.querySelector('[name="confirmPassword"]') as HTMLInputElement)
+        .placeholder,
+    ).toBe('Confirm new password');
     component.currentPassword.set('OldPassword1');
     component.newPassword.set('NewPassword2');
     component.confirmPassword.set('DifferentPassword2');

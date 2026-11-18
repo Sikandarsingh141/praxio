@@ -46,11 +46,14 @@ describe('TechnicianLayoutComponent', () => {
       .expectOne(`${environment.apiBaseUrl}/technician/me`)
       .flush({
         data: {
-          id: 'tech-id',
-          name: 'Aman Verma',
-          email: 'technician@example.com',
-          employeeId: 'FX-TCH-1001',
-          availability: 'available',
+          technician: {
+            id: 'tech-id',
+            name: 'Aman Verma',
+            email: 'technician@example.com',
+            employeeId: 'FX-TCH-1001',
+            availability: 'available',
+            profileImageData: 'data:image/png;base64,abc',
+          },
         },
       });
 
@@ -74,12 +77,25 @@ describe('TechnicianLayoutComponent', () => {
       'TECHNICIAN PORTAL',
     );
     expect(fixture.nativeElement.querySelector('.global-search')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.global-search kbd')?.textContent).toContain(
+      'Ctrl + K',
+    );
     const menuToggle = fixture.nativeElement.querySelector('.menu-toggle') as HTMLButtonElement | null;
     expect(menuToggle?.getAttribute('aria-controls')).toBe('technician-navigation');
 
     // Verify account name
     const accountName = fixture.nativeElement.querySelector('.account-name');
     expect(accountName?.textContent?.trim()).toBe('Aman Verma');
+    (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement.querySelector('.dropdown-avatar') as HTMLImageElement).src,
+    ).toBe('data:image/png;base64,abc');
+    expect(fixture.nativeElement.querySelector('.dropdown-user-details')?.textContent).toContain(
+      'FX-TCH-1001',
+    );
+    (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
+    fixture.detectChanges();
 
     // Verify sidebar navigation links
     const navLinks = fixture.nativeElement.querySelectorAll('.portal-sidebar .portal-nav');

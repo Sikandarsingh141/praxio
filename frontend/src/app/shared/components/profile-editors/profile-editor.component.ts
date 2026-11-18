@@ -10,7 +10,11 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
   selector: 'app-profile-editor',
   standalone: true,
   template: `
-    <section class="profile-editor" aria-labelledby="profile-editor-title">
+    <section
+      class="profile-editor"
+      [class.borderless]="borderless"
+      aria-labelledby="profile-editor-title"
+    >
       <div class="editor-heading">
         <span class="editor-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
@@ -99,6 +103,7 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
               type="password"
               name="currentPassword"
               autocomplete="current-password"
+              placeholder="Enter current password"
               [value]="currentPassword()"
               (input)="setPasswordField('current', $event)"
               required
@@ -110,6 +115,7 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
               type="password"
               name="newPassword"
               autocomplete="new-password"
+              placeholder="Enter new password"
               [value]="newPassword()"
               (input)="setPasswordField('new', $event)"
               required
@@ -123,6 +129,7 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
               type="password"
               name="confirmPassword"
               autocomplete="new-password"
+              placeholder="Confirm new password"
               [value]="confirmPassword()"
               (input)="setPasswordField('confirm', $event)"
               required
@@ -170,6 +177,11 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
       border-radius: 0.95rem;
       background: #fff;
       box-shadow: 0 2px 8px rgb(20 40 28 / 5%);
+    }
+
+    .profile-editor.borderless {
+      border: 0;
+      box-shadow: none;
     }
 
     .editor-heading {
@@ -299,6 +311,7 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
     .name-controls {
       display: flex;
+      align-items: end;
       gap: 0.55rem;
     }
 
@@ -316,10 +329,33 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
     .name-controls button {
       flex: 0 0 auto;
+      align-self: end;
+      min-height: 2.45rem;
       margin: 0;
+      padding: 0 0.9rem;
       border-color: #087c3b;
+      border-radius: 0.6rem;
       background: #087c3b;
       color: #fff;
+      box-shadow: 0 2px 6px rgb(8 124 59 / 15%);
+      font-weight: 700;
+      transition:
+        background-color 140ms ease,
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        transform 140ms ease;
+    }
+
+    .name-controls button:not(:disabled):hover {
+      border-color: #066d33;
+      background: #066d33;
+      box-shadow: 0 4px 10px rgb(8 124 59 / 20%);
+      transform: translateY(-1px);
+    }
+
+    .name-controls button:focus-visible {
+      outline: 3px solid rgb(8 124 59 / 24%);
+      outline-offset: 2px;
     }
 
     .feedback {
@@ -450,11 +486,16 @@ const PROFILE_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
         align-items: stretch;
         flex-direction: column;
       }
+
+      .name-controls button {
+        align-self: stretch;
+      }
     }
   `,
 })
 export class ProfileEditorComponent implements OnInit {
   @Input() allowPasswordChange = false;
+  @Input() borderless = false;
   @Input() showNameForm = true;
   readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);

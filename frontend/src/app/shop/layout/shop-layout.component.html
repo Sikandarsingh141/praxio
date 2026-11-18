@@ -10,6 +10,10 @@
       (submit)="$event.preventDefault(); searchShopActivity()"
     >
       <label class="visually-hidden" for="shop-global-search">Search shop activity</label>
+      <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.8" cy="10.8" r="6.3" />
+        <path d="m16 16 4 4" />
+      </svg>
       <span class="inline-search-input">
         <input
           id="shop-global-search"
@@ -22,7 +26,8 @@
           <span class="inline-search-spinner" role="status" aria-label="Searching shop activity"></span>
         }
       </span>
-      <button type="submit" [disabled]="searchLoading()">Search</button>
+      <kbd>Ctrl + K</kbd>
+      <button class="search-submit" type="submit" [disabled]="searchLoading()">Search</button>
       @if (searchResults() !== null || searchLoading() || searchError()) {
         <div class="global-search-results">
           @if (searchLoading()) {
@@ -81,16 +86,23 @@
         @if (accountMenuOpen()) {
           <div class="account-dropdown" role="menu">
             <div class="dropdown-identity">
-              <strong>
-                {{ getUserDisplayName() }}
-              </strong>
-              @if (shopName()) {
-                <span>{{ shopName() }}</span>
+              @if (authService.currentUser()?.profileImageUrl; as profileImageUrl) {
+                <img class="dropdown-avatar" [src]="profileImageUrl" alt="" />
+              } @else {
+                <span class="dropdown-avatar avatar-placeholder" aria-hidden="true">
+                  {{ getUserInitial() }}
+                </span>
               }
-              <span>{{ authService.currentUser()?.email }}</span>
-              @if (shopNameError()) {
-                <small class="shop-name-error" role="status">{{ shopNameError() }}</small>
-              }
+              <div class="dropdown-user-details">
+                <strong>{{ getUserDisplayName() }}</strong>
+                @if (shopName()) {
+                  <span>{{ shopName() }}</span>
+                }
+                <span>{{ authService.currentUser()?.email }}</span>
+                @if (shopNameError()) {
+                  <small class="shop-name-error" role="status">{{ shopNameError() }}</small>
+                }
+              </div>
             </div>
             <a
               class="dropdown-item"
