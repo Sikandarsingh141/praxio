@@ -122,6 +122,10 @@ export class DisputeCenterComponent implements OnInit {
     status?: string;
   } | null>(null);
   readonly raiseDisputeDialogOpen = signal(false);
+  readonly investigationNotesModalOpen = signal(false);
+  readonly closeDisputeModalOpen = signal(false);
+  readonly adminActionModalOpen = signal(false);
+  readonly adminActionModalView = signal<'choose' | 'status' | 'complete'>('choose');
   readonly eligibleRepairRequests = signal<CustomerRepairRequest[]>([]);
   readonly eligibleRepairRequestsLoading = signal(false);
   readonly eligibleRepairRequestsError = signal('');
@@ -458,6 +462,17 @@ export class DisputeCenterComponent implements OnInit {
     this.adminRepairDetails.set(null);
     this.adminRepairDetailsLoading.set(false);
     this.adminRepairDetailsError.set('');
+    this.investigationNotesModalOpen.set(false);
+    this.closeDisputeModalOpen.set(false);
+    this.adminActionModalOpen.set(false);
+    this.adminActionModalView.set('choose');
+    this.internalNote = '';
+    this.closeReason = '';
+    this.adminStatusReason = '';
+    this.resolutionCompletionNotes = '';
+    this.refundTransactionId = '';
+    this.requiredActionCompleted = false;
+    this.completionDocuments = [];
     this.disputes.get(this.role(), id).subscribe({
       next: (dispute) => {
         this.dispute.set(dispute);
@@ -473,7 +488,7 @@ export class DisputeCenterComponent implements OnInit {
         this.fail(
           error,
           this.role() === 'admin'
-            ? 'Dispute details could not be loaded.'
+            ? 'Issue resolution could not be loaded.'
             : 'Issue details could not be loaded.',
         ),
     });
@@ -530,6 +545,66 @@ export class DisputeCenterComponent implements OnInit {
     this.customerComments = '';
     this.category = 'repair_quality';
     this.attachments = [];
+  }
+
+  openInvestigationNotesModal(): void {
+    this.error.set('');
+    this.investigationNotesModalOpen.set(true);
+  }
+
+  closeInvestigationNotesModal(): void {
+    this.investigationNotesModalOpen.set(false);
+  }
+
+  openCloseDisputeModal(): void {
+    this.error.set('');
+    this.closeDisputeModalOpen.set(true);
+  }
+
+  closeCloseDisputeModal(): void {
+    this.closeDisputeModalOpen.set(false);
+  }
+
+  canManageAdminStatus(dispute: RepairDispute | null = this.dispute()): boolean {
+    return !!dispute && dispute.status !== 'CLOSED' && dispute.status !== 'RESOLVED';
+  }
+
+  canCompleteAdminResolution(dispute: RepairDispute | null = this.dispute()): boolean {
+    return !!dispute && dispute.resolution.state === 'proposed';
+  }
+
+  canOpenAdminActionModal(): boolean {
+    return this.canManageAdminStatus() || this.canCompleteAdminResolution();
+  }
+
+  openAdminActionModal(): void {
+    this.error.set('');
+    this.investigationNotesModalOpen.set(false);
+    this.closeDisputeModalOpen.set(false);
+    this.adminActionModalView.set('choose');
+    this.adminActionModalOpen.set(true);
+  }
+
+  closeAdminActionModal(): void {
+    this.adminActionModalOpen.set(false);
+    this.adminActionModalView.set('choose');
+  }
+
+  showAdminStatusForm(): void {
+    if (!this.canManageAdminStatus()) return;
+    this.error.set('');
+    this.adminActionModalView.set('status');
+  }
+
+  showAdminCompletionForm(): void {
+    if (!this.canCompleteAdminResolution()) return;
+    this.error.set('');
+    this.adminActionModalView.set('complete');
+  }
+
+  backToAdminActionChoices(): void {
+    this.error.set('');
+    this.adminActionModalView.set('choose');
   }
 
   repairRequestOptionLabel(request: CustomerRepairRequest): string {
@@ -608,6 +683,7 @@ export class DisputeCenterComponent implements OnInit {
       'Private note saved.',
       (updated) => {
         this.internalNote = '';
+        this.investigationNotesModalOpen.set(false);
         this.dispute.set(updated);
       },
     );
@@ -628,6 +704,7 @@ export class DisputeCenterComponent implements OnInit {
       'Dispute status updated.',
       (updated) => {
         this.adminStatusReason = '';
+        this.closeAdminActionModal();
         this.dispute.set(updated);
       },
     );
@@ -699,7 +776,14 @@ export class DisputeCenterComponent implements OnInit {
         documents: this.completionDocuments,
       }),
       'Dispute marked resolved.',
-      (updated) => this.dispute.set(updated),
+      (updated) => {
+        this.resolutionCompletionNotes = '';
+        this.refundTransactionId = '';
+        this.requiredActionCompleted = false;
+        this.completionDocuments = [];
+        this.closeAdminActionModal();
+        this.dispute.set(updated);
+      },
     );
   }
 
@@ -709,6 +793,7 @@ export class DisputeCenterComponent implements OnInit {
       this.error.set('Enter a final closure note.');
       return;
     }
+    this.closeDisputeModalOpen.set(false);
     this.confirmationAction = 'closeAdminDispute';
     this.confirmation.set({
       title: 'Close dispute?',
@@ -963,7 +1048,11 @@ export class DisputeCenterComponent implements OnInit {
     this.run(
       this.disputes.closeAsAdmin(dispute._id, this.closeReason.trim()),
       'Dispute closed.',
-      (updated) => this.dispute.set(updated),
+      (updated) => {
+        this.closeReason = '';
+        this.closeDisputeModalOpen.set(false);
+        this.dispute.set(updated);
+      },
     );
   }
 

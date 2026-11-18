@@ -8,7 +8,7 @@ import { DisputesService } from '../../../../shared/services/disputes.service';
 import { CustomerDisputedJobsListingPage } from './customer-disputed-jobs-listing.page';
 
 describe('CustomerDisputedJobsListingPage', () => {
-  it('uses the dispute management listing and opens the active-style disputed detail route', async () => {
+  it('uses the dispute management listing and opens the active-style issue resolution route', async () => {
     const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list']);
     disputes.list.and.returnValue(
       of({

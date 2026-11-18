@@ -343,6 +343,207 @@ textarea:focus {
   gap: 1rem;
 }
 
+.admin-action-card {
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.sidebar-action-copy {
+  h2 {
+    margin: 0;
+    color: #263b32;
+    font-size: 0.88rem;
+  }
+
+  p {
+    margin: 0.25rem 0 0;
+    color: #6f7e73;
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+}
+
+.sidebar-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+
+  .button {
+    min-height: 2.35rem;
+    padding: 0.55rem 0.6rem;
+    font-size: 0.78rem;
+  }
+}
+
+.admin-dispute-modal-backdrop {
+  position: fixed;
+  z-index: 1400;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 30 20 / 55%);
+}
+
+.admin-dispute-modal {
+  width: min(100%, 44rem);
+  max-height: min(92vh, 52rem);
+  overflow: auto;
+  padding: 1.1rem;
+  border: 1px solid #e1e9e3;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 1.5rem 3rem rgb(15 30 20 / 22%);
+}
+
+.admin-dispute-modal-compact {
+  width: min(100%, 34rem);
+}
+
+.admin-dispute-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+
+  h2 {
+    margin: 0.15rem 0 0;
+    color: #17212b;
+    font-size: 1.15rem;
+  }
+}
+
+.admin-dispute-modal-close {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f2;
+  color: #43564a;
+  cursor: pointer;
+  font-size: 1.3rem;
+}
+
+.admin-dispute-modal-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-dispute-modal-intro {
+  margin: 0;
+  color: #6f7e73;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.admin-private-notes {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e6ece8;
+
+  h3 {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .private-list {
+    max-height: 12rem;
+    overflow: auto;
+  }
+}
+
+.admin-dispute-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding-top: 0.25rem;
+}
+
+.admin-management-card .sidebar-action-buttons {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-action-chooser {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-action-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.admin-action-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid #dfe8e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    border-color: #087c3b;
+    background: #f6fbf7;
+  }
+}
+
+.admin-action-option-icon {
+  display: grid;
+  width: 2.2rem;
+  height: 2.2rem;
+  flex: 0 0 2.2rem;
+  place-items: center;
+  border-radius: 0.6rem;
+  background: #e3f6e8;
+  color: #087c3b;
+
+  svg {
+    width: 1.15rem;
+    height: 1.15rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
+  }
+}
+
+.admin-action-option-copy {
+  display: grid;
+  gap: 0.2rem;
+
+  strong {
+    color: #263b32;
+    font-size: 0.85rem;
+  }
+
+  small {
+    color: #6f7e73;
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+}
+
+.admin-action-back {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #087c3b;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .raise-dispute-backdrop {
   position: fixed;
   z-index: 1000;
@@ -753,6 +954,10 @@ hr {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-action-options {
     grid-template-columns: 1fr;
   }
 

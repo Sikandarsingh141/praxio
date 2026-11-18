@@ -184,7 +184,7 @@
   @if (mode() === 'list') {
     @if (role() === 'admin') {
       <app-admin-page-header>
-        <h1 adminPageTitle class="admin-page-title">Disputed Jobs</h1>
+        <h1 adminPageTitle class="admin-page-title">Issue Resolution</h1>
         <p adminPageDescription class="admin-page-description">
           Track post-repair issues, review evidence, and coordinate fair resolutions.
         </p>
@@ -577,18 +577,18 @@
   @if (mode() === 'detail') {
     <a class="detail-back-link" [routerLink]="disputeListLink()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
-      {{ role() === 'admin' ? 'Back to all disputes' : 'Back to Issue Resolution' }}
+      {{ role() === 'admin' ? 'Back to issue resolution' : 'Back to Issue Resolution' }}
     </a>
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
     @if (loading()) {
       <p class="state-card" role="status">
-        {{ role() === 'admin' ? 'Loading dispute details…' : 'Loading issue details…' }}
+        {{ role() === 'admin' ? 'Loading issue resolution' : 'Loading issue details…' }}
       </p>
     } @else if (dispute(); as item) {
       <h1 class="detail-page-title">
-        {{ role() === 'admin' ? 'Dispute Details' : 'Issue Resolution Details' }}
+        {{ role() === 'admin' ? 'Issue Resolution Details' : 'Issue Resolution Details' }}
       </h1>
       <section class="request-hero" aria-label="Dispute summary">
         <div class="request-hero-photo">
@@ -1226,81 +1226,6 @@
       </section>
 
       @if (role() === 'admin') {
-        <section class="panel admin-actions">
-          <h2>Investigation notes</h2>
-          <label
-            >Private Admin note<textarea
-              [(ngModel)]="internalNote"
-              name="internalNote"
-              rows="3"
-              maxlength="4000"
-            ></textarea>
-          </label>
-          <button
-            class="button secondary"
-            type="button"
-            [disabled]="saving() || !internalNote.trim()"
-            (click)="addInternalNote()"
-          >
-            Save private note
-          </button>
-          @if (item.internalNotes?.length) {
-            <h3>Private notes (Admin only)</h3>
-            <ol class="message-list private-list">
-              @for (note of item.internalNotes; track $index) {
-                <li>
-                  <div class="message-meta">
-                    <strong>Admin note</strong><time>{{ note.createdAt | date: 'medium' }}</time>
-                  </div>
-                  <p>{{ note.message }}</p>
-                </li>
-              }
-            </ol>
-          }
-        </section>
-
-        @if (item.status !== 'CLOSED' && item.status !== 'RESOLVED') {
-          <section class="panel admin-actions">
-            <h2>Manage dispute status</h2>
-            <div class="form-grid">
-              <label
-                >Status<select [(ngModel)]="adminStatus" name="adminStatus">
-                  <option value="OPEN">Open</option>
-                  <option value="UNDER_REVIEW">Under review</option>
-                  <option value="AWAITING_SHOP_RESPONSE">Awaiting shop response</option>
-                  <option value="AWAITING_CUSTOMER_RESPONSE">Awaiting customer response</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
-              </label>
-              <label
-                >Priority<select [(ngModel)]="selectedPriority" name="selectedPriority">
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </label>
-              <label class="wide"
-                >Reason<textarea
-                  [(ngModel)]="adminStatusReason"
-                  name="adminStatusReason"
-                  rows="2"
-                  maxlength="1000"
-                  required
-                ></textarea>
-              </label>
-              <button
-                class="button secondary"
-                type="button"
-                [disabled]="saving() || !adminStatusReason.trim()"
-                (click)="updateAdminStatus()"
-              >
-                Update status
-              </button>
-            </div>
-          </section>
-        }
-
         @if (item.status !== 'CLOSED' && item.status !== 'RESOLVED' && item.resolution.state !== 'proposed') {
           <section class="panel action-panel">
             <h2>Propose a resolution</h2>
@@ -1377,68 +1302,6 @@
           </section>
         }
 
-        @if (item.resolution.state === 'proposed') {
-          <section class="panel action-panel">
-            <h2>Complete resolution</h2>
-            <p>{{ item.resolution.description }}</p>
-            <label
-              >Completion notes<textarea
-                [(ngModel)]="resolutionCompletionNotes"
-                name="adminCompletionNotes"
-                rows="3"
-                maxlength="1000"
-                required
-              ></textarea>
-            </label>
-            @if (item.resolution.type === 'partial_refund' || item.resolution.type === 'full_refund') {
-              <label
-                >Refund transaction ID<input
-                  [(ngModel)]="refundTransactionId"
-                  name="refundTransactionId"
-                  maxlength="200"
-              /></label>
-            }
-            <label class="check-row"
-              ><input
-                type="checkbox"
-                [(ngModel)]="requiredActionCompleted"
-                name="requiredActionCompleted"
-              />
-              Confirm the approved action has been completed.</label
-            >
-            <label
-              >Completion evidence<input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                multiple
-                (change)="onCompletionFilesSelected($event)"
-            /></label>
-            <button
-              class="button primary"
-              type="button"
-              [disabled]="saving() || !resolutionCompletionNotes.trim()"
-              (click)="completeAdminResolution()"
-            >
-              Mark resolved
-            </button>
-          </section>
-        }
-        @if (item.status !== 'CLOSED') {
-          <section class="panel action-panel">
-            <h2>Close dispute</h2>
-            <label
-              >Closure note<input [(ngModel)]="closeReason" name="adminCloseReason" maxlength="1000"
-            /></label>
-            <button
-              class="button danger"
-              type="button"
-              [disabled]="saving() || !closeReason.trim()"
-              (click)="closeAsAdmin()"
-            >
-              Close dispute
-            </button>
-          </section>
-        }
       }
 
       @if (role() === 'shop' && item.status !== 'CLOSED' && item.status !== 'RESOLVED' && item.resolution.state !== 'proposed') {
@@ -2034,6 +1897,47 @@
         </section>
         </div>
         <aside class="customer-detail-sidebar">
+          @if (role() === 'admin') {
+            <section
+              class="detail-section customer-detail-sidebar-card admin-action-card"
+              aria-label="Admin issue resolution actions"
+            >
+              <div class="sidebar-action-copy">
+                <h2>Admin actions</h2>
+                <p>Record private investigation notes or close this issue resolution.</p>
+              </div>
+              <div class="sidebar-action-buttons">
+                <button
+                  class="button secondary"
+                  type="button"
+                  (click)="openInvestigationNotesModal()"
+                >
+                  Investigation notes
+                </button>
+                @if (item.status !== 'CLOSED') {
+                  <button class="button danger" type="button" (click)="openCloseDisputeModal()">
+                    Close dispute
+                  </button>
+                }
+              </div>
+            </section>
+            @if (canOpenAdminActionModal()) {
+              <section
+                class="detail-section customer-detail-sidebar-card admin-action-card admin-management-card"
+                aria-label="Dispute status and resolution actions"
+              >
+                <div class="sidebar-action-copy">
+                  <h2>Dispute management</h2>
+                  <p>Change the dispute status or complete an approved resolution.</p>
+                </div>
+                <div class="sidebar-action-buttons sidebar-single-action">
+                  <button class="button primary" type="button" (click)="openAdminActionModal()">
+                    Manage resolution
+                  </button>
+                </div>
+              </section>
+            }
+          }
             <section
               class="detail-section customer-detail-sidebar-card"
               aria-label="Dispute and repair information"
@@ -2345,6 +2249,397 @@
             </section>
         </aside>
       </div>
+
+      @if (role() === 'admin' && investigationNotesModalOpen()) {
+        <div
+          class="admin-dispute-modal-backdrop"
+          role="presentation"
+          (click)="closeInvestigationNotesModal()"
+        >
+          <section
+            class="admin-dispute-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-investigation-notes-title"
+            tabindex="-1"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="closeInvestigationNotesModal()"
+          >
+            <header class="admin-dispute-modal-header">
+              <div>
+                <span class="eyebrow">ISSUE RESOLUTION</span>
+                <h2 id="admin-investigation-notes-title">Investigation notes</h2>
+              </div>
+              <button
+                type="button"
+                class="admin-dispute-modal-close"
+                aria-label="Close investigation notes"
+                (click)="closeInvestigationNotesModal()"
+              >
+                ×
+              </button>
+            </header>
+            <form class="admin-dispute-modal-form" (ngSubmit)="addInternalNote()">
+              <p class="admin-dispute-modal-intro">
+                Private notes are visible only to administrators.
+              </p>
+              @if (error()) {
+                <p class="feedback error" role="alert">{{ error() }}</p>
+              }
+              <label>
+                <span>Private Admin note</span>
+                <textarea
+                  [(ngModel)]="internalNote"
+                  name="adminInvestigationNote"
+                  rows="5"
+                  maxlength="4000"
+                  placeholder="Record your findings, evidence reviewed, and next steps for the team…"
+                ></textarea>
+              </label>
+              @if (item.internalNotes?.length) {
+                <div class="admin-private-notes">
+                  <h3>Private notes (Admin only)</h3>
+                  <ol class="message-list private-list">
+                    @for (note of item.internalNotes; track $index) {
+                      <li>
+                        <div class="message-meta">
+                          <strong>Admin note</strong><time>{{ note.createdAt | date: 'medium' }}</time>
+                        </div>
+                        <p>{{ note.message }}</p>
+                      </li>
+                    }
+                  </ol>
+                </div>
+              }
+              <div class="admin-dispute-modal-actions">
+                <button
+                  class="button secondary"
+                  type="button"
+                  (click)="closeInvestigationNotesModal()"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="button primary"
+                  type="submit"
+                  [disabled]="saving() || !internalNote.trim()"
+                >
+                  Save private note
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      }
+
+      @if (role() === 'admin' && closeDisputeModalOpen() && item.status !== 'CLOSED') {
+        <div class="admin-dispute-modal-backdrop" role="presentation" (click)="closeCloseDisputeModal()">
+          <section
+            class="admin-dispute-modal admin-dispute-modal-compact"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-close-dispute-title"
+            tabindex="-1"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="closeCloseDisputeModal()"
+          >
+            <header class="admin-dispute-modal-header">
+              <div>
+                <span class="eyebrow">ISSUE RESOLUTION</span>
+                <h2 id="admin-close-dispute-title">Close dispute</h2>
+              </div>
+              <button
+                type="button"
+                class="admin-dispute-modal-close"
+                aria-label="Close dispute form"
+                (click)="closeCloseDisputeModal()"
+              >
+                ×
+              </button>
+            </header>
+            <form class="admin-dispute-modal-form" (ngSubmit)="closeAsAdmin()">
+              <p class="admin-dispute-modal-intro">
+                Closing this issue resolution prevents further messages. Add a final note explaining
+                the decision.
+              </p>
+              @if (error()) {
+                <p class="feedback error" role="alert">{{ error() }}</p>
+              }
+              <label>
+                <span>Closure note</span>
+                <input
+                  [(ngModel)]="closeReason"
+                  name="adminCloseReasonModal"
+                  maxlength="1000"
+                  required
+                  placeholder="Explain why this dispute is being closed…"
+                />
+              </label>
+              <div class="admin-dispute-modal-actions">
+                <button
+                  class="button secondary"
+                  type="button"
+                  (click)="closeCloseDisputeModal()"
+                >
+                  Cancel
+                </button>
+                <button
+                  class="button danger"
+                  type="submit"
+                  [disabled]="saving() || !closeReason.trim()"
+                >
+                  Close dispute
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      }
+
+      @if (role() === 'admin' && adminActionModalOpen()) {
+        <div class="admin-dispute-modal-backdrop" role="presentation" (click)="closeAdminActionModal()">
+          <section
+            class="admin-dispute-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-action-modal-title"
+            tabindex="-1"
+            (click)="$event.stopPropagation()"
+            (keydown.escape)="closeAdminActionModal()"
+          >
+            <header class="admin-dispute-modal-header">
+              <div>
+                <span class="eyebrow">ISSUE RESOLUTION</span>
+                <h2 id="admin-action-modal-title">
+                  @if (adminActionModalView() === 'choose') {
+                    Manage dispute status or complete resolution
+                  } @else if (adminActionModalView() === 'status') {
+                    Manage dispute status
+                  } @else {
+                    Complete resolution
+                  }
+                </h2>
+              </div>
+              <button
+                type="button"
+                class="admin-dispute-modal-close"
+                aria-label="Close dispute management"
+                (click)="closeAdminActionModal()"
+              >
+                ×
+              </button>
+            </header>
+
+            @if (adminActionModalView() === 'choose') {
+              <div class="admin-action-chooser">
+                <p class="admin-dispute-modal-intro">
+                  Choose the action you want to take for this issue resolution.
+                </p>
+                <div class="admin-action-options">
+                  @if (canManageAdminStatus(item)) {
+                    <button
+                      type="button"
+                      class="admin-action-option"
+                      (click)="showAdminStatusForm()"
+                    >
+                      <span class="admin-action-option-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h3M11 12h9M4 18h8M16 18h4M14 4v4M7 10v4M12 16v4" /></svg>
+                      </span>
+                      <span class="admin-action-option-copy">
+                        <strong>Manage dispute status</strong>
+                        <small>Update the dispute status, priority, and reason for the change.</small>
+                      </span>
+                    </button>
+                  }
+                  @if (canCompleteAdminResolution(item)) {
+                    <button
+                      type="button"
+                      class="admin-action-option"
+                      (click)="showAdminCompletionForm()"
+                    >
+                      <span class="admin-action-option-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
+                      </span>
+                      <span class="admin-action-option-copy">
+                        <strong>Complete resolution</strong>
+                        <small>Add completion notes and confirm the approved action is finished.</small>
+                      </span>
+                    </button>
+                  }
+                </div>
+                <div class="admin-dispute-modal-actions">
+                  <button
+                    class="button secondary"
+                    type="button"
+                    (click)="closeAdminActionModal()"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            }
+
+            @if (adminActionModalView() === 'status') {
+              <form class="admin-dispute-modal-form" (ngSubmit)="updateAdminStatus()">
+                <button
+                  type="button"
+                  class="admin-action-back"
+                  (click)="backToAdminActionChoices()"
+                >
+                  ← Choose another action
+                </button>
+                <p class="admin-dispute-modal-intro">
+                  Update the status, priority, and reason for this issue resolution.
+                </p>
+                @if (error()) {
+                  <p class="feedback error" role="alert">{{ error() }}</p>
+                }
+                <div class="form-grid">
+                  <label>
+                    <span>Status</span>
+                    <select [(ngModel)]="adminStatus" name="adminStatusModal">
+                      <option value="OPEN">Open</option>
+                      <option value="UNDER_REVIEW">Under review</option>
+                      <option value="AWAITING_SHOP_RESPONSE">Awaiting shop response</option>
+                      <option value="AWAITING_CUSTOMER_RESPONSE">Awaiting customer response</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Priority</span>
+                    <select [(ngModel)]="selectedPriority" name="selectedPriorityModal">
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </label>
+                  <label class="wide">
+                    <span>Reason</span>
+                    <textarea
+                      [(ngModel)]="adminStatusReason"
+                      name="adminStatusReasonModal"
+                      rows="3"
+                      maxlength="1000"
+                      required
+                      placeholder="Explain why this status or priority is changing…"
+                    ></textarea>
+                  </label>
+                </div>
+                <div class="admin-dispute-modal-actions">
+                  <button
+                    class="button secondary"
+                    type="button"
+                    (click)="backToAdminActionChoices()"
+                  >
+                    Back
+                  </button>
+                  <button
+                    class="button secondary"
+                    type="submit"
+                    [disabled]="saving() || !adminStatusReason.trim()"
+                  >
+                    Update status
+                  </button>
+                </div>
+              </form>
+            }
+
+            @if (adminActionModalView() === 'complete') {
+              <form class="admin-dispute-modal-form" (ngSubmit)="completeAdminResolution()">
+                <button
+                  type="button"
+                  class="admin-action-back"
+                  (click)="backToAdminActionChoices()"
+                >
+                  ← Choose another action
+                </button>
+                <p class="admin-dispute-modal-intro">
+                  @if (item.resolution.description) {
+                    {{ item.resolution.description }}
+                  } @else {
+                    Confirm the approved resolution is complete and add the final details.
+                  }
+                </p>
+                @if (error()) {
+                  <p class="feedback error" role="alert">{{ error() }}</p>
+                }
+                <label>
+                  <span>Completion notes</span>
+                  <textarea
+                    [(ngModel)]="resolutionCompletionNotes"
+                    name="adminCompletionNotesModal"
+                    rows="4"
+                    maxlength="1000"
+                    required
+                    placeholder="Describe what was completed and the final outcome…"
+                  ></textarea>
+                </label>
+                @if (item.resolution.type === 'partial_refund' || item.resolution.type === 'full_refund') {
+                  <label>
+                    <span>Refund transaction ID</span>
+                    <input
+                      [(ngModel)]="refundTransactionId"
+                      name="adminRefundTransactionIdModal"
+                      maxlength="200"
+                      placeholder="Enter the refund transaction reference"
+                    />
+                  </label>
+                }
+                <label class="check-row"
+                  ><input
+                    type="checkbox"
+                    [(ngModel)]="requiredActionCompleted"
+                    name="adminRequiredActionCompletedModal"
+                  />
+                  Confirm the approved action has been completed.</label
+                >
+                <label>
+                  <span>Completion evidence</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    multiple
+                    (change)="onCompletionFilesSelected($event)"
+                  />
+                </label>
+                @if (completionDocuments.length) {
+                  <ul class="attachment-list">
+                    @for (file of completionDocuments; track $index) {
+                      <li>
+                        <span>{{ file.name }}</span>
+                        <button
+                          type="button"
+                          class="text-button"
+                          (click)="removeCompletionDocument($index)"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+                <div class="admin-dispute-modal-actions">
+                  <button
+                    class="button secondary"
+                    type="button"
+                    (click)="backToAdminActionChoices()"
+                  >
+                    Back
+                  </button>
+                  <button
+                    class="button primary"
+                    type="submit"
+                    [disabled]="saving() || !resolutionCompletionNotes.trim()"
+                  >
+                    Mark resolved
+                  </button>
+                </div>
+              </form>
+            }
+          </section>
+        </div>
+      }
     }
   }
 </main>

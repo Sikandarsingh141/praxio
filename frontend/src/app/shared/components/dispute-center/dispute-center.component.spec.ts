@@ -462,7 +462,7 @@ describe('DisputeCenterComponent customer views', () => {
       'Customer and shop locations are not available for this repair.',
     );
     expect(page.querySelector('main')?.classList.contains('admin-dispute-detail-page')).toBeTrue();
-    expect(page.querySelector('.detail-page-title')?.textContent).toContain('Dispute Details');
+    expect(page.querySelector('.detail-page-title')?.textContent).toContain('Issue Resolution');
     expect(page.querySelector('.request-hero h2')?.textContent).toContain('Air conditioner');
     expect(page.querySelector('.request-progress')).not.toBeNull();
     expect(
@@ -484,6 +484,108 @@ describe('DisputeCenterComponent customer views', () => {
       '/admin/repair-jobs/repair-id',
     );
     expect(page.textContent).toContain('Investigation notes');
+    component.dispute.update((current) =>
+      current
+        ? {
+            ...current,
+            status: 'OPEN',
+            resolution: { ...current.resolution, state: 'proposed' },
+          }
+        : current,
+    );
+    harness.detectChanges();
+
+    const actionCard = page.querySelector('.admin-action-card') as HTMLElement;
+    const disputeInformationCard = page.querySelector(
+      '.customer-detail-sidebar-card[aria-label="Dispute and repair information"]',
+    ) as HTMLElement;
+    expect(actionCard).not.toBeNull();
+    expect(
+      actionCard.compareDocumentPosition(disputeInformationCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(actionCard.textContent).toContain('Investigation notes');
+    expect(actionCard.textContent).toContain('Close dispute');
+
+    const investigationButton = Array.from(actionCard.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Investigation notes'),
+    ) as HTMLButtonElement;
+    investigationButton.click();
+    harness.detectChanges();
+
+    const investigationDialog = page.querySelector(
+      '[role="dialog"][aria-labelledby="admin-investigation-notes-title"]',
+    ) as HTMLElement;
+    expect(investigationDialog).not.toBeNull();
+    expect(investigationDialog.querySelector('textarea')?.getAttribute('placeholder')).toContain(
+      'Record your findings',
+    );
+    component.closeInvestigationNotesModal();
+    harness.detectChanges();
+
+    const closeButton = Array.from(
+      (page.querySelector('.admin-action-card') as HTMLElement).querySelectorAll('button'),
+    ).find((button) => button.textContent?.trim() === 'Close dispute') as HTMLButtonElement;
+    closeButton.click();
+    harness.detectChanges();
+
+    const closeDialog = page.querySelector(
+      '[role="dialog"][aria-labelledby="admin-close-dispute-title"]',
+    ) as HTMLElement;
+    expect(closeDialog).not.toBeNull();
+    expect(closeDialog.querySelector('input')?.getAttribute('placeholder')).toContain(
+      'Explain why this dispute is being closed',
+    );
+    component.closeCloseDisputeModal();
+    harness.detectChanges();
+
+    const managementCard = page.querySelector('.admin-management-card') as HTMLElement;
+    expect(managementCard).not.toBeNull();
+    expect(managementCard.querySelectorAll('button').length).toBe(1);
+    const manageButton = managementCard.querySelector('button') as HTMLButtonElement;
+    manageButton.click();
+    harness.detectChanges();
+
+    const actionDialog = page.querySelector(
+      '[role="dialog"][aria-labelledby="admin-action-modal-title"]',
+    ) as HTMLElement;
+    expect(actionDialog).not.toBeNull();
+    expect(actionDialog.textContent).toContain('Manage dispute status or complete resolution');
+    const actionOptions = Array.from(
+      actionDialog.querySelectorAll<HTMLButtonElement>('.admin-action-option'),
+    );
+    expect(actionOptions.length).toBe(2);
+    expect(actionOptions[0].textContent).toContain('Manage dispute status');
+    expect(actionOptions[1].textContent).toContain('Complete resolution');
+
+    actionOptions[0].click();
+    harness.detectChanges();
+    const statusDialog = page.querySelector(
+      '[role="dialog"][aria-labelledby="admin-action-modal-title"]',
+    ) as HTMLElement;
+    expect(statusDialog.textContent).toContain('Update status');
+    expect(statusDialog.querySelector('textarea')?.getAttribute('placeholder')).toContain(
+      'Explain why this status',
+    );
+
+    component.backToAdminActionChoices();
+    harness.detectChanges();
+    const completionOption = Array.from(
+      (
+        page.querySelector('[role="dialog"][aria-labelledby="admin-action-modal-title"]') as HTMLElement
+      ).querySelectorAll<HTMLButtonElement>('.admin-action-option'),
+    ).find((option) => option.textContent?.includes('Complete resolution')) as HTMLButtonElement;
+    completionOption.click();
+    harness.detectChanges();
+
+    const completionDialog = page.querySelector(
+      '[role="dialog"][aria-labelledby="admin-action-modal-title"]',
+    ) as HTMLElement;
+    expect(completionDialog.querySelector('textarea')?.getAttribute('placeholder')).toContain(
+      'Describe what was completed',
+    );
+    component.closeAdminActionModal();
+    harness.detectChanges();
+
     expect(page.textContent).toContain('Customer Information');
     expect(page.textContent).toContain('taylor@example.com');
     expect(page.textContent).toContain('555-0199');
