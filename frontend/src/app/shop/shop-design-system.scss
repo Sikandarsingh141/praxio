@@ -22,7 +22,78 @@
     }
 
     .dashboard-page {
-      gap: 0;
+      gap: 0.85rem;
+
+      > app-admin-page-header .admin-page-header {
+        margin-bottom: 0;
+      }
+    }
+
+    .dashboard-title-icon {
+      display: grid;
+      width: 2.8rem;
+      height: 2.8rem;
+      flex: 0 0 auto;
+      place-items: center;
+      border-radius: 0.7rem;
+      background: #eaf7ed;
+      color: #087c3b;
+
+      svg {
+        width: 1.35rem;
+        height: 1.35rem;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+      }
+    }
+
+    .dashboard-page .kpi-card {
+      min-width: 0;
+      min-height: 5.75rem;
+      padding: 0.9rem 1rem;
+    }
+
+    .dashboard-page .kpi-icon {
+      width: 3rem;
+      height: 3rem;
+    }
+
+    .dashboard-page .middle-grid {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+      gap: 0.9rem;
+    }
+
+    .dashboard-page .dash-box {
+      min-width: 0;
+      border-radius: 0.9rem;
+      box-shadow: 0 2px 8px rgb(18 43 27 / 5%);
+    }
+
+    .dashboard-page .middle-grid > .dash-box {
+      min-height: 15.5rem;
+    }
+
+    .dashboard-page .current-thumb-box {
+      width: 8.125rem;
+      height: 5.25rem;
+    }
+
+    .dashboard-page .current-actions-col {
+      width: 11rem;
+
+      .btn-primary-action,
+      .btn-outline-action {
+        width: 100%;
+      }
+    }
+
+    .dashboard-page .bottom-three-grid {
+      gap: 0.9rem;
+    }
+
+    .dashboard-page .bottom-three-grid > .dash-box {
+      min-height: 14.5rem;
     }
 
     .header-actions {
@@ -1754,11 +1825,17 @@
     }
 
     @media (max-width: 1100px) {
-      .middle-grid {
+      .middle-grid,
+      .dashboard-page .middle-grid {
         grid-template-columns: 1fr;
       }
-      .bottom-three-grid {
+      .bottom-three-grid,
+      .dashboard-page .bottom-three-grid {
         grid-template-columns: 1fr;
+      }
+      .dashboard-page .middle-grid > .dash-box,
+      .dashboard-page .bottom-three-grid > .dash-box {
+        min-height: 0;
       }
       .kpi-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1773,7 +1850,8 @@
         flex-direction: column;
         align-items: flex-start;
       }
-      .current-actions-col {
+      .current-actions-col,
+      .dashboard-page .current-actions-col {
         width: 100%;
         flex-direction: row;
 

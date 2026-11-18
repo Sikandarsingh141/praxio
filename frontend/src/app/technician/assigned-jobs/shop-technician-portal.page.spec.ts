@@ -133,6 +133,11 @@ describe('ShopTechnicianPortalPage', () => {
     expect(component.dashboard()?.kpis.activeJobs).toBe(1);
     expect(component.dashboard()?.currentlyActiveJob?.appliance).toBe('Split AC Servicing');
     expect(fixture.nativeElement.querySelector('.page.dashboard-page')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.dashboard-title-icon')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.dashboard-page .kpi-card').length).toBe(5);
+    expect(fixture.nativeElement.querySelector('.dashboard-page .middle-grid')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.dashboard-page .bottom-three-grid')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.schedule-card .empty-icon')).not.toBeNull();
   });
 
   it('should compute real KPI counts based on live data and zero fallbacks', () => {
