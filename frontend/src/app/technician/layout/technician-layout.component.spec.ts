@@ -83,7 +83,7 @@ describe('TechnicianLayoutComponent', () => {
 
     // Verify sidebar navigation links
     const navLinks = fixture.nativeElement.querySelectorAll('.portal-sidebar .portal-nav');
-    expect(navLinks.length).toBe(6);
+    expect(navLinks.length).toBe(7);
     expect(navLinks[0]?.textContent).toContain('Dashboard');
     expect(navLinks[1]?.textContent).toContain('My Assigned Jobs');
     expect((navLinks[1] as HTMLAnchorElement)?.getAttribute('href')).toBe(
@@ -91,8 +91,12 @@ describe('TechnicianLayoutComponent', () => {
     );
     expect(navLinks[2]?.textContent).toContain('Active Jobs');
     expect(navLinks[3]?.textContent).toContain('Completed Jobs');
-    expect(navLinks[4]?.textContent).toContain('Messages');
-    expect(navLinks[5]?.textContent).toContain('My Profile');
+    expect(navLinks[4]?.textContent).toContain('Issue Resolution');
+    expect((navLinks[4] as HTMLAnchorElement)?.getAttribute('href')).toBe(
+      '/technician/jobs/disputed-jobs',
+    );
+    expect(navLinks[5]?.textContent).toContain('Messages');
+    expect(navLinks[6]?.textContent).toContain('My Profile');
     expect(fixture.nativeElement.querySelector('.header-account app-notification-center')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.portal-sidebar .portal-logout-btn')).toBeNull();
     expect(fixture.nativeElement.querySelector('.sidebar-support-card')).toBeNull();
@@ -100,7 +104,7 @@ describe('TechnicianLayoutComponent', () => {
     expect(fixture.nativeElement.querySelector('.portal-sidebar')?.textContent).not.toContain('Need Help?');
 
     // Verify unread badge in Messages
-    expect(navLinks[4]?.textContent).toContain('2');
+    expect(navLinks[5]?.textContent).toContain('2');
 
     menuToggle?.click();
     fixture.detectChanges();

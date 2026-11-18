@@ -17,6 +17,7 @@ import {
   AdminDisputesController,
   CustomerDisputesController,
   ShopDisputesController,
+  TechnicianDisputesController,
 } from './disputes.controller';
 import { DisputesService } from './disputes.service';
 import { Dispute, DisputeSchema } from './schemas/dispute.schema';
@@ -38,6 +39,7 @@ import { Dispute, DisputeSchema } from './schemas/dispute.schema';
     CustomerDisputesController,
     ShopDisputesController,
     AdminDisputesController,
+    TechnicianDisputesController,
   ],
   providers: [AdminRoleGuard, ShopPortalGuard, DisputesService],
 })

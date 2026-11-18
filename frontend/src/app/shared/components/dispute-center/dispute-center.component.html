@@ -1,8 +1,9 @@
 <main
   class="dispute-page"
-  [class.customer-dispute-list-page]="role() === 'customer' && mode() === 'list'"
+  [class.customer-dispute-list-page]="(role() === 'customer' || role() === 'technician') && mode() === 'list'"
   [class.customer-dispute-detail-page]="role() !== 'admin' && mode() === 'detail'"
   [class.shop-dispute-list-page]="role() === 'shop' && mode() === 'list'"
+  [class.technician-dispute-page]="role() === 'technician'"
   [attr.aria-busy]="loading()"
 >
   <ng-template #raiseDisputeForm>
@@ -1936,13 +1937,7 @@
                       }
                     </div>
                   }
-                  <a
-                    class="shop-link"
-                    [routerLink]="[
-                      role() === 'customer' ? '/customer/repair-requests' : '/shop/repair-requests',
-                      repair.id
-                    ]"
-                  >
+                  <a class="shop-link" [routerLink]="repairDetailsLink(repair.id)">
                     View repair details
                   </a>
                 </section>

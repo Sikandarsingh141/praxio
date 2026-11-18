@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CustomerPortalService } from '../../../customer/services/customer-portal.service';
 import { CustomerRepairRequest } from '../../../customer/models/customer-portal.models';
 import {
+  DisputeAccessRole,
   DisputeAttachment,
   DisputeCategory,
   DisputeListResult,
@@ -89,7 +90,7 @@ const DISPUTE_COMPLETE_PROGRESS_STATUSES: DisputeStatus[] = [
   styleUrl: './dispute-center.component.scss',
 })
 export class DisputeCenterComponent implements OnInit {
-  readonly role = signal<DisputeRole>('customer');
+  readonly role = signal<DisputeAccessRole>('customer');
   readonly mode = signal<'list' | 'detail' | 'create'>('list');
   readonly loading = signal(true);
   readonly searchLoading = signal(false);
@@ -187,7 +188,11 @@ export class DisputeCenterComponent implements OnInit {
     const segments = this.router.url.split('?')[0].split('/').filter(Boolean);
     const requestedRole = segments[0];
     this.role.set(
-      requestedRole === 'admin' || requestedRole === 'shop' ? requestedRole : 'customer',
+      requestedRole === 'admin' ||
+        requestedRole === 'shop' ||
+        requestedRole === 'technician'
+        ? requestedRole
+        : 'customer',
     );
     this.filterConfig = this.createFilterConfig(this.role());
     this.route.paramMap.subscribe((params) => {
@@ -218,7 +223,7 @@ export class DisputeCenterComponent implements OnInit {
   page = 1;
   pageSize = 10;
 
-  private createFilterConfig(role: DisputeRole): FilterConfig {
+  private createFilterConfig(role: DisputeAccessRole): FilterConfig {
     return {
       title: 'Dispute filters',
       fields: [
@@ -359,6 +364,16 @@ export class DisputeCenterComponent implements OnInit {
     const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
     const roleListRoute = `/${this.role()}/jobs/disputed-jobs`;
     return [currentRoute.startsWith(`${roleListRoute}/`) ? roleListRoute : `/${this.role()}/disputes`];
+  }
+
+  repairDetailsLink(repairId: string): string[] {
+    if (this.role() === 'technician') {
+      return ['/technician/assigned-jobs', repairId];
+    }
+    return [
+      this.role() === 'customer' ? '/customer/repair-requests' : '/shop/repair-requests',
+      repairId,
+    ];
   }
 
   changePageSize(size: number): void {
@@ -531,7 +546,7 @@ export class DisputeCenterComponent implements OnInit {
     const dispute = this.dispute();
     if (!dispute || !this.message.trim()) return;
     this.run(
-      this.disputes.sendMessage(this.role(), dispute._id, {
+      this.disputes.sendMessage(this.writableRole, dispute._id, {
         message: this.message.trim(),
         attachments: this.conversationAttachments,
       }),
@@ -591,7 +606,7 @@ export class DisputeCenterComponent implements OnInit {
       return;
     }
     this.run(
-      this.disputes.proposeResolution(this.role(), dispute._id, {
+      this.disputes.proposeResolution(this.writableRole, dispute._id, {
         type: this.resolutionType,
         description: this.resolutionDescription.trim(),
         amount: this.resolutionAmount ?? undefined,
@@ -617,7 +632,7 @@ export class DisputeCenterComponent implements OnInit {
       return;
     }
     this.run(
-      this.disputes.decideResolution(this.role(), dispute._id, {
+      this.disputes.decideResolution(this.writableRole, dispute._id, {
         decision,
         reason: this.resolutionDecisionReason.trim() || undefined,
       }),
@@ -1140,7 +1155,13 @@ export class DisputeCenterComponent implements OnInit {
 
   get canSendMessage(): boolean {
     const status = this.dispute()?.status;
-    return status !== 'CLOSED' && status !== 'RESOLVED';
+    return (
+      this.role() !== 'technician' && status !== 'CLOSED' && status !== 'RESOLVED'
+    );
+  }
+
+  private get writableRole(): DisputeRole {
+    return this.role() as DisputeRole;
   }
 
   get latestCharge() {

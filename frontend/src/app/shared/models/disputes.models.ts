@@ -40,6 +40,7 @@ export type LegacyDisputeStatus =
 
 export type DisputePriority = 'low' | 'normal' | 'high' | 'urgent';
 export type DisputeRole = 'customer' | 'shop' | 'admin';
+export type DisputeAccessRole = DisputeRole | 'technician';
 export type DisputeFileType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
 
 export interface DisputeAttachment {

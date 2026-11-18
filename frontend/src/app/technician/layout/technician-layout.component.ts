@@ -47,6 +47,7 @@ export class TechnicianLayoutComponent implements OnInit {
     { label: 'My Assigned Jobs', route: '/technician/assigned-jobs', icon: 'jobs', exact: true },
     { label: 'Active Jobs', route: '/technician/active-jobs', icon: 'active' },
     { label: 'Completed Jobs', route: '/technician/completed-jobs', icon: 'completed' },
+    { label: 'Issue Resolution', route: '/technician/jobs/disputed-jobs', icon: 'disputes' },
     { label: 'Messages', route: '/technician/messages', icon: 'messages' },
     { label: 'My Profile', route: '/technician/profile', icon: 'profile' },
   ];

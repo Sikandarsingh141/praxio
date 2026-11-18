@@ -507,7 +507,9 @@ describe('DisputesService', () => {
       { message: 'Looks fixed.' },
     );
 
-    expect(recordedUpdate?.$set).toMatchObject({ status: 'CUSTOMER_CONFIRMED' });
+    expect(recordedUpdate?.$set).toMatchObject({
+      status: 'CUSTOMER_CONFIRMED',
+    });
   });
 
   it('rejects customer confirmation backed by a stale rework completion', async () => {
@@ -562,5 +564,100 @@ describe('DisputesService', () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('scopes technician dispute lists to assigned repair requests and hides internal notes', async () => {
+    const technicianId = new Types.ObjectId();
+    const assignedRequestId = new Types.ObjectId();
+    const technicianUser = {
+      accountType: 'technician',
+      accountStatus: 'active',
+      accountLifecycleStatus: 'active',
+      technicianDetails: { shopId },
+    };
+    users.findById.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(technicianUser),
+    });
+    requests.find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([{ _id: assignedRequestId }]),
+    });
+    disputes.find.mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        {
+          _id: new Types.ObjectId(),
+          reference: 'DSP-1',
+          status: 'OPEN',
+          internalNotes: [{ message: 'Private shop note' }],
+        },
+      ]),
+    });
+    disputes.countDocuments.mockResolvedValue(1);
+    disputes.aggregate.mockResolvedValue([{ _id: 'OPEN', count: 1 }]);
+
+    const result = await service.listDisputes(
+      { userId: technicianId.toString(), role: 'technician' },
+      { page: 1, limit: 10 },
+    );
+
+    expect(requests.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shopIds: shopId,
+        $or: [
+          { 'repairJob.activeAssignment.technicianId': technicianId },
+          { 'repairJob.assignmentHistory.technicianId': technicianId },
+          { 'repairJob.assignmentHistory.previousTechnicianId': technicianId },
+        ],
+      }),
+    );
+    expect(disputes.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shopId,
+        repairRequestId: { $in: [assignedRequestId] },
+      }),
+    );
+    expect(result.items[0]).not.toHaveProperty('internalNotes');
+  });
+
+  it('does not disclose disputes for repair requests not assigned to the technician', async () => {
+    const technicianId = new Types.ObjectId();
+    const disputeId = new Types.ObjectId();
+    users.findById.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        accountType: 'technician',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+        technicianDetails: { shopId },
+      }),
+    });
+    requests.find.mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([]),
+    });
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(
+      service.getDispute(
+        { userId: technicianId.toString(), role: 'technician' },
+        disputeId.toString(),
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(disputes.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: disputeId,
+        shopId,
+        repairRequestId: { $in: [] },
+      }),
+    );
   });
 });

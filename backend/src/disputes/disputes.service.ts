@@ -45,8 +45,10 @@ import {
 } from './schemas/dispute.schema';
 
 export type DisputeRole = 'customer' | 'shop' | 'admin';
+export type DisputeAccessRole = DisputeRole | 'technician';
 type DisputeStatus = (typeof DISPUTE_STATUSES)[number];
 type DisputeActor = { userId: string; role: DisputeRole };
+type DisputeAccessActor = { userId: string; role: DisputeAccessRole };
 type DisputeEvent = {
   from: DisputeStatus | 'NONE';
   to: DisputeStatus;
@@ -427,7 +429,10 @@ export class DisputesService {
     if (dispute.status !== 'OPEN') {
       throw new BadRequestException('Only an open dispute can be rejected.');
     }
-    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
+    const attachments = await this.validateAttachments(
+      dto.attachments ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, attachments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -460,9 +465,7 @@ export class DisputesService {
   async startReinspection(actor: DisputeActor, id: string) {
     this.assertShop(actor);
     const dispute = await this.findAccessible(actor, id);
-    if (
-      !['UNDER_REVIEW', 'ACCEPTED', 'REOPENED'].includes(dispute.status)
-    ) {
+    if (!['UNDER_REVIEW', 'ACCEPTED', 'REOPENED'].includes(dispute.status)) {
       throw new BadRequestException(
         'The shop can start reinspection only after accepting or reopening a dispute.',
       );
@@ -514,7 +517,10 @@ export class DisputesService {
         'Reinspection findings have already been submitted for this inspection.',
       );
     }
-    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
+    const attachments = await this.validateAttachments(
+      dto.attachments ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, attachments);
     const updated = await this.atomicUpdate(
       dispute,
@@ -786,7 +792,10 @@ export class DisputesService {
         'This dispute has reached its progress-history limit.',
       );
     }
-    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
+    const attachments = await this.validateAttachments(
+      dto.attachments ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, attachments);
     const updated = await this.atomicUpdate(dispute, actor, {
       $push: {
@@ -824,7 +833,10 @@ export class DisputesService {
     ) {
       throw new BadRequestException('Only active rework can be completed.');
     }
-    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
+    const attachments = await this.validateAttachments(
+      dto.attachments ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, attachments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -892,7 +904,10 @@ export class DisputesService {
         'This dispute is not awaiting customer verification.',
       );
     }
-    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
+    const attachments = await this.validateAttachments(
+      dto.attachments ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, attachments);
     const updated = await this.atomicUpdate(
       dispute,
@@ -943,7 +958,10 @@ export class DisputesService {
         'Report an unresolved issue after the shop has completed the rework.',
       );
     }
-    const attachments = await this.validateAttachments(dto.attachments ?? [], actor);
+    const attachments = await this.validateAttachments(
+      dto.attachments ?? [],
+      actor,
+    );
     this.assertConversationCapacity(dispute, false, attachments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -981,7 +999,7 @@ export class DisputesService {
     return this.visible(updated, actor.role);
   }
 
-  async listDisputes(actor: DisputeActor, query: DisputeListQueryDto) {
+  async listDisputes(actor: DisputeAccessActor, query: DisputeListQueryDto) {
     await this.assertIdentity(actor);
     const filter = await this.listFilter(actor, query);
     const page = query.page ?? 1;
@@ -1026,14 +1044,15 @@ export class DisputesService {
       this.disputes.countDocuments(filter),
     ]);
 
-    const summary = await this.disputes.aggregate([
-      {
-        $match: Object.fromEntries(
-          Object.entries(filter).filter(([key]) => key !== 'status'),
-        ),
-      },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
+    const summary: Array<{ _id: string; count: number }> =
+      await this.disputes.aggregate([
+        {
+          $match: Object.fromEntries(
+            Object.entries(filter).filter(([key]) => key !== 'status'),
+          ),
+        },
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]);
     const summaryCounts = Object.fromEntries(
       summary.map((row: { _id: string; count: number }) => [
         row._id,
@@ -1059,7 +1078,7 @@ export class DisputesService {
     };
   }
 
-  async getDispute(actor: DisputeActor, id: string) {
+  async getDispute(actor: DisputeAccessActor, id: string) {
     const dispute = await this.findAccessible(actor, id);
     const [request, customer, shop] = await Promise.all([
       this.repairRequests.findById(dispute.repairRequestId).lean(),
@@ -1122,7 +1141,7 @@ export class DisputesService {
     };
   }
 
-  async getAttachment(actor: DisputeActor, id: string, fileId: string) {
+  async getAttachment(actor: DisputeAccessActor, id: string, fileId: string) {
     const dispute = await this.findAccessible(actor, id);
     if (!Types.ObjectId.isValid(fileId)) {
       throw new NotFoundException('Attachment not found.');
@@ -1333,7 +1352,10 @@ export class DisputesService {
         'Enter the refund amount in the proposed resolution.',
       );
     }
-    const resolutionDocuments = await this.validateAttachments(dto.documents ?? [], actor);
+    const resolutionDocuments = await this.validateAttachments(
+      dto.documents ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, resolutionDocuments);
     const now = new Date();
     const updated = await this.atomicUpdate(
@@ -1544,7 +1566,10 @@ export class DisputesService {
         'Enter the refund amount in the proposed resolution.',
       );
     }
-    const completionDocuments = await this.validateAttachments(dto.documents ?? [], actor);
+    const completionDocuments = await this.validateAttachments(
+      dto.documents ?? [],
+      actor,
+    );
     this.assertAttachmentCapacity(dispute, completionDocuments);
     if (
       [
@@ -1680,12 +1705,49 @@ export class DisputesService {
     return this.visible(updated, actor.role);
   }
 
-  private async listFilter(actor: DisputeActor, query: DisputeListQueryDto) {
+  private async technicianScope(actor: DisputeAccessActor) {
+    const technicianId = this.objectId(actor.userId);
+    const technician = await this.users
+      .findById(technicianId)
+      .select('technicianDetails.shopId')
+      .lean();
+    if (!technician?.technicianDetails?.shopId) {
+      throw new ForbiddenException('Dispute access is not available.');
+    }
+    const shopId = new Types.ObjectId(
+      technician.technicianDetails.shopId.toString(),
+    );
+    const requests = await this.repairRequests
+      .find({
+        shopIds: shopId,
+        $or: [
+          { 'repairJob.activeAssignment.technicianId': technicianId },
+          { 'repairJob.assignmentHistory.technicianId': technicianId },
+          { 'repairJob.assignmentHistory.previousTechnicianId': technicianId },
+        ],
+      })
+      .select('_id')
+      .lean()
+      .exec();
+    return {
+      shopId,
+      repairRequestIds: requests.map((request) => request._id),
+    };
+  }
+
+  private async listFilter(
+    actor: DisputeAccessActor,
+    query: DisputeListQueryDto,
+  ) {
     const filter: Record<string, unknown> = {};
     if (actor.role === 'customer') {
       filter.customerId = this.objectId(actor.userId);
     } else if (actor.role === 'shop') {
       filter.shopId = this.objectId(actor.userId);
+    } else if (actor.role === 'technician') {
+      const scope = await this.technicianScope(actor);
+      filter.shopId = scope.shopId;
+      filter.repairRequestId = { $in: scope.repairRequestIds };
     }
     if (query.status) filter.status = query.status;
     if (query.category) filter.category = query.category;
@@ -1753,7 +1815,7 @@ export class DisputesService {
     return date;
   }
 
-  private async findAccessible(actor: DisputeActor, id: string) {
+  private async findAccessible(actor: DisputeAccessActor, id: string) {
     await this.assertIdentity(actor);
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException('Dispute not found');
@@ -1762,6 +1824,11 @@ export class DisputesService {
     if (actor.role === 'customer')
       filter.customerId = this.objectId(actor.userId);
     if (actor.role === 'shop') filter.shopId = this.objectId(actor.userId);
+    if (actor.role === 'technician') {
+      const scope = await this.technicianScope(actor);
+      filter.shopId = scope.shopId;
+      filter.repairRequestId = { $in: scope.repairRequestIds };
+    }
     const dispute = await this.disputes.findOne(filter).exec();
     if (!dispute) {
       throw new NotFoundException('Dispute not found');
@@ -1875,8 +1942,7 @@ export class DisputesService {
     const totalLength = [...existing, ...additions].reduce(
       (sum, attachment) =>
         sum +
-        (attachment.size ??
-          Buffer.byteLength(attachment.data ?? '', 'utf8')),
+        (attachment.size ?? Buffer.byteLength(attachment.data ?? '', 'utf8')),
       0,
     );
     if (totalLength > MAX_ATTACHMENT_DATA_LENGTH) {
@@ -2004,17 +2070,22 @@ export class DisputesService {
     }
   }
 
-  private async assertIdentity(actor: DisputeActor) {
+  private async assertIdentity(actor: DisputeAccessActor) {
     const user = await this.users
       .findById(this.objectId(actor.userId))
-      .select('accountType accountStatus accountLifecycleStatus')
+      .select(
+        'accountType accountStatus accountLifecycleStatus technicianDetails.shopId',
+      )
       .lean();
+    const active =
+      !!user &&
+      user.accountType === actor.role &&
+      user.accountStatus === 'active' &&
+      (user.accountLifecycleStatus === undefined ||
+        user.accountLifecycleStatus === 'active');
     if (
-      !user ||
-      user.accountType !== actor.role ||
-      user.accountStatus !== 'active' ||
-      (user.accountLifecycleStatus !== undefined &&
-        user.accountLifecycleStatus !== 'active')
+      !active ||
+      (actor.role === 'technician' && !user?.technicianDetails?.shopId)
     ) {
       throw new ForbiddenException('Dispute access is not available.');
     }
@@ -2034,7 +2105,7 @@ export class DisputesService {
 
   private visible(
     dispute: Dispute | (Record<string, unknown> & { _id: Types.ObjectId }),
-    role: DisputeRole,
+    role: DisputeAccessRole,
   ) {
     const document = dispute as { toObject?: () => Record<string, unknown> };
     const result = document.toObject ? document.toObject() : { ...dispute };
@@ -2115,7 +2186,7 @@ export class DisputesService {
   private findAttachmentReference(
     dispute: Dispute,
     fileId: string,
-    role: 'customer' | 'shop' | 'admin',
+    role: DisputeAccessRole,
   ): DisputeAttachment | undefined {
     const attachments = [
       ...dispute.attachments,
@@ -2128,8 +2199,12 @@ export class DisputesService {
       ...(dispute.resolution?.completionDocuments ?? []),
       ...(dispute.reinspections ?? []).flatMap((entry) => entry.attachments),
       ...(dispute.reworkProgress ?? []).flatMap((entry) => entry.attachments),
-      ...(dispute.reworkCompletions ?? []).flatMap((entry) => entry.attachments),
-      ...(dispute.verificationHistory ?? []).flatMap((entry) => entry.attachments),
+      ...(dispute.reworkCompletions ?? []).flatMap(
+        (entry) => entry.attachments,
+      ),
+      ...(dispute.verificationHistory ?? []).flatMap(
+        (entry) => entry.attachments,
+      ),
     ];
     return attachments.find(
       (attachment) => attachment.fileId?.toString() === fileId,

@@ -12,7 +12,7 @@ import {
   TechnicianRepairDetails,
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
-import { DisputeRole, RepairDispute } from '../models/disputes.models';
+import { DisputeAccessRole, RepairDispute } from '../models/disputes.models';
 import {
   CustomerJobCategory,
   JobAttachment,
@@ -105,9 +105,13 @@ export class JobSharedService {
     return this.customer.getRepairJob(id);
   }
 
+  disputedJobs(role: DisputeAccessRole): Observable<JobListItem[]> {
+    return this.allDisputes(role).pipe(map((items) => items.map(disputeToJobListItem)));
+  }
+
   shopJobs(category: ShopJobCategory): Observable<JobListItem[]> {
     if (category === 'disputed') {
-      return this.allDisputes('shop').pipe(map((items) => items.map(disputeToJobListItem)));
+      return this.disputedJobs('shop');
     }
     if (category === 'assigned') {
       return this.technicians
@@ -226,7 +230,7 @@ export class JobSharedService {
     );
   }
 
-  private allDisputes(role: DisputeRole): Observable<RepairDispute[]> {
+  private allDisputes(role: DisputeAccessRole): Observable<RepairDispute[]> {
     const filters = { page: 1, limit: PAGE_LIMIT } as const;
     return this.disputes.list(role, filters).pipe(
       expand((result) =>

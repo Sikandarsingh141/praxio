@@ -515,6 +515,22 @@ export const routes: Routes = [
         data: { accountType: 'technician', technicianView: 'jobs' },
       },
       {
+        path: 'jobs/disputed-jobs',
+        loadComponent: () =>
+          import('./shared/components/dispute-center/dispute-center.component').then(
+            (module) => module.DisputeCenterComponent,
+          ),
+        data: { accountType: 'technician', technicianView: 'disputed' },
+      },
+      {
+        path: 'jobs/disputed-jobs/:id',
+        loadComponent: () =>
+          import('./shop-technician/jobs/disputed-jobs/detail/technician-disputed-job-detail.page').then(
+            (module) => module.TechnicianDisputedJobDetailPage,
+          ),
+        data: { accountType: 'technician', technicianView: 'disputed' },
+      },
+      {
         path: 'jobs/:id',
         loadComponent: () =>
           import('./technician/assigned-jobs/shop-technician-portal.page').then(

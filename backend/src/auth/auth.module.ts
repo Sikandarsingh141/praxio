@@ -101,6 +101,6 @@ import {
     CustomerPortalService,
     TechniciansService,
   ],
-  exports: [JwtAuthGuard, ShopPortalGuard, JwtModule],
+  exports: [JwtAuthGuard, ShopPortalGuard, TechnicianPortalGuard, JwtModule],
 })
 export class AuthModule {}

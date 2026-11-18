@@ -20,4 +20,3 @@ export class ShopDisputedJobsListingPage extends ShopJobsListingPageBase {
   readonly description = 'Review repair requests with an open dispute.';
   readonly detailRoute = '/shop/jobs/disputed-jobs';
 }
-

@@ -304,7 +304,7 @@
                   <p>Start the conversation to discuss and resolve this dispute.</p>
                 </div>
               }
-              @if (canSendMessage(dispute)) {
+              @if (!isTechnician && canSendMessage(dispute)) {
                 <form class="conversation-compose" (ngSubmit)="sendMessage(dispute)">
                   <label class="conversation-message-field">
                     <span>Add a message</span>
@@ -359,7 +359,7 @@
           </section>
         </section>
 
-          @if (canReviewCustomerResponse(dispute)) {
+          @if (!isTechnician && canReviewCustomerResponse(dispute)) {
             <section class="panel action-panel">
               <h2 class="section-heading">Review the customer's response</h2>
               @if (dispute.resolution.description) {
@@ -398,7 +398,11 @@
             </section>
           }
 
-          @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
+          @if (
+            !isTechnician &&
+            dispute.status === 'REINSPECTION_IN_PROGRESS' &&
+            canStartRework(dispute)
+          ) {
             <section class="panel action-panel">
               <h2 class="section-heading">Proceed with approved rework</h2>
               <p>Start the approved repair work on the device.</p>
@@ -416,6 +420,7 @@
           }
 
           @if (
+            !isTechnician &&
             dispute.additionalCharges.length &&
             dispute.additionalCharges[dispute.additionalCharges.length - 1].status === 'accepted' &&
             canStartRework(dispute) &&
@@ -439,7 +444,7 @@
       </div>
 
       <aside class="customer-detail-sidebar">
-        @if (dispute.status === 'OPEN') {
+        @if (!isTechnician && dispute.status === 'OPEN') {
           <section class="detail-section customer-detail-sidebar-card sidebar-action-card" aria-label="Dispute decision actions">
             <div class="sidebar-action-copy">
               <h2>Dispute decision</h2>
@@ -463,7 +468,7 @@
             </div>
           </section>
         }
-        @if (canProposeResolution(dispute) || canReviewDispute(dispute)) {
+        @if (!isTechnician && (canProposeResolution(dispute) || canReviewDispute(dispute))) {
           <section class="detail-section customer-detail-sidebar-card sidebar-action-card resolution-action-card" aria-label="Resolution actions">
             <div class="sidebar-action-copy">
               <h2>Resolution actions</h2>
@@ -491,7 +496,7 @@
             </div>
           </section>
         }
-        @if (canSubmitReinspection(dispute)) {
+        @if (!isTechnician && canSubmitReinspection(dispute)) {
           <section class="detail-section customer-detail-sidebar-card sidebar-action-card reinspection-submit-action-card" aria-label="Reinspection submission actions">
             <div class="sidebar-action-copy">
               <h2>Reinspection submission</h2>
@@ -557,7 +562,7 @@
             </div>
           </section>
         }
-        @if (canUpdateRework(dispute)) {
+        @if (!isTechnician && canUpdateRework(dispute)) {
           <section class="detail-section customer-detail-sidebar-card sidebar-action-card rework-action-card" aria-label="Rework actions">
             <div class="sidebar-action-copy">
               <h2>Rework actions</h2>
@@ -583,7 +588,7 @@
             </div>
           </section>
         }
-        @if (canStartReinspection(dispute)) {
+        @if (!isTechnician && canStartReinspection(dispute)) {
           <section class="detail-section customer-detail-sidebar-card sidebar-action-card reinspection-action-card" aria-label="Reinspection actions">
             <div class="sidebar-action-copy">
               <h2>Start reinspection</h2>
@@ -651,7 +656,7 @@
       </aside>
     </div>
 
-    @if (proposeResolutionModalOpen()) {
+    @if (!isTechnician && proposeResolutionModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeProposeResolutionModal()">
         <section
           class="issue-modal"
@@ -754,7 +759,7 @@
       </div>
     }
 
-    @if (reviewDisputeModalOpen()) {
+    @if (!isTechnician && reviewDisputeModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeReviewDisputeModal()">
         <section
           class="issue-modal"
@@ -839,7 +844,7 @@
       </div>
     }
 
-    @if (acceptDisputeModalOpen()) {
+    @if (!isTechnician && acceptDisputeModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeAcceptDisputeModal()">
         <section
           class="issue-modal issue-modal-compact"
@@ -898,7 +903,7 @@
       </div>
     }
 
-    @if (rejectDisputeModalOpen()) {
+    @if (!isTechnician && rejectDisputeModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeRejectDisputeModal()">
         <section
           class="issue-modal"
@@ -993,7 +998,7 @@
       </div>
     }
 
-    @if (reinspectionModalOpen()) {
+    @if (!isTechnician && reinspectionModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeReinspectionModal()">
         <section
           class="issue-modal issue-modal-wide"
@@ -1098,7 +1103,7 @@
       </div>
     }
 
-    @if (additionalChargesModalOpen()) {
+    @if (!isTechnician && additionalChargesModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeAdditionalChargesModal()">
         <section
           class="issue-modal issue-modal-wide"
@@ -1210,7 +1215,7 @@
       </div>
     }
 
-    @if (reworkProgressModalOpen()) {
+    @if (!isTechnician && reworkProgressModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeReworkProgressModal()">
         <section
           class="issue-modal issue-modal-wide"
@@ -1295,7 +1300,7 @@
       </div>
     }
 
-    @if (completeReworkModalOpen()) {
+    @if (!isTechnician && completeReworkModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeCompleteReworkModal()">
         <section
           class="issue-modal issue-modal-wide"
@@ -1419,7 +1424,7 @@
       </div>
     }
 
-    @if (assignmentModalOpen()) {
+    @if (!isTechnician && assignmentModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeAssignment()">
         <section
           class="issue-modal issue-modal-wide"

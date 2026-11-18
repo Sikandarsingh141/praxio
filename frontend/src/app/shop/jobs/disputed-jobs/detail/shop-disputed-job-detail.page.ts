@@ -20,7 +20,10 @@ import type { RepairRoute } from '../../../../shared/models/repair-route.models'
 import { DisputesService } from '../../../../shared/services/disputes.service';
 import type { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../../repair-requests/shop-repair-requests.service';
-import type { Technician } from '../../../technicians/technicians.models';
+import type {
+  Technician,
+  TechnicianRepairDetails,
+} from '../../../technicians/technicians.models';
 import { TechniciansService } from '../../../technicians/technicians.service';
 
 type ShopDisputeAttachmentTarget =
@@ -53,7 +56,9 @@ export class ShopDisputedJobDetailPage
   private readonly technicians = inject(TechniciansService);
   private readonly authService = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  readonly isTechnician = this.route.snapshot.data['accountType'] === 'technician';
   protected readonly repairRequest = signal<ShopRepairRequest | null>(null);
+  readonly technicianJob = signal<TechnicianRepairDetails | null>(null);
   readonly shopLocation = signal<MapCoordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
@@ -81,8 +86,12 @@ export class ShopDisputedJobDetailPage
   readonly assignmentNote = signal('');
   readonly assignmentReason = signal('');
   readonly directionsLoader = (requestId: string): Observable<RepairRoute> =>
-    this.repairRequests.getDirections(requestId);
-  readonly backRoute = '/shop/jobs/disputed-jobs';
+    this.isTechnician
+      ? this.technicians.myJobDirections(requestId)
+      : this.repairRequests.getDirections(requestId);
+  readonly backRoute = this.isTechnician
+    ? '/technician/jobs/disputed-jobs'
+    : '/shop/jobs/disputed-jobs';
   readonly backLabel = 'Issue Resolution';
   readonly pageTitle = 'Issue Resolution Details';
   message = '';
@@ -144,6 +153,7 @@ export class ShopDisputedJobDetailPage
 
   override ngOnInit(): void {
     super.ngOnInit();
+    if (this.isTechnician) return;
     this.shopLocationLoading.set(true);
     this.authService
       .getMyShopProfile()
@@ -163,8 +173,8 @@ export class ShopDisputedJobDetailPage
   }
 
   protected override loadRecord(id: string): Observable<RepairDispute> {
-    return this.disputes.get('shop', id).pipe(
-      tap((dispute) => this.loadCustomerLocation(dispute.repairRequestId)),
+    return this.disputes.get(this.isTechnician ? 'technician' : 'shop', id).pipe(
+      tap((dispute) => this.loadRepairContext(dispute.repairRequestId)),
     );
   }
 
@@ -198,6 +208,15 @@ export class ShopDisputedJobDetailPage
   }
 
   customerName(dispute: RepairDispute): string {
+    if (this.isTechnician) {
+      const job = this.technicianJob();
+      return (
+        job?.customerInfo?.name?.trim() ||
+        job?.customer?.trim() ||
+        dispute.parties?.customer?.name?.trim() ||
+        'Customer'
+      );
+    }
     const customer = this.repairRequest()?.customer;
     const name =
       customer?.displayName ||
@@ -207,6 +226,9 @@ export class ShopDisputedJobDetailPage
   }
 
   customerEmail(dispute: RepairDispute): string {
+    if (this.isTechnician) {
+      return this.technicianJob()?.customerInfo?.email || 'Not provided';
+    }
     return (
       this.repairRequest()?.customer.email ||
       dispute.parties?.customer?.email ||
@@ -307,6 +329,7 @@ export class ShopDisputedJobDetailPage
   }
 
   canSendMessage(dispute: RepairDispute): boolean {
+    if (this.isTechnician) return false;
     return dispute.status !== 'CLOSED' && dispute.status !== 'RESOLVED';
   }
 
@@ -995,6 +1018,47 @@ export class ShopDisputedJobDetailPage
       location.longitude >= -180 &&
       location.longitude <= 180
     );
+  }
+
+  private loadRepairContext(requestId: string): void {
+    if (this.isTechnician) {
+      this.loadTechnicianRepairContext(requestId);
+      return;
+    }
+    this.loadCustomerLocation(requestId);
+  }
+
+  private loadTechnicianRepairContext(requestId: string): void {
+    this.technicianJob.set(null);
+    this.repairRequest.set(null);
+    this.customerCoordinates.set(null);
+    this.shopLocation.set(null);
+    this.mapError.set('');
+    this.shopLocationError.set('');
+    this.mapLoading.set(true);
+    this.shopLocationLoading.set(true);
+    this.technicians
+      .myJobDetails(requestId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (job) => {
+          this.technicianJob.set(job);
+          this.customerCoordinates.set(job.customerInfo?.location ?? job.location ?? null);
+          this.shopLocation.set(job.shop?.location ?? null);
+          this.mapLoading.set(false);
+          this.shopLocationLoading.set(false);
+        },
+        error: (error: unknown) => {
+          const message = this.jobs.errorMessage(
+            error,
+            'Repair details could not be loaded.',
+          );
+          this.mapError.set(message);
+          this.shopLocationError.set(message);
+          this.mapLoading.set(false);
+          this.shopLocationLoading.set(false);
+        },
+      });
   }
 
   private loadCustomerLocation(requestId: string): void {

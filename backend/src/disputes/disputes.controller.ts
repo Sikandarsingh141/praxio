@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ShopPortalGuard } from '../auth/shop-portal.guard';
+import { TechnicianPortalGuard } from '../auth/technician-portal.guard';
 import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 import { AdminRoleGuard } from '../admin/admin-role.guard';
 import {
@@ -35,11 +36,11 @@ import {
   ShopDisputeResponseDto,
 } from './dto/dispute.dto';
 import { DisputesService } from './disputes.service';
-import type { DisputeRole } from './disputes.service';
+import type { DisputeAccessRole } from './disputes.service';
 
 async function attachmentFile(
   disputes: DisputesService,
-  actor: { userId: string; role: DisputeRole },
+  actor: { userId: string; role: DisputeAccessRole },
   id: string,
   fileId: string,
 ): Promise<StreamableFile> {
@@ -601,6 +602,55 @@ export class AdminDisputesController {
         dto,
       ),
     };
+  }
+
+  private userId(request: AuthenticatedRequest): string {
+    const userId = request.auth?.userId;
+    if (!userId) throw new UnauthorizedException('Authentication required');
+    return userId;
+  }
+}
+
+@Controller('technician/disputes')
+@UseGuards(JwtAuthGuard, TechnicianPortalGuard)
+export class TechnicianDisputesController {
+  constructor(private readonly disputes: DisputesService) {}
+
+  @Get()
+  async list(
+    @Req() request: AuthenticatedRequest,
+    @Query() query: DisputeListQueryDto,
+  ) {
+    return {
+      data: await this.disputes.listDisputes(
+        { userId: this.userId(request), role: 'technician' },
+        query,
+      ),
+    };
+  }
+
+  @Get(':id')
+  async detail(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return {
+      data: await this.disputes.getDispute(
+        { userId: this.userId(request), role: 'technician' },
+        id,
+      ),
+    };
+  }
+
+  @Get(':id/attachments/:fileId')
+  async attachment(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ): Promise<StreamableFile> {
+    return attachmentFile(
+      this.disputes,
+      { userId: this.userId(request), role: 'technician' },
+      id,
+      fileId,
+    );
   }
 
   private userId(request: AuthenticatedRequest): string {

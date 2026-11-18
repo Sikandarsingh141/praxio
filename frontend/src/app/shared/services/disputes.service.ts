@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import { ApiEnvelope } from '../../core/auth/auth.models';
 import { SKIP_GLOBAL_LOADER } from '../../core/loading/global-loader.context';
 import {
+  DisputeAccessRole,
   DisputeAttachment,
   DisputeListFilters,
   DisputeListResult,
@@ -21,7 +22,7 @@ export class DisputesService {
   constructor(private readonly http: HttpClient) {}
 
   list(
-    role: DisputeRole,
+    role: DisputeAccessRole,
     filters: DisputeListFilters = {},
     options: { silent?: boolean } = {},
   ): Observable<DisputeListResult> {
@@ -39,7 +40,7 @@ export class DisputesService {
       .pipe(map((response) => response.data));
   }
 
-  get(role: DisputeRole, id: string): Observable<RepairDispute> {
+  get(role: DisputeAccessRole, id: string): Observable<RepairDispute> {
     return this.http
       .get<ApiEnvelope<RepairDispute>>(`${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}`)
       .pipe(map((response) => response.data));
