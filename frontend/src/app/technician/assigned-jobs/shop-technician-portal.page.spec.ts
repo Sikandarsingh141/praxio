@@ -132,6 +132,7 @@ describe('ShopTechnicianPortalPage', () => {
     expect(component.dashboard()?.kpis.totalAssigned).toBe(1);
     expect(component.dashboard()?.kpis.activeJobs).toBe(1);
     expect(component.dashboard()?.currentlyActiveJob?.appliance).toBe('Split AC Servicing');
+    expect(fixture.nativeElement.querySelector('.page.dashboard-page')).not.toBeNull();
   });
 
   it('should compute real KPI counts based on live data and zero fallbacks', () => {
