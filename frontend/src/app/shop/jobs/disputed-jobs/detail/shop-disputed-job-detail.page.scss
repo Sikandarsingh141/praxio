@@ -429,6 +429,32 @@
   }
 }
 
+.sidebar-rework-start {
+  display: grid;
+  gap: 0.4rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e6ece8;
+
+  h3 {
+    margin: 0;
+    color: #263b32;
+    font-size: 0.82rem;
+  }
+
+  p {
+    margin: 0;
+    color: #6f7e73;
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+
+  .button {
+    width: 100%;
+    min-height: 2.35rem;
+    font-size: 0.78rem;
+  }
+}
+
 .issue-modal-backdrop {
   position: fixed;
   z-index: 1400;

@@ -194,7 +194,9 @@ textarea:focus {
   color: #815b10;
 }
 
-.status[data-status='REJECTED'] {
+.status[data-status*='REJECT'],
+.job-status[data-status*='REJECT'],
+.detail-status[data-status*='REJECT'] {
   background: #fff0ed;
   color: #9c3d31;
 }

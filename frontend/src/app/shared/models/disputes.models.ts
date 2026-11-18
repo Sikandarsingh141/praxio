@@ -171,7 +171,14 @@ export interface RepairDispute {
   createdAt: string;
   updatedAt: string;
   parties?: {
-    customer: { id: string; name?: string; email?: string } | null;
+    customer:
+      | {
+          id: string;
+          name?: string;
+          email?: string;
+          profileImageUrl?: string;
+        }
+      | null;
     shop: { id: string; name?: string; email?: string } | null;
   };
   repair?: {

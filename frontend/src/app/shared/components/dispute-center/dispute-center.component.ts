@@ -360,6 +360,17 @@ export class DisputeCenterComponent implements OnInit {
     return [baseRoute, disputeId];
   }
 
+  customerInitials(name?: string): string {
+    const initials = (name ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join('');
+    return initials.toUpperCase() || 'CU';
+  }
+
   disputeListLink(): string[] {
     const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
     const roleListRoute = `/${this.role()}/jobs/disputed-jobs`;

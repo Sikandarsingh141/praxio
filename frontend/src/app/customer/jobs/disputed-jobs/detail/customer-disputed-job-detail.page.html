@@ -446,78 +446,6 @@
           </section>
         </section>
 
-        @if (canReviewCompletedRework(dispute)) {
-          <section class="customer-response-panel">
-            <h2 class="section-heading">Please inspect and test your device</h2>
-            <p>The shop reports that the rework is complete. Confirm only if the issue is resolved.</p>
-            <label class="customer-response-field">
-              <span>Confirm resolution note</span>
-              <textarea
-                [(ngModel)]="verificationNotes"
-                name="verificationNotes"
-                rows="2"
-                maxlength="2000"
-                [disabled]="saving()"
-              ></textarea>
-            </label>
-            <button
-              class="job-button"
-              type="button"
-              [disabled]="saving() || !verificationNotes.trim()"
-              (click)="confirmResolution(dispute)"
-            >
-              Confirm issue resolved
-            </button>
-            <hr />
-            <h3>Issue still exists?</h3>
-            <label class="customer-response-field">
-              <span>Describe what is still wrong</span>
-              <textarea
-                [(ngModel)]="unresolvedNotes"
-                name="verificationUnresolvedNotes"
-                rows="3"
-                maxlength="2000"
-                [disabled]="saving()"
-              ></textarea>
-            </label>
-            <label class="response-attach-button">
-              <span>Additional images/documents</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                multiple
-                [disabled]="saving()"
-                (change)="onResponseFilesSelected($event)"
-              />
-            </label>
-            @if (responseAttachments.length) {
-              <ul class="selected-attachments">
-                @for (file of responseAttachments; track file.name; let index = $index) {
-                  <li>
-                    <span>{{ file.name }}</span>
-                    <button
-                      type="button"
-                      class="remove-attachment"
-                      [disabled]="saving()"
-                      (click)="removeResponseAttachment(index)"
-                    >
-                      Remove
-                    </button>
-                  </li>
-                }
-              </ul>
-            }
-            <button
-              class="job-button customer-danger-button"
-              type="button"
-              [disabled]="saving() || !unresolvedNotes.trim()"
-              (click)="reportUnresolved(dispute)"
-            >
-              Report issue still exists
-            </button>
-          </section>
-        }
-
         @if (showUnresolvedResponse(dispute)) {
           <section class="customer-response-panel">
             <h2 class="section-heading">
@@ -619,6 +547,27 @@
                   Reinspection submission
                 </button>
               }
+            </div>
+          </section>
+        }
+        @if (canReviewCompletedRework(dispute)) {
+          <section
+            class="detail-section customer-detail-sidebar-card customer-response-action-card"
+            aria-label="Device inspection actions"
+          >
+            <div class="customer-sidebar-action-copy">
+              <h2>Please inspect and test your device</h2>
+              <p>Confirm the repair only after you have tested the device.</p>
+            </div>
+            <div class="customer-sidebar-action-buttons">
+              <button
+                class="job-button"
+                type="button"
+                [disabled]="saving()"
+                (click)="openInspectionTestModal()"
+              >
+                Inspect and test device
+              </button>
             </div>
           </section>
         }
@@ -776,6 +725,175 @@
                 (click)="decideResolution(dispute, 'reject')"
               >
                 Reject resolution
+              </button>
+            </footer>
+          </div>
+        </section>
+      </div>
+    }
+
+    @if (inspectionTestModalOpen()) {
+      <div
+        class="issue-modal-backdrop"
+        role="presentation"
+        (click)="closeInspectionTestModal()"
+      >
+        <section
+          class="issue-modal issue-modal-wide inspection-test-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="inspection-test-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="inspection-test-title">Please inspect and test your device</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close device inspection"
+              (click)="closeInspectionTestModal()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="issue-modal-form">
+            <p class="issue-modal-intro">
+              The shop reports that the rework is complete. Confirm only if the issue is resolved.
+            </p>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section inspection-choice-group">
+              <p>After testing your device, please choose an option:</p>
+              <label
+                class="inspection-choice-option"
+                [class.is-selected]="inspectionChoice === 'resolved'"
+              >
+                <input
+                  type="radio"
+                  name="inspectionChoice"
+                  value="resolved"
+                  [(ngModel)]="inspectionChoice"
+                  [disabled]="saving()"
+                />
+                <span class="inspection-choice-icon inspection-choice-icon-resolved" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m6 12.5 4 4 8-9" />
+                  </svg>
+                </span>
+                <span>
+                  <strong>Issue is resolved</strong>
+                  <small>The device is working as expected.</small>
+                </span>
+              </label>
+              <label
+                class="inspection-choice-option"
+                [class.is-selected]="inspectionChoice === 'unresolved'"
+              >
+                <input
+                  type="radio"
+                  name="inspectionChoice"
+                  value="unresolved"
+                  [(ngModel)]="inspectionChoice"
+                  [disabled]="saving()"
+                />
+                <span class="inspection-choice-icon inspection-choice-icon-unresolved" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3.5 22 20.5H2L12 3.5Z" />
+                    <path d="M12 9v5m0 3h.01" />
+                  </svg>
+                </span>
+                <span>
+                  <strong>Issue still exists</strong>
+                  <small>The problem is not yet resolved.</small>
+                </span>
+              </label>
+            </div>
+            @if (inspectionChoice === 'resolved') {
+              <form
+                class="issue-modal-section inspection-choice-form"
+                (ngSubmit)="confirmResolution(dispute)"
+              >
+                <h3>Confirm resolution note</h3>
+                <label>
+                  <textarea
+                    [(ngModel)]="verificationNotes"
+                    name="verificationNotes"
+                    rows="2"
+                    maxlength="2000"
+                    placeholder="Confirm that the device works as expected."
+                    [disabled]="saving()"
+                    required
+                  ></textarea>
+                </label>
+                <button
+                  class="job-button inspection-confirm-button"
+                  type="submit"
+                  [disabled]="saving() || !verificationNotes.trim()"
+                >
+                  Confirm issue resolved
+                </button>
+              </form>
+            }
+            @if (inspectionChoice === 'unresolved') {
+              <form
+                class="issue-modal-section inspection-choice-form"
+                (ngSubmit)="reportUnresolved(dispute)"
+              >
+                <h3>Describe the issue</h3>
+                <label>
+                  <textarea
+                    [(ngModel)]="unresolvedNotes"
+                    name="inspectionUnresolvedNotes"
+                    rows="3"
+                    maxlength="2000"
+                    placeholder="Describe what is still not working."
+                    [disabled]="saving()"
+                    required
+                  ></textarea>
+                </label>
+                <label class="response-attach-button">
+                  <span>Additional images/documents (optional)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    multiple
+                    [disabled]="saving()"
+                    (change)="onResponseFilesSelected($event)"
+                  />
+                </label>
+                @if (responseAttachments.length) {
+                  <ul class="selected-attachments">
+                    @for (file of responseAttachments; track file.name; let index = $index) {
+                      <li>
+                        <span>{{ file.name }}</span>
+                        <button
+                          type="button"
+                          class="remove-attachment"
+                          [disabled]="saving()"
+                          (click)="removeResponseAttachment(index)"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+                <button
+                  class="job-button customer-danger-button"
+                  type="submit"
+                  [disabled]="saving() || !unresolvedNotes.trim()"
+                >
+                  Report issue still exists
+                </button>
+              </form>
+            }
+            <footer class="issue-modal-footer">
+              <button type="button" class="job-button" (click)="closeInspectionTestModal()">
+                Close
               </button>
             </footer>
           </div>

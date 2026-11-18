@@ -530,6 +530,11 @@
       color: #1754a0;
     }
 
+    .detail-status[data-status*='reject'] {
+      background: #fff0ed;
+      color: #9c3d31;
+    }
+
     .status-dot {
       width: 0.5rem;
       height: 0.5rem;
@@ -812,6 +817,11 @@
       font-size: 0.71rem;
       font-weight: 650;
       overflow-wrap: anywhere;
+    }
+
+    .sidebar-facts dd[data-status*='reject'] {
+      color: #9c3d31;
+      font-weight: 750;
     }
 
     .customer-map-link,

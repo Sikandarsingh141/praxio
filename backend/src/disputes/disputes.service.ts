@@ -1059,9 +1059,13 @@ export class DisputesService {
         row.count,
       ]),
     );
+    const listedItems =
+      actor.role === 'shop'
+        ? await this.shopDisputeListItems(items)
+        : items.map((item) => this.visible(item, actor.role));
 
     return {
-      items: items.map((item) => this.visible(item, actor.role)),
+      items: listedItems,
       pagination: {
         page,
         limit,
@@ -2114,6 +2118,65 @@ export class DisputesService {
       delete result.internalNotes;
     }
     return result;
+  }
+
+  private async shopDisputeListItems(items: Dispute[]) {
+    if (!items.length) {
+      return [];
+    }
+
+    const [repairs, customers] = await Promise.all([
+      this.repairRequests
+        .find({ _id: { $in: items.map((item) => item.repairRequestId) } })
+        .select('_id appliance brand model description photos status createdAt')
+        .lean()
+        .exec(),
+      this.users
+        .find({ _id: { $in: items.map((item) => item.customerId) } })
+        .select('_id firstName lastName fullName profileImageData')
+        .lean()
+        .exec(),
+    ]);
+    const repairsById = new Map(
+      repairs.map((repair) => [repair._id.toString(), repair]),
+    );
+    const customersById = new Map(
+      customers.map((customer) => [customer._id.toString(), customer]),
+    );
+
+    return items.map((item) => {
+      const repair = repairsById.get(item.repairRequestId.toString());
+      const customer = customersById.get(item.customerId.toString());
+      return {
+        ...this.visible(item, 'shop'),
+        parties: {
+          customer: customer
+            ? {
+                id: customer._id.toString(),
+                name: formatUserName(customer),
+                ...(customer.profileImageData
+                  ? { profileImageUrl: customer.profileImageData }
+                  : {}),
+              }
+            : null,
+          shop: null,
+        },
+        ...(repair
+          ? {
+              repair: {
+                id: repair._id.toString(),
+                appliance: repair.appliance,
+                brand: repair.brand,
+                model: repair.model,
+                description: repair.description,
+                photos: repair.photos?.slice(0, 1) ?? [],
+                status: repair.status,
+                createdAt: repair.createdAt,
+              },
+            }
+          : {}),
+      };
+    });
   }
 
   private async validateAttachments(

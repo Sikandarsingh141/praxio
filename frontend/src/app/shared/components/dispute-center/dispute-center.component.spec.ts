@@ -39,7 +39,11 @@ describe('DisputeCenterComponent customer views', () => {
       createdAt: '2026-11-17T00:00:00.000Z',
       updatedAt: '2026-11-17T00:00:00.000Z',
       parties: {
-        customer: { id: 'customer-id', name: 'Customer' },
+        customer: {
+          id: 'customer-id',
+          name: 'Taylor Morgan',
+          profileImageUrl: 'data:image/png;base64,profile',
+        },
         shop: { id: 'shop-id', name: 'Repair Shop' },
       },
       repair: {
@@ -101,6 +105,20 @@ describe('DisputeCenterComponent customer views', () => {
     ).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.customer-dispute-table')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('app-job-pagination')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('.dispute-device-copy')?.textContent,
+    ).toContain('Air conditioner');
+    expect(
+      fixture.nativeElement.querySelector('.dispute-device-copy')?.textContent,
+    ).toContain('Fixroa');
+    expect(
+      fixture.nativeElement.querySelector('.dispute-customer-name')?.textContent,
+    ).toContain('Taylor Morgan');
+    expect(
+      fixture.nativeElement
+        .querySelector('.dispute-customer-avatar')
+        ?.getAttribute('src'),
+    ).toBe('data:image/png;base64,profile');
     expect(
       (fixture.nativeElement.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,
     ).toContain('/shop/disputes/dispute-id');

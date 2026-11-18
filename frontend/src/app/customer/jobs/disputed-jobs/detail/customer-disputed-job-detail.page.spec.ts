@@ -80,9 +80,11 @@ describe('CustomerDisputedJobDetailPage', () => {
       'sendMessage',
       'reportUnresolved',
       'decideResolution',
+      'confirmResolution',
     ]);
     disputes.get.and.returnValue(of(dispute));
     disputes.decideResolution.and.returnValue(of(dispute));
+    disputes.confirmResolution.and.returnValue(of(dispute));
     const sentMessage = 'The issue is still happening.';
     disputes.sendMessage.and.returnValue(
       of({
@@ -243,6 +245,103 @@ describe('CustomerDisputedJobDetailPage', () => {
       reason,
     });
     expect(component.reviewResolutionModalOpen()).toBeFalse();
+
+    const completedDispute: RepairDispute = {
+      ...dispute,
+      status: 'CUSTOMER_VERIFICATION_PENDING',
+      reworkCompletions: [
+        {
+          workPerformed: 'Component replacement',
+          testingResults: 'Device powers on and charges correctly.',
+          tested: true,
+          attachments: [],
+          completedAt: '2025-01-04T10:00:00.000Z',
+        },
+      ],
+    };
+    component.record.set(completedDispute);
+    harness.fixture.detectChanges();
+    const sidebarCards = Array.from(page.querySelectorAll('.customer-detail-sidebar-card'));
+    const inspectionCardIndex = sidebarCards.findIndex(
+      (card) => card.getAttribute('aria-label') === 'Device inspection actions',
+    );
+    const disputeInfoIndex = sidebarCards.findIndex(
+      (card) => card.getAttribute('aria-label') === 'Dispute summary',
+    );
+    expect(inspectionCardIndex).toBeGreaterThan(-1);
+    expect(inspectionCardIndex).toBeLessThan(disputeInfoIndex);
+    const inspectButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.customer-response-action-card button'),
+    ).find((button) => button.textContent?.includes('Inspect and test device'));
+    expect(inspectButton).not.toBeUndefined();
+    inspectButton!.click();
+    harness.fixture.detectChanges();
+    expect(page.querySelector('#inspection-test-title')).not.toBeNull();
+    expect(page.textContent).toContain('Please inspect and test your device');
+    let inspectionModal = page.querySelector(
+      '.issue-modal[aria-labelledby="inspection-test-title"]',
+    );
+    expect(inspectionModal?.querySelectorAll('form.inspection-choice-form').length).toBe(0);
+    const resolvedChoice = page.querySelector<HTMLInputElement>(
+      'input[name="inspectionChoice"][value="resolved"]',
+    );
+    expect(resolvedChoice).not.toBeNull();
+    expect(page.querySelector('textarea[name="verificationNotes"]')).toBeNull();
+    expect(page.querySelector('textarea[name="inspectionUnresolvedNotes"]')).toBeNull();
+    resolvedChoice!.click();
+    harness.fixture.detectChanges();
+    const verificationInput = page.querySelector<HTMLTextAreaElement>(
+      'textarea[name="verificationNotes"]',
+    );
+    expect(verificationInput?.getAttribute('placeholder')).toBe(
+      'Confirm that the device works as expected.',
+    );
+    expect(page.querySelector('textarea[name="inspectionUnresolvedNotes"]')).toBeNull();
+    expect(
+      inspectionModal?.querySelectorAll('form.inspection-choice-form').length,
+    ).toBe(1);
+    expect(
+      page
+        .querySelector('input[name="inspectionChoice"][value="resolved"]')
+        ?.closest('.inspection-choice-option')
+        ?.classList.contains('is-selected'),
+    ).toBeTrue();
+    const resolvedCard = resolvedChoice!.closest(
+      '.inspection-choice-option',
+    ) as HTMLElement;
+    expect(getComputedStyle(resolvedCard).display).toBe('flex');
+    const confirmation = 'Device works now.';
+    component.verificationNotes = confirmation;
+    harness.fixture.detectChanges();
+    const confirmButton = Array.from(
+      page.querySelectorAll<HTMLButtonElement>('.issue-modal button'),
+    ).find((button) => button.textContent?.includes('Confirm issue resolved'));
+    expect(confirmButton?.disabled).toBeFalse();
+    confirmButton!.click();
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(disputes.confirmResolution).toHaveBeenCalledWith('dispute-123', {
+      message: confirmation,
+    });
+    expect(component.inspectionTestModalOpen()).toBeFalse();
+
+    component.openInspectionTestModal();
+    harness.fixture.detectChanges();
+    inspectionModal = page.querySelector(
+      '.issue-modal[aria-labelledby="inspection-test-title"]',
+    );
+    const unresolvedChoice = page.querySelector<HTMLInputElement>(
+      'input[name="inspectionChoice"][value="unresolved"]',
+    );
+    expect(unresolvedChoice).not.toBeNull();
+    unresolvedChoice!.click();
+    harness.fixture.detectChanges();
+    expect(inspectionModal?.querySelector('textarea[name="inspectionUnresolvedNotes"]')).not.toBeNull();
+    expect(inspectionModal?.querySelector('input[type="file"]')).not.toBeNull();
+    expect(inspectionModal?.querySelector('textarea[name="verificationNotes"]')).toBeNull();
+    expect(
+      inspectionModal?.querySelectorAll('form.inspection-choice-form').length,
+    ).toBe(1);
 
     expect(text).not.toContain('Open customer dispute page for permitted actions');
     expect(page.querySelector('.dispute-actions-link')).toBeNull();

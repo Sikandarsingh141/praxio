@@ -403,6 +403,20 @@ describe('ShopDisputedJobDetailPage', () => {
     );
   });
 
+  it('starts approved rework from the reinspection submission card', async () => {
+    const reinspectionDispute: RepairDispute = {
+      ...dispute,
+      status: 'REINSPECTION_IN_PROGRESS',
+    };
+    const { page } = await renderPage(null, reinspectionDispute);
+    const card = page.querySelector('.reinspection-submit-action-card');
+    const reworkStart = card?.querySelector('.sidebar-rework-start');
+
+    expect(card?.textContent).toContain('Proceed with approved rework');
+    expect(reworkStart?.textContent).toContain('Start the approved repair work on the device.');
+    expect(reworkStart?.textContent).toContain('Start rework');
+  });
+
   it('places rework actions after reinspection submission', async () => {
     const awaitingShopResponse: RepairDispute = {
       ...dispute,

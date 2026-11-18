@@ -400,27 +400,6 @@
 
           @if (
             !isTechnician &&
-            dispute.status === 'REINSPECTION_IN_PROGRESS' &&
-            canStartRework(dispute)
-          ) {
-            <section class="panel action-panel">
-              <h2 class="section-heading">Proceed with approved rework</h2>
-              <p>Start the approved repair work on the device.</p>
-              <div class="action-row">
-                <button
-                  class="button primary"
-                  type="button"
-                  [disabled]="saving()"
-                  (click)="startRework(dispute)"
-                >
-                  {{ saving() ? 'Starting...' : 'Start rework' }}
-                </button>
-              </div>
-            </section>
-          }
-
-          @if (
-            !isTechnician &&
             dispute.additionalCharges.length &&
             dispute.additionalCharges[dispute.additionalCharges.length - 1].status === 'accepted' &&
             canStartRework(dispute) &&
@@ -560,6 +539,20 @@
                 Request additional charges
               </button>
             </div>
+            @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
+              <div class="sidebar-rework-start">
+                <h3>Proceed with approved rework</h3>
+                <p>Start the approved repair work on the device.</p>
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="startRework(dispute)"
+                >
+                  {{ saving() ? 'Starting...' : 'Start rework' }}
+                </button>
+              </div>
+            }
           </section>
         }
         @if (!isTechnician && canUpdateRework(dispute)) {
@@ -618,7 +611,12 @@
             <dl class="sidebar-facts">
               <div><dt>Category</dt><dd>{{ formatStatus(dispute.category) }}</dd></div>
               <div><dt>Priority</dt><dd>{{ dispute.priority | titlecase }}</dd></div>
-              <div><dt>Status</dt><dd>{{ formatStatus(dispute.status) }}</dd></div>
+              <div>
+                <dt>Status</dt>
+                <dd class="sidebar-status" [attr.data-status]="dispute.status.toLowerCase()">
+                  {{ formatStatus(dispute.status) }}
+                </dd>
+              </div>
               @if (dispute.amountInDispute !== undefined) {
                 <div><dt>Amount in dispute</dt><dd>{{ dispute.amountInDispute | currency }}</dd></div>
               }

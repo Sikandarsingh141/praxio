@@ -931,7 +931,8 @@
     border-radius: 99px;
     font-size: 0.69rem;
 
-    &[data-status='OPEN'] {
+    &[data-status='OPEN'],
+    &[data-status*='REJECT'] {
       background: #fff0ed;
       color: #b42318;
     }
@@ -4006,6 +4007,44 @@ a {
   min-width: 10.5rem;
 }
 
+.dispute-customer-cell {
+  min-width: 9.5rem;
+}
+
+.dispute-customer-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.dispute-customer-avatar {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #dce8df;
+  border-radius: 50%;
+  background: #edf8ef;
+  object-fit: cover;
+}
+
+.dispute-customer-initials {
+  color: #17643b;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.dispute-customer-name {
+  overflow: hidden;
+  color: #33443a;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dispute-issue-copy,
 .dispute-date-copy {
   display: inline-flex;
@@ -4142,6 +4181,11 @@ a {
 .customer-dispute-table .job-status[data-status*='CONFIRMED'] {
   background: #e5f6e8;
   color: #17643b;
+}
+
+.customer-dispute-table .job-status[data-status*='REJECT'] {
+  background: #fff0ed;
+  color: #b42318;
 }
 
 .dispute-action-heading,
@@ -4429,7 +4473,7 @@ a {
   color: #17643b;
 }
 
-.customer-dispute-detail-page .detail-status[data-status='REJECTED'] {
+.customer-dispute-detail-page .detail-status[data-status*='REJECT'] {
   background: #fff0ed;
   color: #9c3d31;
 }

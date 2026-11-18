@@ -310,6 +310,9 @@
               <tr>
                 <th scope="col">Request ID</th>
                 <th scope="col">Device &amp; Brand</th>
+                @if (role() === 'shop') {
+                  <th scope="col">Customer</th>
+                }
                 <th scope="col">Issue / Problem</th>
                 <th scope="col">Request Date</th>
                 <th scope="col">Shop</th>
@@ -340,10 +343,30 @@
                       </div>
                       <div class="dispute-device-copy">
                         <strong>{{ item.repair?.appliance || 'Repair request' }}</strong>
-                        <span>{{ item.repair?.brand }} {{ item.repair?.model }}</span>
+                        <span>{{ item.repair?.brand || 'Brand not specified' }}{{ item.repair?.model ? ' · ' + item.repair?.model : '' }}</span>
                       </div>
                     </div>
                   </td>
+                  @if (role() === 'shop') {
+                    <td class="dispute-customer-cell">
+                      <div class="dispute-customer-content">
+                        @if (item.parties?.customer?.profileImageUrl; as profileImageUrl) {
+                          <img
+                            class="dispute-customer-avatar"
+                            [src]="profileImageUrl"
+                            [alt]="(item.parties?.customer?.name || 'Customer') + ' profile photo'"
+                          />
+                        } @else {
+                          <span class="dispute-customer-avatar dispute-customer-initials" aria-hidden="true">
+                            {{ customerInitials(item.parties?.customer?.name) }}
+                          </span>
+                        }
+                        <span class="dispute-customer-name">
+                          {{ item.parties?.customer?.name || 'Customer' }}
+                        </span>
+                      </div>
+                    </td>
+                  }
                   <td class="dispute-issue-cell" [title]="item.description">
                     <div class="dispute-issue-copy">
                       <svg viewBox="0 0 24 24" aria-hidden="true">

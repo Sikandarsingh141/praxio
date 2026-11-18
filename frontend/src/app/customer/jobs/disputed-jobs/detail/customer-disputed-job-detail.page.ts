@@ -40,6 +40,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   readonly actionNotice = signal('');
   readonly reviewResolutionModalOpen = signal(false);
   readonly reinspectionSubmissionModalOpen = signal(false);
+  readonly inspectionTestModalOpen = signal(false);
   message = '';
   conversationAttachments: DisputeAttachment[] = [];
   responseAttachments: DisputeAttachment[] = [];
@@ -48,6 +49,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   chargeDecisionReason = '';
   verificationNotes = '';
   unresolvedNotes = '';
+  inspectionChoice: 'resolved' | 'unresolved' | null = null;
   readonly progressSteps = [
     'Dispute submitted',
     'Under review',
@@ -245,6 +247,18 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
     this.actionError.set('');
   }
 
+  openInspectionTestModal(): void {
+    this.inspectionTestModalOpen.set(true);
+    this.inspectionChoice = null;
+    this.actionError.set('');
+  }
+
+  closeInspectionTestModal(): void {
+    this.inspectionTestModalOpen.set(false);
+    this.inspectionChoice = null;
+    this.actionError.set('');
+  }
+
   decideResolution(dispute: RepairDispute, decision: 'accept' | 'reject'): void {
     if (
       dispute.status !== 'AWAITING_CUSTOMER_RESPONSE' ||
@@ -324,6 +338,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
       'Thank you. The shop can now close the dispute.',
       () => {
         this.verificationNotes = '';
+        this.closeInspectionTestModal();
       },
     );
   }
@@ -345,6 +360,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
         this.unresolvedNotes = '';
         this.responseAttachments = [];
         this.closeReinspectionSubmissionModal();
+        this.closeInspectionTestModal();
       },
     );
   }
