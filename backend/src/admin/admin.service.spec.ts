@@ -216,6 +216,7 @@ describe('AdminService', () => {
               email: 'customer@example.com',
               countryCode: '+1',
               mobileNumber: '5551234567',
+              profileImageUrl: 'Y3VzdG9tZXI=',
               accountType: 'customer',
               accountStatus: null,
               registrationStatus: 'pending',
@@ -566,6 +567,7 @@ describe('AdminService', () => {
       requests: [
         {
           email: 'customer@example.com',
+          profileImageUrl: 'Y3VzdG9tZXI=',
           accountType: 'customer',
           accountStatus: null,
           registrationStatus: 'pending',

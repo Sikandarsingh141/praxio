@@ -84,6 +84,7 @@ export interface AdminRegistrationRequest {
   email: string;
   countryCode: string;
   mobileNumber: string;
+  profileImageUrl: string | null;
   accountType: 'customer' | 'shop';
   accountStatus: 'active' | 'inactive' | 'suspended' | null;
   registrationStatus: 'pending' | 'approved' | 'declined';
@@ -2266,6 +2267,18 @@ export class AdminService {
                 email: 1,
                 countryCode: 1,
                 mobileNumber: 1,
+                profileImageUrl: {
+                  $cond: [
+                    { $eq: ['$accountType', 'shop'] },
+                    {
+                      $ifNull: [
+                        '$shopDetails.shopImageData',
+                        '$profileImageData',
+                      ],
+                    },
+                    '$profileImageData',
+                  ],
+                },
                 accountType: 1,
                 accountStatus: '$computedAccountStatus',
                 registrationStatus: '$computedRegistrationStatus',
@@ -4058,6 +4071,10 @@ export class AdminService {
         typeof value['countryCode'] === 'string' ? value['countryCode'] : '',
       mobileNumber:
         typeof value['mobileNumber'] === 'string' ? value['mobileNumber'] : '',
+      profileImageUrl:
+        typeof value['profileImageUrl'] === 'string'
+          ? value['profileImageUrl']
+          : null,
       accountType: value['accountType'] === 'shop' ? 'shop' : 'customer',
       accountStatus:
         value['accountStatus'] === 'active' ||

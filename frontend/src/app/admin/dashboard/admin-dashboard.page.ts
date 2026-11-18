@@ -23,6 +23,7 @@ import {
   RegistrationRequestPage,
 } from '../services/admin.service';
 import { ToastService } from '../../core/toast/toast.service';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 type RequestStatus = 'all' | 'pending' | 'approved' | 'declined' | 'suspended';
 type AccountStatus = 'all' | 'active' | 'inactive' | 'suspended';
@@ -61,6 +62,7 @@ export class AdminDashboardPage implements OnInit {
   private readonly searchChanges = new Subject<string>();
   private requestSequence = 0;
   readonly requests = signal<AdminRegistrationRequest[]>([]);
+  readonly failedAvatarIds = signal<Set<string>>(new Set<string>());
   readonly statistics = signal<AdminUserStatistics | null>(null);
   readonly statisticsLoading = signal(true);
   readonly loading = signal(true);
@@ -200,6 +202,15 @@ export class AdminDashboardPage implements OnInit {
     this.removeEmptyFilters();
     this.page.set(1);
     this.loadRequests();
+  }
+
+  userPhotoSource(request: AdminRegistrationRequest): string | null {
+    const source = profileImageSource(request.profileImageUrl);
+    return source && !this.failedAvatarIds().has(request.id) ? source : null;
+  }
+
+  onUserImageError(request: AdminRegistrationRequest): void {
+    this.failedAvatarIds.update((ids) => new Set(ids).add(request.id));
   }
 
   setAccountTypeFilter(accountType: 'all' | 'customer' | 'shop'): void {
@@ -472,6 +483,7 @@ export class AdminDashboardPage implements OnInit {
         next: (result: RegistrationRequestPage) => {
           if (requestSequence !== this.requestSequence) return;
           this.requests.set(result.requests);
+          this.failedAvatarIds.set(new Set<string>());
           this.total.set(result.total);
           this.totalPages.set(result.totalPages);
           this.page.set(result.page);

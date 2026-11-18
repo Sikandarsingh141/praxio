@@ -8,6 +8,7 @@ import { formatShopAddress } from '../../shared/utils/format-shop-address';
 import { LocationMapComponent } from '../../shared/components/maps/location-map.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
 import { AdminService, AdminUserActivity, AdminUserDetails } from '../services/admin.service';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 @Component({
   selector: 'app-admin-user-details-page',
@@ -36,6 +37,7 @@ export class AdminUserDetailsPage implements OnInit {
   readonly errorMessage = signal('');
   readonly activityErrorMessage = signal('');
   readonly activeSection = signal('overview');
+  readonly profileImageFailed = signal(false);
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id) {
@@ -47,6 +49,7 @@ export class AdminUserDetailsPage implements OnInit {
     this.adminService.getUserDetails(id).subscribe({
       next: (user) => {
         this.user.set(user);
+        this.profileImageFailed.set(false);
         this.loading.set(false);
       },
       error: (error: unknown) => {
@@ -66,6 +69,14 @@ export class AdminUserDetailsPage implements OnInit {
         this.activityLoading.set(false);
       },
     });
+  }
+
+  profilePhotoSource(user: AdminUserDetails): string | null {
+    return this.profileImageFailed() ? null : profileImageSource(user.profileImageUrl);
+  }
+
+  onProfilePhotoError(): void {
+    this.profileImageFailed.set(true);
   }
 
   shopAddress(user: AdminUserDetails): string {

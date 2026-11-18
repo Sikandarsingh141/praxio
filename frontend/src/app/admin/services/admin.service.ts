@@ -41,6 +41,7 @@ export interface AdminRegistrationRequest {
   email: string;
   countryCode: string;
   mobileNumber: string;
+  profileImageUrl?: string | null;
   accountType: 'customer' | 'shop';
   accountStatus: 'active' | 'inactive' | 'suspended' | null;
   registrationStatus: 'pending' | 'approved' | 'declined';

@@ -23,6 +23,7 @@ describe('AdminDashboardPage', () => {
     email: 'customer@example.com',
     countryCode: '+1',
     mobileNumber: '5551234567',
+    profileImageUrl: 'Y3VzdG9tZXI=',
     accountType: 'customer',
     accountStatus: 'active',
     registrationStatus: 'approved',
@@ -116,6 +117,8 @@ describe('AdminDashboardPage', () => {
     expect(text).toContain('Not required');
     expect(text).not.toContain('Accept');
     expect(text).not.toContain('Decline registration');
+    const avatar = fixture.nativeElement.querySelector('img.user-avatar') as HTMLImageElement | null;
+    expect(avatar?.getAttribute('src')).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(fixture.nativeElement.querySelector('.approve-button')).toBeNull();
     expect(fixture.nativeElement.querySelector('thead')?.textContent).not.toContain('User ID');
     expect(

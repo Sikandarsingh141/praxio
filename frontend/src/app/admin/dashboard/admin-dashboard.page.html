@@ -237,12 +237,24 @@
               <tr>
                 <td data-label="User">
                   <div class="user-cell">
-                    <span class="user-avatar" aria-hidden="true">
-                      {{
-                        (request.shopName || request.applicantName || request.email).charAt(0)
-                          | uppercase
-                      }}
-                    </span>
+                    @if (userPhotoSource(request); as photo) {
+                      <img
+                        class="user-avatar"
+                        [src]="photo"
+                        [alt]="
+                          (request.shopName || request.applicantName || request.email) +
+                          ' profile photo'
+                        "
+                        (error)="onUserImageError(request)"
+                      />
+                    } @else {
+                      <span class="user-avatar" aria-hidden="true">
+                        {{
+                          (request.shopName || request.applicantName || request.email).charAt(0)
+                            | uppercase
+                        }}
+                      </span>
+                    }
                     <div class="user-details">
                       <a
                         class="user-profile-link"

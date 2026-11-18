@@ -50,7 +50,7 @@ describe('AdminUserDetailsPage', () => {
         accountType: 'customer',
         accountStatus: 'active',
         approvalStatus: 'approved',
-        profileImageUrl: null,
+        profileImageUrl: 'Y3VzdG9tZXI=',
         createdAt: '2026-01-01T00:00:00.000Z',
         location: null,
         shop: null,
@@ -68,6 +68,10 @@ describe('AdminUserDetailsPage', () => {
     expect(
       harness.routeNativeElement?.querySelector('.user-details')?.getAttribute('aria-busy'),
     ).toBe('false');
+    const profileImage = harness.routeNativeElement?.querySelector(
+      'img.profile-image',
+    ) as HTMLImageElement | null;
+    expect(profileImage?.getAttribute('src')).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
   });
 
   it('loads user details and displays the profile and map location', async () => {
