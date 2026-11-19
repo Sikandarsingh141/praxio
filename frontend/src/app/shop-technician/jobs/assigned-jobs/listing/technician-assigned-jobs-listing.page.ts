@@ -27,7 +27,16 @@ export class TechnicianAssignedJobsListingPage extends TechnicianJobsListingPage
   readonly deviceFilter = signal('');
   readonly deviceOptions = computed(() => [...new Set(this.items().map((item) => item.title))].sort());
   readonly awaitingInspectionCount = computed(
-    () => this.items().filter((item) => ['confirmed', 'inspection_pending'].includes(item.status)).length,
+    () =>
+      this.items().filter((item) =>
+        [
+          'confirmed',
+          'pickup_scheduled',
+          'pickup_in_progress',
+          'item_picked_up',
+          'inspection_pending',
+        ].includes(item.status),
+      ).length,
   );
   readonly readyToRepairCount = computed(
     () => this.items().filter((item) => item.status === 'inspection_approved').length,

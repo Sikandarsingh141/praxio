@@ -9,6 +9,109 @@
   width: 100%;
 }
 
+.customer-active-job-detail-page {
+  .request-progress {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(6.6rem, 1fr);
+    grid-template-columns: none;
+    grid-template-rows: none;
+    gap: 0;
+    min-width: 0;
+    margin: 1rem 0 0.85rem;
+    padding: 0 0 0.35rem;
+    overflow-x: auto;
+    list-style: none;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+
+    &::before {
+      display: none;
+    }
+
+    li {
+      position: relative;
+      z-index: 0;
+      display: grid;
+      min-width: 0;
+      grid-template-columns: none;
+      grid-template-rows: none;
+      justify-items: center;
+      align-content: start;
+      gap: 0.3rem;
+      padding: 0;
+      color: #728078;
+      text-align: center;
+      scroll-snap-align: start;
+
+      &:not(:last-child)::after {
+        position: absolute;
+        z-index: -1;
+        top: 0.72rem;
+        right: auto;
+        bottom: auto;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: #dce5de;
+        content: '';
+      }
+
+      &.completed::after {
+        background: #16842e;
+      }
+
+      strong {
+        grid-column: auto;
+        justify-self: auto;
+        color: #27342b;
+        font-size: 0.62rem;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+
+      &.current strong {
+        padding: 0.2rem 0.35rem;
+        border-radius: 999px;
+        background: #e6f5e9;
+        color: #176b34;
+      }
+
+      time {
+        grid-column: auto;
+        color: #87938a;
+        font-size: 0.52rem;
+        white-space: nowrap;
+      }
+    }
+
+    .progress-marker {
+      grid-column: auto;
+      grid-row: auto;
+      position: relative;
+      z-index: 1;
+      display: grid;
+      width: 1.45rem;
+      height: 1.45rem;
+      place-items: center;
+      border: 1px solid #bac8bd;
+      border-radius: 50%;
+      background: #fff;
+      color: #6b796f;
+      font-size: 0.65rem;
+      font-weight: 750;
+    }
+
+    li.completed .progress-marker,
+    li.current .progress-marker {
+      border-color: #087c3b;
+      background: #087c3b;
+      color: #fff;
+    }
+  }
+}
+
 .state {
   padding: 1rem;
   border: 1px solid #e2e8e4;
@@ -92,5 +195,24 @@
 
 .decision-state {
   margin: 0.65rem 0 0;
+}
+
+.pickup-confirmation-action,
+.repair-review-action {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.pickup-confirmation-action p,
+.repair-review-action p {
+  margin: 0;
+  color: #647a84;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.pickup-confirmation-action .job-button,
+.repair-review-action .job-button {
+  width: 100%;
 }
 

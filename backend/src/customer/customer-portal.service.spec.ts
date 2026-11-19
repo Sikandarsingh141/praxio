@@ -100,7 +100,9 @@ describe('CustomerPortalService', () => {
     jest.clearAllMocks();
     userModel.find.mockReturnValue(createQuery(shops));
     registrationModel.findOne.mockReturnValue(createQuery({}));
-    repairRequestModel.updateMany.mockReturnValue(createQuery({ modifiedCount: 0 }));
+    repairRequestModel.updateMany.mockReturnValue(
+      createQuery({ modifiedCount: 0 }),
+    );
     quotationModel.findOne.mockReturnValue(createQuery(null));
     registrationModel.find.mockReturnValue(
       createQuery([{ userId: nearShopId }, { userId: farShopId }]),
@@ -333,7 +335,10 @@ describe('CustomerPortalService', () => {
       createQuery([{ _id: shopId, averageRating: 4.5, reviewCount: 2 }]),
     );
 
-    const result = await service.getCustomerQuotations(customerId.toString(), {});
+    const result = await service.getCustomerQuotations(
+      customerId.toString(),
+      {},
+    );
 
     expect(result).toMatchObject({
       quotations: [
@@ -761,7 +766,8 @@ describe('CustomerPortalService', () => {
     expect(quotationModel.aggregate).toHaveBeenCalledWith(
       expect.arrayContaining([{ $match: { shopId: nearShopId } }]),
     );
-    const reviewPipeline = reviewModel.aggregate.mock.calls[0]?.[0] as unknown[];
+    const reviewPipeline = reviewModel.aggregate.mock
+      .calls[0]?.[0] as unknown[];
     expect(JSON.stringify(reviewPipeline)).not.toContain('$arrayElemAt');
     expect(JSON.stringify(reviewPipeline)).toContain('$customer.firstName');
   });
@@ -925,7 +931,10 @@ describe('CustomerPortalService', () => {
       .mockResolvedValue(route);
 
     await expect(
-      service.getCustomerRepairRoute(customerId.toString(), requestId.toString()),
+      service.getCustomerRepairRoute(
+        customerId.toString(),
+        requestId.toString(),
+      ),
     ).resolves.toEqual(route);
     expect(repairRequestModel.findOne).toHaveBeenCalledWith({
       _id: requestId.toString(),
@@ -952,7 +961,10 @@ describe('CustomerPortalService', () => {
     const getShopRepairRoute = jest.spyOn(service, 'getShopRepairRoute');
 
     await expect(
-      service.getCustomerRepairRoute(customerId.toString(), requestId.toString()),
+      service.getCustomerRepairRoute(
+        customerId.toString(),
+        requestId.toString(),
+      ),
     ).rejects.toMatchObject({ status: 404 });
     expect(getShopRepairRoute).not.toHaveBeenCalled();
   });
@@ -1586,6 +1598,360 @@ describe('CustomerPortalService', () => {
       { new: true },
     );
     expect(quotationModel.findOneAndUpdate).toHaveBeenCalled();
+  });
+
+  it('does not infer completed inspection or physical pickup from service type', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: shopId,
+        accountType: 'shop',
+        accountStatus: 'active',
+        shopDetails: { shopName: 'Authorized Shop' },
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        shopIds: [shopId],
+        appliance: 'Refrigerator',
+        status: 'open',
+        serviceType: 'home_service',
+      }),
+    );
+    repairRequestModel.findOneAndUpdate.mockReturnValue(
+      createQuery({ _id: requestId }),
+    );
+    quotationModel.create.mockResolvedValue({
+      _id: new Types.ObjectId(),
+      status: 'sent',
+    });
+
+    await service.createQuotation(shopId.toString(), requestId.toString(), {
+      amount: 1900,
+      currency: 'INR',
+      message: 'Repair estimate',
+      estimatedDays: 3,
+      inspectionCompletedBeforeQuotation: false,
+      validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+    });
+
+    expect(quotationModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiresPhysicalPickup: false,
+        inspectionCompletedBeforeQuotation: false,
+      }),
+    );
+  });
+
+  it('honors an explicit pickup requirement regardless of service type', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: shopId,
+        accountType: 'shop',
+        accountStatus: 'active',
+        shopDetails: { shopName: 'Authorized Shop' },
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        shopIds: [shopId],
+        appliance: 'Refrigerator',
+        status: 'open',
+        serviceType: 'shop_visit',
+      }),
+    );
+    repairRequestModel.findOneAndUpdate.mockReturnValue(
+      createQuery({ _id: requestId }),
+    );
+    quotationModel.create.mockResolvedValue({
+      _id: new Types.ObjectId(),
+      status: 'sent',
+    });
+
+    await service.createQuotation(shopId.toString(), requestId.toString(), {
+      amount: 1900,
+      currency: 'INR',
+      message: 'Collect the device before inspection',
+      estimatedDays: 3,
+      inspectionCompletedBeforeQuotation: false,
+      requiresPhysicalPickup: true,
+      validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+    });
+
+    expect(quotationModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiresPhysicalPickup: true,
+        inspectionCompletedBeforeQuotation: false,
+      }),
+    );
+  });
+
+  it('keeps a home-service repair in confirmed status until pickup is collected', async () => {
+    const customerId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const quotationId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    quotationModel.findById.mockReturnValue(
+      createQuery({
+        _id: quotationId,
+        repairRequestId: requestId,
+        shopId,
+        status: 'pending',
+        amount: 1900,
+        requiresPhysicalPickup: true,
+        inspectionCompletedBeforeQuotation: false,
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        status: 'open',
+        serviceType: 'home_service',
+      }),
+    );
+    repairRequestModel.findOneAndUpdate.mockReturnValue(createQuery(requestId));
+    quotationModel.findOneAndUpdate.mockReturnValue(
+      createQuery({ ...quotationId, status: 'accepted' }),
+    );
+    repairRequestModel.updateOne.mockReturnValue(
+      createQuery({ modifiedCount: 1 }),
+    );
+    quotationModel.find.mockReturnValue(createQuery([]));
+
+    await service.updateQuotationStatus(
+      customerId.toString(),
+      quotationId.toString(),
+      'accepted',
+    );
+
+    expect(repairRequestModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: requestId }),
+      {
+        $set: expect.objectContaining({
+          repairJob: expect.objectContaining({
+            status: 'confirmed',
+            requiresPhysicalPickup: true,
+            inspectionCompletedBeforeQuotation: false,
+          }),
+        }),
+      },
+      { new: true },
+    );
+  });
+
+  it('marks inspection approved when inspection was completed before quotation', async () => {
+    const customerId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const quotationId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    quotationModel.findById.mockReturnValue(
+      createQuery({
+        _id: quotationId,
+        repairRequestId: requestId,
+        shopId,
+        status: 'pending',
+        amount: 1900,
+        proposedSolution: 'Screen replacement',
+        requiresPhysicalPickup: false,
+        inspectionCompletedBeforeQuotation: true,
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        status: 'open',
+        serviceType: 'shop_visit',
+      }),
+    );
+    repairRequestModel.findOneAndUpdate.mockReturnValue(createQuery(requestId));
+    quotationModel.findOneAndUpdate.mockReturnValue(
+      createQuery({ ...quotationId, status: 'accepted' }),
+    );
+    repairRequestModel.updateOne.mockReturnValue(
+      createQuery({ modifiedCount: 1 }),
+    );
+    quotationModel.find.mockReturnValue(createQuery([]));
+
+    await service.updateQuotationStatus(
+      customerId.toString(),
+      quotationId.toString(),
+      'accepted',
+    );
+
+    expect(repairRequestModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: requestId }),
+      {
+        $set: expect.objectContaining({
+          repairJob: expect.objectContaining({
+            status: 'inspection_approved',
+            requiresPhysicalPickup: false,
+            inspectionCompletedBeforeQuotation: true,
+            approvedRepairAmount: 1900,
+            inspection: expect.objectContaining({ status: 'approved' }),
+          }),
+        }),
+      },
+      { new: true },
+    );
+  });
+
+  it('starts shop inspection after acceptance without fabricating a prior inspection or pickup', async () => {
+    const customerId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const quotationId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    quotationModel.findById.mockReturnValue(
+      createQuery({
+        _id: quotationId,
+        repairRequestId: requestId,
+        shopId,
+        status: 'pending',
+        amount: 1900,
+        proposedSolution: 'Inspect the device and repair as needed',
+        requiresPhysicalPickup: false,
+        inspectionCompletedBeforeQuotation: false,
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        status: 'open',
+        serviceType: 'shop_visit',
+      }),
+    );
+    repairRequestModel.findOneAndUpdate.mockReturnValue(createQuery(requestId));
+    quotationModel.findOneAndUpdate.mockReturnValue(
+      createQuery({ ...quotationId, status: 'accepted' }),
+    );
+    repairRequestModel.updateOne.mockReturnValue(
+      createQuery({ modifiedCount: 1 }),
+    );
+    quotationModel.find.mockReturnValue(createQuery([]));
+
+    await service.updateQuotationStatus(
+      customerId.toString(),
+      quotationId.toString(),
+      'accepted',
+    );
+
+    expect(repairRequestModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: requestId }),
+      {
+        $set: expect.objectContaining({
+          repairJob: expect.objectContaining({
+            status: 'inspection_pending',
+            requiresPhysicalPickup: false,
+            inspectionCompletedBeforeQuotation: false,
+            history: [
+              expect.objectContaining({
+                action: 'inspection_pending',
+                notes: expect.stringContaining('Shop inspection is required'),
+              }),
+            ],
+          }),
+        }),
+      },
+      { new: true },
+    );
+    expect(repairRequestModel.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.not.objectContaining({
+        $set: expect.objectContaining({
+          repairJob: expect.objectContaining({
+            inspection: expect.anything(),
+          }),
+        }),
+      }),
+      { new: true },
+    );
+  });
+
+  it('moves an accepted job through pickup scheduling, start and collection', async () => {
+    const customerId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: shopId,
+        accountType: 'shop',
+        accountStatus: 'active',
+        shopDetails: { shopName: 'Authorized Shop' },
+      }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        acceptedQuotationId: new Types.ObjectId(),
+      }),
+    );
+    quotationModel.exists.mockResolvedValue(true);
+    const scheduledRequest = {
+      _id: requestId,
+      customerId,
+      appliance: 'Refrigerator',
+      repairJob: { status: 'pickup_scheduled' },
+    };
+    const startedRequest = {
+      ...scheduledRequest,
+      repairJob: { status: 'pickup_in_progress' },
+    };
+    const collectedRequest = {
+      ...scheduledRequest,
+      repairJob: { status: 'inspection_pending' },
+    };
+    repairRequestModel.findOneAndUpdate
+      .mockReturnValueOnce(createQuery(scheduledRequest))
+      .mockReturnValueOnce(createQuery(startedRequest))
+      .mockReturnValueOnce(createQuery(collectedRequest));
+
+    await expect(
+      service.scheduleServicePickup(shopId.toString(), requestId.toString(), {
+        scheduledAt: new Date(Date.now() + 86400000).toISOString(),
+      }),
+    ).resolves.toMatchObject({ status: 'pickup_scheduled' });
+    await expect(
+      service.startServicePickup(shopId.toString(), requestId.toString(), {}),
+    ).resolves.toMatchObject({ status: 'pickup_in_progress' });
+    await expect(
+      service.confirmServicePickup(shopId.toString(), requestId.toString(), {}),
+    ).resolves.toMatchObject({ status: 'inspection_pending' });
+    expect(notificationsService.notifyUsers).toHaveBeenCalledWith(
+      [customerId],
+      expect.objectContaining({ type: 'repair_item_picked_up' }),
+    );
   });
 
   it('rejects a concurrent acceptance when another quotation already claimed the request', async () => {

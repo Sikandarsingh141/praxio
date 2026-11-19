@@ -32,11 +32,13 @@ export type DisputeStatus =
   | 'RESOLVED';
 
 export type LegacyDisputeStatus =
-  | 'UNDER_REVIEW'
-  | 'AWAITING_CUSTOMER_RESPONSE'
-  | 'AWAITING_SHOP_RESPONSE'
-  | 'RESOLUTION_PROPOSED'
-  | 'RESOLVED';
+  | 'ACCEPTED'
+  | 'REINSPECTION_IN_PROGRESS'
+  | 'AWAITING_CUSTOMER_APPROVAL'
+  | 'REPAIR_IN_PROGRESS'
+  | 'CUSTOMER_VERIFICATION_PENDING'
+  | 'CUSTOMER_CONFIRMED'
+  | 'RESOLUTION_PROPOSED';
 
 export type DisputePriority = 'low' | 'normal' | 'high' | 'urgent';
 export type DisputeRole = 'customer' | 'shop' | 'admin';
@@ -158,6 +160,7 @@ export interface RepairDispute {
     from: DisputeStatus | 'NONE';
     to: DisputeStatus;
     actorRole: DisputeRole;
+    actorName?: string;
     reason?: string;
     at: string;
   }>;
@@ -225,6 +228,11 @@ export interface DisputeListFilters {
   category?: DisputeCategory | '';
   priority?: DisputePriority | '';
   search?: string;
+  customer?: string;
+  shop?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  overdue?: boolean;
   from?: string;
   to?: string;
   sort?: 'newest' | 'oldest' | 'priority';

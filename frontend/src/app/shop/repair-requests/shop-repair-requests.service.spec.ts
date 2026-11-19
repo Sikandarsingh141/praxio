@@ -64,6 +64,35 @@ describe('ShopRepairRequestsService', () => {
     });
   });
 
+  it('sends pickup scheduling, start and confirmation to the shop repair API', () => {
+    const scheduledAt = '2026-11-20T09:00:00.000Z';
+    service.schedulePickup('request-1', { scheduledAt, notes: 'Morning' }).subscribe();
+    const schedule = http.expectOne(
+      `${environment.apiBaseUrl}/shop/repair-requests/request-1/schedule-pickup`,
+    );
+    expect(schedule.request.method).toBe('PATCH');
+    expect(schedule.request.body).toEqual({ scheduledAt, notes: 'Morning' });
+    schedule.flush({ data: { repairJob: {} } });
+
+    service.startPickup('request-1', 'Reached the customer').subscribe();
+    const start = http.expectOne(
+      `${environment.apiBaseUrl}/shop/repair-requests/request-1/start-pickup`,
+    );
+    expect(start.request.method).toBe('PATCH');
+    expect(start.request.body).toEqual({ notes: 'Reached the customer' });
+    start.flush({ data: { repairJob: {} } });
+
+    service
+      .confirmPickup('request-1', { collectedAt: scheduledAt, notes: 'Collected' })
+      .subscribe();
+    const confirm = http.expectOne(
+      `${environment.apiBaseUrl}/shop/repair-requests/request-1/confirm-pickup`,
+    );
+    expect(confirm.request.method).toBe('PATCH');
+    expect(confirm.request.body).toEqual({ collectedAt: scheduledAt, notes: 'Collected' });
+    confirm.flush({ data: { repairJob: {} } });
+  });
+
   it('requests directions for a repair request without sending client coordinates', () => {
     service.getDirections('request/123').subscribe((route) => {
       expect(route.distanceMeters).toBe(4800);

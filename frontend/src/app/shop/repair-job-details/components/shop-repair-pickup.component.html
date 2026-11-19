@@ -1,0 +1,157 @@
+@if (job; as job) {
+  @if (needsPhysicalPickup) {
+    <section class="pickup-panel" aria-labelledby="physical-pickup-title">
+      <header class="pickup-panel-heading">
+        <h2 id="physical-pickup-title">Physical collection required</h2>
+        @if (job.status === 'confirmed') {
+          <p>Schedule a collection time with the customer before inspection.</p>
+        } @else if (job.status === 'pickup_scheduled') {
+          <p>Collection scheduled. Start pickup when you leave for the customer, or confirm collection directly.</p>
+        } @else {
+          <p>Collection is underway. Confirm collection once the item is physically received.</p>
+        }
+      </header>
+
+      @if (job.servicePickup?.scheduledAt; as scheduledAt) {
+        <p class="pickup-timestamp"><strong>Scheduled:</strong> {{ scheduledAt | date: 'medium' }}</p>
+      }
+      @if (job.servicePickup?.collectedAt; as collectedAt) {
+        <p class="pickup-timestamp"><strong>Collected:</strong> {{ collectedAt | date: 'medium' }}</p>
+      }
+      @if (error() && !pickupScheduleModalOpen()) {
+        <p class="pickup-error" role="alert">{{ error() }}</p>
+      }
+
+      <div class="pickup-actions">
+        @if (canSchedulePickup) {
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="submitting()"
+            (click)="openPickupScheduleModal()"
+          >
+            Schedule Pickup
+          </button>
+        }
+        @if (canStartPickup) {
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="submitting()"
+            (click)="startPickup()"
+          >
+            Start Pickup
+          </button>
+        }
+        @if (canConfirmPickup) {
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="submitting()"
+            (click)="confirmPickup()"
+          >
+            Confirm Collection
+          </button>
+        }
+        @if (!canSchedulePickup) {
+          <label>
+            <span>Pickup notes (optional)</span>
+            <input
+              type="text"
+              maxlength="1000"
+              [ngModel]="pickupNotes()"
+              (ngModelChange)="pickupNotes.set($event)"
+              name="pickupNotes"
+              placeholder="Add collection details"
+            />
+          </label>
+        }
+      </div>
+    </section>
+
+    @if (pickupScheduleModalOpen()) {
+      <div
+        class="pickup-modal-backdrop"
+        role="presentation"
+        (click)="closePickupScheduleModal()"
+      >
+        <section
+          class="pickup-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pickup-schedule-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="pickup-dialog-header">
+            <div>
+              <span class="section-kicker">PHYSICAL COLLECTION</span>
+              <h3 id="pickup-schedule-title">Schedule Pickup</h3>
+            </div>
+            <button
+              type="button"
+              class="dialog-close"
+              aria-label="Close pickup scheduling dialog"
+              (click)="closePickupScheduleModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="pickup-form" novalidate (ngSubmit)="schedulePickup()">
+            <p>Choose when you will collect the customer's product.</p>
+            <fieldset class="pickup-date-time-fieldset">
+              <legend>Pickup date and time</legend>
+              <div class="pickup-date-time-fields">
+                <label>
+                  <span>Date</span>
+                  <input
+                    type="date"
+                    required
+                    [ngModel]="pickupDate()"
+                    (ngModelChange)="pickupDate.set($event); error.set('')"
+                    name="pickupDate"
+                  />
+                </label>
+                <label>
+                  <span>Time</span>
+                  <input
+                    type="time"
+                    required
+                    [ngModel]="pickupTime()"
+                    (ngModelChange)="pickupTime.set($event); error.set('')"
+                    name="pickupTime"
+                  />
+                </label>
+              </div>
+            </fieldset>
+            <label>
+              <span>Pickup notes (optional)</span>
+              <input
+                type="text"
+                maxlength="1000"
+                [ngModel]="pickupNotes()"
+                (ngModelChange)="pickupNotes.set($event)"
+                name="pickupNotes"
+                placeholder="Add collection details"
+              />
+            </label>
+            @if (error()) {
+              <p class="pickup-error" role="alert">{{ error() }}</p>
+            }
+            <footer class="pickup-form-footer">
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="closePickupScheduleModal()"
+              >
+                Cancel
+              </button>
+              <button type="submit" class="primary-button" [disabled]="submitting()">
+                {{ submitting() ? 'Scheduling…' : 'Confirm Schedule' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+  }
+}

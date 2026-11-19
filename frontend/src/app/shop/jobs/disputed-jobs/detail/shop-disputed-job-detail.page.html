@@ -1,6 +1,6 @@
 <main class="job-detail-page customer-disputed-job-detail-page">
   @if (loading()) {
-    <p class="state" role="status">Loading issue details...</p>
+    <p class="state" role="status">Loading disputes...</p>
   } @else if (error()) {
     <p class="state error" role="alert">{{ error() }}</p>
   } @else if (record(); as dispute) {
@@ -189,21 +189,27 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
               </svg>
-              Status History
+              Dispute Timeline
             </h2>
             @if (dispute.statusHistory.length) {
               <ol class="status-history-list">
                 @for (event of dispute.statusHistory; track $index; let index = $index) {
                   <li>
-                    <span class="status-history-number">{{ index + 1 }}</span>
+                    <span class="status-history-dot" aria-hidden="true"></span>
                     <div class="status-history-copy">
                       <strong>{{ statusHistoryTitle(event, index) }}</strong>
-                      <p>
-                        By {{ event.actorRole | titlecase }} ·
-                        <time>{{ event.at | date: 'medium' }}</time>
+                      <p class="status-history-meta">
+                        By {{ event.actorName || (event.actorRole ? (event.actorRole | titlecase) : 'System') }}
+                        @if (event.actorName && event.actorRole) { · {{ event.actorRole | titlecase }} }
                       </p>
+                      @if (event.at) {
+                        <time [attr.datetime]="event.at">{{ event.at | date: 'medium' }}</time>
+                      }
                       @if (event.reason) {
                         <p>{{ event.reason }}</p>
+                      }
+                      @if (historyAttachmentCount(dispute, event); as count) {
+                        <p>{{ count }} {{ count === 1 ? 'attachment' : 'attachments' }}</p>
                       }
                     </div>
                   </li>
@@ -212,10 +218,11 @@
             } @else {
               <ol class="status-history-list">
                 <li>
-                  <span class="status-history-number">1</span>
+                  <span class="status-history-dot" aria-hidden="true"></span>
                   <div class="status-history-copy">
-                    <strong>Case opened</strong>
-                    <p>By Customer · <time>{{ dispute.createdAt | date: 'medium' }}</time></p>
+                    <strong>Dispute Raised</strong>
+                    <p class="status-history-meta">By Customer</p>
+                    <time [attr.datetime]="dispute.createdAt">{{ dispute.createdAt | date: 'medium' }}</time>
                   </div>
                 </li>
               </ol>
@@ -267,7 +274,7 @@
                   <div><dt>Resolved</dt><dd>{{ dispute.resolution.resolvedAt | date: 'MMM d, y, h:mm a' }}</dd></div>
                 }
               </dl>
-              @if (dispute.resolution.notes) {
+              @if (hasDistinctResolutionNotes(dispute)) {
                 <p>{{ dispute.resolution.notes }}</p>
               }
               @if (dispute.resolution.documents.length) {
@@ -368,45 +375,6 @@
           </section>
         </section>
 
-          @if (!isTechnician && canReviewCustomerResponse(dispute)) {
-            <section class="panel action-panel">
-              <h2 class="section-heading">Review the customer's response</h2>
-              @if (dispute.resolution.description) {
-                <p>{{ dispute.resolution.description }}</p>
-              }
-              @if (dispute.resolution.notes) {
-                <p>{{ dispute.resolution.notes }}</p>
-              }
-              <label>
-                <span>Reason (required when rejecting)</span>
-                <textarea
-                  [(ngModel)]="resolutionDecisionReason"
-                  name="resolutionDecisionReason"
-                  rows="3"
-                  maxlength="2000"
-                ></textarea>
-              </label>
-              <div class="action-row">
-                <button
-                  class="button primary"
-                  type="button"
-                  [disabled]="saving()"
-                  (click)="decideResolution(dispute, 'accept')"
-                >
-                  {{ saving() ? 'Submitting...' : 'Accept proposed resolution' }}
-                </button>
-                <button
-                  class="button danger"
-                  type="button"
-                  [disabled]="saving() || !resolutionDecisionReason.trim()"
-                  (click)="decideResolution(dispute, 'reject')"
-                >
-                  Reject proposed resolution
-                </button>
-              </div>
-            </section>
-          }
-
           @if (
             !isTechnician &&
             dispute.additionalCharges.length &&
@@ -429,6 +397,7 @@
               </div>
             </section>
           }
+
       </div>
 
       <aside class="customer-detail-sidebar">
@@ -484,110 +453,184 @@
             </div>
           </section>
         }
-        @if (!isTechnician && canSubmitReinspection(dispute)) {
-          <section class="detail-section customer-detail-sidebar-card sidebar-action-card reinspection-submit-action-card" aria-label="Reinspection submission actions">
-            <div class="sidebar-action-copy">
-              <h2>Reinspection submission</h2>
-              <p>Submit findings or request customer-approved additional charges.</p>
-            </div>
-            <div class="sidebar-assigned-technician" aria-label="Assigned technician">
-              @if (repairRequest()?.technicianAssignment?.current; as assignment) {
-                @if (!assignment.isOwner && assignment.technicianId) {
-                  <a
-                    class="assigned-technician assigned-technician-link"
-                    [routerLink]="['/shop/technicians', assignment.technicianId]"
-                    [attr.aria-label]="'View ' + assignment.technicianName + ' profile'"
-                  >
-                    @if (assignment.profileImageData) {
-                      <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" />
-                    } @else {
-                      <span class="assignment-avatar" aria-hidden="true">{{ assignment.technicianName.slice(0, 1) }}</span>
-                    }
-                    <span class="assigned-technician-copy">
-                      <strong>{{ assignment.technicianName }}</strong>
-                      <small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>
-                      @if (assignment.note) {
-                        <small>{{ assignment.note }}</small>
+        @if (
+          !isTechnician &&
+          (canSubmitReinspection(dispute) ||
+            canUpdateRework(dispute) ||
+            canReviewCustomerResponse(dispute))
+        ) {
+          <section class="detail-section customer-detail-sidebar-card reinspection-submit-action-card" aria-label="Reinspection and follow-up actions">
+          @if (canSubmitReinspection(dispute)) {
+            <section class="customer-detail-block technician-assignment-card" aria-labelledby="reinspection-technician-assignment-title">
+              <header>
+                <h2 id="reinspection-technician-assignment-title">Technician Assignment</h2>
+                <p>Assign this repair to yourself or a technician on your team.</p>
+              </header>
+              <div class="sidebar-assigned-technician" aria-label="Assigned technician">
+                @if (repairRequest()?.technicianAssignment?.current; as assignment) {
+                  @if (!assignment.isOwner && assignment.technicianId) {
+                    <a
+                      class="assigned-technician assigned-technician-link"
+                      [routerLink]="['/shop/technicians', assignment.technicianId]"
+                      [attr.aria-label]="'View ' + assignment.technicianName + ' profile'"
+                    >
+                      @if (assignment.profileImageData) {
+                        <img [src]="assignment.profileImageData" [alt]="assignment.technicianName + ' profile photo'" />
+                      } @else {
+                        <span class="assignment-avatar" aria-hidden="true">
+                          {{ assignment.technicianName ? assignment.technicianName.slice(0, 1) : 'T' }}
+                        </span>
                       }
-                    </span>
-                  </a>
+                      <span class="assigned-technician-copy">
+                        <span class="assigned-technician-name">
+                          {{ assignment.technicianName || 'Assigned technician' }}
+                        </span>
+                        @if (assignment.assignedAt) {
+                          <span class="assigned-technician-date">
+                            Assigned <time [attr.datetime]="assignment.assignedAt">{{ assignment.assignedAt | date: 'MMM d, y, h:mm a' }}</time>
+                          </span>
+                        }
+                        @if (assignment.note) {
+                          <span class="assigned-technician-note">{{ assignment.note }}</span>
+                        }
+                      </span>
+                    </a>
+                  } @else {
+                    <div class="assigned-technician">
+                      @if (assignment.profileImageData) {
+                        <img [src]="assignment.profileImageData" [alt]="(assignment.technicianName || 'Shop owner') + ' profile photo'" />
+                      } @else {
+                        <span class="assignment-avatar" aria-hidden="true">
+                          {{ assignment.technicianName ? assignment.technicianName.slice(0, 1) : 'S' }}
+                        </span>
+                      }
+                      <span class="assigned-technician-copy">
+                        <span class="assigned-technician-name">
+                          {{ assignment.technicianName || 'Shop owner' }}
+                          @if (assignment.isOwner) {
+                            <span class="assignment-owner-badge">You</span>
+                          }
+                        </span>
+                        @if (assignment.assignedAt) {
+                          <span class="assigned-technician-date">
+                            Assigned <time [attr.datetime]="assignment.assignedAt">{{ assignment.assignedAt | date: 'MMM d, y, h:mm a' }}</time>
+                          </span>
+                        }
+                        @if (assignment.note) {
+                          <span class="assigned-technician-note">{{ assignment.note }}</span>
+                        }
+                      </span>
+                    </div>
+                  }
                 } @else {
-                  <div class="assigned-technician">
-                    <span class="assignment-avatar" aria-hidden="true">♙</span>
-                    <span class="assigned-technician-copy">
-                      <strong>Shop owner</strong>
-                      <small>Assigned {{ assignment.assignedAt | date: 'medium' }}</small>
-                      @if (assignment.note) {
-                        <small>{{ assignment.note }}</small>
-                      }
-                    </span>
-                  </div>
+                  <p class="unassigned-message">
+                    No technician assigned yet. Assign to yourself or a technician to start the
+                    reinspection.
+                  </p>
                 }
-              } @else {
-                <p class="muted-copy">No technician has been assigned.</p>
-              }
-              <button class="button secondary" type="button" (click)="openAssignment()">
-                {{ hasCurrentAssignment() ? 'Reassign Technician' : 'Assign Technician' }}
-              </button>
-            </div>
-            <div class="sidebar-action-buttons">
-              <button
-                class="button primary"
-                type="button"
-                [disabled]="saving()"
-                (click)="openReinspectionModal()"
-              >
-                Submit reinspection findings
-              </button>
-              <button
-                class="button secondary"
-                type="button"
-                [disabled]="saving()"
-                (click)="openAdditionalChargesModal()"
-              >
-                Request additional charges
-              </button>
-            </div>
-            @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
-              <div class="sidebar-rework-start">
-                <h3>Proceed with approved rework</h3>
-                <p>Start the approved repair work on the device.</p>
+                <button class="button assignment-action-button" type="button" (click)="openAssignment()">
+                  <span aria-hidden="true">{{ hasCurrentAssignment() ? '↻' : '＋' }}</span>
+                  {{ hasCurrentAssignment() ? 'Reassign Technician' : 'Assign Technician' }}
+                </button>
+              </div>
+            </section>
+            <section class="customer-detail-block inspection-sidebar-action" aria-label="Reinspection submission">
+              <h2 class="section-heading">Reinspection submission</h2>
+              <p>Submit findings or request customer-approved additional charges.</p>
+              <div class="reinspection-submit-buttons">
                 <button
                   class="button primary"
                   type="button"
                   [disabled]="saving()"
-                  (click)="startRework(dispute)"
+                  (click)="openReinspectionModal()"
                 >
-                  {{ saving() ? 'Starting...' : 'Start rework' }}
+                  Submit reinspection findings
+                </button>
+                <button
+                  class="button secondary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openAdditionalChargesModal()"
+                >
+                  Request additional charges
                 </button>
               </div>
-            }
-          </section>
-        }
-        @if (!isTechnician && canUpdateRework(dispute)) {
-          <section class="detail-section customer-detail-sidebar-card sidebar-action-card rework-action-card" aria-label="Rework actions">
-            <div class="sidebar-action-copy">
-              <h2>Rework actions</h2>
-              <p>Share progress updates or complete the approved rework.</p>
-            </div>
-            <div class="sidebar-action-buttons">
-              <button
-                class="button primary"
-                type="button"
-                [disabled]="saving()"
-                (click)="openReworkProgressModal()"
-              >
-                Add progress update
-              </button>
-              <button
-                class="button secondary"
-                type="button"
-                [disabled]="saving()"
-                (click)="openCompleteReworkModal()"
-              >
-                Complete rework
-              </button>
-            </div>
+              @if (dispute.status === 'REINSPECTION_IN_PROGRESS' && canStartRework(dispute)) {
+                <div class="sidebar-rework-start">
+                  <h3>Proceed with approved rework</h3>
+                  <p>Start the approved repair work on the device.</p>
+                  <button
+                    class="button primary"
+                    type="button"
+                    [disabled]="saving()"
+                    (click)="startRework(dispute)"
+                  >
+                    {{ saving() ? 'Starting...' : 'Start rework' }}
+                  </button>
+                </div>
+              }
+            </section>
+          }
+          @if (canUpdateRework(dispute)) {
+            <section class="customer-detail-block rework-action-card" aria-label="Rework actions">
+              <div class="sidebar-action-copy">
+                <h2>Rework actions</h2>
+                <p>Share progress updates or complete the approved rework.</p>
+              </div>
+              <div class="sidebar-action-buttons">
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openReworkProgressModal()"
+                >
+                  Add progress update
+                </button>
+                <button
+                  class="button secondary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openCompleteReworkModal()"
+                >
+                  Complete rework
+                </button>
+              </div>
+            </section>
+          }
+          @if (canReviewCustomerResponse(dispute)) {
+            <section
+              class="customer-detail-block review-customer-response-card"
+              aria-label="Review the customer's response"
+            >
+              <div class="sidebar-action-copy">
+                <h2>Review the customer's response</h2>
+                @if (dispute.resolution.description) {
+                  <p>{{ dispute.resolution.description }}</p>
+                }
+                @if (hasDistinctResolutionNotes(dispute)) {
+                  <p>{{ dispute.resolution.notes }}</p>
+                }
+              </div>
+              <div class="sidebar-action-buttons sidebar-review-actions">
+                <button
+                  class="button primary"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openAcceptResolutionModal(dispute)"
+                >
+                  Accept proposed resolution
+                </button>
+                <button
+                  class="button danger"
+                  type="button"
+                  [disabled]="saving()"
+                  (click)="openRejectResolutionModal(dispute)"
+                >
+                  Reject proposed resolution
+                </button>
+              </div>
+            </section>
+          }
           </section>
         }
         @if (!isTechnician && canStartReinspection(dispute)) {
@@ -609,6 +652,23 @@
           </section>
         }
         <section class="detail-section customer-detail-sidebar-card" aria-label="Dispute summary">
+          @if (!isTechnician && (canCloseDispute(dispute) || canReopenDispute(dispute))) {
+            <div class="status-action-toolbar">
+              <div class="status-action-copy">
+                <span class="status-action-kicker">CASE ACTIONS</span>
+                <h3>Need to update this dispute?</h3>
+                <p>Close it when the issue is resolved, or reopen it if more work is needed.</p>
+              </div>
+              <button
+                class="button secondary"
+                type="button"
+                [disabled]="saving()"
+                (click)="openStatusActionModal(dispute)"
+              >
+                Close / reopen dispute
+              </button>
+            </div>
+          }
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -618,7 +678,7 @@
               Dispute Information
             </h2>
             <dl class="sidebar-facts">
-              <div><dt>Category</dt><dd>{{ formatStatus(dispute.category) }}</dd></div>
+              <div><dt>Category</dt><dd>{{ categoryLabel(dispute.category) }}</dd></div>
               <div><dt>Priority</dt><dd>{{ dispute.priority | titlecase }}</dd></div>
               <div>
                 <dt>Status</dt>
@@ -662,6 +722,128 @@
         </section>
       </aside>
     </div>
+
+    @if (!isTechnician && statusActionModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeStatusActionModal()">
+        <section
+          class="issue-modal issue-modal-compact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="status-action-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">DISPUTE ACTION</span>
+              <h2 id="status-action-title">Close or reopen dispute</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close dispute action"
+              (click)="closeStatusActionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="submitStatusAction(dispute)">
+            <p class="issue-modal-intro">
+              Choose an action and provide a reason. The dispute status will update after you
+              submit.
+            </p>
+            <fieldset class="issue-modal-section status-action-options">
+              <legend class="issue-modal-label">Choose an action</legend>
+              @if (canCloseDispute(dispute)) {
+                <label class="status-action-option">
+                  <input
+                    type="radio"
+                    name="statusAction"
+                    value="close"
+                    [checked]="statusAction === 'close'"
+                    (change)="statusAction = 'close'"
+                    [disabled]="saving()"
+                  />
+                  <span>
+                    <strong>Close dispute</strong>
+                    <small>Record the final note and close this case.</small>
+                  </span>
+                </label>
+              }
+              @if (canReopenDispute(dispute)) {
+                <label class="status-action-option">
+                  <input
+                    type="radio"
+                    name="statusAction"
+                    value="reopen"
+                    [checked]="statusAction === 'reopen'"
+                    (change)="statusAction = 'reopen'"
+                    [disabled]="saving()"
+                  />
+                  <span>
+                    <strong>Reopen dispute</strong>
+                    <small>Send this resolved or closed case back for further work.</small>
+                  </span>
+                </label>
+              }
+            </fieldset>
+            @if (statusAction === 'close') {
+              <label class="status-action-reason">
+                <span>Final closure note</span>
+                <textarea
+                  [(ngModel)]="closeReason"
+                  name="shopCloseReason"
+                  rows="3"
+                  maxlength="2000"
+                  placeholder="Explain why the dispute is being closed."
+                  [disabled]="saving()"
+                  required
+                ></textarea>
+              </label>
+            } @else {
+              <label class="status-action-reason">
+                <span>Reason for reopening</span>
+                <textarea
+                  [(ngModel)]="reopenReason"
+                  name="shopReopenReason"
+                  rows="3"
+                  maxlength="2000"
+                  placeholder="Explain why this dispute should be reopened."
+                  [disabled]="saving()"
+                  required
+                ></textarea>
+              </label>
+            }
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <footer class="issue-modal-footer">
+              <button
+                class="button secondary"
+                type="button"
+                [disabled]="saving()"
+                (click)="closeStatusActionModal()"
+              >
+                Cancel
+              </button>
+              <button
+                class="button primary"
+                type="submit"
+                [disabled]="
+                  saving() ||
+                  (statusAction === 'close' ? !closeReason.trim() : !reopenReason.trim())
+                "
+              >
+                @if (saving()) {
+                  {{ statusAction === 'close' ? 'Closing...' : 'Reopening...' }}
+                } @else {
+                  {{ statusAction === 'close' ? 'Close dispute' : 'Reopen dispute' }}
+                }
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
 
     @if (!isTechnician && proposeResolutionModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeProposeResolutionModal()">
@@ -998,6 +1180,155 @@
               </button>
               <button class="button danger" type="submit" [disabled]="saving()">
                 {{ saving() ? 'Submitting...' : 'Submit rejection' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
+
+    @if (!isTechnician && acceptResolutionModalOpen()) {
+      <div
+        class="issue-modal-backdrop"
+        role="presentation"
+        (click)="closeAcceptResolutionModal()"
+      >
+        <section
+          class="issue-modal issue-modal-compact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="accept-proposed-resolution-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="accept-proposed-resolution-title">Accept proposed resolution</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close resolution acceptance"
+              (click)="closeAcceptResolutionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="issue-modal-form">
+            <p class="issue-modal-intro">
+              Confirm that you accept the customer's proposed resolution.
+            </p>
+            @if (dispute.resolution.description || dispute.resolution.notes) {
+              <div class="issue-modal-section">
+                <span class="issue-modal-label">Proposed resolution</span>
+                @if (dispute.resolution.description) {
+                  <p>{{ dispute.resolution.description }}</p>
+                }
+                @if (hasDistinctResolutionNotes(dispute)) {
+                  <p>{{ dispute.resolution.notes }}</p>
+                }
+              </div>
+            }
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeAcceptResolutionModal()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="button primary"
+                [disabled]="saving()"
+                (click)="decideResolution(dispute, 'accept')"
+              >
+                {{ saving() ? 'Submitting...' : 'Accept proposed resolution' }}
+              </button>
+            </footer>
+          </div>
+        </section>
+      </div>
+    }
+
+    @if (!isTechnician && rejectResolutionModalOpen()) {
+      <div
+        class="issue-modal-backdrop"
+        role="presentation"
+        (click)="closeRejectResolutionModal()"
+      >
+        <section
+          class="issue-modal issue-modal-compact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reject-proposed-resolution-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">ISSUE RESOLUTION</span>
+              <h2 id="reject-proposed-resolution-title">Reject proposed resolution</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close resolution rejection"
+              (click)="closeRejectResolutionModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form
+            class="issue-modal-form"
+            (ngSubmit)="decideResolution(dispute, 'reject')"
+          >
+            <p class="issue-modal-intro">
+              Explain why you are rejecting the proposed resolution.
+            </p>
+            @if (dispute.resolution.description || dispute.resolution.notes) {
+              <div class="issue-modal-section">
+                <span class="issue-modal-label">Proposed resolution</span>
+                @if (dispute.resolution.description) {
+                  <p>{{ dispute.resolution.description }}</p>
+                }
+                @if (hasDistinctResolutionNotes(dispute)) {
+                  <p>{{ dispute.resolution.notes }}</p>
+                }
+              </div>
+            }
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <div class="issue-modal-section">
+              <label>
+                <span>Reason for rejection</span>
+                <textarea
+                  [(ngModel)]="resolutionDecisionReason"
+                  name="resolutionDecisionReason"
+                  placeholder="Explain why this proposal cannot be accepted."
+                  rows="3"
+                  maxlength="2000"
+                  required
+                ></textarea>
+              </label>
+            </div>
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="button secondary"
+                (click)="closeRejectResolutionModal()"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="button danger"
+                [disabled]="saving() || !resolutionDecisionReason.trim()"
+              >
+                {{ saving() ? 'Submitting...' : 'Reject proposed resolution' }}
               </button>
             </footer>
           </form>

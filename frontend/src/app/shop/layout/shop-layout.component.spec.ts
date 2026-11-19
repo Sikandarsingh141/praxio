@@ -128,7 +128,7 @@ describe('ShopLayout', () => {
       'Pending Requests',
       'Assigned Requests',
       'Active Repairs',
-      'Issue Resolution',
+      'Disputes',
       'Completed Repairs',
     ]);
     expect(

@@ -54,7 +54,7 @@
       <p class="workflow-error" role="alert">{{ error() }}</p>
     }
 
-    @if (job.status === 'confirmed' || job.status === 'inspection_pending') {
+    @if (job.status === 'inspection_pending' || (job.status === 'confirmed' && job.requiresPhysicalPickup !== true)) {
       <div class="workflow-callout">
         <p>Complete an inspection report before any repair work begins.</p>
         <button
@@ -68,7 +68,7 @@
       </div>
     }
 
-    @if (job.status === 'inspection_in_progress') {
+    @if (job.status === 'inspection_in_progress' && !inspectionSubmissionInSidebar) {
       <div class="workflow-callout">
         <p>Complete an inspection report before any repair work begins.</p>
         <button type="button" class="primary-button" (click)="openInspectionModal()">
@@ -408,20 +408,26 @@
         Waiting for the customer to approve or decline this inspection estimate.
       </p>
     }
-    @if (job.status === 'inspection_approved') {
+    @if (job.status === 'inspection_approved' && !startRepairInSidebar) {
       <div class="workflow-callout">
         <p>
-          The customer approved the inspection estimate. No repair work is authorized until you
-          start the repair.
+          The customer approved the inspection estimate. Start repair is enabled after all required
+          customer authorizations are confirmed.
         </p>
         <p class="total-line">
           Approved repair amount:
           <strong>{{ approvedTotal | currency: acceptedQuotation?.currency }}</strong>
         </p>
+        @if (!canStartRepair) {
+          <p class="workflow-error" role="status">
+            Repair is locked until the accepted quotation, customer inspection approval, and any
+            blocking charge approvals are confirmed.
+          </p>
+        }
         <button
           type="button"
           class="primary-button"
-          [disabled]="submitting()"
+          [disabled]="submitting() || !canStartRepair"
           (click)="startRepair()"
         >
           Start Repair

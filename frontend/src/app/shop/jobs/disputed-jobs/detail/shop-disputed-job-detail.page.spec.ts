@@ -15,7 +15,7 @@ import { TechniciansService } from '../../../technicians/technicians.service';
 import { ShopDisputedJobDetailPage } from './shop-disputed-job-detail.page';
 
 describe('ShopDisputedJobDetailPage', () => {
-  it('routes Shop Issue Resolution detail URLs to the dedicated Shop page', async () => {
+  it('routes Shop dispute detail URLs to the dedicated Shop page', async () => {
     const shopRoute = routes.find((route) => route.path === 'shop');
     const detailRoute = shopRoute?.children?.find(
       (route) => route.path === 'jobs/disputed-jobs/:id',
@@ -142,6 +142,8 @@ describe('ShopDisputedJobDetailPage', () => {
       'startRework',
       'addProgress',
       'completeRework',
+      'close',
+      'reopen',
     ]);
     disputes.get.and.returnValue(of(loadedDispute));
     disputes.sendMessage.and.returnValue(of(loadedDispute));
@@ -156,6 +158,8 @@ describe('ShopDisputedJobDetailPage', () => {
     disputes.startRework.and.returnValue(of(loadedDispute));
     disputes.addProgress.and.returnValue(of(loadedDispute));
     disputes.completeRework.and.returnValue(of(loadedDispute));
+    disputes.close.and.returnValue(of({ ...loadedDispute, status: 'CLOSED' }));
+    disputes.reopen.and.returnValue(of({ ...loadedDispute, status: 'REOPENED' }));
     const repairRequests = jasmine.createSpyObj<ShopRepairRequestsService>(
       'ShopRepairRequestsService',
       ['get'],
@@ -240,12 +244,14 @@ describe('ShopDisputedJobDetailPage', () => {
     expect(page.querySelector('.customer-detail-layout')).not.toBeNull();
     expect(page.querySelector('.customer-detail-main .route-section')).not.toBeNull();
     expect(page.querySelector('.customer-detail-sidebar .route-section')).toBeNull();
-    expect(text).toContain('Issue Resolution Details');
+    expect(page.querySelector('.status-history-dot')).not.toBeNull();
+    expect(page.querySelector('.status-history-number')).toBeNull();
+    expect(text).toContain('Dispute Details');
     expect(text).toContain('Dispute Description');
     expect(text).toContain('The repaired device still does not work.');
     expect(text).toContain('Customer Location and Route');
-    expect(text).toContain('Status History');
-    expect(text).toContain('Case opened');
+    expect(text).toContain('Dispute Timeline');
+    expect(text).toContain('Dispute Raised');
     expect(text).toContain('By Customer');
     expect(text).toContain('No messages yet');
     expect(text).toContain('Start the conversation to discuss and resolve this dispute.');
@@ -312,7 +318,7 @@ describe('ShopDisputedJobDetailPage', () => {
     });
   });
 
-  it('opens separate popups for each issue resolution action', async () => {
+  it('opens separate popups for each dispute action', async () => {
     const { page, component, harness, disputes } = await renderPage(null);
 
     component.openProposeResolutionModal();
@@ -354,6 +360,51 @@ describe('ShopDisputedJobDetailPage', () => {
     expect(page.querySelector('.issue-modal')).toBeNull();
   });
 
+  it('opens confirmation popups for accepting and rejecting the proposed resolution', async () => {
+    const awaitingShopResponse: RepairDispute = {
+      ...dispute,
+      status: 'AWAITING_SHOP_RESPONSE',
+      resolution: {
+        ...dispute.resolution,
+        state: 'proposed',
+        description: 'I Will Check need to check',
+        notes: '  I Will Check   need to check  ',
+      },
+    };
+    const { page, component, harness, disputes } = await renderPage(null, awaitingShopResponse);
+    const reviewCard = page.querySelector('.review-customer-response-card') as HTMLElement;
+
+    (reviewCard.querySelector('.button.primary') as HTMLButtonElement).click();
+    harness.detectChanges();
+    const acceptDialog = page
+      .querySelector('#accept-proposed-resolution-title')
+      ?.closest('.issue-modal') as HTMLElement;
+    expect(acceptDialog.textContent).toContain('I Will Check need to check');
+    expect(acceptDialog.textContent?.match(/I Will Check need to check/g)?.length).toBe(1);
+    (acceptDialog.querySelector('.issue-modal-footer .button.primary') as HTMLButtonElement).click();
+    expect(disputes.decideResolution).toHaveBeenCalledWith('shop', 'dispute-123', {
+      decision: 'accept',
+      reason: undefined,
+    });
+    expect(component.acceptResolutionModalOpen()).toBeFalse();
+
+    (reviewCard.querySelector('.button.danger') as HTMLButtonElement).click();
+    harness.detectChanges();
+    const rejectDialog = page
+      .querySelector('#reject-proposed-resolution-title')
+      ?.closest('.issue-modal') as HTMLElement;
+    expect(rejectDialog.querySelector('textarea[name="resolutionDecisionReason"]')).not.toBeNull();
+    expect(rejectDialog.textContent?.match(/I Will Check need to check/g)?.length).toBe(1);
+    component.resolutionDecisionReason = 'The proposed repair is not feasible.';
+    harness.detectChanges();
+    (rejectDialog.querySelector('.issue-modal-footer .button.danger') as HTMLButtonElement).click();
+    expect(disputes.decideResolution).toHaveBeenCalledWith('shop', 'dispute-123', {
+      decision: 'reject',
+      reason: 'The proposed repair is not feasible.',
+    });
+    expect(component.rejectResolutionModalOpen()).toBeFalse();
+  });
+
   it('requires a refund amount when proposing a refund', async () => {
     const { component, disputes } = await renderPage(null);
     component.resolutionType = 'partial_refund';
@@ -384,6 +435,41 @@ describe('ShopDisputedJobDetailPage', () => {
     expect(text).toContain('Submit reinspection findings');
     expect(text).toContain('Request additional charges');
     expect(text).toContain('Rework actions');
+
+    const sidebar = page.querySelector('.customer-detail-sidebar') as HTMLElement;
+    const reviewCard = sidebar.querySelector('.review-customer-response-card') as HTMLElement;
+    const workflowCard = sidebar.querySelector('.reinspection-submit-action-card') as HTMLElement;
+    const orderedCards = Array.from(
+      workflowCard.querySelectorAll('.rework-action-card, .review-customer-response-card'),
+    );
+    expect(page.querySelector('.customer-detail-main .review-customer-response-card')).toBeNull();
+    expect(workflowCard.contains(reviewCard)).toBeTrue();
+    expect(workflowCard.contains(sidebar.querySelector('.rework-action-card'))).toBeTrue();
+    expect(reviewCard.querySelector('textarea')).toBeNull();
+    expect(reviewCard.textContent).toContain('Accept proposed resolution');
+    expect(reviewCard.textContent).toContain('Reject proposed resolution');
+    expect(reviewCard.textContent).toContain('The customer requests another repair.');
+    expect(orderedCards.map((card) =>
+      card.classList.contains('rework-action-card') ? 'rework' : 'review',
+    )).toEqual(['rework', 'review']);
+    expect(
+      getComputedStyle(reviewCard.querySelector('.sidebar-review-actions') as HTMLElement).display,
+    ).toBe('grid');
+    expect(
+      getComputedStyle(reviewCard.querySelector('.sidebar-review-actions') as HTMLElement)
+        .gridTemplateColumns.trim()
+        .split(/\s+/).length,
+    ).toBe(2);
+
+    const sendButton = page.querySelector<HTMLButtonElement>(
+      '.conversation-compose-actions .job-button',
+    );
+    expect(sendButton?.textContent?.trim()).toBe('Send message');
+    expect(sendButton && getComputedStyle(sendButton).minWidth).toBe('152px');
+
+    const reviewActions = reviewCard.querySelector('.sidebar-review-actions');
+    expect(reviewActions?.textContent).toContain('Reject proposed resolution');
+    expect(reviewActions && getComputedStyle(reviewActions).display).toBe('grid');
   });
 
   it('places reinspection submission actions after resolution actions', async () => {
@@ -392,15 +478,32 @@ describe('ShopDisputedJobDetailPage', () => {
       status: 'REINSPECTION_IN_PROGRESS',
     };
     const { page } = await renderPage(null, reinspectionDispute);
-    const cardLabels = Array.from(page.querySelectorAll('.sidebar-action-card')).map((card) =>
+    const cardLabels = Array.from(
+      page.querySelectorAll('.customer-detail-sidebar > section[aria-label]'),
+    ).map((card) =>
       card.getAttribute('aria-label'),
     );
 
     expect(cardLabels).toContain('Resolution actions');
-    expect(cardLabels).toContain('Reinspection submission actions');
-    expect(cardLabels.indexOf('Reinspection submission actions')).toBeGreaterThan(
+    expect(cardLabels).toContain('Reinspection and follow-up actions');
+    expect(cardLabels.indexOf('Reinspection and follow-up actions')).toBeGreaterThan(
       cardLabels.indexOf('Resolution actions'),
     );
+    const reinspectionCard = page.querySelector('.reinspection-submit-action-card') as HTMLElement;
+    expect(reinspectionCard.querySelector('.technician-assignment-card h2')?.textContent).toContain(
+      'Technician Assignment',
+    );
+    expect(reinspectionCard.querySelector('.inspection-sidebar-action h2')?.textContent).toContain(
+      'Reinspection submission',
+    );
+    const reinspectionActions = reinspectionCard.querySelector(
+      '.reinspection-submit-buttons',
+    ) as HTMLElement;
+    const actionButtons = reinspectionActions.querySelectorAll('button');
+    expect(actionButtons.length).toBe(2);
+    expect(actionButtons[0].textContent).toContain('Submit reinspection findings');
+    expect(actionButtons[1].textContent).toContain('Request additional charges');
+    expect(getComputedStyle(reinspectionActions).display).toBe('grid');
   });
 
   it('starts approved rework from the reinspection submission card', async () => {
@@ -423,15 +526,14 @@ describe('ShopDisputedJobDetailPage', () => {
       status: 'AWAITING_SHOP_RESPONSE',
     };
     const { page } = await renderPage(null, awaitingShopResponse);
-    const cardLabels = Array.from(page.querySelectorAll('.sidebar-action-card')).map((card) =>
-      card.getAttribute('aria-label'),
+    const workflowCard = page.querySelector('.reinspection-submit-action-card') as HTMLElement;
+    const actionSections = Array.from(
+      workflowCard.querySelectorAll(':scope > .customer-detail-block'),
     );
 
-    expect(cardLabels).toContain('Reinspection submission actions');
-    expect(cardLabels).toContain('Rework actions');
-    expect(cardLabels.indexOf('Rework actions')).toBeGreaterThan(
-      cardLabels.indexOf('Reinspection submission actions'),
-    );
+    expect(actionSections[1].getAttribute('aria-label')).toBe('Reinspection submission');
+    expect(actionSections[2].getAttribute('aria-label')).toBe('Rework actions');
+    expect(actionSections.indexOf(actionSections[2])).toBeGreaterThan(actionSections.indexOf(actionSections[1]));
   });
 
   it('opens separate popups for each rework workflow action', async () => {
@@ -595,7 +697,8 @@ describe('ShopDisputedJobDetailPage', () => {
       '.reinspection-submit-action-card .sidebar-assigned-technician',
     );
 
-    expect(assignmentCard?.textContent).toContain('No technician has been assigned.');
+    expect(assignmentCard?.querySelector('.unassigned-message')).not.toBeNull();
+    expect(assignmentCard?.textContent).toContain('No technician assigned yet.');
     expect(assignmentCard?.textContent).toContain('Assign Technician');
 
     component.openAssignment();
@@ -617,6 +720,40 @@ describe('ShopDisputedJobDetailPage', () => {
       note: '',
     });
     expect(component.assignmentModalOpen()).toBeFalse();
+  });
+
+  it('matches the assigned-job owner card with profile, You badge, date, and reassignment action', async () => {
+    const reinspectionDispute: RepairDispute = { ...dispute, status: 'REINSPECTION_IN_PROGRESS' };
+    const { page } = await renderPage(null, reinspectionDispute, {
+      current: {
+        technicianId: 'shop-owner',
+        technicianName: 'Sikandar Shop',
+        assignedAt: '2026-11-19T10:27:00.000Z',
+        note: '',
+        profileImageData: 'data:image/png;base64,iVBORw0KGgo=',
+        isOwner: true,
+      },
+      history: [],
+    });
+    const assignmentCard = page.querySelector(
+      '.reinspection-submit-action-card .technician-assignment-card',
+    ) as HTMLElement;
+
+    expect(assignmentCard.querySelector('.assigned-technician img')?.getAttribute('alt')).toBe(
+      'Sikandar Shop profile photo',
+    );
+    expect(assignmentCard.querySelector('.assigned-technician-name')?.textContent).toContain(
+      'Sikandar Shop',
+    );
+    expect(assignmentCard.querySelector('.assignment-owner-badge')?.textContent).toBe('You');
+    expect(assignmentCard.querySelector('.assigned-technician-date')?.textContent).toContain(
+      'Nov 19, 2026',
+    );
+    expect(assignmentCard.querySelector('.assignment-action-button')?.textContent).toContain(
+      'Reassign Technician',
+    );
+    expect(getComputedStyle(assignmentCard.querySelector('.assignment-action-button') as HTMLElement).backgroundColor)
+      .toBe('rgb(242, 248, 243)');
   });
 
   it('shows the assigned technician and requires a reason to reassign', async () => {
@@ -658,5 +795,111 @@ describe('ShopDisputedJobDetailPage', () => {
       note: '',
       reason: 'Technician Two is unavailable.',
     });
+  });
+
+  it('offers close and reopen in one modal and closes with a required note', async () => {
+    const resolvedDispute: RepairDispute = { ...dispute, status: 'RESOLVED' };
+    const { page, component, harness, disputes } = await renderPage(null, resolvedDispute);
+    expect(page.querySelector('.close-dispute-panel')).toBeNull();
+    const openActionsButton = page.querySelector<HTMLButtonElement>(
+      '.status-action-toolbar button',
+    );
+    expect(page.querySelector('.status-action-copy h3')?.textContent).toContain(
+      'Need to update this dispute?',
+    );
+    expect(page.querySelector('.status-action-copy p')?.textContent).toContain(
+      'Close it when the issue is resolved',
+    );
+    expect(openActionsButton?.textContent).toContain('Close / reopen dispute');
+    openActionsButton?.click();
+    harness.detectChanges();
+    const modal = page.querySelector<HTMLElement>(
+      '.issue-modal[aria-labelledby="status-action-title"]',
+    );
+
+    expect(modal).not.toBeNull();
+    expect(modal?.querySelectorAll('input[type="radio"]').length).toBe(2);
+    expect(modal?.querySelector<HTMLInputElement>('input[value="close"]')?.checked).toBeTrue();
+    expect(modal?.querySelector<HTMLInputElement>('input[value="reopen"]')).not.toBeNull();
+    expect(modal?.textContent).toContain('Final closure note');
+    component.closeDispute(resolvedDispute);
+    expect(disputes.close).not.toHaveBeenCalled();
+    expect(component.actionError()).toBe('Enter a final closure note.');
+
+    const closureNote = 'All repair records are complete.';
+    component.closeReason = closureNote;
+    harness.detectChanges();
+    const closeButton = modal?.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(closeButton?.disabled).toBeFalse();
+    const getCallsBeforeClose = disputes.get.calls.count();
+    closeButton?.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(disputes.close).toHaveBeenCalledWith('dispute-123', closureNote);
+    expect(disputes.get.calls.count()).toBe(getCallsBeforeClose + 1);
+    expect(component.closeReason).toBe('');
+    expect(page.textContent).toContain('Dispute closed.');
+    expect(page.querySelector('.issue-modal')).toBeNull();
+
+    component.record.set({ ...dispute, status: 'CUSTOMER_CONFIRMED' });
+    harness.detectChanges();
+    openActionsButton?.click();
+    harness.detectChanges();
+    expect(
+      page.querySelectorAll('.issue-modal[aria-labelledby="status-action-title"] input[type="radio"]')
+        .length,
+    ).toBe(1);
+    expect(
+      page.querySelector<HTMLInputElement>('.issue-modal input[value="close"]')?.checked,
+    ).toBeTrue();
+  });
+
+  it('reopens resolved and closed disputes with a required reason', async () => {
+    const resolvedDispute: RepairDispute = { ...dispute, status: 'RESOLVED' };
+    const { page, component, harness, disputes } = await renderPage(null, resolvedDispute);
+
+    page.querySelector<HTMLButtonElement>('.status-action-toolbar button')?.click();
+    harness.detectChanges();
+    const modal = page.querySelector<HTMLElement>(
+      '.issue-modal[aria-labelledby="status-action-title"]',
+    );
+    expect(modal?.querySelectorAll('input[type="radio"]').length).toBe(2);
+    const reopenOption = modal?.querySelector<HTMLInputElement>('input[value="reopen"]');
+    reopenOption?.click();
+    harness.detectChanges();
+    expect(reopenOption?.checked).toBeTrue();
+    expect(modal?.textContent).toContain('Reason for reopening');
+    component.reopenDispute(resolvedDispute);
+    expect(disputes.reopen).not.toHaveBeenCalled();
+    expect(component.actionError()).toBe('Explain why this dispute should be reopened.');
+
+    const reopenReason = 'The reported issue returned after the repair.';
+    component.reopenReason = reopenReason;
+    harness.detectChanges();
+    const reopenButton = modal?.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(reopenButton?.disabled).toBeFalse();
+    const getCallsBeforeReopen = disputes.get.calls.count();
+    reopenButton?.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(disputes.reopen).toHaveBeenCalledWith('shop', 'dispute-123', reopenReason);
+    expect(disputes.get.calls.count()).toBe(getCallsBeforeReopen + 1);
+    expect(component.reopenReason).toBe('');
+    expect(page.textContent).toContain('Dispute reopened for further review.');
+    expect(page.querySelector('.issue-modal')).toBeNull();
+
+    const closedDispute: RepairDispute = { ...dispute, status: 'CLOSED' };
+    component.record.set(closedDispute);
+    harness.detectChanges();
+    page.querySelector<HTMLButtonElement>('.status-action-toolbar button')?.click();
+    harness.detectChanges();
+    const closedModal = page.querySelector<HTMLElement>(
+      '.issue-modal[aria-labelledby="status-action-title"]',
+    );
+    expect(closedModal?.querySelectorAll('input[type="radio"]').length).toBe(1);
+    expect(closedModal?.querySelector<HTMLInputElement>('input[value="reopen"]')?.checked).toBeTrue();
+    expect(closedModal?.querySelector('input[value="close"]')).toBeNull();
+    expect(component.canReopenDispute(closedDispute)).toBeTrue();
+    expect(component.canCloseDispute(closedDispute)).toBeFalse();
   });
 });

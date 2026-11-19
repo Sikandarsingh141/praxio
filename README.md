@@ -163,10 +163,29 @@ customer replaces or removes them. Customers can view uploaded request photos
 in the repair-request list; the API returns those images only with the
 authenticated customer's own requests.
 
+## Pre-repair pickup lifecycle
+
+A quotation records whether inspection was already completed and whether the
+appointed Shop must physically collect the device. `shop_visit` quotations skip
+pickup and move directly to an approved inspection on acceptance. `home_service`
+quotations require collection; any explicit quotation flag overrides that
+inference. Legacy quotations without either flag remain on the original
+`inspection_pending` path.
+
+When collection is required, accepting the quotation creates `confirmed` status.
+The Shop schedules the pickup (`pickup_scheduled`), marks it underway
+(`pickup_in_progress`), and confirms collection (`item_picked_up`), which moves
+the job to `inspection_pending`. The Shop cannot start inspection before
+collection is confirmed, and repair cannot start until an inspection report is
+approved. Each pickup step writes job history and notifies the Customer.
+
 ## Post-repair disputes and rework
 
 After confirming receipt, a Customer can raise a dispute from the repair detail
-page if the device still has an issue. The assigned Shop can accept it for
+page if the device still has an issue. Pickup-stage jobs can also raise a
+`collection` or `shop_unresponsive` dispute after a 24-hour collection SLA has
+passed, measured from confirmation, scheduled pickup, pickup start, or
+collection as applicable. The assigned Shop can accept it for
 reinspection or reject it with a reason and explanation. Reinspection findings
 and evidence are recorded on the dispute. If extra work is chargeable, the Shop
 must request itemized charges and wait for the Customer's approval before
@@ -174,14 +193,21 @@ starting rework.
 
 The Shop records rework progress, work performed, replaced parts, and testing
 results before asking the Customer to verify the device. The Customer can
-confirm resolution or report that the issue remains. Only after Customer
-confirmation can the Shop close the dispute. Admins can review and message on
-cases and add private investigation notes, but do not decide, resolve, or close
-them. Notifications use the existing persisted notification, socket, and
-configured push infrastructure. Dispute status and history are separate from
-the original repair job and payment; rework does not modify either. Evidence
-accepts JPEG, PNG, WebP, or PDF files up to 500 KB each, with at most two files
-per submission.
+confirm resolution or report that the issue remains. After Customer
+confirmation, the Shop can close the case; an Administrator can also close an
+authorized case. A resolved or closed dispute can be reopened by the Customer
+or assigned Shop with a reason, which returns it to `REOPENED` for further
+review. Historical status entries remain intact.
+
+Admins can monitor disputes, review evidence and messages, add private
+investigation notes, escalate through allowed status changes, propose or
+complete approved resolutions, and close cases when authorized. Admin status
+changes cannot jump directly to `RESOLVED` or `CLOSED`; the dedicated resolve
+and close actions record the final actor and timestamps. Notifications use the
+existing persisted notification, socket, and configured push infrastructure.
+Dispute status and history are separate from the original repair job and
+payment; rework does not modify either. Evidence accepts JPEG, PNG, WebP, or
+PDF files up to 500 KB each, with at most two files per submission.
 
 On startup, legacy repair jobs still marked `disputed` are copied into the
 dispute center as open cases, including their original issue description and
@@ -231,7 +257,9 @@ implemented API.
 | `PATCH`  | `/api/shop/disputes/:id/complete-rework`        | Record completed and tested rework                                         |
 | `PATCH`  | `/api/customer/disputes/:id/confirm-resolution` | Confirm the issue is resolved                                              |
 | `PATCH`  | `/api/customer/disputes/:id/report-unresolved`  | Report that the issue remains                                              |
+| `PATCH`  | `/api/customer/disputes/:id/reopen`             | Reopen a resolved or closed dispute                                        |
 | `PATCH`  | `/api/shop/disputes/:id/close`                  | Close after customer confirmation                                          |
+| `PATCH`  | `/api/shop/disputes/:id/reopen`                 | Reopen a resolved or closed dispute                                        |
 | `GET`    | `/api/admin/shops/pending`                     | List pending shop applications (admin only)                               |
 | `PATCH`  | `/api/admin/shops/:id/approve`                 | Legacy approval route; blocks shops without verified registration payment |
 | `PATCH`  | `/api/admin/shops/:id/reject`                  | Reject a shop application (admin only)                                    |

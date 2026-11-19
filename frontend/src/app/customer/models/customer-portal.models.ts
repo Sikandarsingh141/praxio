@@ -118,6 +118,7 @@ export interface CustomerRepairRequest {
   serviceType?: 'shop_visit' | 'home_service';
   status: 'open' | 'cancelled' | 'completed';
   createdAt: string;
+  updatedAt?: string;
   customerLatitude?: number;
   customerLongitude?: number;
   photos?: Array<{ mimeType: string; data: string }>;
@@ -131,6 +132,7 @@ export interface CustomerRepairRequest {
   }>;
   repairJob?: RepairWorkflowJob;
   acceptedQuotation?: RepairQuotation | null;
+  acceptedQuotationId?: string;
   shop?: {
     id: string;
     name: string;
@@ -156,6 +158,9 @@ export interface CustomerRepairRequestFilters {
   status?: 'open' | 'cancelled' | 'completed';
   repairStatus?:
     | 'confirmed'
+    | 'pickup_scheduled'
+    | 'pickup_in_progress'
+    | 'item_picked_up'
     | 'inspection_pending'
     | 'inspection_in_progress'
     | 'awaiting_customer_approval'

@@ -2982,7 +2982,7 @@ a {
   .request-progress {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--progress-step-count, 4), minmax(0, 1fr));
     gap: 0.6rem;
     margin: 1rem 0 0.85rem;
     padding: 0;
@@ -2992,8 +2992,8 @@ a {
   .request-progress::before {
     position: absolute;
     top: 0.72rem;
-    right: 12.5%;
-    left: 12.5%;
+    right: calc(50% / var(--progress-step-count, 4));
+    left: calc(50% / var(--progress-step-count, 4));
     height: 2px;
     background: #dce5de;
     content: '';
@@ -3702,6 +3702,10 @@ a {
         grid-template-columns: minmax(0, 1fr);
         gap: 0;
         padding: 0.8rem 1rem;
+      }
+
+      .request-progress::before {
+        display: none;
       }
 
       .request-progress li {

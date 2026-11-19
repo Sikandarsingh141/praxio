@@ -25,9 +25,16 @@ import { DisputesService } from '../../services/disputes.service';
 import { environment } from '../../../../environments/environment';
 import { profileImageSource } from '../../utils/appliance-thumbnail.util';
 import {
+  DISPUTE_CATEGORY_LABELS,
+  DISPUTE_EXPECTED_RESOLUTIONS,
+  disputeCategoryLabel,
+  disputeStatusLabel,
+} from '../../utils/dispute-labels';
+import {
   CommonFilterComponent,
   FilterConfig,
   FilterValues,
+  NumberRangeValue,
 } from '../filters/common-filter.component';
 import {
   ConfirmationDialogComponent,
@@ -40,24 +47,14 @@ import { ToastService } from '../../../core/toast/toast.service';
 
 type DisputeConfirmationAction =
   | 'confirmResolution'
-  | 'closeAdminDispute';
+  | 'closeAdminDispute'
+  | 'closeShopDispute';
 
-const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> = [
-  { value: 'same_issue_exists', label: 'Same issue still exists' },
-  { value: 'repair_quality', label: 'Repair quality' },
-  { value: 'device_not_working', label: 'Device is not working properly' },
-  { value: 'new_issue_discovered', label: 'New issue discovered' },
-  { value: 'unauthorized_work', label: 'Unauthorized work' },
-  { value: 'incorrect_charges', label: 'Incorrect charges' },
-  { value: 'overcharge', label: 'Overcharge' },
-  { value: 'incomplete_repair', label: 'Incomplete repair' },
-  { value: 'item_not_returned', label: 'Item not returned' },
-  { value: 'device_damaged', label: 'Device damaged' },
-  { value: 'shop_unresponsive', label: 'Shop unresponsive' },
-  { value: 'payment', label: 'Payment issue' },
-  { value: 'collection', label: 'Collection issue' },
-  { value: 'other', label: 'Other' },
-];
+const DISPUTE_CATEGORIES: Array<{ value: DisputeCategory; label: string }> =
+  Object.entries(DISPUTE_CATEGORY_LABELS).map(([value, label]) => ({
+    value: value as DisputeCategory,
+    label,
+  }));
 
 const DISPUTE_REVIEW_PROGRESS_STATUSES: DisputeStatus[] = [
   'UNDER_REVIEW',
@@ -78,6 +75,21 @@ const DISPUTE_COMPLETE_PROGRESS_STATUSES: DisputeStatus[] = [
   'REJECTED',
   'CUSTOMER_CONFIRMED',
 ];
+const ELIGIBLE_REPAIR_STATUSES: string[] = ['picked_up', 'completed'];
+const PICKUP_STAGE_REPAIR_STATUSES: string[] = [
+  'confirmed',
+  'pickup_scheduled',
+  'pickup_in_progress',
+  'item_picked_up',
+  'inspection_pending',
+];
+const RETURN_STAGE_REPAIR_STATUSES: string[] = ['ready_for_pickup'];
+const SERVICE_STAGE_DISPUTE_SLA_MS = 24 * 60 * 60 * 1000;
+const PICKUP_DISPUTE_CATEGORIES: DisputeCategory[] = [
+  'collection',
+  'shop_unresponsive',
+];
+const RETURN_DISPUTE_CATEGORIES: DisputeCategory[] = ['item_not_returned'];
 
 @Component({
   selector: 'app-dispute-center',
@@ -129,9 +141,14 @@ export class DisputeCenterComponent implements OnInit {
   readonly adminActionModalView = signal<'choose' | 'status' | 'complete'>('choose');
   readonly eligibleRepairRequests = signal<CustomerRepairRequest[]>([]);
   readonly eligibleRepairRequestsLoading = signal(false);
+  readonly eligibleRepairRequestsLoaded = signal(false);
   readonly eligibleRepairRequestsError = signal('');
+  readonly repairEligibleForDispute = signal(false);
   readonly raiseDisputeFormError = signal('');
   readonly categories = DISPUTE_CATEGORIES;
+  readonly expectedResolutions = DISPUTE_EXPECTED_RESOLUTIONS;
+  categoryLabel = disputeCategoryLabel;
+  statusLabel = disputeStatusLabel;
   readonly adminDirectionsLoader = (requestId: string) =>
     this.adminService.getMapRoute(requestId);
   readonly disputeProgressSteps = [
@@ -153,7 +170,10 @@ export class DisputeCenterComponent implements OnInit {
   sortOrder: 'newest' | 'oldest' | 'priority' = 'newest';
   category = 'repair_quality';
   selectedRepairRequestId = '';
+  subject = '';
   description = '';
+  expectedResolution = '';
+  expectedResolutionDetails = '';
   customerComments = '';
   attachments: DisputeAttachment[] = [];
   conversationAttachments: DisputeAttachment[] = [];
@@ -183,6 +203,8 @@ export class DisputeCenterComponent implements OnInit {
   verificationNotes = '';
   unresolvedNotes = '';
   closeReason = '';
+  shopCloseReason = '';
+  reopenReason = '';
   adminStatus: DisputeStatus = 'UNDER_REVIEW';
   adminStatusReason = '';
   resolutionType = 'repair_again';
@@ -231,6 +253,9 @@ export class DisputeCenterComponent implements OnInit {
         this.loadDetail(id);
       } else {
         this.mode.set('list');
+        if (this.role() === 'customer') {
+          this.loadEligibleRepairRequests();
+        }
         this.loadList();
       }
     });
@@ -270,6 +295,30 @@ export class DisputeCenterComponent implements OnInit {
                   { value: 'urgent', label: 'Urgent' },
                 ],
               },
+              {
+                key: 'customer',
+                label: 'Customer',
+                type: 'text' as const,
+                placeholder: 'Customer name or email',
+              },
+              {
+                key: 'shop',
+                label: 'Shop',
+                type: 'text' as const,
+                placeholder: 'Shop name or email',
+              },
+              {
+                key: 'amount',
+                label: 'Amount in dispute',
+                type: 'number-range' as const,
+                min: 0,
+                step: 1,
+              },
+              {
+                key: 'overdue',
+                label: 'Overdue disputes only',
+                type: 'checkbox' as const,
+              },
             ]
           : []),
         {
@@ -291,6 +340,18 @@ export class DisputeCenterComponent implements OnInit {
     this.appliedFilters.set(filters);
     this.categoryFilter = this.filterCategory(filters['category']);
     this.priorityFilter = this.filterPriority(filters['priority']);
+    this.customerFilter = this.filterText(filters['customer']);
+    this.shopFilter = this.filterText(filters['shop']);
+    const amount = filters['amount'];
+    if (amount && typeof amount === 'object' && !Array.isArray(amount)) {
+      const amountRange = amount as NumberRangeValue;
+      this.minAmountFilter = this.filterAmount(amountRange.min);
+      this.maxAmountFilter = this.filterAmount(amountRange.max);
+    } else {
+      this.minAmountFilter = undefined;
+      this.maxAmountFilter = undefined;
+    }
+    this.overdueFilter = filters['overdue'] === true;
     const sort = filters['sort'];
     this.sortOrder =
       sort === 'oldest' || sort === 'priority' ? sort : 'newest';
@@ -365,6 +426,19 @@ export class DisputeCenterComponent implements OnInit {
     return typeof value === 'string' && priorities.includes(value as DisputePriority)
       ? (value as DisputePriority)
       : '';
+  }
+
+  private filterText(value: FilterValues[string]): string {
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  private filterAmount(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+    }
+    return undefined;
   }
 
   goToPage(page: number): void {
@@ -450,6 +524,11 @@ export class DisputeCenterComponent implements OnInit {
         status: this.statusFilter,
         category: this.categoryFilter,
         priority: this.priorityFilter,
+        customer: this.customerFilter || undefined,
+        shop: this.shopFilter || undefined,
+        minAmount: this.minAmountFilter,
+        maxAmount: this.maxAmountFilter,
+        overdue: this.overdueFilter || undefined,
         from: this.fromDate,
         to: this.toDate,
         sort: this.sortOrder,
@@ -483,6 +562,8 @@ export class DisputeCenterComponent implements OnInit {
     this.adminActionModalView.set('choose');
     this.internalNote = '';
     this.closeReason = '';
+    this.shopCloseReason = '';
+    this.reopenReason = '';
     this.adminStatusReason = '';
     this.resolutionCompletionNotes = '';
     this.refundTransactionId = '';
@@ -503,8 +584,8 @@ export class DisputeCenterComponent implements OnInit {
         this.fail(
           error,
           this.role() === 'admin'
-            ? 'Issue resolution could not be loaded.'
-            : 'Issue details could not be loaded.',
+            ? 'Dispute management could not be loaded.'
+            : 'Dispute details could not be loaded.',
         ),
     });
   }
@@ -519,6 +600,7 @@ export class DisputeCenterComponent implements OnInit {
           model: request.model,
           status: request.repairJob?.status ?? request.status,
         });
+        this.repairEligibleForDispute.set(this.canRaiseDisputeFor(request));
         this.loading.set(false);
       },
       error: (error: HttpErrorResponse) => this.fail(error, 'Repair details could not be loaded.'),
@@ -527,25 +609,37 @@ export class DisputeCenterComponent implements OnInit {
 
   openRaiseDisputeDialog(): void {
     this.raiseDisputeDialogOpen.set(true);
-    this.eligibleRepairRequestsLoading.set(true);
     this.eligibleRepairRequestsError.set('');
     this.raiseDisputeFormError.set('');
-    this.selectedRepairRequestId = '';
+    this.selectedRepairRequestId = this.eligibleRepairRequests()[0]?._id ?? '';
+    this.subject = '';
     this.description = '';
+    this.expectedResolution = '';
+    this.expectedResolutionDetails = '';
     this.customerComments = '';
     this.category = 'repair_quality';
     this.attachments = [];
+    if (!this.eligibleRepairRequestsLoaded() && !this.eligibleRepairRequestsLoading()) {
+      this.loadEligibleRepairRequests();
+    }
+  }
+
+  private loadEligibleRepairRequests(): void {
+    this.eligibleRepairRequestsLoading.set(true);
+    this.eligibleRepairRequestsError.set('');
     this.customerPortal.getRepairRequests().subscribe({
       next: (requests) => {
         const eligibleRequests = requests.filter((request) => this.canRaiseDisputeFor(request));
         this.eligibleRepairRequests.set(eligibleRequests);
+        this.eligibleRepairRequestsLoaded.set(true);
         this.selectedRepairRequestId = eligibleRequests[0]?._id ?? '';
         this.eligibleRepairRequestsLoading.set(false);
       },
       error: (error: HttpErrorResponse) => {
         this.eligibleRepairRequestsError.set(
-          error.error?.message || 'Completed repairs could not be loaded.',
+          error.error?.message || 'Eligible repairs could not be loaded.',
         );
+        this.eligibleRepairRequestsLoaded.set(true);
         this.eligibleRepairRequestsLoading.set(false);
       },
     });
@@ -556,7 +650,10 @@ export class DisputeCenterComponent implements OnInit {
     this.eligibleRepairRequestsError.set('');
     this.raiseDisputeFormError.set('');
     this.selectedRepairRequestId = '';
+    this.subject = '';
     this.description = '';
+    this.expectedResolution = '';
+    this.expectedResolutionDetails = '';
     this.customerComments = '';
     this.category = 'repair_quality';
     this.attachments = [];
@@ -638,7 +735,64 @@ export class DisputeCenterComponent implements OnInit {
   }
 
   private canRaiseDisputeFor(request: CustomerRepairRequest): boolean {
-    return ['picked_up', 'completed'].includes(request.repairJob?.status ?? request.status);
+    const status = request.repairJob?.status ?? request.status;
+    if (!this.hasAcceptedShopQuotation(request)) return false;
+    if (ELIGIBLE_REPAIR_STATUSES.includes(status)) return true;
+    const job = request.repairJob;
+    if (RETURN_STAGE_REPAIR_STATUSES.includes(status)) {
+      const anchorTime = new Date(
+        job?.readyForPickupAt ??
+          job?.repairCompletedAt ??
+          request.updatedAt ??
+          request.createdAt,
+      ).getTime();
+      return Date.now() >= anchorTime + SERVICE_STAGE_DISPUTE_SLA_MS;
+    }
+    if (!PICKUP_STAGE_REPAIR_STATUSES.includes(status)) return false;
+    const anchor =
+      status === 'pickup_scheduled'
+        ? job?.servicePickup?.scheduledAt
+        : status === 'pickup_in_progress'
+          ? job?.servicePickup?.startedAt
+          : status === 'item_picked_up' || status === 'inspection_pending'
+            ? job?.servicePickup?.collectedAt
+            : undefined;
+    const anchorTime = new Date(
+      anchor ?? job?.confirmedAt ?? request.createdAt,
+    ).getTime();
+    return Date.now() >= anchorTime + SERVICE_STAGE_DISPUTE_SLA_MS;
+  }
+
+  private hasAcceptedShopQuotation(request: CustomerRepairRequest): boolean {
+    const acceptedQuotationId =
+      request.repairJob?.acceptedQuotationId ?? request.acceptedQuotationId;
+    const acceptedQuotations = [
+      ...(request.acceptedQuotation ? [request.acceptedQuotation] : []),
+      ...(request.quotations ?? []),
+    ];
+    return acceptedQuotations.some(
+      (quotation) =>
+        quotation.status === 'accepted' &&
+        (!acceptedQuotationId || quotation._id === acceptedQuotationId),
+    );
+  }
+
+  selectedEligibleRepairRequest(): CustomerRepairRequest | undefined {
+    return this.eligibleRepairRequests().find(
+      (request) => request._id === this.selectedRepairRequestId,
+    );
+  }
+
+  repairEligibilityLabel(request: CustomerRepairRequest): string {
+    const status = request.repairJob?.status;
+    if (status === 'picked_up') return 'Picked up';
+    if (status === 'pickup_scheduled') return 'Pickup scheduled';
+    if (status === 'pickup_in_progress') return 'Pickup in progress';
+    if (status === 'item_picked_up') return 'Item picked up';
+    if (status === 'confirmed') return 'Confirmed';
+    if (status === 'inspection_pending') return 'Inspection pending';
+    if (status === 'ready_for_pickup') return 'Ready for pickup';
+    return 'Completed';
   }
 
   createDispute(): void {
@@ -646,16 +800,59 @@ export class DisputeCenterComponent implements OnInit {
       this.setRaiseDisputeError('Describe the problem found after receiving the repaired device.');
       return;
     }
+    if (this.expectedResolution === 'Other' && !this.expectedResolutionDetails.trim()) {
+      this.setRaiseDisputeError('Explain what “Other” resolution you expect.');
+      return;
+    }
     const repairRequestId =
       this.mode() === 'create' ? this.repairRequestId : this.selectedRepairRequestId;
     if (!repairRequestId) {
-      this.setRaiseDisputeError('Select a completed repair before raising a dispute.');
+      this.setRaiseDisputeError('Select an eligible repair before raising a dispute.');
       return;
     }
+    if (
+      this.isPickupStageSelected &&
+      !PICKUP_DISPUTE_CATEGORIES.includes(this.category as DisputeCategory)
+    ) {
+      this.setRaiseDisputeError(
+        'Pickup-stage disputes must use Collection Issue or Shop Unresponsive.',
+      );
+      return;
+    }
+    if (
+      this.isReturnStageSelected &&
+      !RETURN_DISPUTE_CATEGORIES.includes(this.category as DisputeCategory)
+    ) {
+      this.setRaiseDisputeError(
+        'Ready-for-pickup disputes must use Item Not Returned.',
+      );
+      return;
+    }
+    if (this.mode() === 'create' && !this.repairEligibleForDispute()) {
+      this.setRaiseDisputeError(
+        'You can raise a dispute after pickup or completion, or after the applicable service-stage SLA has passed.',
+      );
+      return;
+    }
+    if (this.mode() === 'list') {
+      const selectedRequest = this.selectedEligibleRepairRequest();
+      if (!selectedRequest || !this.canRaiseDisputeFor(selectedRequest)) {
+        this.setRaiseDisputeError(
+          'You can raise a dispute after pickup or completion, or after the applicable service-stage SLA has passed.',
+        );
+        return;
+      }
+    }
+    const expectedResolution =
+      this.expectedResolution === 'Other'
+        ? `Other: ${this.expectedResolutionDetails.trim()}`
+        : this.expectedResolution;
     this.run(
       this.disputes.create(repairRequestId, {
         category: this.category,
+        subject: this.subject.trim() || undefined,
         description: this.description.trim(),
+        expectedResolution: expectedResolution || undefined,
         attachments: this.attachments,
         customerComments: this.customerComments.trim() || undefined,
       }),
@@ -817,6 +1014,41 @@ export class DisputeCenterComponent implements OnInit {
       cancelLabel: 'Cancel',
       destructive: true,
     });
+  }
+
+  closeAsShop(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.shopCloseReason.trim()) {
+      this.error.set('Enter a final closure note.');
+      return;
+    }
+    this.confirmationAction = 'closeShopDispute';
+    this.confirmation.set({
+      title: 'Close dispute?',
+      message: 'This will close the case after customer confirmation. Continue?',
+      confirmLabel: 'Close dispute',
+      cancelLabel: 'Cancel',
+      destructive: true,
+    });
+  }
+
+  reopenDispute(): void {
+    const dispute = this.dispute();
+    const role = this.role();
+    if (!dispute || (role !== 'customer' && role !== 'shop')) return;
+    if (!this.reopenReason.trim()) {
+      this.error.set('Explain why this dispute should be reopened.');
+      return;
+    }
+    this.run(
+      this.disputes.reopen(role, dispute._id, this.reopenReason.trim()),
+      'Dispute reopened for further review.',
+      (updated) => {
+        this.reopenReason = '';
+        this.shopCloseReason = '';
+        this.dispute.set(updated);
+      },
+    );
   }
 
   acceptDispute(): void {
@@ -1054,6 +1286,8 @@ export class DisputeCenterComponent implements OnInit {
       this.submitResolutionConfirmation();
     } else if (action === 'closeAdminDispute') {
       this.submitAdminDisputeClosure();
+    } else if (action === 'closeShopDispute') {
+      this.submitShopDisputeClosure();
     }
   }
 
@@ -1066,6 +1300,20 @@ export class DisputeCenterComponent implements OnInit {
       (updated) => {
         this.closeReason = '';
         this.closeDisputeModalOpen.set(false);
+        this.dispute.set(updated);
+      },
+    );
+  }
+
+  private submitShopDisputeClosure(): void {
+    const dispute = this.dispute();
+    if (!dispute || !this.shopCloseReason.trim()) return;
+    this.run(
+      this.disputes.close(dispute._id, this.shopCloseReason.trim()),
+      'Dispute closed.',
+      (updated) => {
+        this.shopCloseReason = '';
+        this.reopenReason = '';
         this.dispute.set(updated);
       },
     );
@@ -1409,7 +1657,37 @@ export class DisputeCenterComponent implements OnInit {
   }
 
   get isRepairEligible(): boolean {
-    return ['picked_up', 'completed'].includes(this.repairSummary()?.status ?? '');
+    return this.repairEligibleForDispute();
+  }
+
+  get isPickupStageSelected(): boolean {
+    const status =
+      this.mode() === 'create'
+        ? this.repairSummary()?.status
+        : this.selectedEligibleRepairRequest()?.repairJob?.status;
+    return !!status && PICKUP_STAGE_REPAIR_STATUSES.includes(status);
+  }
+
+  get isReturnStageSelected(): boolean {
+    const status =
+      this.mode() === 'create'
+        ? this.repairSummary()?.status
+        : this.selectedEligibleRepairRequest()?.repairJob?.status;
+    return !!status && RETURN_STAGE_REPAIR_STATUSES.includes(status);
+  }
+
+  get availableCategories(): Array<{ value: DisputeCategory; label: string }> {
+    if (this.isPickupStageSelected) {
+      return this.categories.filter((option) =>
+        PICKUP_DISPUTE_CATEGORIES.includes(option.value),
+      );
+    }
+    if (this.isReturnStageSelected) {
+      return this.categories.filter((option) =>
+        RETURN_DISPUTE_CATEGORIES.includes(option.value),
+      );
+    }
+    return this.categories;
   }
 
   get categoryFilter(): DisputeCategory | '' {
@@ -1420,6 +1698,11 @@ export class DisputeCenterComponent implements OnInit {
   }
 
   private selectedCategory: DisputeCategory | '' = '';
+  private customerFilter = '';
+  private shopFilter = '';
+  private minAmountFilter?: number;
+  private maxAmountFilter?: number;
+  private overdueFilter = false;
 
   get canSendMessage(): boolean {
     const status = this.dispute()?.status;

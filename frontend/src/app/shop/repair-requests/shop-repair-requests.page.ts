@@ -64,6 +64,9 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
         placeholder: 'Any repair status',
         options: [
           { label: 'Confirmed', value: 'confirmed' },
+          { label: 'Pickup scheduled', value: 'pickup_scheduled' },
+          { label: 'Pickup in progress', value: 'pickup_in_progress' },
+          { label: 'Item picked up', value: 'item_picked_up' },
           { label: 'Inspection pending', value: 'inspection_pending' },
           { label: 'Inspection in progress', value: 'inspection_in_progress' },
           { label: 'Estimate awaiting approval', value: 'awaiting_customer_approval' },
@@ -187,6 +190,9 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
       typeof repairStatus === 'string' &&
       [
         'confirmed',
+        'pickup_scheduled',
+        'pickup_in_progress',
+        'item_picked_up',
         'inspection_pending',
         'inspection_in_progress',
         'awaiting_customer_approval',

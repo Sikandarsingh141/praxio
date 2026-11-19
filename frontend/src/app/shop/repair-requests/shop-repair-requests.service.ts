@@ -120,6 +120,24 @@ export class ShopRepairRequestsService {
       .pipe(map(() => undefined));
   }
 
+  schedulePickup(
+    id: string,
+    input: { scheduledAt: string; notes?: string },
+  ): Observable<void> {
+    return this.updateRepair(id, 'schedule-pickup', input);
+  }
+
+  startPickup(id: string, notes?: string): Observable<void> {
+    return this.updateRepair(id, 'start-pickup', { notes });
+  }
+
+  confirmPickup(
+    id: string,
+    input?: { collectedAt?: string; notes?: string },
+  ): Observable<void> {
+    return this.updateRepair(id, 'confirm-pickup', input ?? {});
+  }
+
   startInspection(id: string): Observable<void> {
     return this.http
       .post<ApiEnvelope<unknown>>(`${this.baseUrl}/${encodeURIComponent(id)}/start-inspection`, {})

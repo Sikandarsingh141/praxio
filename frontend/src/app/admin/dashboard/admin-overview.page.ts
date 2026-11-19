@@ -170,6 +170,9 @@ export class AdminOverviewPage implements OnInit {
       .filter((item) =>
         [
           'confirmed',
+          'pickup_scheduled',
+          'pickup_in_progress',
+          'item_picked_up',
           'inspection_pending',
           'inspection_in_progress',
           'awaiting_customer_approval',

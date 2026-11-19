@@ -188,6 +188,9 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
         options: [
           { label: 'Pending', value: 'pending' },
           { label: 'Confirmed', value: 'confirmed' },
+          { label: 'Pickup scheduled', value: 'pickup_scheduled' },
+          { label: 'Pickup in progress', value: 'pickup_in_progress' },
+          { label: 'Item picked up', value: 'item_picked_up' },
           { label: 'Inspection pending', value: 'inspection_pending' },
           { label: 'Inspection in progress', value: 'inspection_in_progress' },
           { label: 'Awaiting approval', value: 'awaiting_customer_approval' },
@@ -551,7 +554,18 @@ export class AdminMapViewPage implements OnInit, AfterViewInit, OnDestroy {
     }
     if (['cancelled', 'repair_declined'].includes(status)) return '×';
     if (status === 'disputed') return '!';
-    if (['pending', 'inspection_pending'].includes(status)) return '◷';
+    if (
+      [
+        'pending',
+        'confirmed',
+        'pickup_scheduled',
+        'pickup_in_progress',
+        'item_picked_up',
+        'inspection_pending',
+      ].includes(status)
+    ) {
+      return '◷';
+    }
     return '↻';
   }
 

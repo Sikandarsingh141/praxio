@@ -30,6 +30,7 @@ import {
   InternalDisputeNoteDto,
   AdminDisputeStatusDto,
   ProposeDisputeResolutionDto,
+  ReopenDisputeDto,
   ReportUnresolvedDto,
   ResolveDisputeDto,
   ShopRejectDisputeDto,
@@ -208,6 +209,21 @@ export class CustomerDisputesController {
   ) {
     return {
       data: await this.disputes.reportUnresolved(
+        { userId: this.userId(request), role: 'customer' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/reopen')
+  async reopen(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ReopenDisputeDto,
+  ) {
+    return {
+      data: await this.disputes.reopenDispute(
         { userId: this.userId(request), role: 'customer' },
         id,
         dto,
@@ -458,6 +474,21 @@ export class ShopDisputesController {
   ) {
     return {
       data: await this.disputes.closeDispute(
+        { userId: this.userId(request), role: 'shop' },
+        id,
+        dto,
+      ),
+    };
+  }
+
+  @Patch(':id/reopen')
+  async reopen(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: ReopenDisputeDto,
+  ) {
+    return {
+      data: await this.disputes.reopenDispute(
         { userId: this.userId(request), role: 'shop' },
         id,
         dto,

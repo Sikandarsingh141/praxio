@@ -47,7 +47,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
     { label: 'Open Requests', route: '/customer/jobs/new-jobs', countKey: 'new' },
     { label: 'Pending Requests', route: '/customer/jobs/pending-jobs', countKey: 'pending' },
     { label: 'Active Repairs', route: '/customer/jobs/active-jobs', countKey: 'active' },
-    { label: 'Issue Resolution', route: '/customer/jobs/disputed-jobs', countKey: 'disputed' },
+    { label: 'Disputes', route: '/customer/jobs/disputed-jobs', countKey: 'disputed' },
     { label: 'Completed Repairs', route: '/customer/jobs/completed-jobs', countKey: 'completed' },
   ];
 

@@ -27,6 +27,8 @@ type RepairRatingKey =
 export class CustomerRepairWorkflowComponent {
   @Input({ required: true }) request!: CustomerRepairRequest;
   @Input() showApprovalSummaryInFlow = true;
+  @Input() pickupConfirmationInSidebar = false;
+  @Input() reviewInSidebar = false;
   @Output() readonly requestUpdated = new EventEmitter<CustomerRepairRequest>();
 
   readonly submitting = signal(false);
@@ -34,6 +36,8 @@ export class CustomerRepairWorkflowComponent {
   readonly notice = signal('');
   readonly approvalDialogOpen = signal(false);
   readonly declineDialogOpen = signal(false);
+  readonly pickupConfirmationDialogOpen = signal(false);
+  readonly reviewDialogOpen = signal(false);
   readonly decisionReason = signal('');
   readonly confirmingCharge = signal<AdditionalChargeRequest | null>(null);
   readonly chargeDecision = signal<'accept' | 'decline'>('accept');
@@ -50,6 +54,29 @@ export class CustomerRepairWorkflowComponent {
   openDeclineDialog(): void {
     this.declineDialogOpen.set(true);
   }
+
+  openPickupConfirmationDialog(): void {
+    this.error.set('');
+    this.pickupConfirmationDialogOpen.set(true);
+  }
+
+  closePickupConfirmationDialog(): void {
+    if (this.submitting()) return;
+    this.error.set('');
+    this.pickupConfirmationDialogOpen.set(false);
+  }
+
+  openReviewDialog(): void {
+    this.error.set('');
+    this.reviewDialogOpen.set(true);
+  }
+
+  closeReviewDialog(): void {
+    if (this.submitting()) return;
+    this.error.set('');
+    this.reviewDialogOpen.set(false);
+  }
+
   readonly overallRating = signal(5);
   readonly repairQuality = signal(5);
   readonly communication = signal(5);
@@ -298,6 +325,7 @@ export class CustomerRepairWorkflowComponent {
         this.submitting.set(false);
         this.approvalDialogOpen.set(false);
         this.declineDialogOpen.set(false);
+        this.reviewDialogOpen.set(false);
         this.confirmingCharge.set(null);
         this.decisionReason.set('');
       },

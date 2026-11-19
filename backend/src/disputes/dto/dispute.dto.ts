@@ -397,6 +397,33 @@ export class DisputeListQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(150)
+  customer?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  shop?: string;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  minAmount?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Type(() => Number)
+  maxAmount?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  overdue?: boolean;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(10)
   from?: string;
 

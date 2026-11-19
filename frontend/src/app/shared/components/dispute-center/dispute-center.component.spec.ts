@@ -2,7 +2,10 @@ import { Router, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
-import { CustomerRepairRequest } from '../../../customer/models/customer-portal.models';
+import {
+  CustomerRepairRequest,
+  RepairQuotation,
+} from '../../../customer/models/customer-portal.models';
 import { CustomerPortalService } from '../../../customer/services/customer-portal.service';
 import {
   AdminMapEntity,
@@ -106,6 +109,36 @@ function createAdminServiceStub() {
   return service;
 }
 
+function createEligibleRepairRequest(
+  overrides: Partial<CustomerRepairRequest> = {},
+): CustomerRepairRequest {
+  const quotationId = 'quotation-1';
+  const quotation: RepairQuotation = {
+    _id: quotationId,
+    repairRequestId: '507f1f77bcf86cd7099f4b67bb',
+    shopId: 'shop-id',
+    amount: 450,
+    currency: 'INR',
+    message: 'Replace the display panel.',
+    status: 'accepted',
+    createdAt: '2026-11-17T00:00:00.000Z',
+  };
+  return {
+    _id: '507f1f77bcf86cd7099f4b67bb',
+    shopIds: ['shop-id'],
+    appliance: 'Mobile Phone',
+    brand: 'Apple',
+    model: '17',
+    description: 'Screen still does not work',
+    status: 'completed',
+    createdAt: '2026-11-17T00:00:00.000Z',
+    acceptedQuotationId: quotationId,
+    quotations: [quotation],
+    repairJob: { status: 'completed', acceptedQuotationId: quotationId },
+    ...overrides,
+  };
+}
+
 describe('DisputeCenterComponent customer views', () => {
   it('keeps dispute summaries and the raise-dispute action in the redesigned listing', async () => {
     const dispute = {
@@ -174,7 +207,15 @@ describe('DisputeCenterComponent customer views', () => {
       providers: [
         provideRouter([]),
         { provide: DisputesService, useValue: disputes },
-        { provide: CustomerPortalService, useValue: { getRepairJob: jasmine.createSpy() } },
+        {
+          provide: CustomerPortalService,
+          useValue: {
+            getRepairJob: jasmine.createSpy(),
+            getRepairRequests: jasmine
+              .createSpy()
+              .and.returnValue(of([createEligibleRepairRequest()])),
+          },
+        },
         { provide: AdminService, useValue: createAdminServiceStub() },
       ],
     }).compileComponents();
@@ -259,19 +300,225 @@ describe('DisputeCenterComponent customer views', () => {
     ).toContain('/admin/disputes/dispute-id');
   });
 
+  it('hides the raise-dispute action and explains eligibility when no repair qualifies', async () => {
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list']);
+    disputes.list.and.returnValue(
+      of({
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        summary: { TOTAL: 0, OPEN: 0, UNDER_REVIEW: 0, RESOLVED: 0, CLOSED: 0 },
+      } satisfies DisputeListResult),
+    );
+    const customerPortal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getRepairRequests'],
+    );
+    customerPortal.getRepairRequests.and.returnValue(
+      of([
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb8',
+          status: 'open',
+          repairJob: { status: 'in_progress', acceptedQuotationId: 'quotation-1' },
+        }),
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb9',
+          acceptedQuotationId: undefined,
+          quotations: [],
+          repairJob: { status: 'completed' },
+        }),
+      ]),
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [DisputeCenterComponent],
+      providers: [
+        provideRouter([]),
+        { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: customerPortal },
+        { provide: AdminService, useValue: createAdminServiceStub() },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(DisputeCenterComponent);
+    fixture.detectChanges();
+
+    const eligibilityMessage =
+      'You can raise a dispute after pickup or completion, or after the collection SLA has passed.';
+    expect(fixture.nativeElement.querySelector('.raise-dispute-button')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(eligibilityMessage);
+
+    fixture.componentInstance.openRaiseDisputeDialog();
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.textContent).toContain(eligibilityMessage);
+    expect(dialog.querySelectorAll('option').length).toBe(0);
+  });
+
+  it('shows only picked-up and completed repairs with accepted quotations', async () => {
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list']);
+    disputes.list.and.returnValue(
+      of({
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        summary: { TOTAL: 0, OPEN: 0, UNDER_REVIEW: 0, RESOLVED: 0, CLOSED: 0 },
+      } satisfies DisputeListResult),
+    );
+    const customerPortal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getRepairRequests'],
+    );
+    customerPortal.getRepairRequests.and.returnValue(
+      of([
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb1',
+          repairJob: { status: 'picked_up', acceptedQuotationId: 'quotation-1' },
+        }),
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb2',
+          repairJob: { status: 'completed', acceptedQuotationId: 'quotation-1' },
+        }),
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb3',
+          repairJob: { status: 'in_progress', acceptedQuotationId: 'quotation-1' },
+        }),
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb4',
+          acceptedQuotationId: undefined,
+          quotations: [],
+          repairJob: { status: 'completed' },
+        }),
+      ]),
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [DisputeCenterComponent],
+      providers: [
+        provideRouter([]),
+        { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: customerPortal },
+        { provide: AdminService, useValue: createAdminServiceStub() },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(DisputeCenterComponent);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.raise-dispute-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(
+      Array.from(dialog.querySelectorAll('select[name="repairRequestId"] option')).map(
+        (option) => (option as HTMLOptionElement).value,
+      ),
+    ).toEqual(['507f1f77bcf86cd7099f4b67bb1', '507f1f77bcf86cd7099f4b67bb2']);
+    expect(dialog.querySelector('.repair-status')?.textContent?.trim()).toBe('Picked up');
+  });
+
+  it('allows pickup-stage repairs only after the SLA and restricts their categories', async () => {
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list', 'create']);
+    disputes.list.and.returnValue(
+      of({
+        items: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        summary: { TOTAL: 0, OPEN: 0, UNDER_REVIEW: 0, RESOLVED: 0, CLOSED: 0 },
+      } satisfies DisputeListResult),
+    );
+    disputes.create.and.returnValue(of({ _id: 'new-dispute' } as RepairDispute));
+    const customerPortal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getRepairRequests'],
+    );
+    const lateScheduledAt = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    customerPortal.getRepairRequests.and.returnValue(
+      of([
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb5',
+          repairJob: {
+            status: 'pickup_scheduled',
+            acceptedQuotationId: 'quotation-1',
+            servicePickup: { scheduledAt: lateScheduledAt },
+          },
+        }),
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb6',
+          repairJob: {
+            status: 'pickup_scheduled',
+            acceptedQuotationId: 'quotation-1',
+            servicePickup: { scheduledAt: new Date().toISOString() },
+          },
+        }),
+        createEligibleRepairRequest({
+          _id: '507f1f77bcf86cd7099f4b67bb7',
+          repairJob: {
+            status: 'ready_for_pickup',
+            acceptedQuotationId: 'quotation-1',
+            readyForPickupAt: lateScheduledAt,
+          },
+        }),
+      ]),
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [DisputeCenterComponent],
+      providers: [
+        provideRouter([]),
+        { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: customerPortal },
+        { provide: AdminService, useValue: createAdminServiceStub() },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(DisputeCenterComponent);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('.raise-dispute-button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
+    expect(
+      Array.from(dialog.querySelectorAll('select[name="repairRequestId"] option')).map(
+        (option) => (option as HTMLOptionElement).value,
+      ),
+    ).toEqual([
+      '507f1f77bcf86cd7099f4b67bb5',
+      '507f1f77bcf86cd7099f4b67bb7',
+    ]);
+    expect(
+      Array.from(dialog.querySelectorAll('select[name="category"] option')).map(
+        (option) => (option as HTMLOptionElement).value,
+      ),
+    ).toEqual(['shop_unresponsive', 'collection']);
+
+    const component = fixture.componentInstance;
+    component.category = 'repair_quality';
+    component.description = 'The shop did not collect the device.';
+    component.createDispute();
+    fixture.detectChanges();
+
+    expect(disputes.create).not.toHaveBeenCalled();
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toContain(
+      'Pickup-stage disputes must use Collection Issue or Shop Unresponsive.',
+    );
+
+    component.selectedRepairRequestId = '507f1f77bcf86cd7099f4b67bb7';
+    fixture.detectChanges();
+    expect(
+      Array.from(dialog.querySelectorAll('select[name="category"] option')).map(
+        (option) => (option as HTMLOptionElement).value,
+      ),
+    ).toEqual(['item_not_returned']);
+
+    component.category = 'collection';
+    component.createDispute();
+    fixture.detectChanges();
+    expect(disputes.create).not.toHaveBeenCalled();
+    expect(dialog.querySelector('[role="alert"]')?.textContent).toContain(
+      'Ready-for-pickup disputes must use Item Not Returned.',
+    );
+  });
+
   it('opens the raise-dispute form with the completed repair ID and submits against it', async () => {
-    const request: CustomerRepairRequest = {
-      _id: '507f1f77bcf86cd7099f4b67bb',
-      shopIds: ['shop-id'],
-      appliance: 'Mobile Phone',
-      brand: 'Apple',
-      model: '17',
-      description: 'Screen still does not work',
-      status: 'completed',
-      createdAt: '2026-11-17T00:00:00.000Z',
-      quotations: [],
-      repairJob: { status: 'completed' },
-    };
+    const request = createEligibleRepairRequest();
     const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['list', 'create']);
     disputes.list.and.returnValue(
       of({
@@ -327,6 +574,53 @@ describe('DisputeCenterComponent customer views', () => {
       }),
     );
     expect(router.navigate).toHaveBeenCalledWith(['/customer/disputes', 'new-dispute']);
+  });
+
+  it('blocks create mode when the linked repair is not eligible', async () => {
+    const ineligible = createEligibleRepairRequest({
+      _id: '507f1f77bcf86cd7099f4b67bb9',
+      status: 'open',
+      repairJob: { status: 'in_progress', acceptedQuotationId: 'quotation-1' },
+    });
+    const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', ['create', 'list']);
+    const customerPortal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getRepairJob'],
+    );
+    customerPortal.getRepairJob.and.returnValue(of(ineligible));
+
+    await TestBed.configureTestingModule({
+      imports: [DisputeCenterComponent],
+      providers: [
+        provideRouter([
+          {
+            path: 'customer/disputes/new/:repairRequestId',
+            component: DisputeCenterComponent,
+          },
+        ]),
+        { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: customerPortal },
+        { provide: AdminService, useValue: createAdminServiceStub() },
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['success', 'error']) },
+      ],
+    }).compileComponents();
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(
+      '/customer/disputes/new/507f1f77bcf86cd7099f4b67bb9',
+      DisputeCenterComponent,
+    );
+    harness.detectChanges();
+
+    const page = harness.routeNativeElement as HTMLElement;
+    expect(page.textContent).toContain(
+      'You can raise a dispute after pickup or completion, or after the collection SLA has passed.',
+    );
+
+    const component = harness.routeDebugElement?.componentInstance as DisputeCenterComponent;
+    component.description = 'Issue after repair';
+    component.createDispute();
+    expect(disputes.create).not.toHaveBeenCalled();
   });
 
   it('shows dispute history and resolution details in the completed-job detail layout', async () => {
@@ -462,7 +756,7 @@ describe('DisputeCenterComponent customer views', () => {
       'Customer and shop locations are not available for this repair.',
     );
     expect(page.querySelector('main')?.classList.contains('admin-dispute-detail-page')).toBeTrue();
-    expect(page.querySelector('.detail-page-title')?.textContent).toContain('Issue Resolution');
+    expect(page.querySelector('.detail-page-title')?.textContent).toContain('Dispute Details');
     expect(page.querySelector('.request-hero h2')?.textContent).toContain('Air conditioner');
     expect(page.querySelector('.request-progress')).not.toBeNull();
     expect(

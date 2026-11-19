@@ -109,6 +109,12 @@ test('Customer request → Shop quotation → Customer acceptance → Admin visi
     await expect(requestCard).toBeVisible();
     await requestCard.getByRole('link', { name: /View request/ }).click();
     await shopPage.getByRole('button', { name: /Accept & Submit Quotation/ }).click();
+    await expect(
+      shopPage.getByRole('radio', { name: /Inspection already completed/ }),
+    ).not.toBeChecked();
+    await expect(
+      shopPage.getByRole('radio', { name: /Shop will collect the product/ }),
+    ).not.toBeChecked();
     await expect.poll(() => directionsCalls, { timeout: 10_000 }).toBeGreaterThan(0);
     await expect.poll(() => directionsStatuses.length, { timeout: 15_000 }).toBeGreaterThan(0);
     if (directionsStatuses[0] >= 400) {

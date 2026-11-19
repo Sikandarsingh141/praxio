@@ -139,7 +139,7 @@ export class UpdateRepairRequestDto extends CreateRepairRequestDto {
   @Transform(({ value }) => {
     if (value === true || value === 'true') return true;
     if (value === false || value === 'false') return false;
-    return value;
+    return value as unknown;
   })
   @IsBoolean()
   removeExistingPhotos!: boolean;
@@ -157,7 +157,9 @@ export class CreateQuotationDto {
   currency!: string;
 
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : (value as unknown),
+  )
   @IsNotEmpty()
   @MaxLength(1000)
   message!: string;
@@ -168,6 +170,20 @@ export class CreateQuotationDto {
   @Max(365)
   @Type(() => Number)
   estimatedDays!: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : (value as unknown),
+  )
+  inspectionCompletedBeforeQuotation?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) =>
+    value === 'true' ? true : value === 'false' ? false : (value as unknown),
+  )
+  requiresPhysicalPickup?: boolean;
 
   @IsOptional()
   @IsNumber()
@@ -210,6 +226,34 @@ export class CreateQuotationDto {
 
   @IsDateString()
   validUntil!: string;
+}
+
+export class ScheduleServicePickupDto {
+  @IsDateString()
+  scheduledAt!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
+}
+
+export class StartServicePickupDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
+}
+
+export class ConfirmServicePickupDto {
+  @IsOptional()
+  @IsDateString()
+  collectedAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
 }
 
 export class RepairRequestListQueryDto {
@@ -265,33 +309,10 @@ export class CustomerRepairRequestListQueryDto {
   status?: 'open' | 'cancelled' | 'completed';
 
   @IsOptional()
-  @IsIn([
-    'confirmed',
-    'inspection_pending',
-    'inspection_in_progress',
-    'awaiting_customer_approval',
-    'inspection_approved',
-    'repair_declined',
-    'in_progress',
-    'on_hold',
-    'repair_completed',
-    'ready_for_pickup',
-    'picked_up',
-    'completed',
-  ])
+  @IsIn([...REPAIR_JOB_STATUSES, ...LEGACY_REPAIR_JOB_STATUSES])
   repairStatus?:
-    | 'confirmed'
-    | 'inspection_pending'
-    | 'inspection_in_progress'
-    | 'awaiting_customer_approval'
-    | 'inspection_approved'
-    | 'repair_declined'
-    | 'in_progress'
-    | 'on_hold'
-    | 'repair_completed'
-    | 'ready_for_pickup'
-    | 'picked_up'
-    | 'completed';
+    | (typeof REPAIR_JOB_STATUSES)[number]
+    | (typeof LEGACY_REPAIR_JOB_STATUSES)[number];
 
   @IsOptional()
   @IsString()

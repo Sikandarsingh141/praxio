@@ -38,6 +38,9 @@ const DISPUTE_TERMINAL_STATUSES = [
 ] as const;
 const ACTIVE_STATUSES = [
   'confirmed',
+  'pickup_scheduled',
+  'pickup_in_progress',
+  'item_picked_up',
   'inspection_pending',
   'inspection_in_progress',
   'awaiting_customer_approval',
@@ -936,6 +939,9 @@ export class TechniciansService {
       pending: jobs.filter((job) =>
         [
           'confirmed',
+          'pickup_scheduled',
+          'pickup_in_progress',
+          'item_picked_up',
           'inspection_pending',
           'awaiting_customer_approval',
           'inspection_approved',
@@ -968,6 +974,9 @@ export class TechniciansService {
       if (filter === 'pending') {
         return [
           'confirmed',
+          'pickup_scheduled',
+          'pickup_in_progress',
+          'item_picked_up',
           'inspection_pending',
           'awaiting_customer_approval',
           'inspection_approved',
@@ -1078,6 +1087,9 @@ export class TechniciansService {
     const pendingJobs = jobs.filter((job) =>
       [
         'confirmed',
+        'pickup_scheduled',
+        'pickup_in_progress',
+        'item_picked_up',
         'inspection_pending',
         'awaiting_customer_approval',
         'inspection_approved',
@@ -1108,9 +1120,14 @@ export class TechniciansService {
           job.status === 'inspection_in_progress',
       ) ||
       jobs.find((job) =>
-        ['confirmed', 'inspection_pending', 'inspection_approved'].includes(
-          job.status,
-        ),
+        [
+          'confirmed',
+          'pickup_scheduled',
+          'pickup_in_progress',
+          'item_picked_up',
+          'inspection_pending',
+          'inspection_approved',
+        ].includes(job.status),
       ) ||
       activeJobs[0] ||
       null;

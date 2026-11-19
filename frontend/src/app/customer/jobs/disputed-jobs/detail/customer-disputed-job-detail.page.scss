@@ -9,6 +9,117 @@
   width: 100%;
 }
 
+.customer-disputed-job-detail-page {
+  .request-progress {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(6.6rem, 1fr);
+    grid-template-columns: none;
+    grid-template-rows: none;
+    gap: 0;
+    min-width: 0;
+    margin: 1rem 0 0.85rem;
+    padding: 0 0 0.35rem;
+    overflow-x: auto;
+    list-style: none;
+    scrollbar-width: thin;
+    scroll-snap-type: x proximity;
+
+    &::before {
+      display: none;
+    }
+
+    li {
+      position: relative;
+      z-index: 0;
+      display: grid;
+      min-width: 0;
+      grid-template-columns: none;
+      grid-template-rows: none;
+      justify-items: center;
+      align-content: start;
+      gap: 0.3rem;
+      padding: 0;
+      color: #728078;
+      text-align: center;
+      scroll-snap-align: start;
+
+      &:not(:last-child)::after {
+        position: absolute;
+        z-index: -1;
+        top: 0.72rem;
+        right: auto;
+        bottom: auto;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: #dce5de;
+        content: '';
+      }
+
+      &.completed::after {
+        background: #16842e;
+      }
+
+      strong {
+        grid-column: auto;
+        justify-self: auto;
+        color: #27342b;
+        font-size: 0.62rem;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+
+      &.current strong {
+        padding: 0.2rem 0.35rem;
+        border-radius: 999px;
+        background: #e6f5e9;
+        color: #176b34;
+      }
+
+      time {
+        grid-column: auto;
+        color: #87938a;
+        font-size: 0.52rem;
+        white-space: nowrap;
+      }
+    }
+
+    .progress-marker {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      width: 1.45rem;
+      height: 1.45rem;
+      place-items: center;
+      border: 1px solid #bac8bd;
+      border-radius: 50%;
+      background: #fff;
+      color: #6b796f;
+      font-size: 0.65rem;
+      font-weight: 750;
+    }
+
+    li.completed .progress-marker,
+    li.current .progress-marker {
+      border-color: #087c3b;
+      background: #087c3b;
+      color: #fff;
+    }
+  }
+
+  .customer-information-row .customer-facts dd,
+  .sidebar-facts dd {
+    display: block;
+    min-width: 0;
+    margin: 0;
+    color: #17212b;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+    visibility: visible;
+  }
+}
+
 .state {
   padding: 1rem;
   border: 1px solid #e2e8e4;
@@ -363,6 +474,51 @@
   gap: 0.55rem;
 }
 
+.customer-status-action-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e0ebe3;
+  border-radius: 0.8rem;
+  background: linear-gradient(120deg, #f3faf5 0%, #fff 78%);
+}
+
+.customer-status-action-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.25rem;
+}
+
+.customer-status-action-kicker {
+  color: #087c3b;
+  font-size: 0.62rem;
+  font-weight: 760;
+  letter-spacing: 0.1em;
+}
+
+.customer-status-action-copy h3 {
+  margin: 0;
+  color: #20302b;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.customer-status-action-copy p {
+  margin: 0;
+  color: #66756b;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.customer-status-action-toolbar .job-button {
+  width: auto;
+  justify-self: end;
+  white-space: nowrap;
+}
+
 .issue-modal-backdrop {
   position: fixed;
   z-index: 1400;
@@ -616,6 +772,14 @@
 @include buttons.job-buttons;
 
 @media (max-width: 680px) {
+  .customer-status-action-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .customer-status-action-toolbar .job-button {
+    width: 100%;
+  }
+
   .inspection-choice-group {
     grid-template-columns: minmax(0, 1fr);
   }

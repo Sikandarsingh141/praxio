@@ -27,6 +27,7 @@ export interface RepairInspectionReport {
   images: RepairWorkflowPhoto[];
   message?: string;
   decisionReason?: string;
+  decidedBy?: string;
   submittedAt?: string;
   decidedAt?: string;
 }
@@ -55,6 +56,9 @@ export interface AdditionalChargeRequest {
 export interface RepairWorkflowJob {
   status:
     | 'confirmed'
+    | 'pickup_scheduled'
+    | 'pickup_in_progress'
+    | 'item_picked_up'
     | 'inspection_pending'
     | 'inspection_in_progress'
     | 'awaiting_customer_approval'
@@ -68,6 +72,18 @@ export interface RepairWorkflowJob {
     | 'completed'
     | 'disputed';
   confirmedAt?: string;
+  requiresPhysicalPickup?: boolean;
+  inspectionCompletedBeforeQuotation?: boolean;
+  servicePickup?: {
+    scheduledAt?: string;
+    startedAt?: string;
+    collectedAt?: string;
+    collectedBy?: string;
+    scheduleNotes?: string;
+    collectionNotes?: string;
+  };
+  inspectionStartedAt?: string;
+  inspectionCompletedAt?: string;
   startedAt?: string;
   repairCompletedAt?: string;
   completionDescription?: string;
@@ -82,6 +98,7 @@ export interface RepairWorkflowJob {
   completedAt?: string;
   approvedRepairAmount?: number;
   approvedAdditionalCharges?: number;
+  acceptedQuotationId?: string;
   inspection?: RepairInspectionReport;
   additionalChargeRequests?: AdditionalChargeRequest[];
   customerVerification?: {

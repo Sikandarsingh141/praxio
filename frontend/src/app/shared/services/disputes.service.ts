@@ -42,15 +42,19 @@ export class DisputesService {
 
   get(role: DisputeAccessRole, id: string): Observable<RepairDispute> {
     return this.http
-      .get<ApiEnvelope<RepairDispute>>(`${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}`)
-      .pipe(map((response) => response.data));
+      .get<ApiEnvelope<RepairDispute> | RepairDispute>(
+        `${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}`,
+      )
+      .pipe(map((response) => ('data' in response ? response.data : response)));
   }
 
   create(
     repairRequestId: string,
     input: {
       category: string;
+      subject?: string;
       description: string;
+      expectedResolution?: string;
       attachments: DisputeAttachment[];
       customerComments?: string;
     },
@@ -212,6 +216,19 @@ export class DisputesService {
     return this.http
       .patch<ApiEnvelope<RepairDispute>>(
         `${this.baseUrl}/shop/disputes/${encodeURIComponent(id)}/close`,
+        { reason },
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  reopen(
+    role: 'customer' | 'shop',
+    id: string,
+    reason: string,
+  ): Observable<RepairDispute> {
+    return this.http
+      .patch<ApiEnvelope<RepairDispute>>(
+        `${this.baseUrl}/${role}/disputes/${encodeURIComponent(id)}/reopen`,
         { reason },
       )
       .pipe(map((response) => response.data));

@@ -48,7 +48,7 @@ export class ShopLayout implements OnInit, OnDestroy {
     { label: 'Pending Requests', route: '/shop/jobs/pending-jobs', countKey: 'pending' },
     { label: 'Assigned Requests', route: '/shop/jobs/assigned-jobs', countKey: 'assigned' },
     { label: 'Active Repairs', route: '/shop/jobs/active-jobs', countKey: 'active' },
-    { label: 'Issue Resolution', route: '/shop/jobs/disputed-jobs', countKey: 'disputed' },
+    { label: 'Disputes', route: '/shop/jobs/disputed-jobs', countKey: 'disputed' },
     { label: 'Completed Repairs', route: '/shop/jobs/completed-jobs', countKey: 'completed' },
   ];
   readonly requestSectionExpanded = signal(this.isRequestSectionActive());

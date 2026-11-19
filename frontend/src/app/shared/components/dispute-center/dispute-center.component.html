@@ -37,7 +37,7 @@
                 <svg viewBox="0 0 24 24"><path d="m14.7 6.3 3-3 3 3-3 3M5 19l9.4-9.4m-3.1-3.1a4 4 0 0 0 5.2 5.2L9.2 18.9a2.1 2.1 0 0 1-3-3l7.2-7.2Z" /></svg>
               </span>
             }
-            <span>Completed Repair @if (raiseDisputeDialogOpen()) { <b>*</b> }</span>
+            <span>Eligible Service Request @if (raiseDisputeDialogOpen()) { <b>*</b> }</span>
           </span>
           <span class="repair-select-wrap">
             <select [(ngModel)]="selectedRepairRequestId" name="repairRequestId" required>
@@ -45,8 +45,8 @@
                 <option [value]="request._id">{{ repairRequestOptionLabel(request) }}</option>
               }
             </select>
-            @if (raiseDisputeDialogOpen()) {
-              <span class="repair-status">Completed</span>
+            @if (raiseDisputeDialogOpen() && selectedEligibleRepairRequest(); as request) {
+              <span class="repair-status">{{ repairEligibilityLabel(request) }}</span>
             }
           </span>
         </label>
@@ -61,10 +61,27 @@
           <span>Issue Category @if (raiseDisputeDialogOpen()) { <b>*</b> }</span>
         </span>
         <select [(ngModel)]="category" name="category">
-          @for (option of categories; track option.value) {
+          @for (option of availableCategories; track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
           }
         </select>
+      </label>
+      <label class="wide dispute-field">
+        <span class="dispute-field-heading">
+          @if (raiseDisputeDialogOpen()) {
+            <span class="dispute-field-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg>
+            </span>
+          }
+          <span>Subject</span>
+        </span>
+        <input
+          [(ngModel)]="subject"
+          name="subject"
+          type="text"
+          maxlength="180"
+          placeholder="Short summary of the dispute"
+        />
       </label>
       <label class="wide dispute-field">
         <span class="dispute-field-heading">
@@ -87,6 +104,28 @@
           <span class="character-count">{{ description.length }} / 5000</span>
         }
       </label>
+      <label class="dispute-field">
+        <span class="dispute-field-heading"><span>Expected Resolution</span></span>
+        <select [(ngModel)]="expectedResolution" name="expectedResolution">
+          <option value="">Select an outcome</option>
+          @for (option of expectedResolutions; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+      @if (expectedResolution === 'Other') {
+        <label class="dispute-field">
+          <span class="dispute-field-heading"><span>Describe Expected Resolution <b>*</b></span></span>
+          <textarea
+            [(ngModel)]="expectedResolutionDetails"
+            name="expectedResolutionDetails"
+            maxlength="2000"
+            rows="3"
+            required
+            placeholder="Tell us what outcome you are looking for..."
+          ></textarea>
+        </label>
+      }
       <label class="wide dispute-field">
         <span class="dispute-field-heading">
           @if (raiseDisputeDialogOpen()) {
@@ -184,18 +223,18 @@
   @if (mode() === 'list') {
     @if (role() === 'admin') {
       <app-admin-page-header>
-        <h1 adminPageTitle class="admin-page-title">Issue Resolution</h1>
+        <h1 adminPageTitle class="admin-page-title">Dispute Management</h1>
         <p adminPageDescription class="admin-page-description">
-          Track post-repair issues, review evidence, and coordinate fair resolutions.
+          Manage customer complaints, service disagreements and unresolved transactions.
         </p>
       </app-admin-page-header>
     } @else {
       <app-admin-page-header>
-        <h1 adminPageTitle class="admin-page-title">Issue Resolution</h1>
+        <h1 adminPageTitle class="admin-page-title">Disputes</h1>
         <p adminPageDescription class="admin-page-description">
-          Track post-repair issues, review evidence, and coordinate fair resolutions.
+          Manage customer complaints, service disagreements and unresolved transactions.
         </p>
-        @if (role() === 'customer') {
+        @if (role() === 'customer' && eligibleRepairRequests().length) {
           <button
             adminPageActions
             class="button primary raise-dispute-button"
@@ -206,6 +245,19 @@
           </button>
         }
       </app-admin-page-header>
+    }
+    @if (mode() === 'list' && role() === 'customer' && !raiseDisputeDialogOpen()) {
+      @if (eligibleRepairRequestsError()) {
+        <p class="feedback error" role="alert">{{ eligibleRepairRequestsError() }}</p>
+      } @else if (
+        eligibleRepairRequestsLoaded() &&
+        !eligibleRepairRequestsLoading() &&
+        !eligibleRepairRequests().length
+      ) {
+        <p class="state-card" role="status">
+          You can raise a dispute after pickup or completion, or after the collection SLA has passed.
+        </p>
+      }
     }
 
     @if (error()) {
@@ -238,6 +290,26 @@
           </span>
           <span class="summary-copy"><span>Closed / Resolved</span><strong>{{ (summary['RESOLVED'] || 0) + (summary['CLOSED'] || 0) }}</strong></span>
         </article>
+        @if (role() === 'admin') {
+          <article class="summary-review">
+            <span class="summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 4v8l5 3" /><circle cx="12" cy="12" r="8.5" /></svg>
+            </span>
+            <span class="summary-copy"><span>Resolved today</span><strong>{{ summary['RESOLVED_TODAY'] || 0 }}</strong></span>
+          </article>
+          <article class="summary-open">
+            <span class="summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 19h16M7 16V8m5 8V4m5 12v-6" /></svg>
+            </span>
+            <span class="summary-copy"><span>Average resolution time</span><strong>{{ summary['AVERAGE_RESOLUTION_HOURS'] || 0 }}h</strong></span>
+          </article>
+          <article class="summary-resolved">
+            <span class="summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 8v5m0 3h.01" /><path d="M10.3 3.8 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z" /></svg>
+            </span>
+            <span class="summary-copy"><span>Overdue</span><strong>{{ summary['OVERDUE'] || 0 }}</strong></span>
+          </article>
+        }
       </div>
     }
 
@@ -378,7 +450,7 @@
                       </svg>
                       <span>{{ item.description }}</span>
                     </div>
-                    <small>{{ item.category.replaceAll('_', ' ') | titlecase }}</small>
+                    <small>{{ categoryLabel(item.category) }}</small>
                   </td>
                   <td class="dispute-date-cell">
                     <div class="dispute-date-copy">
@@ -429,7 +501,7 @@
                   </td>
                   <td>
                     <span class="job-status" [attr.data-status]="item.status">
-                      {{ item.status.replaceAll('_', ' ') | titlecase }}
+                      {{ statusLabel(item.status) }}
                     </span>
                   </td>
                   <td class="dispute-action-cell">
@@ -518,7 +590,7 @@
           </button>
         </header>
         @if (eligibleRepairRequestsLoading()) {
-          <p class="state-card" role="status">Loading completed repairs…</p>
+          <p class="state-card" role="status">Loading eligible repairs…</p>
         } @else if (eligibleRepairRequestsError()) {
           <p class="feedback error" role="alert">{{ eligibleRepairRequestsError() }}</p>
           <div class="form-actions">
@@ -531,8 +603,7 @@
           </div>
         } @else if (!eligibleRepairRequests().length) {
           <p class="state-card" role="status">
-            No completed repairs are available to dispute. You can raise a dispute after receiving
-            the repaired item.
+            You can raise a dispute after pickup or completion, or after the collection SLA has passed.
           </p>
           <div class="form-actions">
             <button type="button" class="button secondary" (click)="closeRaiseDisputeDialog()">
@@ -567,7 +638,7 @@
       <p class="state-card" role="status">Loading repair details…</p>
     } @else if (!isRepairEligible) {
       <p class="feedback error" role="alert">
-        You can raise a dispute after the repaired item has been received.
+        You can raise a dispute after pickup or completion, or after the collection SLA has passed.
       </p>
     } @else {
       <ng-container *ngTemplateOutlet="raiseDisputeForm"></ng-container>
@@ -577,18 +648,18 @@
   @if (mode() === 'detail') {
     <a class="detail-back-link" [routerLink]="disputeListLink()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m7 7-7-7 7-7" /></svg>
-      {{ role() === 'admin' ? 'Back to issue resolution' : 'Back to Issue Resolution' }}
+      {{ role() === 'admin' ? 'Back to Dispute Management' : 'Back to Disputes' }}
     </a>
     @if (error()) {
       <p class="feedback error" role="alert">{{ error() }}</p>
     }
     @if (loading()) {
       <p class="state-card" role="status">
-        {{ role() === 'admin' ? 'Loading issue resolution' : 'Loading issue details…' }}
+        {{ role() === 'admin' ? 'Loading dispute management' : 'Loading disputes…' }}
       </p>
     } @else if (dispute(); as item) {
       <h1 class="detail-page-title">
-        {{ role() === 'admin' ? 'Issue Resolution Details' : 'Issue Resolution Details' }}
+        Dispute Details
       </h1>
       <section class="request-hero" aria-label="Dispute summary">
         <div class="request-hero-photo">
@@ -617,7 +688,7 @@
         </div>
         <span class="detail-status" [attr.data-status]="item.status">
           <span class="status-dot" aria-hidden="true"></span>
-          {{ item.status.replaceAll('_', ' ') | titlecase }}
+          {{ statusLabel(item.status) }}
         </span>
       </section>
       <ol class="request-progress" aria-label="Dispute progress">
@@ -943,20 +1014,19 @@
         }
 
         <section class="panel detail-card history-card">
-          <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" /></svg></span>Status History</h2>
+          <h2 class="panel-title"><span class="panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" />                  <path d="M12 7v5l3 2" /></svg></span>Dispute Timeline</h2>
+
           <ol class="history-list">
             @for (entry of item.statusHistory; track $index) {
               <li>
                 <span class="history-dot" aria-hidden="true"></span>
-                <div><strong>{{
-                  entry.from === 'NONE'
-                    ? 'Case opened'
-                    : entry.to.replaceAll('_', ' ') | titlecase
-                }}</strong>
-                <span>{{ entry.from === 'NONE' ? 'By ' + (entry.actorRole | titlecase) + ' · ' : '' }}{{ entry.at | date: 'medium' }}</span>
-                @if (entry.reason) {
-                  <p>{{ entry.reason }}</p>
-                }</div>
+                <div>
+                  <strong>{{ entry.from === 'NONE' ? 'Dispute Raised' : statusLabel(entry.to) }}</strong>
+                  <span>By {{ entry.actorName || (entry.actorRole | titlecase) }} · {{ entry.actorRole | titlecase }} · {{ entry.at | date: 'medium' }}</span>
+                  @if (entry.reason) {
+                    <p>{{ entry.reason }}</p>
+                  }
+                </div>
               </li>
             }
           </ol>
@@ -1844,7 +1914,7 @@
           <h2>Still need help?</h2>
           <p>
             The shop's response is recorded above. If you still believe the repair issue needs
-            attention, send details to reopen the rework discussion.
+            attention, send details to reopen the dispute.
           </p>
           <label
             >What issue remains?<textarea
@@ -1876,9 +1946,53 @@
         role() === 'customer' &&
         (item.status === 'CUSTOMER_CONFIRMED' || item.status === 'RESOLVED')
       ) {
-        <section class="panel">
+        <section class="panel action-panel">
           <h2>Dispute resolved</h2>
           <p>The issue has been marked resolved. No further confirmation is required.</p>
+          @if (item.status === 'RESOLVED') {
+            <hr />
+            <h3>Still not satisfied?</h3>
+            <p>Explain what remains unresolved and the dispute will be sent back for review.</p>
+            <label
+              >Reason for reopening<textarea
+                [(ngModel)]="reopenReason"
+                name="customerReopenReason"
+                rows="3"
+                maxlength="2000"
+              ></textarea>
+            </label>
+            <button
+              class="button secondary"
+              type="button"
+              [disabled]="saving()"
+              (click)="reopenDispute()"
+            >
+              Reopen dispute
+            </button>
+          }
+        </section>
+      }
+
+      @if (role() === 'customer' && item.status === 'CLOSED') {
+        <section class="panel action-panel">
+          <h2>Dispute closed</h2>
+          <p>This case is closed. Reopen it if the same issue returns or needs further review.</p>
+          <label
+            >Reason for reopening<textarea
+              [(ngModel)]="reopenReason"
+              name="closedCustomerReopenReason"
+              rows="3"
+              maxlength="2000"
+            ></textarea>
+          </label>
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="saving()"
+            (click)="reopenDispute()"
+          >
+            Reopen dispute
+          </button>
         </section>
       }
 
@@ -1886,12 +2000,71 @@
         role() === 'shop' &&
         (item.status === 'CUSTOMER_CONFIRMED' || item.status === 'RESOLVED')
       ) {
-        <section class="panel">
+        <section class="panel action-panel">
           <h2>Dispute resolved</h2>
           @if (latestVerification?.comments) {
             <p>{{ latestVerification?.comments }}</p>
           }
-          <p>No further shop confirmation is required.</p>
+          <p>The customer has confirmed the resolution. Close the case when all records are complete.</p>
+          <label
+            >Final closure note<textarea
+              [(ngModel)]="shopCloseReason"
+              name="shopCloseReason"
+              rows="3"
+              maxlength="2000"
+            ></textarea>
+          </label>
+          <button
+            class="button primary"
+            type="button"
+            [disabled]="saving()"
+            (click)="closeAsShop()"
+          >
+            Close dispute
+          </button>
+          @if (item.status === 'RESOLVED') {
+            <hr />
+            <h3>Need more work?</h3>
+            <label
+              >Reason for reopening<textarea
+                [(ngModel)]="reopenReason"
+                name="shopReopenReason"
+                rows="3"
+                maxlength="2000"
+              ></textarea>
+            </label>
+            <button
+              class="button secondary"
+              type="button"
+              [disabled]="saving()"
+              (click)="reopenDispute()"
+            >
+              Reopen dispute
+            </button>
+          }
+        </section>
+      }
+
+      @if (role() === 'shop' && item.status === 'CLOSED') {
+        <section class="panel action-panel">
+          <h2>Dispute closed</h2>
+          <p>This case is closed. Reopen it if further work is required.</p>
+          <label
+            >Reason for reopening<textarea
+              [(ngModel)]="reopenReason"
+              name="closedShopReopenReason"
+              rows="3"
+              maxlength="2000"
+            ></textarea>
+          </label>
+          <button
+            class="button secondary"
+            type="button"
+            [disabled]="saving()"
+            (click)="reopenDispute()"
+          >
+            Reopen dispute
+          </button>
         </section>
       }
         </section>
@@ -1900,11 +2073,11 @@
           @if (role() === 'admin') {
             <section
               class="detail-section customer-detail-sidebar-card admin-action-card"
-              aria-label="Admin issue resolution actions"
+              aria-label="Dispute management actions"
             >
               <div class="sidebar-action-copy">
                 <h2>Admin actions</h2>
-                <p>Record private investigation notes or close this issue resolution.</p>
+                <p>Record private investigation notes or close this dispute.</p>
               </div>
               <div class="sidebar-action-buttons">
                 <button
@@ -1927,7 +2100,7 @@
                 aria-label="Dispute status and resolution actions"
               >
                 <div class="sidebar-action-copy">
-                  <h2>Dispute management</h2>
+                  <h2>Dispute Management</h2>
                   <p>Change the dispute status or complete an approved resolution.</p>
                 </div>
                 <div class="sidebar-action-buttons sidebar-single-action">
@@ -1953,7 +2126,7 @@
                   <div><dt>Dispute ID</dt><dd>{{ item.reference }}</dd></div>
                   <div>
                     <dt>Category</dt>
-                    <dd>{{ item.category.replaceAll('_', ' ') | titlecase }}</dd>
+                    <dd>{{ categoryLabel(item.category) }}</dd>
                   </div>
                   <div><dt>Priority</dt><dd>{{ item.priority | titlecase }}</dd></div>
                   @if (item.amountInDispute !== undefined) {
@@ -2272,7 +2445,7 @@
           >
             <header class="admin-dispute-modal-header">
               <div>
-                <span class="eyebrow">ISSUE RESOLUTION</span>
+                <span class="eyebrow">DISPUTE MANAGEMENT</span>
                 <h2 id="admin-investigation-notes-title">Investigation notes</h2>
               </div>
               <button
@@ -2350,7 +2523,7 @@
           >
             <header class="admin-dispute-modal-header">
               <div>
-                <span class="eyebrow">ISSUE RESOLUTION</span>
+                <span class="eyebrow">DISPUTE MANAGEMENT</span>
                 <h2 id="admin-close-dispute-title">Close dispute</h2>
               </div>
               <button
@@ -2364,7 +2537,7 @@
             </header>
             <form class="admin-dispute-modal-form" (ngSubmit)="closeAsAdmin()">
               <p class="admin-dispute-modal-intro">
-                Closing this issue resolution prevents further messages. Add a final note explaining
+                Closing this dispute prevents further messages. Add a final note explaining
                 the decision.
               </p>
               @if (error()) {
@@ -2414,7 +2587,7 @@
           >
             <header class="admin-dispute-modal-header">
               <div>
-                <span class="eyebrow">ISSUE RESOLUTION</span>
+                <span class="eyebrow">DISPUTE MANAGEMENT</span>
                 <h2 id="admin-action-modal-title">
                   @if (adminActionModalView() === 'choose') {
                     Manage dispute status or complete resolution
@@ -2438,7 +2611,7 @@
             @if (adminActionModalView() === 'choose') {
               <div class="admin-action-chooser">
                 <p class="admin-dispute-modal-intro">
-                  Choose the action you want to take for this issue resolution.
+                  Choose the action you want to take for this dispute.
                 </p>
                 <div class="admin-action-options">
                   @if (canManageAdminStatus(item)) {
@@ -2494,7 +2667,7 @@
                   ← Choose another action
                 </button>
                 <p class="admin-dispute-modal-intro">
-                  Update the status, priority, and reason for this issue resolution.
+                  Update the status, priority, and reason for this dispute.
                 </p>
                 @if (error()) {
                   <p class="feedback error" role="alert">{{ error() }}</p>

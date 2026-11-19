@@ -15,6 +15,11 @@ import { CreateDisputeDto } from './dto/dispute.dto';
 import { Dispute } from './schemas/dispute.schema';
 import { DisputesService } from './disputes.service';
 
+const typedObjectContaining = <T>(value: T): T => {
+  const matcher: unknown = expect.objectContaining(value);
+  return matcher as T;
+};
+
 describe('DisputesService', () => {
   const customerId = new Types.ObjectId();
   const shopId = new Types.ObjectId();
@@ -256,7 +261,9 @@ describe('DisputesService', () => {
           brand: 'Motorola',
           model: 'Edge 60 Pro',
           description: 'Cracked screen',
-          photos: [{ mimeType: 'image/png', data: 'data:image/png;base64,repair' }],
+          photos: [
+            { mimeType: 'image/png', data: 'data:image/png;base64,repair' },
+          ],
           status: 'completed',
           createdAt: new Date('2026-11-10T00:00:00.000Z'),
         },
@@ -285,7 +292,9 @@ describe('DisputesService', () => {
         appliance: 'Mobile Phone',
         brand: 'Motorola',
         model: 'Edge 60 Pro',
-        photos: [{ mimeType: 'image/png', data: 'data:image/png;base64,repair' }],
+        photos: [
+          { mimeType: 'image/png', data: 'data:image/png;base64,repair' },
+        ],
       },
     });
   });
@@ -309,6 +318,187 @@ describe('DisputesService', () => {
     });
     expect(notifications.notifyUsers).toHaveBeenCalledTimes(1);
   });
+
+  it('allows a dispute for a completed repair with an accepted quotation', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'completed',
+    };
+
+    const result = await service.createCustomerDispute(
+      { userId: customerId.toString(), role: 'customer' },
+      requestId.toString(),
+      createInput(),
+    );
+
+    expect(result).toMatchObject({
+      category: 'repair_quality',
+      status: 'OPEN',
+      shopId,
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a created request that has no accepted shop quotation', async () => {
+    delete repairRequest.repairJob;
+    delete repairRequest.acceptedQuotationId;
+
+    await expect(
+      service.createCustomerDispute(
+        { userId: customerId.toString(), role: 'customer' },
+        requestId.toString(),
+        createInput(),
+      ),
+    ).rejects.toThrow(/accepted shop quotation/);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a pickup-stage dispute before the collection SLA has passed', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'confirmed',
+      confirmedAt: new Date(),
+    };
+
+    await expect(
+      service.createCustomerDispute(
+        { userId: customerId.toString(), role: 'customer' },
+        requestId.toString(),
+        { ...createInput(), category: 'collection' },
+      ),
+    ).rejects.toThrow(/collection SLA/);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('allows a pickup-stage dispute after the collection SLA has passed', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'pickup_scheduled',
+      servicePickup: {
+        scheduledAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+      },
+    };
+
+    const result = await service.createCustomerDispute(
+      { userId: customerId.toString(), role: 'customer' },
+      requestId.toString(),
+      { ...createInput(), category: 'shop_unresponsive' },
+    );
+
+    expect(result).toMatchObject({
+      category: 'shop_unresponsive',
+      status: 'OPEN',
+      shopId,
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires a pickup-related category for pickup-stage disputes', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'pickup_scheduled',
+      servicePickup: {
+        scheduledAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+      },
+    };
+
+    await expect(
+      service.createCustomerDispute(
+        { userId: customerId.toString(), role: 'customer' },
+        requestId.toString(),
+        createInput(),
+      ),
+    ).rejects.toThrow(/Collection Issue or Shop Unresponsive/);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('rejects an item-not-returned dispute before the return SLA has passed', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'ready_for_pickup',
+      readyForPickupAt: new Date(),
+    };
+
+    await expect(
+      service.createCustomerDispute(
+        { userId: customerId.toString(), role: 'customer' },
+        requestId.toString(),
+        { ...createInput(), category: 'item_not_returned' },
+      ),
+    ).rejects.toThrow(/return SLA/);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('allows an item-not-returned dispute after the return SLA has passed', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'ready_for_pickup',
+      readyForPickupAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+    };
+
+    const result = await service.createCustomerDispute(
+      { userId: customerId.toString(), role: 'customer' },
+      requestId.toString(),
+      { ...createInput(), category: 'item_not_returned' },
+    );
+
+    expect(result).toMatchObject({
+      category: 'item_not_returned',
+      status: 'OPEN',
+      shopId,
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires the item-not-returned category for ready-for-pickup disputes', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'ready_for_pickup',
+      readyForPickupAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+    };
+
+    await expect(
+      service.createCustomerDispute(
+        { userId: customerId.toString(), role: 'customer' },
+        requestId.toString(),
+        { ...createInput(), category: 'repair_quality' },
+      ),
+    ).rejects.toThrow(/Item Not Returned/);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('rejects a repair that is still in progress', async () => {
+    repairRequest.repairJob = {
+      acceptedQuotationId: quotationId,
+      status: 'in_progress',
+    };
+
+    await expect(
+      service.createCustomerDispute(
+        { userId: customerId.toString(), role: 'customer' },
+        requestId.toString(),
+        createInput(),
+      ),
+    ).rejects.toThrow(/picked up or completed/);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it.each(['picked_up', 'completed'])(
+    'rejects a %s repair without an accepted quotation',
+    async (status) => {
+      repairRequest.repairJob = { status };
+      delete repairRequest.acceptedQuotationId;
+
+      await expect(
+        service.createCustomerDispute(
+          { userId: customerId.toString(), role: 'customer' },
+          requestId.toString(),
+          createInput(),
+        ),
+      ).rejects.toThrow(/accepted shop quotation/);
+      expect(save).not.toHaveBeenCalled();
+    },
+  );
 
   it('migrates legacy disputed repair jobs without removing their source data', async () => {
     const legacyRequest = {
@@ -387,7 +577,7 @@ describe('DisputesService', () => {
       expect.objectContaining({
         $set: { status: 'RESOLVED' },
         $push: {
-          statusHistory: expect.objectContaining({
+          statusHistory: typedObjectContaining({
             from: 'CUSTOMER_CONFIRMED',
             to: 'RESOLVED',
             actorId: customerId,
@@ -577,15 +767,177 @@ describe('DisputesService', () => {
     expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
-  it('does not require or allow the shop to close after customer confirmation', async () => {
+  it('lets the assigned shop close a confirmed dispute and notifies the customer and admin', async () => {
+    const shopQuery = {
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        accountType: 'shop',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      }),
+    };
+    users.findById.mockReturnValue(shopQuery);
+    const currentDispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1',
+      customerId,
+      shopId,
+      status: 'CUSTOMER_CONFIRMED',
+      statusHistory: [],
+      resolution: { state: 'accepted' },
+    };
+    const updatedDispute = { ...currentDispute, status: 'CLOSED' };
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(currentDispute),
+    });
+    disputes.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(updatedDispute),
+    });
+
+    const result = await service.closeDispute(
+      { userId: shopId.toString(), role: 'shop' },
+      currentDispute._id.toString(),
+      { reason: 'The customer confirmed the repair.' },
+    );
+
+    expect(result).toMatchObject({ status: 'CLOSED' });
+    expect(disputes.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: currentDispute._id, status: 'CUSTOMER_CONFIRMED' },
+      expect.objectContaining({
+        $set: typedObjectContaining({
+          status: 'CLOSED',
+          closedBy: shopId,
+        }),
+      }),
+      { new: true, runValidators: true },
+    );
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(
+      [customerId],
+      expect.objectContaining({ type: 'dispute_closed' }),
+    );
+  });
+
+  it('does not let the assigned shop close a dispute before customer confirmation', async () => {
+    const shopQuery = {
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        accountType: 'shop',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      }),
+    };
+    users.findById.mockReturnValue(shopQuery);
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: new Types.ObjectId(),
+        customerId,
+        shopId,
+        status: 'UNDER_REVIEW',
+        statusHistory: [],
+      }),
+    });
+
     await expect(
       service.closeDispute(
         { userId: shopId.toString(), role: 'shop' },
         new Types.ObjectId().toString(),
         { reason: 'The customer confirmed the repair.' },
       ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('lets the customer reopen a closed dispute and notifies the shop and admin', async () => {
+    const customerQuery = {
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        accountType: 'customer',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      }),
+    };
+    users.findById.mockReturnValue(customerQuery);
+    const currentDispute = {
+      _id: new Types.ObjectId(),
+      reference: 'DSP-1',
+      customerId,
+      shopId,
+      repairRequestId: requestId,
+      category: 'repair_quality',
+      subject: 'Poor repair quality',
+      normalizedSubject: 'poor repair quality',
+      status: 'CLOSED',
+      statusHistory: [],
+      resolution: { state: 'closed' },
+    };
+    const updatedDispute = { ...currentDispute, status: 'REOPENED' };
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(currentDispute),
+    });
+    disputes.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(updatedDispute),
+    });
+
+    const result = await service.reopenDispute(
+      { userId: customerId.toString(), role: 'customer' },
+      currentDispute._id.toString(),
+      { reason: 'The issue returned after the repair.' },
+    );
+
+    expect(result).toMatchObject({ status: 'REOPENED' });
+    expect(disputes.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: currentDispute._id, status: 'CLOSED' },
+      expect.objectContaining({
+        $set: typedObjectContaining({
+          status: 'REOPENED',
+        }),
+      }),
+      { new: true, runValidators: true },
+    );
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(
+      [shopId],
+      expect.objectContaining({ type: 'dispute_reopened' }),
+    );
+  });
+
+  it('does not allow an administrator to reopen a dispute directly', async () => {
+    await expect(
+      service.reopenDispute(
+        { userId: new Types.ObjectId().toString(), role: 'admin' },
+        new Types.ObjectId().toString(),
+        { reason: 'Reopen for review.' },
+      ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(disputes.findOne).not.toHaveBeenCalled();
+  });
+
+  it('does not allow a shop to reopen a dispute that is not resolved or closed', async () => {
+    const shopQuery = {
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue({
+        accountType: 'shop',
+        accountStatus: 'active',
+        accountLifecycleStatus: 'active',
+      }),
+    };
+    users.findById.mockReturnValue(shopQuery);
+    disputes.findOne.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({
+        _id: new Types.ObjectId(),
+        customerId,
+        shopId,
+        status: 'UNDER_REVIEW',
+        statusHistory: [],
+      }),
+    });
+
+    await expect(
+      service.reopenDispute(
+        { userId: shopId.toString(), role: 'shop' },
+        new Types.ObjectId().toString(),
+        { reason: 'Reopen for review.' },
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
     expect(disputes.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
@@ -921,5 +1273,131 @@ describe('DisputesService', () => {
         repairRequestId: { $in: [] },
       }),
     );
+  });
+
+  it('returns dispute, repair, and participant details to the customer detail page', async () => {
+    const disputeId = new Types.ObjectId();
+    const createdAt = new Date('2026-11-19T10:00:00.000Z');
+    const disputeRecord = {
+      _id: disputeId,
+      reference: 'DSP-DETAIL-1',
+      repairRequestId: requestId,
+      customerId,
+      shopId,
+      category: 'repair_quality',
+      subject: 'Repair issue',
+      description: 'The repair did not fix the issue.',
+      expectedResolution: 'Repair the device again.',
+      attachments: [],
+      status: 'OPEN',
+      priority: 'normal',
+      messages: [],
+      statusHistory: [
+        {
+          from: 'NONE',
+          to: 'OPEN',
+          actorId: customerId,
+          actorRole: 'customer',
+          at: createdAt,
+        },
+      ],
+      resolution: { documents: [], completionDocuments: [], requiredActionCompleted: false },
+      reinspections: [],
+      additionalCharges: [],
+      reworkProgress: [],
+      reworkCompletions: [],
+      verificationHistory: [],
+      createdAt,
+      updatedAt: createdAt,
+    };
+    const statusHistorySubdocument = {
+      __parentArray: [],
+      __index: 0,
+      $__: {},
+      $isNew: false,
+      ...disputeRecord.statusHistory[0],
+      toObject: () => disputeRecord.statusHistory[0],
+    };
+    const request = {
+      ...repairRequest,
+      acceptedQuotationId: undefined,
+      appliance: 'Phone',
+      brand: 'Example',
+      model: 'Model One',
+      description: 'Screen replacement',
+      photos: [],
+      status: 'completed',
+      createdAt,
+      repairJob: { status: 'completed', acceptedQuotationId: undefined },
+    };
+    const userQuery = (user: Record<string, unknown>) => ({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(user),
+    });
+    const recordQuery = {
+      exec: jest.fn().mockResolvedValue({
+        ...disputeRecord,
+        statusHistory: [statusHistorySubdocument],
+        toObject: () => disputeRecord,
+      }),
+    };
+    disputes.findOne.mockReturnValue(recordQuery);
+    requests.findById.mockReturnValue({
+      lean: jest.fn().mockResolvedValue(request),
+    });
+    users.findById
+      .mockReturnValueOnce(
+        userQuery({
+          accountType: 'customer',
+          accountStatus: 'active',
+          accountLifecycleStatus: 'active',
+        }),
+      )
+      .mockReturnValueOnce(
+        userQuery({
+          _id: customerId,
+          firstName: 'Taylor',
+          lastName: 'Morgan',
+          email: 'taylor@example.com',
+        }),
+      )
+      .mockReturnValueOnce(
+        userQuery({
+          _id: shopId,
+          firstName: 'Repair',
+          lastName: 'Owner',
+          email: 'shop@example.com',
+          shopDetails: { shopName: 'Fixora Repair' },
+        }),
+      );
+
+    const result = await service.getDispute(
+      { userId: customerId.toString(), role: 'customer' },
+      disputeId.toString(),
+    );
+
+    expect(result).toMatchObject({
+      reference: 'DSP-DETAIL-1',
+      category: 'repair_quality',
+      status: 'OPEN',
+      priority: 'normal',
+      createdAt,
+      parties: {
+        customer: { name: 'Taylor Morgan', email: 'taylor@example.com' },
+        shop: { name: 'Fixora Repair', email: 'shop@example.com' },
+      },
+      repair: {
+        appliance: 'Phone',
+        brand: 'Example',
+        model: 'Model One',
+        status: 'completed',
+      },
+    });
+    expect(result.statusHistory[0]).toMatchObject({
+      from: 'NONE',
+      to: 'OPEN',
+      actorName: 'Taylor Morgan',
+    });
+    expect(result.statusHistory[0]).not.toHaveProperty('__parentArray');
   });
 });

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
+import { AdminService } from '../../../../admin/services/admin.service';
 import { CustomerPortalService } from '../../../../customer/services/customer-portal.service';
 import { ShopRepairRequestsService } from '../../../../shop/repair-requests/shop-repair-requests.service';
 import { TechniciansService } from '../../../../shop/technicians/technicians.service';
@@ -9,7 +10,7 @@ import { DisputeListResult } from '../../../../shared/models/disputes.models';
 import { DisputesService } from '../../../../shared/services/disputes.service';
 import { DisputeCenterComponent } from '../../../../shared/components/dispute-center/dispute-center.component';
 
-describe('Technician Issue Resolution listing route', () => {
+describe('Technician Disputes listing route', () => {
   it('renders the shared dispute table with technician-scoped data', async () => {
     const disputes = jasmine.createSpyObj<DisputesService>('DisputesService', [
       'list',
@@ -74,6 +75,7 @@ describe('Technician Issue Resolution listing route', () => {
           },
         ]),
         { provide: DisputesService, useValue: disputes },
+        { provide: AdminService, useValue: { getMapRoute: jasmine.createSpy() } },
         { provide: ShopRepairRequestsService, useValue: shop },
         { provide: TechniciansService, useValue: technicians },
         {
@@ -98,7 +100,7 @@ describe('Technician Issue Resolution listing route', () => {
     expect(page.querySelector('.summary-grid')).not.toBeNull();
     expect(page.querySelector('.dispute-list-controls')).not.toBeNull();
     expect(page.querySelector('.customer-dispute-table')).not.toBeNull();
-    expect(text).toContain('Issue Resolution');
+    expect(text).toContain('Disputes');
     expect(text).toContain('Total Disputes');
     expect(text).toContain('Under Review');
     expect(text).toContain('Issue after repair');

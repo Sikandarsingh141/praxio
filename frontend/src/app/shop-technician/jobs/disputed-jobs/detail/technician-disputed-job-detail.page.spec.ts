@@ -168,7 +168,7 @@ describe('TechnicianDisputedJobDetailPage', () => {
     const page = harness.routeNativeElement as HTMLElement;
     const text = page.textContent ?? '';
     expect(page.querySelector('app-shop-disputed-job-detail-page')).not.toBeNull();
-    expect(text).toContain('Issue Resolution Details');
+    expect(text).toContain('Dispute Details');
     expect(text).toContain('Dispute ID:');
     expect(text).toContain('Repair issue');
     expect(text).toContain('We will inspect the device again.');

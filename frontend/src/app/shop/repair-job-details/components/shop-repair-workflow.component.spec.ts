@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { ToastService } from '../../../core/toast/toast.service';
 import { ShopRepairRequestsService } from '../../repair-requests/shop-repair-requests.service';
 import { ShopRepairWorkflowComponent } from './shop-repair-workflow.component';
 import { ShopRepairRequest } from '../../repair-requests/shop-repair-requests.models';
@@ -122,5 +124,98 @@ describe('ShopRepairWorkflowComponent', () => {
     expect(fixture.componentInstance.inspectionParts()).toEqual([
       { name: '', quantity: 1, unitPrice: 0 },
     ]);
+  });
+
+  it('keeps Start Repair disabled until an accepted quote and customer approval are present', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ShopRepairWorkflowComponent],
+      providers: [{ provide: ShopRepairRequestsService, useValue: {} }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ShopRepairWorkflowComponent);
+    const createRequest = (
+      quoteStatus: 'accepted' | 'pending',
+      decidedBy?: string,
+      blocksRepair = false,
+    ): ShopRepairRequest => ({
+      _id: 'request-1',
+      appliance: 'Washing machine',
+      description: 'It does not spin',
+      photos: [],
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      customer: { firstName: 'Customer', lastName: 'Example' },
+      shopResponse: { status: 'customer_accepted' },
+      quotations: [
+        {
+          _id: 'quotation-1',
+          repairRequestId: 'request-1',
+          amount: 100,
+          currency: 'INR',
+          message: 'Repair',
+          status: quoteStatus,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      repairJob: {
+        status: 'inspection_approved',
+        acceptedQuotationId: 'quotation-1',
+        inspection: {
+          status: 'approved',
+          parts: [],
+          partsTotal: 0,
+          labourCharge: 0,
+          inspectionCharges: 0,
+          otherCharges: 0,
+          estimatedTotal: 100,
+          images: [],
+          decidedBy,
+          decidedAt: new Date().toISOString(),
+        },
+        additionalChargeRequests: blocksRepair
+          ? [
+              {
+                _id: 'charge-1',
+                status: 'pending',
+                parts: [],
+                partsTotal: 0,
+                labourCharge: 0,
+                otherCharges: 0,
+                amount: 50,
+                blocksRepair: true,
+                images: [],
+                requestedAt: new Date().toISOString(),
+              },
+            ]
+          : [],
+      },
+    });
+
+    fixture.componentRef.setInput('request', createRequest('accepted'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canStartRepair).toBeFalse();
+    expect(
+      (fixture.nativeElement.querySelector('.workflow-callout button') as HTMLButtonElement)
+        .disabled,
+    ).toBeTrue();
+
+    fixture.componentRef.setInput('request', createRequest('pending', 'customer-1'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canStartRepair).toBeFalse();
+
+    fixture.componentRef.setInput(
+      'request',
+      createRequest('accepted', 'customer-1', true),
+    );
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canStartRepair).toBeFalse();
+
+    fixture.componentRef.setInput('request', createRequest('accepted', 'customer-1'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canStartRepair).toBeTrue();
+    expect(
+      (fixture.nativeElement.querySelector('.workflow-callout button') as HTMLButtonElement)
+        .disabled,
+    ).toBeFalse();
   });
 });

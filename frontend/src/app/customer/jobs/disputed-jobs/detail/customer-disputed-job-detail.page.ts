@@ -3,7 +3,7 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable, finalize } from 'rxjs';
+import { Observable, finalize, switchMap } from 'rxjs';
 import { JobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
@@ -14,6 +14,10 @@ import {
   RepairDispute,
 } from '../../../../shared/models/disputes.models';
 import { DisputesService } from '../../../../shared/services/disputes.service';
+import {
+  disputeCategoryLabel,
+  disputeStatusLabel,
+} from '../../../../shared/utils/dispute-labels';
 
 @Component({
   selector: 'app-customer-disputed-job-detail-page',
@@ -33,11 +37,13 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   private readonly disputes = inject(DisputesService);
   private readonly destroyRef = inject(DestroyRef);
   readonly backRoute = '/customer/jobs/disputed-jobs';
-  readonly backLabel = 'Issue Resolution';
-  readonly pageTitle = 'Issue Resolution Details';
+  readonly backLabel = 'Disputes';
+  readonly pageTitle = 'Dispute Details';
   readonly saving = signal(false);
+  readonly categoryLabel = disputeCategoryLabel;
   readonly actionError = signal('');
   readonly actionNotice = signal('');
+  readonly reopenDisputeModalOpen = signal(false);
   readonly reviewResolutionModalOpen = signal(false);
   readonly reinspectionSubmissionModalOpen = signal(false);
   readonly inspectionTestModalOpen = signal(false);
@@ -49,6 +55,7 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   chargeDecisionReason = '';
   verificationNotes = '';
   unresolvedNotes = '';
+  reopenReason = '';
   inspectionChoice: 'resolved' | 'unresolved' | null = null;
   readonly progressSteps = [
     'Dispute submitted',
@@ -79,11 +86,30 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   protected override loadRecord(id: string) { return this.disputes.get('customer', id); }
 
   timeline(dispute: RepairDispute): JobTimelineEntry[] {
-    return dispute.statusHistory.map((event) => ({
-      title: this.formatStatus(event.to),
-      description: event.reason,
-      at: event.at,
-    }));
+    return dispute.statusHistory.map((event) => {
+      const attachmentCount = this.historyAttachmentCount(dispute, event);
+      return {
+        title: this.formatStatus(event.to),
+        description: event.reason,
+        at: event.at,
+        actorName: event.actorName,
+        actorRole: event.actorRole,
+        ...(attachmentCount > 0 ? { attachmentCount } : {}),
+      };
+    });
+  }
+
+  historyAttachmentCount(
+    dispute: RepairDispute,
+    event: RepairDispute['statusHistory'][number],
+  ): number {
+    return dispute.messages.reduce(
+      (count, message) =>
+        message.authorRole === event.actorRole && message.createdAt === event.at
+          ? count + message.attachments.length
+          : count,
+      0,
+    );
   }
 
   attachments(files: DisputeAttachment[]): JobAttachment[] {
@@ -365,6 +391,41 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
     );
   }
 
+  canReopen(dispute: RepairDispute): boolean {
+    return dispute.status === 'RESOLVED' || dispute.status === 'CLOSED';
+  }
+
+  openReopenDisputeModal(dispute: RepairDispute): void {
+    if (!this.canReopen(dispute) || this.saving()) return;
+    this.reopenReason = '';
+    this.actionError.set('');
+    this.reopenDisputeModalOpen.set(true);
+  }
+
+  closeReopenDisputeModal(): void {
+    this.reopenDisputeModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  reopenDispute(dispute: RepairDispute): void {
+    if (!this.canReopen(dispute) || this.saving()) return;
+    const reason = this.reopenReason.trim();
+    if (!reason) {
+      this.actionError.set('Explain why this dispute should be reopened.');
+      return;
+    }
+    this.runCustomerAction(
+      this.disputes
+        .reopen('customer', dispute._id, reason)
+        .pipe(switchMap(() => this.disputes.get('customer', dispute._id))),
+      'Dispute reopened for further review.',
+      () => {
+        this.reopenReason = '';
+        this.closeReopenDisputeModal();
+      },
+    );
+  }
+
   private canReportUnresolved(dispute: RepairDispute): boolean {
     return (
       dispute.status === 'AWAITING_CUSTOMER_RESPONSE' ||
@@ -438,11 +499,8 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
     return email?.trim().charAt(0).toUpperCase() || 'C';
   }
 
-  formatStatus(status: string): string {
-    return status
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  formatStatus(status?: string): string {
+    return status ? disputeStatusLabel(status) : 'Not available';
   }
 
   currentProgressStep(dispute: RepairDispute): number {

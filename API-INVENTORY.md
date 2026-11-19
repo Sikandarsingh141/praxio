@@ -1,6 +1,6 @@
 ﻿# Fixora Backend API Inventory
 
-Generated from NestJS controller decorators in `backend/src` on 2026-11-13. The global prefix is `/api`. There are 127 route-handler declarations; identical URL patterns with different verbs or role-specific controllers are listed separately. This is a source inventory, not evidence that each endpoint has been exercised.
+Generated from NestJS controller decorators in `backend/src` on 2026-11-13 and updated on 2026-11-19. The global prefix is `/api`. There are 133 route-handler declarations; identical URL patterns with different verbs or role-specific controllers are listed separately. This is a source inventory, not evidence that each endpoint has been exercised.
 
 | Method | Route | Controller |
 |---|---|---|
@@ -57,6 +57,7 @@ Generated from NestJS controller decorators in `backend/src` on 2026-11-13. The 
 | PATCH | `/api/customer/disputes/:id/confirm-resolution` | `disputes.controller.ts` |
 | POST | `/api/customer/disputes/:id/messages` | `disputes.controller.ts` |
 | PATCH | `/api/customer/disputes/:id/report-unresolved` | `disputes.controller.ts` |
+| PATCH | `/api/customer/disputes/:id/reopen` | `disputes.controller.ts` |
 | POST | `/api/customer/disputes/:id/resolution` | `disputes.controller.ts` |
 | PATCH | `/api/customer/disputes/:id/resolution/decision` | `disputes.controller.ts` |
 | PATCH | `/api/customer/disputes/:id/resolve` | `disputes.controller.ts` |
@@ -103,6 +104,7 @@ Generated from NestJS controller decorators in `backend/src` on 2026-11-13. The 
 | POST | `/api/shop/disputes/:id/reinspection` | `disputes.controller.ts` |
 | PATCH | `/api/shop/disputes/:id/reinspection/start` | `disputes.controller.ts` |
 | PATCH | `/api/shop/disputes/:id/reject` | `disputes.controller.ts` |
+| PATCH | `/api/shop/disputes/:id/reopen` | `disputes.controller.ts` |
 | POST | `/api/shop/disputes/:id/resolution` | `disputes.controller.ts` |
 | PATCH | `/api/shop/disputes/:id/resolution/decision` | `disputes.controller.ts` |
 | PATCH | `/api/shop/disputes/:id/resolve` | `disputes.controller.ts` |
@@ -114,15 +116,21 @@ Generated from NestJS controller decorators in `backend/src` on 2026-11-13. The 
 | GET | `/api/shop/repair-requests/:id` | `shop-repair-requests.controller.ts` |
 | POST | `/api/shop/repair-requests/:id/additional-charges` | `repair-workflow.controller.ts` |
 | PATCH | `/api/shop/repair-requests/:id/complete-repair` | `shop-repair-requests.controller.ts` |
+| PATCH | `/api/shop/repair-requests/:id/confirm-pickup` | `shop-repair-requests.controller.ts` |
 | POST | `/api/shop/repair-requests/:id/decline` | `shop-repair-requests.controller.ts` |
 | GET | `/api/shop/repair-requests/:id/directions` | `shop-repair-requests.controller.ts` |
 | PATCH | `/api/shop/repair-requests/:id/hold-repair` | `shop-repair-requests.controller.ts` |
 | POST | `/api/shop/repair-requests/:id/inspection-report` | `repair-workflow.controller.ts` |
 | POST | `/api/shop/repair-requests/:id/quotation` | `shop-repair-requests.controller.ts` |
 | PATCH | `/api/shop/repair-requests/:id/ready-for-pickup` | `shop-repair-requests.controller.ts` |
+| PATCH | `/api/shop/repair-requests/:id/schedule-pickup` | `shop-repair-requests.controller.ts` |
 | POST | `/api/shop/repair-requests/:id/start-inspection` | `repair-workflow.controller.ts` |
+| PATCH | `/api/shop/repair-requests/:id/start-pickup` | `shop-repair-requests.controller.ts` |
 | PATCH | `/api/shop/repair-requests/:id/start-repair` | `shop-repair-requests.controller.ts` |
 | POST | `/api/shop/repair-requests/:id/start-repair` | `repair-workflow.controller.ts` |
+| GET | `/api/technician/disputes` | `disputes.controller.ts` |
+| GET | `/api/technician/disputes/:id` | `disputes.controller.ts` |
+| GET | `/api/technician/disputes/:id/attachments/:fileId` | `disputes.controller.ts` |
 | GET | `/api/shops/dashboard` | `shop-profile.controller.ts` |
 | GET | `/api/shops/my-profile` | `shop-profile.controller.ts` |
 | PATCH | `/api/shops/my-profile/business-details` | `shop-profile.controller.ts` |

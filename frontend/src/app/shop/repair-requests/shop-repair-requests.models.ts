@@ -75,6 +75,8 @@ export interface ShopQuotation {
   currency: string;
   message: string;
   estimatedDays?: number;
+  inspectionCompletedBeforeQuotation?: boolean;
+  requiresPhysicalPickup?: boolean;
   inspectionCharge?: number;
   partsCost?: number;
   labourCharge?: number;
@@ -275,6 +277,9 @@ export interface ShopRequestFilters {
   appliance?: string;
   repairStatus?:
     | 'confirmed'
+    | 'pickup_scheduled'
+    | 'pickup_in_progress'
+    | 'item_picked_up'
     | 'inspection_pending'
     | 'inspection_in_progress'
     | 'awaiting_customer_approval'
@@ -300,5 +305,7 @@ export interface ShopQuotationInput {
   message: string;
   proposedSolution?: string;
   estimatedDays: number;
+  inspectionCompletedBeforeQuotation?: boolean;
+  requiresPhysicalPickup?: boolean;
   validUntil: string;
 }

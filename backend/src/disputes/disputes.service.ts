@@ -78,6 +78,55 @@ const MAX_DISPUTE_HISTORY = 500;
 const MAX_ATTACHMENT_DATA_LENGTH = 10_000_000;
 const COMPLETION_STATUS_TOLERANCE_MS = 5_000;
 const DISPUTE_EVIDENCE_BUCKET = 'disputeEvidence';
+const ELIGIBLE_REPAIR_STATUSES: string[] = ['picked_up', 'completed'];
+const PICKUP_STAGE_REPAIR_STATUSES: string[] = [
+  'confirmed',
+  'pickup_scheduled',
+  'pickup_in_progress',
+  'item_picked_up',
+  'inspection_pending',
+];
+const RETURN_STAGE_REPAIR_STATUSES: string[] = ['ready_for_pickup'];
+const SERVICE_STAGE_DISPUTE_SLA_MS = 24 * 60 * 60 * 1000;
+
+interface PickupStageRepairRequest {
+  createdAt?: Date;
+  updatedAt?: Date;
+  repairJob: {
+    status: string;
+    confirmedAt?: Date;
+    readyForPickupAt?: Date;
+    repairCompletedAt?: Date;
+    servicePickup?: {
+      scheduledAt?: Date;
+      startedAt?: Date;
+      collectedAt?: Date;
+    };
+  };
+}
+
+function pickupStageAnchor(request: PickupStageRepairRequest): Date {
+  const job = request.repairJob;
+  const anchor =
+    job.status === 'pickup_scheduled'
+      ? job.servicePickup?.scheduledAt
+      : job.status === 'pickup_in_progress'
+        ? job.servicePickup?.startedAt
+        : job.status === 'item_picked_up' || job.status === 'inspection_pending'
+          ? job.servicePickup?.collectedAt
+          : undefined;
+  return new Date(anchor ?? job.confirmedAt ?? request.createdAt ?? Date.now());
+}
+
+function returnStageAnchor(request: PickupStageRepairRequest): Date {
+  return new Date(
+    request.repairJob.readyForPickupAt ??
+      request.repairJob.repairCompletedAt ??
+      request.updatedAt ??
+      request.createdAt ??
+      Date.now(),
+  );
+}
 
 const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
   OPEN: [
@@ -113,7 +162,7 @@ const TRANSITIONS: Partial<Record<DisputeStatus, DisputeStatus[]>> = {
     'REJECTED',
     'CLOSED',
   ],
-  CLOSED: [],
+  CLOSED: ['REOPENED'],
   // Keep old transitions available only to preserve existing records.
   UNDER_REVIEW: [
     'AWAITING_CUSTOMER_RESPONSE',
@@ -363,10 +412,50 @@ export class DisputesService {
         'A dispute can only be opened for a repair with an accepted shop quotation.',
       );
     }
-    if (!['picked_up', 'completed'].includes(request.repairJob.status)) {
+    const isPickupStage = PICKUP_STAGE_REPAIR_STATUSES.includes(
+      request.repairJob.status,
+    );
+    const isReturnStage = RETURN_STAGE_REPAIR_STATUSES.includes(
+      request.repairJob.status,
+    );
+    if (
+      !ELIGIBLE_REPAIR_STATUSES.includes(request.repairJob.status) &&
+      !isPickupStage &&
+      !isReturnStage
+    ) {
       throw new BadRequestException(
-        'A dispute can only be opened after the customer has received the repaired item.',
+        'A dispute can only be opened when the repair has been picked up or completed, or when a service-stage SLA has passed.',
       );
+    }
+    if (isPickupStage) {
+      if (!['collection', 'shop_unresponsive'].includes(dto.category)) {
+        throw new BadRequestException(
+          'Pickup-stage disputes must use Collection Issue or Shop Unresponsive.',
+        );
+      }
+      const readyAt =
+        pickupStageAnchor(request as PickupStageRepairRequest).getTime() +
+        SERVICE_STAGE_DISPUTE_SLA_MS;
+      if (Date.now() < readyAt) {
+        throw new BadRequestException(
+          'A pickup-stage dispute can only be opened after the collection SLA has passed.',
+        );
+      }
+    }
+    if (isReturnStage) {
+      if (dto.category !== 'item_not_returned') {
+        throw new BadRequestException(
+          'Ready-for-pickup disputes must use Item Not Returned.',
+        );
+      }
+      const returnDeadline =
+        returnStageAnchor(request as PickupStageRepairRequest).getTime() +
+        SERVICE_STAGE_DISPUTE_SLA_MS;
+      if (Date.now() < returnDeadline) {
+        throw new BadRequestException(
+          'An item-not-returned dispute can only be opened after the return SLA has passed.',
+        );
+      }
     }
     const quotation = await this.repairQuotations.findOne({
       _id: quotationId,
@@ -968,6 +1057,10 @@ export class DisputesService {
             confirmedAt: new Date(),
           },
         },
+        $set: {
+          'resolution.resolvedAt': new Date(),
+          'resolution.resolvedBy': this.objectId(actor.userId),
+        },
       },
       'RESOLVED',
       dto.message.trim(),
@@ -997,6 +1090,8 @@ export class DisputesService {
       dispute.status !== 'CUSTOMER_VERIFICATION_PENDING' &&
       dispute.status !== 'AWAITING_CUSTOMER_RESPONSE' &&
       dispute.status !== 'CUSTOMER_CONFIRMED' &&
+      dispute.status !== 'RESOLVED' &&
+      dispute.status !== 'CLOSED' &&
       dispute.status !== 'REJECTED'
     ) {
       throw new BadRequestException(
@@ -1035,7 +1130,7 @@ export class DisputesService {
       dto.notes.trim(),
     );
     await this.notifyRoles(
-      ['shop'],
+      ['shop', 'admin'],
       updated,
       'Customer reports the issue remains',
       `${updated.reference}: The customer reports that the issue is still not resolved.`,
@@ -1089,21 +1184,82 @@ export class DisputesService {
       this.disputes.countDocuments(filter),
     ]);
 
+    const summaryMatch = Object.fromEntries(
+      Object.entries(filter).filter(([key]) => key !== 'status'),
+    );
     const summary: Array<{ _id: string; count: number }> =
       await this.disputes.aggregate([
-        {
-          $match: Object.fromEntries(
-            Object.entries(filter).filter(([key]) => key !== 'status'),
-          ),
-        },
+        { $match: summaryMatch },
         { $group: { _id: '$status', count: { $sum: 1 } } },
       ]);
+    const startOfToday = new Date();
+    startOfToday.setUTCHours(0, 0, 0, 0);
+    const overdueBefore = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const metricRows = await this.disputes.aggregate([
+      { $match: summaryMatch },
+      {
+        $facet: {
+          resolvedToday: [
+            {
+              $match: {
+                'resolution.resolvedAt': { $gte: startOfToday },
+              },
+            },
+            { $count: 'count' },
+          ],
+          overdue: [
+            {
+              $match: {
+                status: { $in: ACTIVE_STATUSES },
+                createdAt: { $lt: overdueBefore },
+              },
+            },
+            { $count: 'count' },
+          ],
+          resolutionTime: [
+            {
+              $match: { 'resolution.resolvedAt': { $exists: true, $ne: null } },
+            },
+            {
+              $project: {
+                hours: {
+                  $divide: [
+                    { $subtract: ['$resolution.resolvedAt', '$createdAt'] },
+                    3_600_000,
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                average: { $avg: '$hours' },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+    const metrics = metricRows[0] as
+      | {
+          resolvedToday?: Array<{ count: number }>;
+          overdue?: Array<{ count: number }>;
+          resolutionTime?: Array<{ average: number | null }>;
+        }
+      | undefined;
     const summaryCounts = Object.fromEntries(
       summary.map((row: { _id: string; count: number }) => [
         row._id,
         row.count,
       ]),
     );
+    summaryCounts['RESOLVED_TODAY'] = metrics?.resolvedToday?.[0]?.count ?? 0;
+    summaryCounts['OVERDUE'] = metrics?.overdue?.[0]?.count ?? 0;
+    summaryCounts['AVERAGE_RESOLUTION_HOURS'] =
+      metrics?.resolutionTime?.[0]?.average !== undefined &&
+      metrics.resolutionTime[0].average !== null
+        ? Math.round(metrics.resolutionTime[0].average * 10) / 10
+        : 0;
     const listedItems =
       actor.role === 'shop'
         ? await this.shopDisputeListItems(items)
@@ -1153,16 +1309,34 @@ export class DisputesService {
     const quotation = quotationId
       ? await this.repairQuotations.findById(quotationId).lean()
       : null;
+    const customerName = customer ? formatUserName(customer) : 'Customer';
+    const shopName =
+      shop?.shopDetails?.shopName ?? (shop ? formatUserName(shop) : 'Shop');
+    const visibleDispute = this.visible(dispute, actor.role);
+    const statusHistory = (
+      visibleDispute.statusHistory as Dispute['statusHistory']
+    ).map((entry) => ({
+      ...entry,
+      actorName:
+        entry.actorRole === 'customer'
+          ? customerName
+          : entry.actorRole === 'shop'
+            ? shopName
+            : 'Fixora Admin',
+    }));
 
     return {
-      ...this.visible(dispute, actor.role),
+      ...visibleDispute,
+      statusHistory,
       parties: {
         customer: customer
           ? {
               id: customer._id.toString(),
               name: formatUserName(customer),
               profileImageUrl: customer.profileImageData ?? null,
-              ...(actor.role === 'admin' ? { email: customer.email } : {}),
+              ...(actor.role === 'admin' || actor.role === 'customer'
+                ? { email: customer.email }
+                : {}),
             }
           : null,
         shop: shop
@@ -1170,7 +1344,9 @@ export class DisputesService {
               id: shop._id.toString(),
               name: shop.shopDetails?.shopName ?? formatUserName(shop),
               profileImageUrl: shop.profileImageData ?? null,
-              ...(actor.role === 'admin' ? { email: shop.email } : {}),
+              ...(actor.role === 'admin' || actor.role === 'customer'
+                ? { email: shop.email }
+                : {}),
             }
           : null,
       },
@@ -1669,12 +1845,21 @@ export class DisputesService {
   }
 
   async closeDispute(actor: DisputeActor, id: string, dto: CloseDisputeDto) {
-    if (actor.role !== 'admin') {
+    if (actor.role !== 'admin' && actor.role !== 'shop') {
       throw new ForbiddenException(
-        'Only an administrator can close a dispute. Customer verification resolves it.',
+        'Only an administrator or the assigned shop can close a dispute.',
       );
     }
     const dispute = await this.findAccessible(actor, id);
+    if (
+      actor.role === 'shop' &&
+      dispute.status !== 'RESOLVED' &&
+      dispute.status !== 'CUSTOMER_CONFIRMED'
+    ) {
+      throw new BadRequestException(
+        'The shop can close a dispute only after the customer confirms the resolution.',
+      );
+    }
     const updated = await this.atomicUpdate(
       dispute,
       actor,
@@ -1682,13 +1867,17 @@ export class DisputesService {
         $set: {
           closedBy: this.objectId(actor.userId),
           disputeClosedAt: new Date(),
+          'resolution.closedAt': new Date(),
+          'resolution.closedBy': this.objectId(actor.userId),
         },
       },
       'CLOSED',
       dto.reason.trim(),
     );
     await this.notifyRoles(
-      ['customer'],
+      actor.role === 'shop'
+        ? (['customer', 'admin'] as const)
+        : (['customer', 'shop'] as const),
       updated,
       'Dispute closed',
       `${updated.reference} has been closed by the ${actor.role}.`,
@@ -1799,6 +1988,41 @@ export class DisputesService {
     if (query.category) filter.category = query.category;
     if (query.priority) filter.priority = query.priority;
 
+    if (actor.role === 'admin') {
+      if (query.customer) {
+        filter.customerId = {
+          $in: await this.resolvePartyIds(query.customer, 'customer'),
+        };
+      }
+      if (query.shop) {
+        filter.shopId = { $in: await this.resolvePartyIds(query.shop, 'shop') };
+      }
+    }
+    if (query.minAmount !== undefined || query.maxAmount !== undefined) {
+      if (
+        query.minAmount !== undefined &&
+        query.maxAmount !== undefined &&
+        query.minAmount > query.maxAmount
+      ) {
+        throw new BadRequestException(
+          'The minimum amount must not be greater than the maximum amount.',
+        );
+      }
+      const amountInDispute: Record<string, number> = {};
+      if (query.minAmount !== undefined) amountInDispute.$gte = query.minAmount;
+      if (query.maxAmount !== undefined) amountInDispute.$lte = query.maxAmount;
+      filter.amountInDispute = amountInDispute;
+    }
+    if (query.overdue === true) {
+      filter.$and = [
+        ...((filter.$and as Record<string, unknown>[] | undefined) ?? []),
+        {
+          status: { $in: ACTIVE_STATUSES },
+          createdAt: { $lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      ];
+    }
+
     if (query.from || query.to) {
       const createdAt: Record<string, Date> = {};
       if (query.from) createdAt.$gte = this.parseDate(query.from, false);
@@ -1843,6 +2067,34 @@ export class DisputesService {
       filter.$or = or;
     }
     return filter;
+  }
+
+  private async resolvePartyIds(
+    term: string,
+    accountType: 'customer' | 'shop',
+  ) {
+    const value = term.trim();
+    if (Types.ObjectId.isValid(value)) return [new Types.ObjectId(value)];
+    const safeTerm = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(safeTerm, 'i');
+    const users = await this.users
+      .find({
+        accountType,
+        $or: [
+          { fullName: regex },
+          { firstName: regex },
+          { lastName: regex },
+          { email: regex },
+          ...(accountType === 'shop'
+            ? [{ 'shopDetails.shopName': regex }]
+            : []),
+        ],
+      })
+      .select('_id')
+      .limit(100)
+      .lean()
+      .exec();
+    return users.map((user) => user._id);
   }
 
   private parseDate(value: string, endOfDay: boolean): Date {
@@ -2247,9 +2499,7 @@ export class DisputesService {
     const repairsById = new Map(
       repairs.map((repair) => [repair._id.toString(), repair]),
     );
-    const usersById = new Map(
-      users.map((user) => [user._id.toString(), user]),
-    );
+    const usersById = new Map(users.map((user) => [user._id.toString(), user]));
 
     return items.map((item) => {
       const repair = repairsById.get(item.repairRequestId.toString());

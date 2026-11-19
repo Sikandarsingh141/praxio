@@ -25,6 +25,13 @@ import {
 import { DisputesService } from './disputes.service';
 
 const PAGE_LIMIT = 50;
+const PRE_REPAIR_STATUSES = [
+  'confirmed',
+  'pickup_scheduled',
+  'pickup_in_progress',
+  'item_picked_up',
+  'inspection_pending',
+];
 
 export interface CustomerJobCounts {
   new: number;
@@ -293,15 +300,19 @@ export class JobSharedService {
         return request.status === 'open' &&
           ((!request.repairJob && hasResponse) ||
             (hasAcceptedQuotation &&
-              (status === 'confirmed' || status === 'inspection_pending')) ||
+              (status === 'confirmed' ||
+                (!!status && PRE_REPAIR_STATUSES.includes(status)))) ||
             status === 'repair_declined');
       case 'assigned':
-        return request.status === 'open' &&
-          (status === 'confirmed' || status === 'inspection_pending');
+        return (
+          request.status === 'open' &&
+          (status === 'confirmed' ||
+            (!!status && PRE_REPAIR_STATUSES.includes(status)))
+        );
       case 'active':
         return request.status === 'open' &&
           !!status &&
-          !['confirmed', 'inspection_pending', 'repair_declined', 'completed', 'disputed'].includes(
+          ![...PRE_REPAIR_STATUSES, 'repair_declined', 'completed', 'disputed'].includes(
             status,
           );
       case 'completed':
@@ -324,16 +335,16 @@ export class JobSharedService {
             responseStatus === 'quotation_submitted' ||
             (responseStatus === 'customer_accepted' &&
               !request.technicianAssignment?.current &&
-              (!status || ['confirmed', 'inspection_pending'].includes(status))));
+              (!status || PRE_REPAIR_STATUSES.includes(status))));
       case 'assigned':
         return request.status === 'open' &&
           responseStatus === 'customer_accepted' &&
           !!request.technicianAssignment?.current &&
-          (!status || ['confirmed', 'inspection_pending'].includes(status));
+          (!status || PRE_REPAIR_STATUSES.includes(status));
       case 'active':
         return request.status === 'open' &&
           !!status &&
-          !['confirmed', 'inspection_pending', 'repair_declined', 'completed', 'disputed'].includes(
+          ![...PRE_REPAIR_STATUSES, 'repair_declined', 'completed', 'disputed'].includes(
             status,
           );
       case 'completed':
@@ -396,7 +407,7 @@ export class JobSharedService {
       id: request._id,
       title: request.appliance,
       status:
-        assignment && (!repairStatus || ['confirmed', 'inspection_pending'].includes(repairStatus))
+        assignment && (!repairStatus || PRE_REPAIR_STATUSES.includes(repairStatus))
           ? 'assigned'
           : repairStatus ?? request.shopResponse.status,
       description: request.description,

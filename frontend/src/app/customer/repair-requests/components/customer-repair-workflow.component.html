@@ -1,8 +1,28 @@
 @if (job; as job) {
-  @if (error()) {
+  @if (error() && !pickupConfirmationDialogOpen() && !reviewDialogOpen()) {
     <p class="workflow-error" role="alert">{{ error() }}</p>
   }
 
+  @if (job.status === 'confirmed') {
+    <p class="workflow-notice" role="status">
+      The repair shop has accepted your quotation and will schedule physical collection before inspection.
+    </p>
+  }
+  @if (job.status === 'pickup_scheduled') {
+    <p class="workflow-notice" role="status">
+      Collection is scheduled for {{ job.servicePickup?.scheduledAt | date: 'medium' }}.
+    </p>
+  }
+  @if (job.status === 'pickup_in_progress') {
+    <p class="workflow-notice" role="status">
+      The repair shop is on the way to collect your device.
+    </p>
+  }
+  @if (job.status === 'item_picked_up') {
+    <p class="workflow-notice" role="status">
+      Your device was collected by the repair shop. Inspection is now pending.
+    </p>
+  }
   @if (job.status === 'inspection_pending') {
     <p class="workflow-notice" role="status">
       The repair shop will inspect your device and send you a diagnosis and estimate to review.
@@ -441,7 +461,7 @@
     }
 
     @if (job.status === 'ready_for_pickup') {
-      <section class="workflow-card pickup-confirmation" aria-labelledby="pickup-confirmation-title">
+      <ng-template #pickupConfirmationForm>
         <header class="workflow-heading">
           <h2 id="pickup-confirmation-title">Confirm item received</h2>
         </header>
@@ -465,10 +485,7 @@
         @if (inspected() && received()) {
           <label>
             <span>Repair satisfaction</span>
-            <select
-              [ngModel]="satisfaction()"
-              (ngModelChange)="satisfaction.set($event)"
-            >
+            <select [ngModel]="satisfaction()" (ngModelChange)="satisfaction.set($event)">
               <option value="very_satisfied">Very satisfied</option>
               <option value="satisfied">Satisfied</option>
               <option value="neutral">Neutral</option>
@@ -496,7 +513,20 @@
             (ngModelChange)="pickupComments.set($event)"
           ></textarea>
         </label>
+        @if (error()) {
+          <p class="workflow-error" role="alert">{{ error() }}</p>
+        }
         <div class="decision-actions">
+          @if (pickupConfirmationInSidebar) {
+            <button
+              type="button"
+              class="secondary-button"
+              [disabled]="submitting()"
+              (click)="closePickupConfirmationDialog()"
+            >
+              Cancel
+            </button>
+          }
           <button
             type="button"
             class="primary-button"
@@ -506,13 +536,51 @@
             {{ inspected() && received() ? 'Confirm item received' : 'Report issue' }}
           </button>
         </div>
-      </section>
+      </ng-template>
+
+      @if (pickupConfirmationInSidebar) {
+        @if (pickupConfirmationDialogOpen()) {
+          <div class="dialog-backdrop" role="presentation">
+            <section
+              class="decision-dialog pickup-confirmation pickup-confirmation-dialog"
+              id="pickup-confirmation-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pickup-confirmation-title"
+            >
+              <ng-container [ngTemplateOutlet]="pickupConfirmationForm"></ng-container>
+            </section>
+          </div>
+        }
+      } @else {
+        <section class="workflow-card pickup-confirmation" aria-labelledby="pickup-confirmation-title">
+          <ng-container [ngTemplateOutlet]="pickupConfirmationForm"></ng-container>
+        </section>
+      }
     }
 
     @if (job.status === 'picked_up' && !request.review) {
-      <section class="workflow-card" aria-labelledby="review-title">
-        <h2 id="review-title">Rate your repair experience</h2>
-        <p>Your review is tied to this verified repair and cannot be submitted twice.</p>
+      <ng-template #reviewForm>
+        <header class="review-dialog-header">
+          <div>
+            @if (reviewInSidebar) {
+              <span class="eyebrow">CUSTOMER FEEDBACK</span>
+            }
+            <h2 id="review-title">Rate your repair experience</h2>
+            <p>Your review is tied to this verified repair and cannot be submitted twice.</p>
+          </div>
+          @if (reviewInSidebar) {
+            <button
+              type="button"
+              class="review-dialog-close"
+              aria-label="Close review form"
+              [disabled]="submitting()"
+              (click)="closeReviewDialog()"
+            >
+              ×
+            </button>
+          }
+        </header>
         <div class="rating-grid">
           @for (field of ratingFields; track field.key) {
             <div class="rating-control">
@@ -538,7 +606,7 @@
           }
         </div>
         <div class="review-form">
-          <label>
+          <label class="review-title-field">
             <span>Review title (optional)</span>
             <input
               maxlength="120"
@@ -546,7 +614,7 @@
               (ngModelChange)="reviewTitle.set($event)"
             />
           </label>
-          <label>
+          <label class="review-experience-field">
             <span>Your experience *</span>
             <textarea
               rows="4"
@@ -556,7 +624,7 @@
               (ngModelChange)="reviewText.set($event)"
             ></textarea>
           </label>
-          <label>
+          <label class="review-liked-field">
             <span>What did you like? (optional)</span>
             <textarea
               rows="2"
@@ -565,7 +633,7 @@
               (ngModelChange)="liked.set($event)"
             ></textarea>
           </label>
-          <label>
+          <label class="review-improvement-field">
             <span>What could be improved? (optional)</span>
             <textarea
               rows="2"
@@ -582,7 +650,20 @@
             />
             I would recommend this shop
           </label>
+          @if (error() && reviewDialogOpen()) {
+            <p class="workflow-error" role="alert">{{ error() }}</p>
+          }
           <div class="decision-actions">
+            @if (reviewInSidebar) {
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="submitting()"
+                (click)="closeReviewDialog()"
+              >
+                Cancel
+              </button>
+            }
             <button
               type="button"
               class="primary-button"
@@ -593,7 +674,26 @@
             </button>
           </div>
         </div>
-      </section>
+      </ng-template>
+      @if (reviewInSidebar) {
+        @if (reviewDialogOpen()) {
+          <div class="dialog-backdrop" role="presentation">
+            <section
+              class="decision-dialog review-dialog"
+              id="review-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="review-title"
+            >
+              <ng-container [ngTemplateOutlet]="reviewForm"></ng-container>
+            </section>
+          </div>
+        }
+      } @else {
+        <section class="workflow-card review-submission-card" aria-labelledby="review-title">
+          <ng-container [ngTemplateOutlet]="reviewForm"></ng-container>
+        </section>
+      }
     }
 
     @if (request.review; as review) {

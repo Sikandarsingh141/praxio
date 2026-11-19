@@ -47,6 +47,9 @@ export interface JobTimelineEntry {
   title: string;
   description?: string;
   at: string;
+  actorName?: string;
+  actorRole?: string;
+  attachmentCount?: number;
 }
 
 export interface JobAttachment {

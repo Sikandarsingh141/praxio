@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ShopProfile } from '../../core/auth/auth.models';
@@ -8,11 +8,14 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ShopRepairRequest } from '../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 import { ShopRepairRouteComponent } from './components/shop-repair-route.component';
+import { ShopRepairPickupComponent } from './components/shop-repair-pickup.component';
 import { ShopRepairWorkflowComponent } from './components/shop-repair-workflow.component';
 import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
 import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
 import { JobAttachment } from '../../shared/models/job.models';
 import { JobSharedService } from '../../shared/services/job-shared.service';
+import { canStartRepair } from '../../shared/utils/repair-authorization.util';
+import { buildRepairProgressSteps } from '../../shared/utils/repair-progress.util';
 import { Technician } from '../technicians/technicians.models';
 import { TechniciansService } from '../technicians/technicians.service';
 import { ToastService } from '../../core/toast/toast.service';
@@ -70,6 +73,7 @@ type ReplacedPart = {
     RouterLink,
     JobTimelineComponent,
     ShopRepairRouteComponent,
+    ShopRepairPickupComponent,
     ShopRepairWorkflowComponent,
     JobAttachmentsComponent,
   ],
@@ -77,6 +81,8 @@ type ReplacedPart = {
   styleUrl: './shop-repair-request-details.page.scss',
 })
 export class ShopRepairRequestDetailsPage implements OnInit {
+  @ViewChild(ShopRepairWorkflowComponent) private repairWorkflow?: ShopRepairWorkflowComponent;
+
   readonly jobs = inject(JobSharedService);
   readonly reasons = DECLINE_REASONS;
   readonly request = signal<ShopRepairRequest | null>(null);
@@ -98,6 +104,8 @@ export class ShopRepairRequestDetailsPage implements OnInit {
   readonly quotationSummaryOpen = signal(false);
   readonly additionalRepairDetails = signal('');
   readonly quotationAttempted = signal(false);
+  readonly inspectionCompletedBeforeQuotation = signal(false);
+  readonly requiresPhysicalPickup = signal(false);
   readonly declineReason = signal('');
   readonly customDeclineReason = signal('');
   readonly repairActionSubmitting = signal(false);
@@ -150,12 +158,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       ? `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
       : null;
   });
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
+  readonly progressSteps = computed(() => this.buildProgressSteps());
   readonly filteredQuotationSummaries = computed(() => {
     const term = this.quotationSummarySearch().trim().toLowerCase();
     return QUOTATION_SUMMARY_OPTIONS.filter(
@@ -194,33 +197,6 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       .map((part) => `${part.name} × ${part.quantity}`)
       .join(', '),
   );
-  readonly currentProgressStep = computed(() => {
-    const request = this.request();
-    if (!request) return 1;
-    const status = request.repairJob?.status;
-    if (
-      status === 'in_progress' ||
-      status === 'on_hold' ||
-      status === 'repair_completed' ||
-      status === 'ready_for_pickup' ||
-      status === 'picked_up' ||
-      status === 'completed' ||
-      status === 'inspection_approved' ||
-      request.shopResponse.status === 'customer_accepted'
-    ) {
-      return 4;
-    }
-    if (
-      status === 'awaiting_customer_approval' ||
-      status === 'repair_declined' ||
-      request.shopResponse.status === 'quotation_submitted' ||
-      request.quotations.length
-    ) {
-      return 3;
-    }
-    return 2;
-  });
-
   readonly canRespond = computed(() => {
     const request = this.request();
     if (!request || request.status !== 'open') {
@@ -296,35 +272,35 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
-  isRepairComplete(request: ShopRepairRequest): boolean {
-    return request.repairJob?.status === 'completed' || request.status === 'completed';
-  }
-
-  progressDate(request: ShopRepairRequest, index: number): string | undefined {
+  private buildProgressSteps() {
+    const request = this.request();
+    if (!request) return [];
     const repairJob = request.repairJob;
-    const historyAt = (action: string): string | undefined =>
-      repairJob?.history?.find((event) => event.action === action)?.at;
-    switch (index) {
-      case 0:
-        return request.createdAt;
-      case 1:
-        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
-      case 2:
-        return (
-          request.quotations.find((quotation) => quotation.status === 'accepted')?.respondedAt ??
-          request.quotations[request.quotations.length - 1]?.createdAt
-        );
-      case 3:
-        return (
-          historyAt('repair_completed') ??
-          repairJob?.repairCompletedAt ??
-          historyAt('ready_for_pickup') ??
-          repairJob?.readyForPickupAt ??
-          repairJob?.completedAt
-        );
-      default:
-        return undefined;
-    }
+    const acceptedQuotation = request.quotations.find(
+      (quotation) => quotation.status === 'accepted',
+    );
+    const quotationAccepted = Boolean(
+      request.acceptedQuotationId ||
+        repairJob?.acceptedQuotationId ||
+        acceptedQuotation ||
+        request.shopResponse.status === 'customer_accepted',
+    );
+    const acceptedAt =
+      acceptedQuotation?.respondedAt ??
+      request.shopResponse.respondedAt ??
+      repairJob?.confirmedAt;
+    return buildRepairProgressSteps({
+      requestCreatedAt: request.createdAt,
+      requestStatus: request.status,
+      repairJob,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : request.shopResponse.status === 'quotation_submitted'
+          ? 'submitted'
+          : 'none',
+      acceptedAt,
+      quotationAt: request.quotations.at(-1)?.createdAt,
+    });
   }
 
   openAssignment(): void {
@@ -495,6 +471,25 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     });
   }
 
+  openQuotation(): void {
+    this.inspectionCompletedBeforeQuotation.set(false);
+    this.requiresPhysicalPickup.set(false);
+    this.quotationOpen.set(true);
+  }
+
+  setInspectionCompletedBeforeQuotation(inspectionCompleted: boolean): void {
+    this.inspectionCompletedBeforeQuotation.set(inspectionCompleted);
+    if (inspectionCompleted) {
+      this.requiresPhysicalPickup.set(false);
+    }
+  }
+
+  setRequiresPhysicalPickup(requiresPhysicalPickup: boolean): void {
+    this.requiresPhysicalPickup.set(
+      requiresPhysicalPickup && !this.inspectionCompletedBeforeQuotation(),
+    );
+  }
+
   submitQuotation(): void {
     const request = this.request();
     if (!request || !this.canRespond()) {
@@ -515,6 +510,9 @@ export class ShopRepairRequestDetailsPage implements OnInit {
         message: this.quotationMessage().trim(),
         proposedSolution: this.quotationProposedSolution(),
         estimatedDays: this.completionDays()!,
+        inspectionCompletedBeforeQuotation:
+          this.inspectionCompletedBeforeQuotation(),
+        requiresPhysicalPickup: this.requiresPhysicalPickup(),
         validUntil,
       })
       .subscribe({
@@ -625,9 +623,77 @@ export class ShopRepairRequestDetailsPage implements OnInit {
 
   startRepair(): void {
     const request = this.request();
-    if (!request) return;
+    if (!request || !this.canResumeRepair(request)) return;
     this.runRepairAction('start', () =>
       this.requestsService.startRepair(request._id, this.progressNotes().trim() || undefined),
+    );
+  }
+
+  openInspectionSubmission(): void {
+    if (!this.repairWorkflow) {
+      this.toastService.error(
+        'Inspection Error',
+        'The inspection form is unavailable. Please refresh and try again.',
+      );
+      return;
+    }
+    this.repairWorkflow.openInspectionModal();
+  }
+
+  approvedRepairAmount(): number {
+    const job = this.request()?.repairJob;
+    return (
+      this.repairWorkflow?.approvedTotal ??
+      (job?.approvedRepairAmount ?? 0) + (job?.approvedAdditionalCharges ?? 0)
+    );
+  }
+
+  approvedRepairCurrency(): string {
+    return (
+      this.repairWorkflow?.acceptedQuotation?.currency ??
+      this.request()?.quotations.find((quotation) => quotation.status === 'accepted')?.currency ??
+      'INR'
+    );
+  }
+
+  canStartApprovedRepair(): boolean {
+    const request = this.request();
+    const acceptedQuotation = request?.quotations.find(
+      (quotation) => quotation.status === 'accepted',
+    );
+    return canStartRepair(request?.repairJob, acceptedQuotation?.status);
+  }
+
+  repairStartLocked(): boolean {
+    return (
+      this.request()?.repairJob?.status === 'inspection_approved' &&
+      !this.canStartApprovedRepair()
+    );
+  }
+
+  repairStartSubmitting(): boolean {
+    return this.repairWorkflow?.submitting() ?? false;
+  }
+
+  startApprovedRepair(): void {
+    if (!this.repairWorkflow) {
+      this.toastService.error(
+        'Repair Error',
+        'The repair authorization action is unavailable. Please refresh and try again.',
+      );
+      return;
+    }
+    this.repairWorkflow.startRepair();
+  }
+
+  canResumeRepair(request: ShopRepairRequest): boolean {
+    const job = request.repairJob;
+    return (
+      job?.status === 'on_hold' &&
+      request.quotations.some((quotation) => quotation.status === 'accepted') &&
+      !(job.additionalChargeRequests ?? []).some(
+        (charge) => charge.status === 'pending' && charge.blocksRepair,
+      )
     );
   }
 

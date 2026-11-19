@@ -107,7 +107,7 @@ describe('TechnicianLayoutComponent', () => {
     );
     expect(navLinks[2]?.textContent).toContain('Active Jobs');
     expect(navLinks[3]?.textContent).toContain('Completed Jobs');
-    expect(navLinks[4]?.textContent).toContain('Issue Resolution');
+    expect(navLinks[4]?.textContent).toContain('Disputes');
     expect((navLinks[4] as HTMLAnchorElement)?.getAttribute('href')).toBe(
       '/technician/jobs/disputed-jobs',
     );

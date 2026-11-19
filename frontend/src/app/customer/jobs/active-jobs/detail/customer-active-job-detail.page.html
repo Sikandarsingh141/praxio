@@ -49,24 +49,27 @@
       </span>
     </section>
 
-    <ol class="request-progress" aria-label="Repair request progress">
-      @for (step of progressSteps; track step; let index = $index) {
+    <ol
+      class="request-progress"
+      aria-label="Repair request progress"
+      tabindex="0"
+      [style.--progress-step-count]="progressSteps().length"
+    >
+      @for (step of progressSteps(); track step.key; let index = $index) {
         <li
-          [class.completed]="isRepairComplete(job) || index + 1 < currentProgressStep(job)"
-          [class.current]="!isRepairComplete(job) && index + 1 === currentProgressStep(job)"
-          [attr.aria-current]="
-            !isRepairComplete(job) && index + 1 === currentProgressStep(job) ? 'step' : null
-          "
+          [class.completed]="step.completed"
+          [class.current]="step.current"
+          [attr.aria-current]="step.current ? 'step' : null"
         >
           <span class="progress-marker" aria-hidden="true">
-            @if (isRepairComplete(job) || index + 1 < currentProgressStep(job)) {
+            @if (step.completed) {
               <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
             } @else {
               {{ index + 1 }}
             }
           </span>
-          <strong>{{ step }}</strong>
-          @if (progressDate(job, index); as stepDate) {
+          <strong>{{ step.label }}</strong>
+          @if (step.at; as stepDate) {
             <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
           }
         </li>
@@ -170,6 +173,16 @@
             }
           </section>
 
+          @if (job.repairJob) {
+            <app-customer-repair-workflow
+              [request]="job"
+              [showApprovalSummaryInFlow]="false"
+              [pickupConfirmationInSidebar]="true"
+              [reviewInSidebar]="true"
+              (requestUpdated)="refreshRecord($event)"
+            />
+          }
+
           <section class="customer-detail-block quotation-section">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -214,37 +227,15 @@
             }
           </section>
 
-          <section class="customer-detail-block timeline-section">
-            <h2 class="section-heading">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-              </svg>
-              Repair Progress and Inspection
-            </h2>
-            @if (jobs.customerTimeline(job).length) {
+          @if (job.repairJob?.history?.length) {
+            <section class="customer-detail-block repair-history-card" aria-labelledby="repair-history-title">
+              <h2 class="section-heading" id="repair-history-title">
+                <span class="card-icon" aria-hidden="true">↻</span>
+                Repair History
+              </h2>
               <app-job-timeline [items]="jobs.customerTimeline(job)" />
-            } @else {
-              <div class="timeline-empty">
-                <span class="timeline-empty-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 7v5l3 2" />
-                  </svg>
-                </span>
-                <div>
-                  <strong>No repair history yet</strong>
-                  <p>Repair activity will appear here once the shop starts working on your request.</p>
-                </div>
-              </div>
-            }
-            @if (job.repairJob) {
-              <app-customer-repair-workflow
-                [request]="job"
-                [showApprovalSummaryInFlow]="false"
-                (requestUpdated)="refreshRecord($event)"
-              />
-            }
-          </section>
+            </section>
+          }
         </section>
       </div>
 
@@ -306,6 +297,36 @@
                   You declined this inspection estimate.
                 </p>
               }
+            </section>
+          }
+          @if (job.repairJob?.status === 'ready_for_pickup') {
+            <section class="customer-detail-block pickup-confirmation-action">
+              <p>Confirm only after you have collected and inspected your item.</p>
+              <button
+                type="button"
+                class="job-button"
+                aria-haspopup="dialog"
+                aria-controls="pickup-confirmation-dialog"
+                [disabled]="!workflowRef() || workflowRef()?.submitting()"
+                (click)="workflowRef()?.openPickupConfirmationDialog()"
+              >
+                Confirm item received
+              </button>
+            </section>
+          }
+          @if (job.repairJob?.status === 'picked_up' && !job.review) {
+            <section class="customer-detail-block repair-review-action">
+              <p>Share your repair experience to complete this repair.</p>
+              <button
+                type="button"
+                class="job-button"
+                aria-haspopup="dialog"
+                aria-controls="review-dialog"
+                [disabled]="!workflowRef() || workflowRef()?.submitting()"
+                (click)="workflowRef()?.openReviewDialog()"
+              >
+                Rate your repair experience
+              </button>
             </section>
           }
           <section class="customer-detail-block">

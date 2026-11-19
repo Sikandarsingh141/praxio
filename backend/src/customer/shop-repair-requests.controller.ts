@@ -16,11 +16,14 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ShopPortalGuard } from '../auth/shop-portal.guard';
 import {
   CompleteRepairDto,
+  ConfirmServicePickupDto,
   CreateQuotationDto,
   DeclineRepairRequestDto,
   ReadyForPickupDto,
   RepairProgressDto,
   RepairRequestListQueryDto,
+  ScheduleServicePickupDto,
+  StartServicePickupDto,
 } from './customer-portal.dto';
 import { CustomerPortalService } from './customer-portal.service';
 
@@ -67,7 +70,8 @@ export class ShopRepairRequestsController {
 
   @Get(':id/directions')
   @ApiOperation({
-    summary: 'Get driving directions for a repair request shared with this shop',
+    summary:
+      'Get driving directions for a repair request shared with this shop',
   })
   async getDirections(
     @Req() request: AuthenticatedRequest,
@@ -116,6 +120,62 @@ export class ShopRepairRequestsController {
       input,
     );
     return { data: { declined: true } };
+  }
+
+  @Patch(':id/schedule-pickup')
+  @ApiOperation({
+    summary: 'Schedule physical collection of an accepted repair item',
+  })
+  async schedulePickup(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() input: ScheduleServicePickupDto,
+  ) {
+    return {
+      data: {
+        repairJob: await this.repairRequests.scheduleServicePickup(
+          this.shopId(request),
+          requestId,
+          input,
+        ),
+      },
+    };
+  }
+
+  @Patch(':id/start-pickup')
+  @ApiOperation({ summary: 'Mark physical collection as underway' })
+  async startPickup(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() input: StartServicePickupDto,
+  ) {
+    return {
+      data: {
+        repairJob: await this.repairRequests.startServicePickup(
+          this.shopId(request),
+          requestId,
+          input,
+        ),
+      },
+    };
+  }
+
+  @Patch(':id/confirm-pickup')
+  @ApiOperation({ summary: 'Confirm physical collection and begin inspection' })
+  async confirmPickup(
+    @Req() request: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() input: ConfirmServicePickupDto,
+  ) {
+    return {
+      data: {
+        repairJob: await this.repairRequests.confirmServicePickup(
+          this.shopId(request),
+          requestId,
+          input,
+        ),
+      },
+    };
   }
 
   @Patch(':id/start-repair')

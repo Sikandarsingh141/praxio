@@ -1,11 +1,11 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, TitleCasePipe } from '@angular/common';
 import { Component, Input } from '@angular/core';
 import { JobTimelineEntry } from '../../models/job.models';
 
 @Component({
   selector: 'app-job-timeline',
   standalone: true,
-  imports: [DatePipe],
+  imports: [DatePipe, TitleCasePipe],
   template: `
     @if (items.length) {
       <ol class="timeline">
@@ -15,6 +15,20 @@ import { JobTimelineEntry } from '../../models/job.models';
             <div>
               <h3>{{ item.title }}</h3>
               @if (item.description) { <p>{{ item.description }}</p> }
+              @if (item.actorName || item.actorRole) {
+                <p>
+                  By {{ item.actorName || (item.actorRole | titlecase) }}
+                  @if (item.actorName && item.actorRole) {
+                    · {{ item.actorRole | titlecase }}
+                  }
+                </p>
+              }
+              @if ((item.attachmentCount ?? 0) > 0) {
+                <p>
+                  {{ item.attachmentCount }}
+                  {{ item.attachmentCount === 1 ? 'attachment' : 'attachments' }}
+                </p>
+              }
               <time [attr.datetime]="item.at">{{ item.at | date: 'medium' }}</time>
             </div>
           </li>

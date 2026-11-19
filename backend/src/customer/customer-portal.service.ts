@@ -26,11 +26,14 @@ import {
   CustomerRepairRequestListQueryDto,
   CustomerPickupVerificationDto,
   DeclineRepairRequestDto,
+  ConfirmServicePickupDto,
   QuotationListQueryDto,
   RepairRequestListQueryDto,
   ReadyForPickupDto,
   RepairProgressDto,
+  ScheduleServicePickupDto,
   ShopSearchDto,
+  StartServicePickupDto,
   UpdateRepairRequestDto,
 } from './customer-portal.dto';
 import {
@@ -121,6 +124,45 @@ function formatShopAddress(details?: User['shopDetails']): string {
       return true;
     })
     .join(', ');
+}
+
+interface PreRepairInspectionMode {
+  requiresPhysicalPickup: boolean;
+  inspectionCompletedBeforeQuotation: boolean;
+}
+
+function resolvePreRepairInspectionMode(
+  explicitInspectionCompleted?: boolean,
+  explicitRequiresPhysicalPickup?: boolean,
+): PreRepairInspectionMode {
+  if (explicitInspectionCompleted === true) {
+    return {
+      requiresPhysicalPickup: false,
+      inspectionCompletedBeforeQuotation: true,
+    };
+  }
+
+  return {
+    requiresPhysicalPickup: explicitRequiresPhysicalPickup ?? false,
+    inspectionCompletedBeforeQuotation: false,
+  };
+}
+
+function resolveAcceptedRepairJobMode(quotation: {
+  requiresPhysicalPickup?: boolean;
+  inspectionCompletedBeforeQuotation?: boolean;
+}): PreRepairInspectionMode {
+  if (quotation.inspectionCompletedBeforeQuotation === true) {
+    return {
+      requiresPhysicalPickup: false,
+      inspectionCompletedBeforeQuotation: true,
+    };
+  }
+
+  return resolvePreRepairInspectionMode(
+    quotation.inspectionCompletedBeforeQuotation,
+    quotation.requiresPhysicalPickup,
+  );
 }
 
 function shopImageUrl(imageData?: string): string | null {
@@ -1738,6 +1780,9 @@ export class CustomerPortalService {
     ];
     const activeRepairStatuses = [
       'confirmed',
+      'pickup_scheduled',
+      'pickup_in_progress',
+      'item_picked_up',
       'inspection_pending',
       'inspection_in_progress',
       'awaiting_customer_approval',
@@ -2385,6 +2430,10 @@ export class CustomerPortalService {
         'Quotation amount must equal the submitted charge breakdown.',
       );
     }
+    const preRepairInspectionMode = resolvePreRepairInspectionMode(
+      input.inspectionCompletedBeforeQuotation,
+      input.requiresPhysicalPickup,
+    );
     const now = new Date();
     const updatedRequest = await this.repairRequests
       .findOneAndUpdate(
@@ -2428,6 +2477,9 @@ export class CustomerPortalService {
         currency: input.currency.trim().toUpperCase(),
         message: input.message.trim(),
         estimatedDays: input.estimatedDays,
+        inspectionCompletedBeforeQuotation:
+          preRepairInspectionMode.inspectionCompletedBeforeQuotation,
+        requiresPhysicalPickup: preRepairInspectionMode.requiresPhysicalPickup,
         inspectionCharge: input.inspectionCharge,
         partsCost: input.partsCost,
         labourCharge: input.labourCharge,
@@ -2529,6 +2581,56 @@ export class CustomerPortalService {
 
     let updated: RepairQuotationDocument | null = null;
     if (status === 'accepted') {
+      const acceptedMode = resolveAcceptedRepairJobMode(quotation);
+      const repairJobStatus = acceptedMode.requiresPhysicalPickup
+        ? 'confirmed'
+        : acceptedMode.inspectionCompletedBeforeQuotation
+          ? 'inspection_approved'
+          : 'inspection_pending';
+      const repairJob: Record<string, unknown> = {
+        status: repairJobStatus,
+        acceptedQuotationId: quotation._id,
+        confirmedAt: now,
+        requiresPhysicalPickup: acceptedMode.requiresPhysicalPickup,
+        inspectionCompletedBeforeQuotation:
+          acceptedMode.inspectionCompletedBeforeQuotation,
+        history: [
+          {
+            actorId: customer._id,
+            action: repairJobStatus,
+            notes: acceptedMode.requiresPhysicalPickup
+              ? 'Customer accepted the quotation. Shop must schedule and confirm physical collection before inspection.'
+              : acceptedMode.inspectionCompletedBeforeQuotation
+                ? 'Customer accepted the quotation. Inspection was already completed before quotation.'
+                : 'Customer accepted the quotation. Shop inspection is required before repair.',
+            at: now,
+          },
+        ],
+      };
+      if (
+        acceptedMode.inspectionCompletedBeforeQuotation &&
+        !acceptedMode.requiresPhysicalPickup
+      ) {
+        repairJob.inspection = {
+          status: 'approved',
+          identifiedProblem: quotation.proposedSolution?.trim(),
+          findings: quotation.additionalNotes?.trim(),
+          requiredRepairWork: quotation.proposedSolution?.trim(),
+          parts: [],
+          partsTotal: 0,
+          labourCharge: quotation.labourCharge ?? 0,
+          inspectionCharges: quotation.inspectionCharge ?? 0,
+          otherCharges: quotation.additionalCharges ?? 0,
+          estimatedTotal: quotation.amount,
+          warranty: quotation.warrantyInformation?.trim(),
+          message: quotation.message?.trim(),
+          decidedAt: now,
+          decidedBy: customer._id,
+        };
+        repairJob.inspectionStartedAt = now;
+        repairJob.inspectionCompletedAt = now;
+        repairJob.approvedRepairAmount = quotation.amount;
+      }
       const claimedRequest = await this.repairRequests
         .findOneAndUpdate(
           {
@@ -2540,20 +2642,7 @@ export class CustomerPortalService {
           {
             $set: {
               acceptedQuotationId: quotation._id,
-              repairJob: {
-                status: 'inspection_pending',
-                acceptedQuotationId: quotation._id,
-                confirmedAt: now,
-                history: [
-                  {
-                    actorId: customer._id,
-                    action: 'inspection_pending',
-                    notes:
-                      'Customer accepted the quotation. Shop inspection is required before repair.',
-                    at: now,
-                  },
-                ],
-              },
+              repairJob,
             },
           },
           { new: true },
@@ -2582,7 +2671,7 @@ export class CustomerPortalService {
         await this.repairRequests
           .updateOne(
             { _id: request._id, acceptedQuotationId: quotation._id },
-            { $unset: { acceptedQuotationId: '' } },
+            { $unset: { acceptedQuotationId: '', repairJob: '' } },
           )
           .exec();
         throw new ConflictException(
@@ -2724,6 +2813,187 @@ export class CustomerPortalService {
       link: `/shop/quotations?quotationId=${quotation._id.toString()}`,
     });
     return updated;
+  }
+
+  async scheduleServicePickup(
+    shopId: string,
+    requestId: string,
+    input: ScheduleServicePickupDto,
+  ): Promise<unknown> {
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair job was not found');
+    }
+    const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const scheduledAt = new Date(input.scheduledAt);
+    const request = await this.repairRequests
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          shopIds: shop._id,
+          acceptedQuotationId: { $exists: true },
+          'repairJob.status': 'confirmed',
+          'repairJob.requiresPhysicalPickup': true,
+        },
+        {
+          $set: {
+            'repairJob.status': 'pickup_scheduled',
+            'repairJob.servicePickup.scheduledAt': scheduledAt,
+            ...(input.notes?.trim()
+              ? { 'repairJob.servicePickup.scheduleNotes': input.notes.trim() }
+              : {}),
+          },
+          $push: {
+            'repairJob.history': {
+              actorId: shop._id,
+              action: 'pickup_scheduled',
+              notes: input.notes?.trim(),
+              at: new Date(),
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!request) {
+      throw new ConflictException(
+        'Pickup cannot be scheduled from the current repair status.',
+      );
+    }
+    await this.notifications.notifyUsers([request.customerId], {
+      title: 'Repair Collection Scheduled',
+      message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} scheduled collection of your ${request.appliance} for ${scheduledAt.toLocaleString()}.`,
+      type: 'repair_pickup_scheduled',
+      relatedEntityId: request._id,
+      relatedEntityType: 'repair_request',
+      link: `/customer/repair-requests/${request._id.toString()}`,
+    });
+    return request.repairJob;
+  }
+
+  async startServicePickup(
+    shopId: string,
+    requestId: string,
+    input: StartServicePickupDto,
+  ): Promise<unknown> {
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair job was not found');
+    }
+    const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const now = new Date();
+    const request = await this.repairRequests
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          shopIds: shop._id,
+          acceptedQuotationId: { $exists: true },
+          'repairJob.status': 'pickup_scheduled',
+          'repairJob.requiresPhysicalPickup': true,
+          'repairJob.servicePickup.scheduledAt': { $exists: true },
+        },
+        {
+          $set: {
+            'repairJob.status': 'pickup_in_progress',
+            'repairJob.servicePickup.startedAt': now,
+          },
+          $push: {
+            'repairJob.history': {
+              actorId: shop._id,
+              action: 'pickup_in_progress',
+              notes: input.notes?.trim(),
+              at: now,
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!request) {
+      throw new ConflictException(
+        'Pickup cannot be started from the current repair status.',
+      );
+    }
+    await this.notifications.notifyUsers([request.customerId], {
+      title: 'Repair Collection Underway',
+      message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} is on the way to collect your ${request.appliance}.`,
+      type: 'repair_pickup_in_progress',
+      relatedEntityId: request._id,
+      relatedEntityType: 'repair_request',
+      link: `/customer/repair-requests/${request._id.toString()}`,
+    });
+    return request.repairJob;
+  }
+
+  async confirmServicePickup(
+    shopId: string,
+    requestId: string,
+    input: ConfirmServicePickupDto,
+  ): Promise<unknown> {
+    if (!isObjectIdOrHexString(requestId)) {
+      throw new NotFoundException('Repair job was not found');
+    }
+    const shop = await this.requireAcceptedRepairShop(shopId, requestId);
+    const collectedAt = input.collectedAt
+      ? new Date(input.collectedAt)
+      : new Date();
+    const request = await this.repairRequests
+      .findOneAndUpdate(
+        {
+          _id: requestId,
+          shopIds: shop._id,
+          acceptedQuotationId: { $exists: true },
+          'repairJob.status': {
+            $in: ['pickup_scheduled', 'pickup_in_progress'],
+          },
+          'repairJob.requiresPhysicalPickup': true,
+        },
+        {
+          $set: {
+            'repairJob.status': 'inspection_pending',
+            'repairJob.servicePickup.collectedAt': collectedAt,
+            'repairJob.servicePickup.collectedBy': shop._id,
+            ...(input.notes?.trim()
+              ? {
+                  'repairJob.servicePickup.collectionNotes': input.notes.trim(),
+                }
+              : {}),
+          },
+          $push: {
+            'repairJob.history': {
+              $each: [
+                {
+                  actorId: shop._id,
+                  action: 'item_picked_up',
+                  notes: input.notes?.trim(),
+                  at: collectedAt,
+                },
+                {
+                  actorId: shop._id,
+                  action: 'inspection_pending',
+                  notes:
+                    'Item collected by the shop. Inspection is now required.',
+                  at: collectedAt,
+                },
+              ],
+            },
+          },
+        },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!request) {
+      throw new ConflictException(
+        'Collection cannot be confirmed from the current repair status.',
+      );
+    }
+    await this.notifications.notifyUsers([request.customerId], {
+      title: 'Repair Item Collected',
+      message: `${shop.shopDetails?.shopName ?? 'Your repair shop'} collected your ${request.appliance}. Inspection will begin next.`,
+      type: 'repair_item_picked_up',
+      relatedEntityId: request._id,
+      relatedEntityType: 'repair_request',
+      link: `/customer/repair-requests/${request._id.toString()}`,
+    });
+    return request.repairJob;
   }
 
   async getCustomerRepairJob(
@@ -2880,7 +3150,13 @@ export class CustomerPortalService {
           shopIds: shop._id,
           acceptedQuotationId: assigned.acceptedQuotationId,
           ...assignmentFilter,
-          'repairJob.status': { $in: ['confirmed', 'inspection_pending'] },
+          $or: [
+            { 'repairJob.status': 'inspection_pending' },
+            {
+              'repairJob.status': 'confirmed',
+              'repairJob.requiresPhysicalPickup': { $ne: true },
+            },
+          ],
         },
         {
           $set: {
@@ -3650,6 +3926,13 @@ export class CustomerPortalService {
                     $elemMatch: { status: 'pending', blocksRepair: true },
                   },
                 },
+                $or: [
+                  { 'repairJob.status': 'on_hold' },
+                  {
+                    'repairJob.status': 'inspection_approved',
+                    'repairJob.inspection.status': 'approved',
+                  },
+                ],
               }
             : {}),
         },
@@ -4475,7 +4758,9 @@ export class CustomerPortalService {
       )?.shopId ??
       request.shopIds?.[0];
     if (!shopId) {
-      throw new NotFoundException('No repair shop is available for this request');
+      throw new NotFoundException(
+        'No repair shop is available for this request',
+      );
     }
 
     return this.getShopRepairRoute(shopId.toString(), requestId, true);

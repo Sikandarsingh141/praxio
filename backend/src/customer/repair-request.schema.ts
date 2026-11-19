@@ -56,6 +56,9 @@ export const RepairRequestShopResponseSchema = SchemaFactory.createForClass(
 
 export const REPAIR_JOB_STATUSES = [
   'confirmed',
+  'pickup_scheduled',
+  'pickup_in_progress',
+  'item_picked_up',
   'inspection_pending',
   'inspection_in_progress',
   'awaiting_customer_approval',
@@ -334,6 +337,30 @@ export const RepairCustomerVerificationSchema = SchemaFactory.createForClass(
 );
 
 @Schema({ _id: false })
+export class RepairServicePickup {
+  @Prop({ type: Date })
+  scheduledAt?: Date;
+
+  @Prop({ type: Date })
+  startedAt?: Date;
+
+  @Prop({ type: Date })
+  collectedAt?: Date;
+
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  collectedBy?: Types.ObjectId;
+
+  @Prop({ type: String, trim: true, maxlength: 1000 })
+  scheduleNotes?: string;
+
+  @Prop({ type: String, trim: true, maxlength: 1000 })
+  collectionNotes?: string;
+}
+
+export const RepairServicePickupSchema =
+  SchemaFactory.createForClass(RepairServicePickup);
+
+@Schema({ _id: false })
 export class RepairJob {
   @Prop({
     type: String,
@@ -350,6 +377,15 @@ export class RepairJob {
   @Prop({ type: Date, required: true, default: Date.now })
   confirmedAt!: Date;
 
+  @Prop({ type: Boolean, default: true })
+  requiresPhysicalPickup!: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  inspectionCompletedBeforeQuotation!: boolean;
+
+  @Prop({ type: RepairServicePickupSchema })
+  servicePickup?: RepairServicePickup;
+
   @Prop({ type: RepairInspectionReportSchema })
   inspection?: RepairInspectionReport;
 
@@ -358,6 +394,9 @@ export class RepairJob {
 
   @Prop({ type: Date })
   inspectionStartedAt?: Date;
+
+  @Prop({ type: Date })
+  inspectionCompletedAt?: Date;
 
   @Prop({ type: Number, min: 0 })
   approvedRepairAmount?: number;
@@ -542,6 +581,12 @@ export class RepairQuotation {
 
   @Prop({ type: Number, min: 0, max: 365 })
   estimatedDays?: number;
+
+  @Prop({ type: Boolean, default: false })
+  inspectionCompletedBeforeQuotation!: boolean;
+
+  @Prop({ type: Boolean, default: false })
+  requiresPhysicalPickup!: boolean;
 
   @Prop({ type: Date })
   validUntil?: Date;

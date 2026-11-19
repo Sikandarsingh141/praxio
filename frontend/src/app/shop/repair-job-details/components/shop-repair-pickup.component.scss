@@ -1,0 +1,245 @@
+:host {
+  display: block;
+}
+
+.pickup-panel {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid #d6e4d9;
+  border-radius: 0.75rem;
+  background: #f5faf5;
+}
+
+.pickup-panel-heading {
+  display: grid;
+  gap: 0.35rem;
+
+  h2 {
+    margin: 0;
+    color: #334b3d;
+    font-size: 0.88rem;
+  }
+
+  p {
+    margin: 0;
+    color: #6f7e73;
+    font-size: 0.73rem;
+    line-height: 1.5;
+  }
+}
+
+.pickup-timestamp {
+  margin: 0;
+  color: #536959;
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.pickup-error {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.55rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.pickup-actions {
+  display: grid;
+  gap: 0.55rem;
+
+  button {
+    width: 100%;
+  }
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+    color: #4b5f51;
+    font-size: 0.7rem;
+    font-weight: 650;
+  }
+
+  input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 2.4rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid #cbd8cd;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #2f4335;
+    font: inherit;
+  }
+}
+
+.pickup-modal-backdrop {
+  position: fixed;
+  z-index: 1400;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 30 20 / 55%);
+}
+
+.pickup-dialog {
+  width: min(100%, 34rem);
+  max-height: min(92vh, 40rem);
+  overflow: auto;
+  padding: 1.1rem;
+  border: 1px solid #e1e9e3;
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 1.5rem 3rem rgb(15 30 20 / 22%);
+}
+
+.pickup-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+
+  h3 {
+    margin: 0.15rem 0 0;
+    color: #17212b;
+    font-size: 1.15rem;
+  }
+}
+
+.section-kicker {
+  color: #688271;
+  font-size: 0.64rem;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+}
+
+.dialog-close {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f1f5f2;
+  color: #43564a;
+  cursor: pointer;
+  font-size: 1.3rem;
+}
+
+.pickup-form {
+  display: grid;
+  gap: 0.8rem;
+
+  > p {
+    margin: 0;
+    color: #6f7e73;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  label {
+    display: grid;
+    gap: 0.35rem;
+    color: #4b5f51;
+    font-size: 0.72rem;
+    font-weight: 650;
+  }
+
+  input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 2.55rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid #dce5dd;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: #34483b;
+    font: inherit;
+  }
+}
+
+.pickup-date-time-fieldset {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  legend {
+    margin-bottom: 0.4rem;
+    color: #4b5f51;
+    font-size: 0.72rem;
+    font-weight: 650;
+  }
+}
+
+.pickup-date-time-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.pickup-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+
+  button {
+    min-width: 8rem;
+  }
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 2.65rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid #d6e2d8;
+  border-radius: 0.65rem;
+  background: #fff;
+  color: #315d4b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.73rem;
+  font-weight: 670;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+}
+
+.primary-button {
+  border-color: #176b34;
+  background: #176b34;
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #105629;
+  }
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+@media (max-width: 650px) {
+  .pickup-date-time-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .pickup-form-footer {
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+}

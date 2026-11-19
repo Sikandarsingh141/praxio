@@ -28,7 +28,7 @@
         }
       </div>
       <div class="request-hero-copy">
-        <h2>{{ dispute.subject }}</h2>
+        <h2>{{ dispute.subject || 'Repair dispute' }}</h2>
         <span class="request-id">
           Dispute ID: <strong>{{ dispute.reference }}</strong>
         </span>
@@ -130,11 +130,14 @@
             </h2>
             @if (dispute.repair; as repair) {
               <dl class="sidebar-facts">
-                <div><dt>Device</dt><dd>{{ repair.appliance }}</dd></div>
+                <div><dt>Device</dt><dd>{{ repair.appliance || 'Repair request' }}</dd></div>
                 <div><dt>Brand</dt><dd>{{ repair.brand || 'Not specified' }}</dd></div>
                 <div><dt>Model</dt><dd>{{ repair.model || 'Not specified' }}</dd></div>
-                <div><dt>Repair status</dt><dd>{{ formatStatus(repair.status) }}</dd></div>
-                <div><dt>Request submitted</dt><dd>{{ repair.createdAt | date: 'MMM d, y' }}</dd></div>
+                <div><dt>Repair status</dt><dd>{{ formatStatus(repair.status) || 'Not available' }}</dd></div>
+                <div>
+                  <dt>Request submitted</dt>
+                  <dd>{{ repair.createdAt ? (repair.createdAt | date: 'MMM d, y') : 'Not available' }}</dd>
+                </div>
               </dl>
               @if (repair.description) {
                 <p>{{ repair.description }}</p>
@@ -161,7 +164,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
               </svg>
-              Dispute History
+              Dispute Timeline
             </h2>
             @if (timeline(dispute).length) {
               <app-job-timeline [items]="timeline(dispute)" />
@@ -516,6 +519,7 @@
             </button>
           </section>
         }
+
       </div>
 
       <aside class="customer-detail-sidebar">
@@ -581,6 +585,29 @@
           </section>
         }
         <section class="detail-section customer-detail-sidebar-card" aria-label="Dispute summary">
+          @if (canReopen(dispute)) {
+            <div class="customer-status-action-toolbar">
+              <div class="customer-status-action-copy">
+                <span class="customer-status-action-kicker">CASE ACTIONS</span>
+                <h3>{{ dispute.status === 'CLOSED' ? 'Dispute closed' : 'Dispute resolved' }}</h3>
+                <p>
+                  @if (dispute.status === 'CLOSED') {
+                    If the problem has returned, reopen this case to continue with the shop.
+                  } @else {
+                    If the issue is not fixed, reopen this dispute so the shop can review it again.
+                  }
+                </p>
+              </div>
+              <button
+                class="job-button"
+                type="button"
+                [disabled]="saving()"
+                (click)="openReopenDisputeModal(dispute)"
+              >
+                Reopen dispute
+              </button>
+            </div>
+          }
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -590,12 +617,18 @@
               Dispute Information
             </h2>
             <dl class="sidebar-facts">
-              <div><dt>Category</dt><dd>{{ formatStatus(dispute.category) }}</dd></div>
-              <div><dt>Priority</dt><dd>{{ dispute.priority | titlecase }}</dd></div>
-              <div><dt>Status</dt><dd>{{ formatStatus(dispute.status) }}</dd></div>
+              <div><dt>Category</dt><dd>{{ categoryLabel(dispute.category) || 'Not specified' }}</dd></div>
+              <div><dt>Priority</dt><dd>{{ dispute.priority ? (dispute.priority | titlecase) : 'Not specified' }}</dd></div>
+              <div><dt>Status</dt><dd>{{ formatStatus(dispute.status) || 'Not available' }}</dd></div>
               @if (dispute.amountInDispute !== undefined) { <div><dt>Amount in dispute</dt><dd>{{ dispute.amountInDispute | currency }}</dd></div> }
-              <div><dt>Opened</dt><dd>{{ dispute.createdAt | date: 'MMM d, y' }}</dd></div>
-              <div><dt>Last updated</dt><dd>{{ dispute.updatedAt | date: 'MMM d, y' }}</dd></div>
+              <div>
+                <dt>Opened</dt>
+                <dd>{{ dispute.createdAt ? (dispute.createdAt | date: 'MMM d, y') : 'Not available' }}</dd>
+              </div>
+              <div>
+                <dt>Last updated</dt>
+                <dd>{{ dispute.updatedAt ? (dispute.updatedAt | date: 'MMM d, y') : 'Not available' }}</dd>
+              </div>
             </dl>
           </section>
 
@@ -664,6 +697,74 @@
         </section>
       </aside>
     </div>
+
+    @if (reopenDisputeModalOpen()) {
+      <div class="issue-modal-backdrop" role="presentation" (click)="closeReopenDisputeModal()">
+        <section
+          class="issue-modal issue-modal-compact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customer-reopen-dispute-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="issue-modal-header">
+            <div>
+              <span class="section-kicker">CASE ACTION</span>
+              <h2 id="customer-reopen-dispute-title">Reopen dispute</h2>
+            </div>
+            <button
+              type="button"
+              class="issue-modal-close"
+              aria-label="Close reopen dispute"
+              (click)="closeReopenDisputeModal()"
+            >
+              ×
+            </button>
+          </header>
+          <form class="issue-modal-form" (ngSubmit)="reopenDispute(dispute)">
+            <p class="issue-modal-intro">
+              @if (dispute.status === 'CLOSED') {
+                If the problem has returned, reopen this case to continue with the shop.
+              } @else {
+                If the issue is not fixed, reopen this dispute so the shop can review it again.
+              }
+            </p>
+            <label class="customer-response-field">
+              <span>Reason for reopening</span>
+              <textarea
+                [(ngModel)]="reopenReason"
+                name="customerReopenReason"
+                rows="4"
+                maxlength="2000"
+                placeholder="Explain what is still wrong and what needs further attention."
+                [disabled]="saving()"
+                required
+              ></textarea>
+            </label>
+            @if (actionError()) {
+              <p class="action-feedback error" role="alert">{{ actionError() }}</p>
+            }
+            <footer class="issue-modal-footer">
+              <button
+                type="button"
+                class="job-button secondary"
+                [disabled]="saving()"
+                (click)="closeReopenDisputeModal()"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                class="job-button"
+                [disabled]="saving() || !reopenReason.trim()"
+              >
+                {{ saving() ? 'Reopening...' : 'Reopen dispute' }}
+              </button>
+            </footer>
+          </form>
+        </section>
+      </div>
+    }
 
     @if (reviewResolutionModalOpen()) {
       <div class="issue-modal-backdrop" role="presentation" (click)="closeReviewResolutionModal()">

@@ -22,6 +22,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogConfig,
 } from '../../../shared/components/confirmation-dialog/confirmation-dialog.component';
+import { canStartRepair } from '../../../shared/utils/repair-authorization.util';
 import { ShopRepairRequest } from '../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../repair-requests/shop-repair-requests.service';
 import { ToastService } from '../../../core/toast/toast.service';
@@ -53,6 +54,8 @@ type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
 })
 export class ShopRepairWorkflowComponent implements OnChanges {
   @Input({ required: true }) request!: ShopRepairRequest;
+  @Input() inspectionSubmissionInSidebar = false;
+  @Input() startRepairInSidebar = false;
   @Output() readonly requestUpdated = new EventEmitter<ShopRepairRequest>();
 
   readonly submitting = signal(false);
@@ -221,6 +224,10 @@ export class ShopRepairWorkflowComponent implements OnChanges {
       .reduce((total, charge) => total + charge.amount, 0);
   }
 
+  get canStartRepair(): boolean {
+    return canStartRepair(this.job, this.acceptedQuotation?.status);
+  }
+
   openInspectionModal(): void {
     this.error.set('');
     this.inspectionModalOpen.set(true);
@@ -357,7 +364,7 @@ export class ShopRepairWorkflowComponent implements OnChanges {
   }
 
   startRepair(): void {
-    if (this.submitting()) return;
+    if (this.submitting() || !this.canStartRepair) return;
     this.confirmation.set({
       title: 'Start repair?',
       message: `Start this repair using the customer-approved estimate of ${this.approvedTotal.toFixed(2)}?`,
@@ -372,7 +379,7 @@ export class ShopRepairWorkflowComponent implements OnChanges {
 
   confirmStartRepair(): void {
     this.confirmation.set(null);
-    if (this.submitting()) return;
+    if (this.submitting() || !this.canStartRepair) return;
     this.submitting.set(true);
     this.error.set('');
     this.requests.startApprovedRepair(this.request._id).subscribe({

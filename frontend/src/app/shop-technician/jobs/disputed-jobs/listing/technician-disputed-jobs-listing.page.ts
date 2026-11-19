@@ -25,7 +25,7 @@ import { JobListItem } from '../../../../shared/models/job.models';
 })
 export class TechnicianDisputedJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'disputed' as const;
-  readonly title = 'Issue Resolution';
+  readonly title = 'Disputes';
   readonly description = 'Review repair requests with an open dispute.';
   readonly detailRoute = '/technician/jobs/disputed-jobs';
 

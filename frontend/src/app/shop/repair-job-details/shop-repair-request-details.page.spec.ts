@@ -111,6 +111,7 @@ describe('ShopRepairRequestDetailsPage directions', () => {
               .and.returnValue(
                 throwError(() => ({ error: { message: 'Directions service unavailable.' } })),
               ),
+            submitQuotation: jasmine.createSpy().and.returnValue(of(undefined)),
             startRepair: jasmine.createSpy().and.returnValue(of(request)),
             holdRepair: jasmine.createSpy().and.returnValue(of(request)),
             completeRepair: jasmine.createSpy().and.returnValue(of(request)),
@@ -154,11 +155,309 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(text).toContain('View on Map');
     expect(text).toContain('Get Directions');
     expect(text).toContain('Directions service unavailable.');
-    expect(text).toContain('Inspection Pending');
+    expect(text).toContain('Quotation');
     expect(text).toContain('Initial Diagnosis');
     expect(text).toContain('Pending Inspection');
     expect(text).not.toContain('4.8 km');
     expect(text).not.toContain('12 min');
+  });
+
+  it('presents the assigned shop owner as a readable technician profile card', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    fixture.componentInstance.setRequest({
+      ...request,
+      acceptedQuotationId: 'quotation-1',
+      technicianAssignment: {
+        current: {
+          technicianId: 'owner-1',
+          assignedAt: '2026-11-19T12:46:16.000Z',
+          note: '',
+          technicianName: 'Sikandar Shop',
+          profileImageData: 'data:image/jpeg;base64,c2hvcA==',
+          isOwner: true,
+        },
+        history: [],
+      },
+    });
+    fixture.detectChanges();
+
+    const assignmentCard = fixture.nativeElement.querySelector(
+      '.technician-assignment-card',
+    ) as HTMLElement;
+    const pickupHost = fixture.nativeElement.querySelector(
+      'app-shop-repair-pickup',
+    ) as HTMLElement;
+    const profileCard = assignmentCard.querySelector('.assigned-technician') as HTMLElement;
+    expect(pickupHost.classList.contains('customer-detail-block')).toBeFalse();
+    expect(profileCard.querySelector('img')?.getAttribute('alt')).toBe(
+      'Sikandar Shop profile photo',
+    );
+    expect(profileCard.querySelector('.assigned-technician-name')?.textContent).toContain(
+      'Sikandar Shop',
+    );
+    expect(profileCard.querySelector('.assignment-owner-badge')?.textContent?.trim()).toBe(
+      'You',
+    );
+    expect(profileCard.querySelector('time')?.getAttribute('datetime')).toBe(
+      '2026-11-19T12:46:16.000Z',
+    );
+    expect(assignmentCard.textContent).toContain('Reassign Technician');
+    expect(
+      getComputedStyle(
+        assignmentCard.querySelector('.assignment-action-button') as HTMLElement,
+      ).whiteSpace,
+    ).toBe('nowrap');
+  });
+
+  it('keeps the assigned profile readable when technician name or assignment date is missing', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    fixture.componentInstance.setRequest({
+      ...request,
+      acceptedQuotationId: 'quotation-1',
+      technicianAssignment: {
+        current: {
+          technicianId: 'technician-1',
+          assignedAt: '',
+          note: '',
+          technicianName: '',
+          profileImageData: null,
+          isOwner: false,
+        },
+        history: [],
+      },
+    });
+    fixture.detectChanges();
+
+    const assignmentCard = fixture.nativeElement.querySelector(
+      '.technician-assignment-card',
+    ) as HTMLElement;
+    const profileCard = assignmentCard.querySelector('.assigned-technician') as HTMLElement;
+
+    expect(profileCard.querySelector('.assignment-avatar')?.textContent?.trim()).toBe('T');
+    expect(profileCard.querySelector('.assigned-technician-name')?.textContent?.trim()).toBe(
+      'Assigned technician',
+    );
+    expect(profileCard.querySelector('.assigned-technician-date')).toBeNull();
+  });
+
+  it('places inspection submission in the sidebar and opens the inspection form', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    fixture.componentInstance.setRequest({
+      ...request,
+      acceptedQuotationId: 'quotation-1',
+      repairJob: {
+        status: 'inspection_in_progress',
+        acceptedQuotationId: 'quotation-1',
+        requiresPhysicalPickup: false,
+      },
+    });
+    fixture.detectChanges();
+
+    const sidebar = fixture.nativeElement.querySelector(
+      '.customer-detail-sidebar-card',
+    ) as HTMLElement;
+    const inspectionAction = sidebar.querySelector(
+      '.inspection-sidebar-action',
+    ) as HTMLElement;
+    const workflow = fixture.nativeElement.querySelector('.workflow-panel') as HTMLElement;
+    expect(sidebar.textContent).toContain(
+      'Complete an inspection report before any repair work begins.',
+    );
+    expect(inspectionAction.textContent).toContain('Submit Inspection & Request Approval');
+    expect(workflow.textContent).not.toContain('Submit Inspection & Request Approval');
+
+    (inspectionAction.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#inspection-form-title')).not.toBeNull();
+  });
+
+  it('places approved repair authorization after Technician Assignment in the sidebar', () => {
+    const quotation = {
+      _id: 'quotation-approved',
+      repairRequestId: request._id,
+      amount: 3.97,
+      currency: 'INR',
+      message: 'Repair',
+      status: 'accepted' as const,
+      createdAt: '2026-11-18T10:00:00.000Z',
+    };
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    fixture.componentInstance.setRequest({
+      ...request,
+      acceptedQuotationId: quotation._id,
+      shopResponse: { status: 'customer_accepted' },
+      quotations: [quotation],
+      repairJob: {
+        status: 'inspection_approved',
+        acceptedQuotationId: quotation._id,
+        approvedRepairAmount: 3.97,
+        inspection: {
+          status: 'approved',
+          parts: [],
+          partsTotal: 0,
+          labourCharge: 0,
+          inspectionCharges: 0,
+          otherCharges: 0,
+          estimatedTotal: 3.97,
+          images: [],
+          decidedBy: 'customer-1',
+        },
+      },
+    });
+    fixture.detectChanges();
+
+    const sidebar = fixture.nativeElement.querySelector(
+      '.customer-detail-sidebar-card',
+    ) as HTMLElement;
+    const assignment = sidebar.querySelector('.technician-assignment-card') as HTMLElement;
+    const repairAction = sidebar.querySelector('.start-repair-sidebar-action') as HTMLElement;
+    const main = fixture.nativeElement.querySelector('.customer-detail-main') as HTMLElement;
+
+    expect(assignment.compareDocumentPosition(repairAction) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .toBeTruthy();
+    expect(repairAction.textContent).toContain('The customer approved the inspection estimate.');
+    expect(repairAction.textContent).toContain('₹3.97');
+    expect(repairAction.querySelector('button')?.textContent?.trim()).toBe('Start Repair');
+    const startButton = repairAction.querySelector('button') as HTMLButtonElement;
+    expect(startButton.disabled).toBeFalse();
+    expect(main.textContent).not.toContain('The customer approved the inspection estimate.');
+    expect(main.querySelector('.start-repair-sidebar-action')).toBeNull();
+
+    startButton.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Start repair?');
+  });
+
+  it('tracks inspection, pickup, and repair as distinct lifecycle stages', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const acceptedRequest: ShopRepairRequest = {
+      ...request,
+      acceptedQuotationId: 'quotation-qa-e2e',
+      shopResponse: {
+        status: 'customer_accepted',
+        respondedAt: '2026-11-18T10:00:00.000Z',
+      },
+      quotations: [
+        {
+          _id: 'quotation-qa-e2e',
+          repairRequestId: request._id,
+          amount: 1000,
+          currency: 'INR',
+          message: 'Repair',
+          status: 'accepted',
+          respondedAt: '2026-11-18T10:00:00.000Z',
+          createdAt: '2026-11-18T09:00:00.000Z',
+        },
+      ],
+    };
+
+    component.setRequest({
+      ...acceptedRequest,
+      repairJob: {
+        status: 'inspection_approved',
+        acceptedQuotationId: 'quotation-qa-e2e',
+        inspectionCompletedBeforeQuotation: true,
+        requiresPhysicalPickup: false,
+        inspection: {
+          status: 'approved',
+          parts: [],
+          partsTotal: 0,
+          labourCharge: 0,
+          inspectionCharges: 0,
+          otherCharges: 0,
+          estimatedTotal: 1000,
+          images: [],
+          decidedAt: '2026-11-18T10:00:00.000Z',
+        },
+      },
+    });
+    expect(component.progressSteps().map((step) => step.label)).toEqual([
+      'Request Submitted',
+      'Quotation Accepted',
+      'Inspection Approved',
+      'Repair',
+      'Ready for Pickup',
+      'Customer Picked Up',
+      'Completed',
+    ]);
+    expect(fixture.nativeElement.textContent).not.toContain('Repair & Complete');
+    expect(component.progressSteps().find((step) => step.current)?.label).toBe('Repair');
+
+    component.setRequest({
+      ...acceptedRequest,
+      repairJob: {
+        status: 'pickup_scheduled',
+        acceptedQuotationId: 'quotation-qa-e2e',
+        inspectionCompletedBeforeQuotation: false,
+        requiresPhysicalPickup: true,
+        servicePickup: { scheduledAt: '2026-11-19T10:00:00.000Z' },
+      },
+    });
+    expect(component.progressSteps().map((step) => step.label)).toEqual([
+      'Request Submitted',
+      'Quotation Accepted',
+      'Pickup Scheduled',
+      'Item Collected',
+      'Inspection',
+      'Repair',
+      'Ready for Pickup',
+      'Customer Picked Up',
+      'Completed',
+    ]);
+    expect(component.progressSteps().find((step) => step.current)?.label).toBe('Item Collected');
+    fixture.detectChanges();
+    const progress = fixture.nativeElement.querySelector(
+      '.request-progress',
+    ) as HTMLOListElement;
+    expect(getComputedStyle(progress).gridAutoFlow).toBe('column');
+    expect(getComputedStyle(progress).overflowX).toBe('auto');
+    expect(
+      getComputedStyle(progress.querySelector('li strong') as HTMLElement).whiteSpace,
+    ).toBe('nowrap');
+    const mainContent = fixture.nativeElement.querySelector(
+      '.customer-detail-main',
+    ) as HTMLElement;
+    expect(mainContent.textContent.indexOf('Customer Location and Route')).toBeLessThan(
+      mainContent.textContent.indexOf('Repair Inspection'),
+    );
+    const sidebarContent = fixture.nativeElement.querySelector(
+      '.customer-detail-sidebar-card',
+    ) as HTMLElement;
+    expect(sidebarContent.textContent.indexOf('Technician Assignment')).toBeLessThan(
+      sidebarContent.textContent.indexOf('Physical collection required'),
+    );
+    expect(
+      sidebarContent.textContent.indexOf('Physical collection required'),
+    ).toBeLessThan(sidebarContent.textContent.indexOf('Device Information'));
+    expect(
+      fixture.nativeElement
+        .querySelector('app-shop-repair-pickup')
+        ?.classList.contains('customer-detail-block'),
+    ).toBeTrue();
+
+    component.setRequest({
+      ...acceptedRequest,
+      repairJob: {
+        status: 'inspection_pending',
+        acceptedQuotationId: 'quotation-qa-e2e',
+        inspectionCompletedBeforeQuotation: false,
+        requiresPhysicalPickup: false,
+      },
+    });
+    expect(component.progressSteps().map((step) => step.label)).not.toContain(
+      'Pickup Scheduled',
+    );
+    expect(component.progressSteps().find((step) => step.current)?.label).toBe('Inspection');
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('.detail-status')?.textContent?.trim(),
+    ).toBe('Inspection pending');
   });
 
   it('keeps new-request shop actions in the customer-matched detail layout', () => {
@@ -177,6 +476,13 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(text).toContain(
       'Please review the request and choose to submit a quotation or decline it.',
     );
+    const responseActions = fixture.nativeElement.querySelector(
+      '.request-response-actions',
+    ) as HTMLElement;
+    expect(getComputedStyle(responseActions).flexWrap).toBe('wrap');
+    expect(
+      getComputedStyle(responseActions.querySelector('button') as HTMLElement).whiteSpace,
+    ).toBe('normal');
     expect(text.indexOf('Submit Quotation')).toBeLessThan(
       text.indexOf('Device Information'),
     );
@@ -204,6 +510,10 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     fixture.detectChanges();
     fixture.componentInstance.setRequest({
       ...request,
+      repairJob: {
+        status: 'in_progress',
+        history: [{ action: 'request confirmed', at: '2026-11-12T01:00:00.000Z' }],
+      },
       quotations: [
         {
           _id: 'quotation-1',
@@ -225,6 +535,30 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(text).toContain('Fixora Shop');
     expect(text).toContain('Inspection and service');
     expect(text).toContain('View Details');
+    expect(text).toContain('Repair History');
+    expect(text).toContain('CONFIRMED REPAIR');
+    expect(text).toContain('Repair progress');
+    expect(text).toContain('Progress note (optional)');
+    const customerInformation = fixture.nativeElement.querySelector(
+      '.customer-detail-main-card',
+    ) as HTMLElement;
+    expect(customerInformation.querySelector('.quotations-card')).not.toBeNull();
+    const repairHistory = customerInformation.querySelector('.repair-history-card');
+    const repairProgress = customerInformation.querySelector('.repair-workflow');
+    expect(repairHistory).not.toBeNull();
+    expect(repairProgress).not.toBeNull();
+    expect(customerInformation.contains(repairProgress)).toBeTrue();
+    const detailText = customerInformation.textContent ?? '';
+    expect(detailText.indexOf('Repair History')).toBeLessThan(
+      detailText.indexOf('CONFIRMED REPAIR'),
+    );
+    expect(detailText.indexOf('CONFIRMED REPAIR')).toBeLessThan(
+      detailText.indexOf('Progress note (optional)'),
+    );
+    expect(text.indexOf("Customer's original problem")).toBeLessThan(
+      text.indexOf('Quotation Details'),
+    );
+    expect(text.indexOf('Quotation Details')).toBeLessThan(text.indexOf('Repair History'));
   });
 
   it('does not offer directions when the customer location is missing', () => {
@@ -281,6 +615,59 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(component.isQuotationValid()).toBeTrue();
     expect(component.quotationProposedSolution()).toBe('General Repair, Other');
     expect(component.quotationMessage()).toBe('Board-level repair');
+  });
+
+  it('offers completed-inspection and shop-pickup choices with a neutral shop-inspection default', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.setRequest({ ...request, serviceType: 'shop_visit' });
+    component.openQuotation();
+    fixture.detectChanges();
+
+    const inspectionModes = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        'input[name="inspectionMode"]',
+      ),
+    ) as HTMLInputElement[];
+    expect(inspectionModes.length).toBe(2);
+    expect(component.inspectionCompletedBeforeQuotation()).toBeFalse();
+    expect(component.requiresPhysicalPickup()).toBeFalse();
+    expect(inspectionModes.every((mode) => !mode.checked)).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain(
+      'For inspection at the shop without pickup, leave both choices unselected.',
+    );
+
+    inspectionModes[1].click();
+    fixture.detectChanges();
+    expect(component.inspectionCompletedBeforeQuotation()).toBeFalse();
+    expect(component.requiresPhysicalPickup()).toBeTrue();
+    expect(inspectionModes[1].checked).toBeTrue();
+
+    inspectionModes[0].click();
+    fixture.detectChanges();
+    expect(component.inspectionCompletedBeforeQuotation()).toBeTrue();
+    expect(component.requiresPhysicalPickup()).toBeFalse();
+
+    component.setInspectionCompletedBeforeQuotation(false);
+    component.setRequiresPhysicalPickup(false);
+    fixture.detectChanges();
+    expect(component.inspectionCompletedBeforeQuotation()).toBeFalse();
+    expect(component.requiresPhysicalPickup()).toBeFalse();
+    expect(inspectionModes.every((mode) => !mode.checked)).toBeTrue();
+    component.quotationAmount.set(1900);
+    component.completionDays.set(3);
+    component.quotationSummaries.set(['General Repair']);
+    component.submitQuotation();
+
+    const requestsService = TestBed.inject(ShopRepairRequestsService);
+    expect(requestsService.submitQuotation).toHaveBeenCalledWith(
+      request._id,
+      jasmine.objectContaining({
+        inspectionCompletedBeforeQuotation: false,
+        requiresPhysicalPickup: false,
+      }),
+    );
   });
 
   it('supports completion multi-select, Other, dynamic parts, and preserves the API contract', () => {

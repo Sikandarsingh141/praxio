@@ -216,22 +216,29 @@
 .primary-button,
 .secondary-button,
 .text-button {
-  min-height: 2.45rem;
-  padding: 0.55rem 0.8rem;
+  min-height: 2.65rem;
+  padding: 0.65rem 1rem;
   border: 1px solid #d6e2d8;
-  border-radius: 0.5rem;
+  border-radius: 0.65rem;
   background: #fff;
   color: #315d4b;
   cursor: pointer;
   font: inherit;
   font-size: 0.73rem;
-  font-weight: 680;
+  font-weight: 670;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
 }
 
 .primary-button {
-  border-color: #3c7655;
-  background: #3c7655;
+  border-color: #176b34;
+  background: #176b34;
   color: #fff;
+
+  &:hover:not(:disabled) {
+    background: #105629;
+  }
 }
 
 .primary-button:disabled,

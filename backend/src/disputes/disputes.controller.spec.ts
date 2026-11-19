@@ -1,9 +1,36 @@
 import { DisputeListQueryDto } from './dto/dispute.dto';
 import {
+  CustomerDisputesController,
   ShopDisputesController,
   TechnicianDisputesController,
 } from './disputes.controller';
 import { DisputesService } from './disputes.service';
+
+describe('CustomerDisputesController', () => {
+  it('reopens a dispute with the customer actor', async () => {
+    const result = { _id: 'dispute-id', status: 'REOPENED' };
+    const disputesService = {
+      reopenDispute: jest.fn().mockResolvedValue(result),
+    };
+    const controller = new CustomerDisputesController(
+      disputesService as unknown as DisputesService,
+    );
+    const dto = { reason: 'The issue remains unresolved.' };
+
+    await expect(
+      controller.reopen(
+        { auth: { userId: 'customer-user-id' } },
+        'dispute-id',
+        dto,
+      ),
+    ).resolves.toEqual({ data: result });
+    expect(disputesService.reopenDispute).toHaveBeenCalledWith(
+      { userId: 'customer-user-id', role: 'customer' },
+      'dispute-id',
+      dto,
+    );
+  });
+});
 
 describe('ShopDisputesController', () => {
   it('returns the Shop dispute list in the API data envelope', async () => {
@@ -26,6 +53,32 @@ describe('ShopDisputesController', () => {
     expect(disputesService.listDisputes).toHaveBeenCalledWith(
       { userId: 'shop-user-id', role: 'shop' },
       query,
+    );
+  });
+});
+
+describe('ShopDisputesController reopen', () => {
+  it('reopens a dispute with the shop actor', async () => {
+    const result = { _id: 'dispute-id', status: 'REOPENED' };
+    const disputesService = {
+      reopenDispute: jest.fn().mockResolvedValue(result),
+    };
+    const controller = new ShopDisputesController(
+      disputesService as unknown as DisputesService,
+    );
+    const dto = { reason: 'Customer asked us to review again.' };
+
+    await expect(
+      controller.reopen(
+        { auth: { userId: 'shop-user-id' } },
+        'dispute-id',
+        dto,
+      ),
+    ).resolves.toEqual({ data: result });
+    expect(disputesService.reopenDispute).toHaveBeenCalledWith(
+      { userId: 'shop-user-id', role: 'shop' },
+      'dispute-id',
+      dto,
     );
   });
 });

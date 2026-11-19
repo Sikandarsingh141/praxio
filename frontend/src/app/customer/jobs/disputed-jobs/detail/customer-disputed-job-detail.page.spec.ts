@@ -81,10 +81,12 @@ describe('CustomerDisputedJobDetailPage', () => {
       'reportUnresolved',
       'decideResolution',
       'confirmResolution',
+      'reopen',
     ]);
     disputes.get.and.returnValue(of(dispute));
     disputes.decideResolution.and.returnValue(of(dispute));
     disputes.confirmResolution.and.returnValue(of(dispute));
+    disputes.reopen.and.returnValue(of({ ...dispute, status: 'REOPENED' }));
     const sentMessage = 'The issue is still happening.';
     disputes.sendMessage.and.returnValue(
       of({
@@ -128,10 +130,27 @@ describe('CustomerDisputedJobDetailPage', () => {
     const page = harness.routeNativeElement as HTMLElement;
     const component = harness.routeDebugElement!.componentInstance as CustomerDisputedJobDetailPage;
     const text = page.textContent ?? '';
+    expect(component.formatStatus(undefined)).toBe('Not available');
     expect(page.querySelector('.request-hero')).not.toBeNull();
-    expect(page.querySelector('.request-progress')).not.toBeNull();
+    const progress = page.querySelector('.request-progress') as HTMLOListElement;
+    expect(progress).not.toBeNull();
     expect(page.querySelector('.customer-detail-layout')).not.toBeNull();
-    expect(text).toContain('Issue Resolution Details');
+    expect(getComputedStyle(progress).gridAutoFlow).toBe('column');
+    expect(getComputedStyle(progress).overflowX).toBe('auto');
+    expect(
+      Array.from(progress.querySelectorAll('li strong')).map((step) => step.textContent?.trim()),
+    ).toEqual(['Dispute submitted', 'Under review', 'Resolution', 'Resolved / closed']);
+    expect(page.querySelector('.customer-facts dd')?.textContent?.trim()).toBe(
+      'customer@example.com',
+    );
+    const disputeFacts = page.querySelectorAll(
+      '.customer-detail-sidebar .sidebar-facts dd',
+    );
+    expect(disputeFacts[0].textContent?.trim()).toBe('Repair Quality');
+    expect(disputeFacts[1].textContent?.trim()).toBe('Normal');
+    expect(disputeFacts[2].textContent?.trim()).toBe('Awaiting Customer Response');
+    expect(getComputedStyle(disputeFacts[0]).color).toBe('rgb(23, 33, 43)');
+    expect(text).toContain('Dispute Details');
     expect(text).toContain('Dispute Description');
     expect(text).toContain('The repaired device still does not work.');
     expect(text).toContain('Repair Shop');
@@ -347,5 +366,58 @@ describe('CustomerDisputedJobDetailPage', () => {
     expect(text).not.toContain('Open customer dispute page for permitted actions');
     expect(page.querySelector('.dispute-actions-link')).toBeNull();
     expect(disputes.get).toHaveBeenCalledWith('customer', 'dispute-123');
+
+    component.closeInspectionTestModal();
+    const resolvedDispute: RepairDispute = { ...dispute, status: 'RESOLVED' };
+    component.record.set(resolvedDispute);
+    harness.fixture.detectChanges();
+    expect(page.querySelector('.dispute-reopen-panel')).toBeNull();
+    const reopenToolbar = page.querySelector<HTMLElement>('.customer-status-action-toolbar');
+    expect(reopenToolbar?.querySelector('h3')?.textContent).toBe('Dispute resolved');
+    expect(reopenToolbar?.textContent).toContain('reopen this dispute');
+    const openReopenModalButton = reopenToolbar?.querySelector<HTMLButtonElement>('button');
+    openReopenModalButton?.click();
+    harness.fixture.detectChanges();
+    const reopenModal = page.querySelector<HTMLElement>(
+      '.issue-modal[aria-labelledby="customer-reopen-dispute-title"]',
+    );
+    expect(reopenModal?.textContent).toContain('Reason for reopening');
+    component.reopenDispute(resolvedDispute);
+    expect(disputes.reopen).not.toHaveBeenCalled();
+    expect(component.actionError()).toBe('Explain why this dispute should be reopened.');
+
+    const reopenReason = 'The reported issue returned after the repair.';
+    component.reopenReason = reopenReason;
+    harness.fixture.detectChanges();
+    const reopenButton = reopenModal?.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(reopenButton?.disabled).toBeFalse();
+    const getCallsBeforeReopen = disputes.get.calls.count();
+    reopenButton?.click();
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    expect(disputes.reopen).toHaveBeenCalledWith('customer', 'dispute-123', reopenReason);
+    expect(disputes.get.calls.count()).toBe(getCallsBeforeReopen + 1);
+    expect(component.record()?.status).toBe('AWAITING_CUSTOMER_RESPONSE');
+    expect(component.reopenReason).toBe('');
+    expect(page.textContent).toContain('Dispute reopened for further review.');
+    expect(
+      page.querySelector('.issue-modal[aria-labelledby="customer-reopen-dispute-title"]'),
+    ).toBeNull();
+
+    component.record.set({ ...dispute, status: 'CLOSED' });
+    harness.fixture.detectChanges();
+    const closedToolbar = page.querySelector<HTMLElement>('.customer-status-action-toolbar');
+    expect(closedToolbar?.querySelector('h3')?.textContent).toBe('Dispute closed');
+    expect(closedToolbar?.textContent).toContain('problem has returned');
+    closedToolbar?.querySelector<HTMLButtonElement>('button')?.click();
+    harness.fixture.detectChanges();
+    expect(
+      page
+        .querySelector('.issue-modal[aria-labelledby="customer-reopen-dispute-title"]')
+        ?.textContent,
+    ).toContain('continue with the shop');
+    component.closeReopenDisputeModal();
+    harness.fixture.detectChanges();
+    expect(component.canReopen(dispute)).toBeFalse();
   });
 });

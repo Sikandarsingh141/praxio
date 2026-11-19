@@ -3,7 +3,7 @@ import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Observable, finalize, tap } from 'rxjs';
+import { Observable, finalize, switchMap, tap } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import type { ShopProfile } from '../../../../core/auth/auth.models';
 import { JobDetailPageBase } from '../../../../shared/components/job-page-base';
@@ -18,6 +18,10 @@ import {
 } from '../../../../shared/models/disputes.models';
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
 import { DisputesService } from '../../../../shared/services/disputes.service';
+import {
+  disputeCategoryLabel,
+  disputeStatusLabel,
+} from '../../../../shared/utils/dispute-labels';
 import type { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../../repair-requests/shop-repair-requests.service';
 import type {
@@ -66,17 +70,21 @@ export class ShopDisputedJobDetailPage
   readonly mapLoading = signal(false);
   readonly mapError = signal('');
   readonly saving = signal(false);
+  readonly categoryLabel = disputeCategoryLabel;
   readonly actionError = signal('');
   readonly actionNotice = signal('');
   readonly proposeResolutionModalOpen = signal(false);
   readonly reviewDisputeModalOpen = signal(false);
   readonly acceptDisputeModalOpen = signal(false);
   readonly rejectDisputeModalOpen = signal(false);
+  readonly acceptResolutionModalOpen = signal(false);
+  readonly rejectResolutionModalOpen = signal(false);
   readonly reinspectionModalOpen = signal(false);
   readonly additionalChargesModalOpen = signal(false);
   readonly reworkProgressModalOpen = signal(false);
   readonly completeReworkModalOpen = signal(false);
   readonly assignmentModalOpen = signal(false);
+  readonly statusActionModalOpen = signal(false);
   readonly assignmentLoading = signal(false);
   readonly assignmentSubmitting = signal(false);
   readonly assignmentError = signal('');
@@ -92,8 +100,8 @@ export class ShopDisputedJobDetailPage
   readonly backRoute = this.isTechnician
     ? '/technician/jobs/disputed-jobs'
     : '/shop/jobs/disputed-jobs';
-  readonly backLabel = 'Issue Resolution';
-  readonly pageTitle = 'Issue Resolution Details';
+  readonly backLabel = 'Disputes';
+  readonly pageTitle = 'Dispute Details';
   message = '';
   conversationAttachments: DisputeAttachment[] = [];
   rejectionReason = '';
@@ -123,6 +131,9 @@ export class ShopDisputedJobDetailPage
   resolutionType = 'repair_again';
   resolutionDescription = '';
   resolutionNotes = '';
+  closeReason = '';
+  reopenReason = '';
+  statusAction: 'close' | 'reopen' = 'close';
   resolutionAmount: number | null = null;
   readonly resolutionResponsibleParty = 'shop';
   readonly progressSteps = [
@@ -249,10 +260,7 @@ export class ShopDisputedJobDetailPage
   }
 
   formatStatus(status: string): string {
-    return status
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return disputeStatusLabel(status);
   }
 
   currentProgressStep(dispute: RepairDispute): number {
@@ -323,9 +331,24 @@ export class ShopDisputedJobDetailPage
     event: RepairDispute['statusHistory'][number],
     index: number,
   ): string {
-    return index === 0 && (event.from === 'NONE' || event.to === 'OPEN')
-      ? 'Case opened'
-      : this.formatStatus(event.to);
+    if (index === 0 && (event.from === 'NONE' || event.to === 'OPEN')) {
+      return 'Dispute Raised';
+    }
+
+    return event.to?.trim() ? this.formatStatus(event.to) : 'Status updated';
+  }
+
+  historyAttachmentCount(
+    dispute: RepairDispute,
+    event: RepairDispute['statusHistory'][number],
+  ): number {
+    return dispute.messages.reduce(
+      (count, message) =>
+        message.authorRole === event.actorRole && message.createdAt === event.at
+          ? count + message.attachments.length
+          : count,
+      0,
+    );
   }
 
   canSendMessage(dispute: RepairDispute): boolean {
@@ -406,6 +429,28 @@ export class ShopDisputedJobDetailPage
 
   closeRejectDisputeModal(): void {
     this.rejectDisputeModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openAcceptResolutionModal(dispute: RepairDispute): void {
+    if (!this.canReviewCustomerResponse(dispute)) return;
+    this.acceptResolutionModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeAcceptResolutionModal(): void {
+    this.acceptResolutionModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  openRejectResolutionModal(dispute: RepairDispute): void {
+    if (!this.canReviewCustomerResponse(dispute)) return;
+    this.rejectResolutionModalOpen.set(true);
+    this.actionError.set('');
+  }
+
+  closeRejectResolutionModal(): void {
+    this.rejectResolutionModalOpen.set(false);
     this.actionError.set('');
   }
 
@@ -646,8 +691,19 @@ export class ShopDisputedJobDetailPage
     );
   }
 
+  hasDistinctResolutionNotes(dispute: RepairDispute): boolean {
+    const notes = dispute.resolution.notes?.trim();
+    if (!notes) return false;
+
+    const description = dispute.resolution.description?.trim();
+    if (!description) return true;
+
+    const normalize = (value: string) => value.replace(/\s+/g, ' ').toLocaleLowerCase();
+    return normalize(notes) !== normalize(description);
+  }
+
   decideResolution(dispute: RepairDispute, decision: 'accept' | 'reject'): void {
-    if (!this.canReviewCustomerResponse(dispute)) return;
+    if (!this.canReviewCustomerResponse(dispute) || this.saving()) return;
     const reason = this.resolutionDecisionReason.trim();
     if (decision === 'reject' && !reason) {
       this.actionError.set('Explain why you are rejecting the proposed resolution.');
@@ -656,11 +712,83 @@ export class ShopDisputedJobDetailPage
     this.runShopAction(
       this.disputes.decideResolution('shop', dispute._id, {
         decision,
-        reason: reason || undefined,
+        reason: decision === 'reject' ? reason : undefined,
       }),
       decision === 'accept' ? 'Resolution accepted.' : 'Resolution rejected.',
       () => {
         this.resolutionDecisionReason = '';
+        this.acceptResolutionModalOpen.set(false);
+        this.rejectResolutionModalOpen.set(false);
+      },
+    );
+  }
+
+  canCloseDispute(dispute: RepairDispute): boolean {
+    return dispute.status === 'CUSTOMER_CONFIRMED' || dispute.status === 'RESOLVED';
+  }
+
+  openStatusActionModal(dispute: RepairDispute): void {
+    const canClose = this.canCloseDispute(dispute);
+    const canReopen = this.canReopenDispute(dispute);
+    if (this.isTechnician || (!canClose && !canReopen)) return;
+    this.statusAction = canClose ? 'close' : 'reopen';
+    this.closeReason = '';
+    this.reopenReason = '';
+    this.actionError.set('');
+    this.statusActionModalOpen.set(true);
+  }
+
+  closeStatusActionModal(): void {
+    this.statusActionModalOpen.set(false);
+    this.actionError.set('');
+  }
+
+  submitStatusAction(dispute: RepairDispute): void {
+    if (this.statusAction === 'close') {
+      this.closeDispute(dispute);
+    } else {
+      this.reopenDispute(dispute);
+    }
+  }
+
+  closeDispute(dispute: RepairDispute): void {
+    if (this.isTechnician || !this.canCloseDispute(dispute) || this.saving()) return;
+    const reason = this.closeReason.trim();
+    if (!reason) {
+      this.actionError.set('Enter a final closure note.');
+      return;
+    }
+    this.runShopAction(
+      this.disputes
+        .close(dispute._id, reason)
+        .pipe(switchMap(() => this.disputes.get('shop', dispute._id))),
+      'Dispute closed.',
+      () => {
+        this.closeReason = '';
+        this.closeStatusActionModal();
+      },
+    );
+  }
+
+  canReopenDispute(dispute: RepairDispute): boolean {
+    return dispute.status === 'RESOLVED' || dispute.status === 'CLOSED';
+  }
+
+  reopenDispute(dispute: RepairDispute): void {
+    if (this.isTechnician || !this.canReopenDispute(dispute) || this.saving()) return;
+    const reason = this.reopenReason.trim();
+    if (!reason) {
+      this.actionError.set('Explain why this dispute should be reopened.');
+      return;
+    }
+    this.runShopAction(
+      this.disputes
+        .reopen('shop', dispute._id, reason)
+        .pipe(switchMap(() => this.disputes.get('shop', dispute._id))),
+      'Dispute reopened for further review.',
+      () => {
+        this.reopenReason = '';
+        this.closeStatusActionModal();
       },
     );
   }

@@ -257,10 +257,115 @@
   box-shadow: 0 1rem 3rem rgb(20 31 37 / 20%);
 }
 
+.pickup-confirmation-dialog,
+.review-dialog {
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
 .decision-dialog h2 {
   margin: 0;
   color: #334b58;
   font-size: 1rem;
+}
+
+.review-dialog {
+  width: min(52rem, 100%);
+  gap: 1rem;
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+  overscroll-behavior: contain;
+}
+
+.review-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid #e6ecef;
+}
+
+.review-dialog-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.review-dialog-header h2 {
+  margin: 0;
+  color: #263f4b;
+  font-size: 1.18rem;
+  line-height: 1.3;
+}
+
+.review-dialog-header p {
+  margin: 0;
+  color: #647a84;
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+
+.review-dialog-close {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #dce5e8;
+  border-radius: 50%;
+  background: #fff;
+  color: #526a75;
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.review-dialog-close:hover:not(:disabled) {
+  background: #f3f7f8;
+}
+
+.review-dialog .rating-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.review-dialog .rating-control {
+  min-width: 0;
+  padding: 0.7rem;
+}
+
+.review-dialog .star-rating {
+  justify-content: space-between;
+  gap: 0.08rem;
+}
+
+.review-dialog .star-button {
+  min-width: 1.8rem;
+}
+
+.review-dialog .review-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.review-dialog .review-title-field,
+.review-dialog .review-experience-field,
+.review-dialog .review-recommendation,
+.review-dialog .workflow-error,
+.review-dialog .decision-actions {
+  grid-column: 1 / -1;
+}
+
+.review-dialog .decision-actions {
+  justify-content: flex-end;
+  padding-top: 0.85rem;
+  border-top: 1px solid #e6ecef;
+}
+
+.review-dialog .decision-actions button {
+  min-width: 8rem;
 }
 
 .decision-dialog p {
@@ -470,5 +575,29 @@
 
   .decision-actions button {
     width: 100%;
+  }
+
+  .review-dialog {
+    padding: 1rem;
+  }
+
+  .review-dialog .rating-grid,
+  .review-dialog .review-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .review-dialog .decision-actions {
+    display: grid;
+  }
+
+  .review-dialog .decision-actions button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (min-width: 561px) and (max-width: 900px) {
+  .review-dialog .rating-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

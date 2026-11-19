@@ -126,7 +126,7 @@ describe('CustomerLayout', () => {
       'Open Requests',
       'Pending Requests',
       'Active Repairs',
-      'Issue Resolution',
+      'Disputes',
       'Completed Repairs',
     ]);
     expect(
@@ -154,7 +154,7 @@ describe('CustomerLayout', () => {
       fixture.nativeElement
         .querySelector('.request-submenu-item.nav-active')
         ?.textContent?.trim(),
-    ).toContain('Issue Resolution');
+    ).toContain('Disputes');
 
     const profileLink = fixture.nativeElement.querySelector(
       'a[href="/customer/profile"]',

@@ -1,15 +1,15 @@
 <main class="jobs-page">
-  <nav class="breadcrumbs" aria-label="Breadcrumb"><a routerLink="/technician">Dashboard</a><span aria-hidden="true">/</span><span aria-current="page">Issue Resolution</span></nav>
-  <header class="page-heading"><div><p class="eyebrow">TECHNICIAN REQUESTS</p><h1>Issue Resolution</h1><p class="description">{{ description }}</p></div><span class="job-count">{{ filteredItems().length }} requests</span></header>
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a routerLink="/technician">Dashboard</a><span aria-hidden="true">/</span><span aria-current="page">Disputes</span></nav>
+  <header class="page-heading"><div><p class="eyebrow">TECHNICIAN REQUESTS</p><h1>Disputes</h1><p class="description">{{ description }}</p></div><span class="job-count">{{ filteredItems().length }} requests</span></header>
   <app-job-filters [search]="search()" [sort]="sort()" [statusFilter]="statusFilter()" [statusOptions]="statusOptions()" (searchChange)="setSearch($event)" (sortChange)="setSort($event)" (statusFilterChange)="setStatusFilter($event)" />
   @if (loading()) {
-    <p class="loading-state" role="status">Loading issue-resolution requests...</p>
+    <p class="loading-state" role="status">Loading disputes...</p>
   } @else if (error()) {
-    <section class="error-state" role="alert"><h2>Issue Resolution could not be loaded</h2><p>{{ error() }}</p><button class="job-button" type="button" (click)="reload()">Try again</button></section>
+    <section class="error-state" role="alert"><h2>Disputes could not be loaded</h2><p>{{ error() }}</p><button class="job-button" type="button" (click)="reload()">Try again</button></section>
   } @else if (!filteredItems().length) {
-    <app-empty-state [title]="search() ? 'No matching requests' : 'No requests to resolve'" [description]="search() ? 'Try another device, customer, or request ID.' : 'Requests with an open dispute will appear here.'" />
+    <app-empty-state [title]="search() ? 'No matching requests' : 'No disputes'" [description]="search() ? 'Try another device, customer, or request ID.' : 'Requests with an open dispute will appear here.'" />
   } @else {
-    <section class="job-list" aria-label="Issue Resolution">
+    <section class="job-list" aria-label="Disputes">
       @for (job of pageItems(); track job.id) {
         <app-job-card [job]="job" [detailLink]="[detailRoute, job.id]" />
       }

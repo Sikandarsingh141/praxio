@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   DestroyRef,
+  computed,
   effect,
   inject,
   signal,
@@ -20,6 +21,7 @@ import { JobTimelineComponent } from '../../../../shared/components/job-timeline
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
 import { CustomerRepairWorkflowComponent } from '../../../repair-requests/components/customer-repair-workflow.component';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
+import { buildRepairProgressSteps } from '../../../../shared/utils/repair-progress.util';
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -52,12 +54,7 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
+  readonly progressSteps = computed(() => this.buildProgressSteps());
   private readonly customerPortal = inject(CustomerPortalService);
   private readonly destroyRef = inject(DestroyRef);
   private requestedShopId: string | null = null;
@@ -141,61 +138,6 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
-  isRepairComplete(job: CustomerRepairRequest): boolean {
-    return job.repairJob?.status === 'completed' || job.status === 'completed';
-  }
-
-  currentProgressStep(job: CustomerRepairRequest): number {
-    const status = job.repairJob?.status;
-    if (
-      status === 'in_progress' ||
-      status === 'on_hold' ||
-      status === 'repair_completed' ||
-      status === 'ready_for_pickup' ||
-      status === 'picked_up' ||
-      status === 'completed' ||
-      status === 'inspection_approved'
-    ) {
-      return 4;
-    }
-    if (
-      status === 'awaiting_customer_approval' ||
-      status === 'repair_declined' ||
-      job.quotations.length
-    ) {
-      return 3;
-    }
-    return 2;
-  }
-
-  progressDate(job: CustomerRepairRequest, index: number): string | undefined {
-    const repairJob = job.repairJob;
-    const historyAt = (action: string): string | undefined =>
-      repairJob?.history?.find((event) => event.action === action)?.at;
-    switch (index) {
-      case 0:
-        return job.createdAt;
-      case 1:
-        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
-      case 2:
-        return (
-          job.acceptedQuotation?.respondedAt ??
-          job.acceptedQuotation?.createdAt ??
-          job.quotations[job.quotations.length - 1]?.createdAt
-        );
-      case 3:
-        return (
-          historyAt('repair_completed') ??
-          repairJob?.repairCompletedAt ??
-          historyAt('ready_for_pickup') ??
-          repairJob?.readyForPickupAt ??
-          repairJob?.completedAt
-        );
-      default:
-        return undefined;
-    }
-  }
-
   customerName(user: UserProfile): string {
     return [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Customer';
   }
@@ -243,6 +185,41 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  private buildProgressSteps() {
+    const job = this.record();
+    if (!job) return [];
+    const repairJob = job.repairJob;
+    const acceptedQuotation =
+      job.quotations.find((quotation) => quotation.status === 'accepted') ??
+      job.acceptedQuotation;
+    const quotationAccepted = Boolean(
+      job.acceptedQuotationId ||
+        repairJob?.acceptedQuotationId ||
+        acceptedQuotation?.status === 'accepted' ||
+        job.shops?.some((shop) => shop.responseStatus === 'customer_accepted'),
+    );
+    const quotationSubmitted =
+      job.quotations.length > 0 ||
+      job.shops?.some((shop) => shop.responseStatus === 'quotation_submitted');
+    const acceptedAt = acceptedQuotation?.respondedAt ?? repairJob?.confirmedAt;
+
+    return buildRepairProgressSteps({
+      requestCreatedAt: job.createdAt,
+      requestStatus: job.status,
+      repairJob,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : quotationSubmitted
+          ? 'submitted'
+          : 'none',
+      acceptedAt,
+      quotationAt:
+        acceptedAt ??
+        job.quotations.at(-1)?.createdAt ??
+        job.acceptedQuotation?.createdAt,
+    });
   }
 
   private isValidCoordinates(
