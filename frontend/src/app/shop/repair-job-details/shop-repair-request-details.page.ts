@@ -11,11 +11,12 @@ import { ShopRepairRouteComponent } from './components/shop-repair-route.compone
 import { ShopRepairPickupComponent } from './components/shop-repair-pickup.component';
 import { ShopRepairWorkflowComponent } from './components/shop-repair-workflow.component';
 import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../shared/components/repair-progress/repair-progress.component';
+import { buildRepairProgressSteps } from '../../shared/utils/repair-progress.util';
 import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
 import { JobAttachment } from '../../shared/models/job.models';
 import { JobSharedService } from '../../shared/services/job-shared.service';
 import { canStartRepair } from '../../shared/utils/repair-authorization.util';
-import { buildRepairProgressSteps } from '../../shared/utils/repair-progress.util';
 import { Technician } from '../technicians/technicians.models';
 import { TechniciansService } from '../technicians/technicians.service';
 import { ToastService } from '../../core/toast/toast.service';
@@ -72,6 +73,7 @@ type ReplacedPart = {
     FormsModule,
     RouterLink,
     JobTimelineComponent,
+    RepairProgressComponent,
     ShopRepairRouteComponent,
     ShopRepairPickupComponent,
     ShopRepairWorkflowComponent,
@@ -158,7 +160,41 @@ export class ShopRepairRequestDetailsPage implements OnInit {
       ? `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
       : null;
   });
-  readonly progressSteps = computed(() => this.buildProgressSteps());
+  readonly progressSteps = computed(() => {
+    const request = this.request();
+    if (!request) return [];
+    const repairJob = request.repairJob;
+    const acceptedQuotation = request.quotations.find(
+      (quotation) => quotation.status === 'accepted',
+    );
+    const quotationAccepted = Boolean(
+      request.acceptedQuotationId ||
+        repairJob?.acceptedQuotationId ||
+        acceptedQuotation ||
+        request.shopResponse.status === 'customer_accepted',
+    );
+    return buildRepairProgressSteps({
+      requestCreatedAt: request.createdAt,
+      requestStatus: request.status,
+      repairJob,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : request.quotations.length || request.shopResponse.status === 'quotation_submitted'
+          ? 'submitted'
+          : 'none',
+      acceptedAt:
+        acceptedQuotation?.respondedAt ??
+        request.shopResponse.respondedAt ??
+        repairJob?.confirmedAt,
+      quotationAt:
+        acceptedQuotation?.respondedAt ??
+        request.quotations.at(-1)?.createdAt ??
+        repairJob?.confirmedAt,
+      requiresPhysicalPickup: acceptedQuotation?.requiresPhysicalPickup,
+      inspectionCompletedBeforeQuotation:
+        acceptedQuotation?.inspectionCompletedBeforeQuotation,
+    });
+  });
   readonly filteredQuotationSummaries = computed(() => {
     const term = this.quotationSummarySearch().trim().toLowerCase();
     return QUOTATION_SUMMARY_OPTIONS.filter(
@@ -270,37 +306,6 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
-  }
-
-  private buildProgressSteps() {
-    const request = this.request();
-    if (!request) return [];
-    const repairJob = request.repairJob;
-    const acceptedQuotation = request.quotations.find(
-      (quotation) => quotation.status === 'accepted',
-    );
-    const quotationAccepted = Boolean(
-      request.acceptedQuotationId ||
-        repairJob?.acceptedQuotationId ||
-        acceptedQuotation ||
-        request.shopResponse.status === 'customer_accepted',
-    );
-    const acceptedAt =
-      acceptedQuotation?.respondedAt ??
-      request.shopResponse.respondedAt ??
-      repairJob?.confirmedAt;
-    return buildRepairProgressSteps({
-      requestCreatedAt: request.createdAt,
-      requestStatus: request.status,
-      repairJob,
-      quotationStatus: quotationAccepted
-        ? 'accepted'
-        : request.shopResponse.status === 'quotation_submitted'
-          ? 'submitted'
-          : 'none',
-      acceptedAt,
-      quotationAt: request.quotations.at(-1)?.createdAt,
-    });
   }
 
   openAssignment(): void {

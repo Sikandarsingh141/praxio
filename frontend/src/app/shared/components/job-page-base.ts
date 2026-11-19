@@ -16,6 +16,7 @@ import {
 } from '../models/job.models';
 import { JobSharedService } from '../services/job-shared.service';
 import { profileImageSource } from '../utils/appliance-thumbnail.util';
+import { RepairProgressStep } from '../utils/repair-progress.util';
 
 @Directive()
 export abstract class JobListingPageBase implements OnInit {
@@ -306,6 +307,11 @@ export abstract class JobDetailPageBase<T> implements OnInit {
 
 @Directive()
 export abstract class CustomerJobDetailPageBase extends JobDetailPageBase<CustomerRepairRequest> {
+  readonly repairProgressSteps = computed<RepairProgressStep[]>(() => {
+    const request = this.record();
+    return request ? this.jobs.customerProgress(request) : [];
+  });
+
   protected override loadRecord(id: string): Observable<CustomerRepairRequest> {
     return this.jobs.customerJob(id);
   }
@@ -313,6 +319,11 @@ export abstract class CustomerJobDetailPageBase extends JobDetailPageBase<Custom
 
 @Directive()
 export abstract class ShopJobDetailPageBase extends JobDetailPageBase<ShopRepairRequest> {
+  readonly repairProgressSteps = computed<RepairProgressStep[]>(() => {
+    const request = this.record();
+    return request ? this.jobs.shopProgress(request) : [];
+  });
+
   protected override loadRecord(id: string): Observable<ShopRepairRequest> {
     return this.jobs.shopJob(id);
   }
@@ -320,6 +331,11 @@ export abstract class ShopJobDetailPageBase extends JobDetailPageBase<ShopRepair
 
 @Directive()
 export abstract class TechnicianJobDetailPageBase extends JobDetailPageBase<TechnicianRepairDetails> {
+  readonly repairProgressSteps = computed<RepairProgressStep[]>(() => {
+    const request = this.record();
+    return request ? this.jobs.technicianProgress(request) : [];
+  });
+
   readonly directionsLoader = (requestId: string) =>
     this.jobs.technicianDirections(requestId);
 

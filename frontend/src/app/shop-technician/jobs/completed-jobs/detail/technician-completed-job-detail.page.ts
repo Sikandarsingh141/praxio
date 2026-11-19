@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { TechnicianJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
 import { TechnicianRepairDetails } from '../../../../shop/technicians/technicians.models';
 
@@ -15,6 +16,7 @@ import { TechnicianRepairDetails } from '../../../../shop/technicians/technician
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
+    RepairProgressComponent,
     ShopRepairRouteComponent,
   ],
   templateUrl: './technician-completed-job-detail.page.html',
@@ -22,12 +24,6 @@ import { TechnicianRepairDetails } from '../../../../shop/technicians/technician
 })
 export class TechnicianCompletedJobDetailPage extends TechnicianJobDetailPageBase {
   readonly heroImageUnavailable = signal(false);
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
   readonly backRoute = '/technician/completed-jobs';
   readonly backLabel = 'Completed Repairs';
   readonly pageTitle = 'Completed Repair Details';
@@ -79,12 +75,5 @@ export class TechnicianCompletedJobDetailPage extends TechnicianJobDetailPageBas
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
-  progressDate(job: TechnicianRepairDetails, index: number): string | undefined {
-    if (index === 0) return job.createdAt;
-    if (index === this.progressSteps.length - 1) {
-      return job.repairJobDetails?.completedAt ?? job.repairJobDetails?.repairCompletedAt;
-    }
-    return undefined;
-  }
 }
 

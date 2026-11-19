@@ -49,29 +49,7 @@
       </span>
     </section>
 
-    <ol class="request-progress" aria-label="Repair request progress">
-      @for (step of progressSteps; track step; let index = $index) {
-        <li
-          [class.completed]="isRepairComplete(job) || index + 1 < currentProgressStep(job)"
-          [class.current]="!isRepairComplete(job) && index + 1 === currentProgressStep(job)"
-          [attr.aria-current]="
-            !isRepairComplete(job) && index + 1 === currentProgressStep(job) ? 'step' : null
-          "
-        >
-          <span class="progress-marker" aria-hidden="true">
-            @if (isRepairComplete(job) || index + 1 < currentProgressStep(job)) {
-              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-            } @else {
-              {{ index + 1 }}
-            }
-          </span>
-          <strong>{{ step }}</strong>
-          @if (progressDate(job, index); as stepDate) {
-            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
-          }
-        </li>
-      }
-    </ol>
+    <app-repair-progress [steps]="repairProgressSteps()" />
 
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
@@ -191,21 +169,9 @@
           <section class="customer-detail-block timeline-section">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-              Repair Progress and Inspection
+              Repair History
             </h2>
-            @if (jobs.customerTimeline(job).length) {
-              <app-job-timeline [items]="jobs.customerTimeline(job)" />
-            } @else {
-              <div class="timeline-empty">
-                <span class="timeline-empty-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
-                </span>
-                <div>
-                  <strong>No repair history yet</strong>
-                  <p>Repair activity will appear here once the shop starts working on your request.</p>
-                </div>
-              </div>
-            }
+            <app-job-timeline [items]="jobs.customerTimeline(job)" />
           </section>
         </section>
       </div>

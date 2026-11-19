@@ -54,29 +54,7 @@
       </span>
     </section>
 
-    <ol class="request-progress" aria-label="Repair request progress">
-      @for (step of progressSteps; track step; let index = $index) {
-        <li
-          [class.completed]="isRepairComplete(repair) || index + 1 < currentProgressStep(repair)"
-          [class.current]="!isRepairComplete(repair) && index + 1 === currentProgressStep(repair)"
-          [attr.aria-current]="
-            !isRepairComplete(repair) && index + 1 === currentProgressStep(repair) ? 'step' : null
-          "
-        >
-          <span class="progress-marker" aria-hidden="true">
-            @if (isRepairComplete(repair) || index + 1 < currentProgressStep(repair)) {
-              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-            } @else {
-              {{ index + 1 }}
-            }
-          </span>
-          <strong>{{ step }}</strong>
-          @if (progressDate(repair, index); as stepDate) {
-            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
-          }
-        </li>
-      }
-    </ol>
+    <app-repair-progress [steps]="repairProgressSteps()" />
 
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
@@ -276,23 +254,9 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 8v4l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
-              Repair Status History
-              <small>({{ repair.repairJob.history?.length ?? 0 }} activities)</small>
+              Repair History
             </h2>
-            @if (repair.repairJob.history?.length) {
-              <ol class="history-list">
-                @for (event of repair.repairJob.history; track $index) {
-                  <li>
-                    <span class="history-dot" aria-hidden="true"></span>
-                    <span class="history-action">{{ event.action.replaceAll('_', ' ') | titlecase }}</span>
-                    <span class="history-note">{{ event.notes || '—' }}</span>
-                    <time>{{ event.at | date: 'MMM d, y, h:mm:ss a' }}</time>
-                  </li>
-                }
-              </ol>
-            } @else {
-              <p class="empty-note">No status history is available.</p>
-            }
+            <app-job-timeline [items]="repairHistory()" />
           </section>
 
           @if (notes(repair).length) {

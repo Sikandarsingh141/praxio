@@ -262,6 +262,12 @@ export interface AdminRepairJob {
   repairJob: {
     status: string;
     confirmedAt?: string;
+    requiresPhysicalPickup?: boolean;
+    inspectionCompletedBeforeQuotation?: boolean;
+    servicePickup?: {
+      scheduledAt?: string;
+      collectedAt?: string;
+    };
     startedAt?: string;
     repairCompletedAt?: string;
     readyForPickupAt?: string;
@@ -339,6 +345,8 @@ export interface AdminRepairJob {
     estimatedDays?: number;
     validUntil?: string;
     createdAt?: string;
+    inspectionCompletedBeforeQuotation?: boolean;
+    requiresPhysicalPickup?: boolean;
   };
 }
 

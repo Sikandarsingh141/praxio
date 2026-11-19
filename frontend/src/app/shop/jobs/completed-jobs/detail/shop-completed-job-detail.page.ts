@@ -4,23 +4,24 @@ import { RouterLink } from '@angular/router';
 import { ShopJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 
 @Component({
   selector: 'app-shop-completed-job-detail-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, JobAttachmentsComponent, JobTimelineComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    JobAttachmentsComponent,
+    JobTimelineComponent,
+    RepairProgressComponent,
+  ],
   templateUrl: './shop-completed-job-detail.page.html',
   styleUrl: './shop-completed-job-detail.page.scss',
 })
 export class ShopCompletedJobDetailPage extends ShopJobDetailPageBase {
   readonly heroImageUnavailable = signal(false);
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
   readonly backRoute = '/shop/jobs/completed-jobs';
   readonly backLabel = 'Completed Repairs';
   readonly pageTitle = 'Completed Repair Details';
@@ -81,10 +82,5 @@ export class ShopCompletedJobDetailPage extends ShopJobDetailPageBase {
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
-  progressDate(job: ShopRepairRequest, index: number): string | undefined {
-    if (index === 0) return job.createdAt;
-    if (index === this.progressSteps.length - 1) return job.repairJob?.completedAt;
-    return undefined;
-  }
 }
 

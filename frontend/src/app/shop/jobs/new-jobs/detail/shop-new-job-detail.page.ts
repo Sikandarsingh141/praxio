@@ -8,6 +8,7 @@ import { ShopProfile } from '../../../../core/auth/auth.models';
 import { ToastService } from '../../../../core/toast/toast.service';
 import { ShopJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import { ShopRepairWorkflowComponent } from '../../../repair-job-details/components/shop-repair-workflow.component';
 import { ShopRepairRouteComponent } from '../../../repair-job-details/components/shop-repair-route.component';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
@@ -47,6 +48,7 @@ type QuotationSummaryOption = (typeof QUOTATION_SUMMARY_OPTIONS)[number];
     FormsModule,
     RouterLink,
     JobTimelineComponent,
+    RepairProgressComponent,
     ShopRepairWorkflowComponent,
     ShopRepairRouteComponent,
     JobAttachmentsComponent,
@@ -78,7 +80,6 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
   readonly selectedPhoto = signal<number | null>(null);
   readonly unavailablePhotos = signal(new Set<number>());
   readonly heroImageUnavailable = signal(false);
-  readonly progressSteps = ['Request Submitted', 'Inspection Pending', 'Quotation', 'Repair & Complete'];
   readonly filteredQuotationSummaries = computed(() => {
     const term = this.quotationSummarySearch().trim().toLowerCase();
     return QUOTATION_SUMMARY_OPTIONS.filter(
@@ -117,13 +118,6 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
     return this.isValidCoordinates(location)
       ? `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
       : null;
-  });
-  readonly currentProgressStep = computed(() => {
-    const request = this.record();
-    if (!request) return 1;
-    if (request.repairJob || request.shopResponse.status === 'customer_accepted') return 4;
-    if (request.shopResponse.status === 'quotation_submitted') return 3;
-    return 2;
   });
   readonly canRespond = computed(() => {
     const request = this.record();
@@ -314,10 +308,6 @@ export class ShopNewJobDetailPage extends ShopJobDetailPageBase implements OnIni
       () => this.toast.success('Copied', 'Request ID copied to clipboard.'),
       () => this.toast.error('Copy Failed', 'Request ID could not be copied.'),
     );
-  }
-
-  progressDate(index: number): string | undefined {
-    return index === 0 ? this.record()?.createdAt : undefined;
   }
 
   private reloadRequest(id: string): void {

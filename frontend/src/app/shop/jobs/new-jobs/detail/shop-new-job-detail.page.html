@@ -54,27 +54,7 @@
       </div>
     </section>
 
-    <ol class="request-progress" aria-label="Request progress">
-      @for (step of progressSteps; track step; let index = $index) {
-        <li
-          [class.completed]="index + 1 < currentProgressStep()"
-          [class.current]="index + 1 === currentProgressStep()"
-          [attr.aria-current]="index + 1 === currentProgressStep() ? 'step' : null"
-        >
-          <span class="progress-marker" aria-hidden="true">
-            @if (index + 1 < currentProgressStep()) {
-              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-            } @else {
-              {{ index + 1 }}
-            }
-          </span>
-          <strong>{{ step }}</strong>
-          @if (progressDate(index); as date) {
-            <time>{{ date | date: 'MMM d, y, h:mm a' }}</time>
-          }
-        </li>
-      }
-    </ol>
+    <app-repair-progress [steps]="repairProgressSteps()" />
 
     <div class="request-content">
       <div class="main-column">
@@ -165,12 +145,10 @@
           </section>
         }
 
-        @if (jobs.shopTimeline(request).length) {
-          <section class="detail-card">
-            <h2 class="section-heading">Repair History</h2>
-            <app-job-timeline [items]="jobs.shopTimeline(request)" />
-          </section>
-        }
+        <section class="detail-card">
+          <h2 class="section-heading">Repair History</h2>
+          <app-job-timeline [items]="jobs.shopTimeline(request)" />
+        </section>
 
         @if (canRespond()) {
           <div class="primary-actions">

@@ -18,6 +18,7 @@ import { CustomerPortalService } from '../../../services/customer-portal.service
 import { CustomerJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
 import { CustomerRepairWorkflowComponent } from '../../../repair-requests/components/customer-repair-workflow.component';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
@@ -40,6 +41,7 @@ interface CustomerShopSummary {
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
+    RepairProgressComponent,
     CustomerRepairWorkflowComponent,
     ShopRepairRouteComponent,
   ],
@@ -54,7 +56,40 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
-  readonly progressSteps = computed(() => this.buildProgressSteps());
+  readonly progressSteps = computed(() => {
+    const request = this.record();
+    if (!request) return [];
+    const acceptedQuotation =
+      request.quotations.find((quotation) => quotation.status === 'accepted') ??
+      request.acceptedQuotation;
+    const quotationAccepted = Boolean(
+      request.acceptedQuotationId ||
+        request.repairJob?.acceptedQuotationId ||
+        acceptedQuotation?.status === 'accepted' ||
+        request.shops?.some((shop) => shop.responseStatus === 'customer_accepted'),
+    );
+    const quotationSubmitted =
+      request.quotations.length > 0 ||
+      request.shops?.some((shop) => shop.responseStatus === 'quotation_submitted');
+    return buildRepairProgressSteps({
+      requestCreatedAt: request.createdAt,
+      requestStatus: request.status,
+      repairJob: request.repairJob,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : quotationSubmitted
+          ? 'submitted'
+          : 'none',
+      acceptedAt: acceptedQuotation?.respondedAt ?? request.repairJob?.confirmedAt,
+      quotationAt:
+        acceptedQuotation?.respondedAt ??
+        request.quotations.at(-1)?.createdAt ??
+        request.acceptedQuotation?.createdAt,
+      requiresPhysicalPickup: acceptedQuotation?.requiresPhysicalPickup,
+      inspectionCompletedBeforeQuotation:
+        acceptedQuotation?.inspectionCompletedBeforeQuotation,
+    });
+  });
   private readonly customerPortal = inject(CustomerPortalService);
   private readonly destroyRef = inject(DestroyRef);
   private requestedShopId: string | null = null;
@@ -185,41 +220,6 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
-  }
-
-  private buildProgressSteps() {
-    const job = this.record();
-    if (!job) return [];
-    const repairJob = job.repairJob;
-    const acceptedQuotation =
-      job.quotations.find((quotation) => quotation.status === 'accepted') ??
-      job.acceptedQuotation;
-    const quotationAccepted = Boolean(
-      job.acceptedQuotationId ||
-        repairJob?.acceptedQuotationId ||
-        acceptedQuotation?.status === 'accepted' ||
-        job.shops?.some((shop) => shop.responseStatus === 'customer_accepted'),
-    );
-    const quotationSubmitted =
-      job.quotations.length > 0 ||
-      job.shops?.some((shop) => shop.responseStatus === 'quotation_submitted');
-    const acceptedAt = acceptedQuotation?.respondedAt ?? repairJob?.confirmedAt;
-
-    return buildRepairProgressSteps({
-      requestCreatedAt: job.createdAt,
-      requestStatus: job.status,
-      repairJob,
-      quotationStatus: quotationAccepted
-        ? 'accepted'
-        : quotationSubmitted
-          ? 'submitted'
-          : 'none',
-      acceptedAt,
-      quotationAt:
-        acceptedAt ??
-        job.quotations.at(-1)?.createdAt ??
-        job.acceptedQuotation?.createdAt,
-    });
   }
 
   private isValidCoordinates(

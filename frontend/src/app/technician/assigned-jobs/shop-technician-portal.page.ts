@@ -12,6 +12,8 @@ import {
 } from '../../shared/components/confirmation-dialog/confirmation-dialog.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../shared/components/repair-progress/repair-progress.component';
 import {
   InspectionReportInput,
   RepairEstimatePartInput,
@@ -24,6 +26,7 @@ import {
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 
 export type JobFilter = 'all' | 'pending' | 'active' | 'completed' | 'today';
 export type TechnicianPageView = 'dashboard' | 'jobs' | 'active' | 'completed' | 'history' | 'job-detail';
@@ -65,6 +68,8 @@ type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
     ConfirmationDialogComponent,
     AdminPageHeaderComponent,
     PaginationComponent,
+    JobTimelineComponent,
+    RepairProgressComponent,
   ],
   templateUrl: './shop-technician-portal.page.html',
   styleUrl: './shop-technician-portal.page.scss',
@@ -72,6 +77,7 @@ type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
 export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
   private readonly service = inject(TechniciansService);
   private readonly chat = inject(ChatService);
+  private readonly sharedJobs = inject(JobSharedService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly toast = inject(ToastService);
@@ -213,6 +219,14 @@ export class ShopTechnicianPortalPage implements OnInit, OnDestroy {
     if (status === 'repair_completed' || status === 'ready_for_pickup' || status === 'picked_up') return 3;
     if (status === 'completed') return 4;
     return 1;
+  }
+
+  repairProgressSteps(repair: TechnicianRepairDetails) {
+    return this.sharedJobs.technicianProgress(repair);
+  }
+
+  repairHistory(repair: TechnicianRepairDetails) {
+    return this.sharedJobs.technicianTimeline(repair);
   }
 
   readonly visibleJobs = computed(() => {

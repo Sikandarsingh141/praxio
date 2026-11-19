@@ -10,6 +10,7 @@ import { CustomerPortalService } from '../../../services/customer-portal.service
 import { CustomerJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
 
@@ -23,6 +24,7 @@ type Coordinates = { latitude: number; longitude: number };
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
+    RepairProgressComponent,
     ShopRepairRouteComponent,
   ],
   templateUrl: './customer-new-job-detail.page.html',
@@ -35,7 +37,6 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
-  readonly progressSteps = ['Request Submitted', 'Inspection Pending', 'Quotation', 'Repair & Complete'];
   private readonly customerPortal = inject(CustomerPortalService);
   private readonly destroyRef = inject(DestroyRef);
   private requestedShopId: string | null = null;
@@ -108,50 +109,6 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
-  }
-
-  isRepairComplete(job: CustomerRepairRequest): boolean {
-    return job.repairJob?.status === 'completed' || job.status === 'completed';
-  }
-
-  currentProgressStep(job: CustomerRepairRequest): number {
-    const status = job.repairJob?.status;
-    if (
-      status === 'in_progress' ||
-      status === 'on_hold' ||
-      status === 'repair_completed' ||
-      status === 'ready_for_pickup' ||
-      status === 'picked_up' ||
-      status === 'completed' ||
-      status === 'inspection_approved'
-    ) return 4;
-    if (status === 'awaiting_customer_approval' || status === 'repair_declined' || job.quotations.length) return 3;
-    if (job.repairJob) return 2;
-    return 2;
-  }
-
-  progressDate(job: CustomerRepairRequest, index: number): string | undefined {
-    const repairJob = job.repairJob;
-    const historyAt = (action: string): string | undefined =>
-      repairJob?.history?.find((event) => event.action === action)?.at;
-    switch (index) {
-      case 0:
-        return job.createdAt;
-      case 1:
-        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
-      case 2:
-        return job.acceptedQuotation?.respondedAt ??
-          job.acceptedQuotation?.createdAt ??
-          job.quotations[job.quotations.length - 1]?.createdAt;
-      case 3:
-        return historyAt('repair_completed') ??
-          repairJob?.repairCompletedAt ??
-          historyAt('ready_for_pickup') ??
-          repairJob?.readyForPickupAt ??
-          repairJob?.completedAt;
-      default:
-        return undefined;
-    }
   }
 
   customerName(user: UserProfile): string {

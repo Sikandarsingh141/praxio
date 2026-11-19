@@ -4,11 +4,12 @@
   @else if (error()) { <p class="state error" role="alert">{{ error() }}</p> }
   @else if (record(); as job) {
     <header class="detail-heading"><div><p class="eyebrow">SHOP REQUEST #{{ job._id.slice(-8).toUpperCase() }}</p><h1>{{ pageTitle }}</h1><p>{{ job.appliance }} {{ job.brand }} {{ job.model }}</p></div><app-job-status-badge [status]="job.repairJob?.status ?? job.shopResponse.status" /></header>
+    <app-repair-progress [steps]="repairProgressSteps()" />
     <section class="detail-grid"><article class="detail-section"><h2>Device and repair request</h2><dl><div><dt>Device</dt><dd>{{ job.appliance }}</dd></div><div><dt>Brand and model</dt><dd>{{ job.brand || 'Not specified' }} {{ job.model }}</dd></div><div><dt>Service type</dt><dd>{{ job.serviceType === 'home_service' ? 'Home service' : 'Shop visit' }}</dd></div><div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'mediumDate' }}</dd></div></dl><p>{{ job.description }}</p></article>
       <article class="detail-section"><h2>Customer</h2><p class="shop-name">{{ job.customer.displayName || (job.customer.firstName + ' ' + job.customer.lastName) }}</p>@if (job.customer.phone) { <p>{{ job.customer.phone }}</p> }@if (job.customer.email) { <p>{{ job.customer.email }}</p> }</article>
       <article class="detail-section"><h2>Quotation and payment</h2>@if (job.quotations.length) { @for (quotation of job.quotations; track quotation._id) { <div class="quotation-row"><strong>{{ quotation.amount | currency: quotation.currency }}</strong><app-job-status-badge [status]="quotation.status" /><p>{{ quotation.message }}</p></div> } } @else { <p>No quotation has been submitted.</p> }</article>
       <article class="detail-section"><h2>Assigned technician</h2>@if (job.technicianAssignment?.current; as assignment) { <p class="shop-name">{{ assignment.technicianName }}</p><p>Assigned {{ assignment.assignedAt | date: 'mediumDate' }}</p>@if (assignment.note) { <p>{{ assignment.note }}</p> } } @else { <p>No technician has been assigned.</p> }</article>
       <article class="detail-section"><h2>Files and photos</h2><app-job-attachments [items]="jobs.photoAttachments(job.photos)" /></article></section>
-    <section class="detail-section"><h2>Repair history</h2><app-job-timeline [items]="jobs.shopTimeline(job)" /></section>
+    <section class="detail-section"><h2>Repair History</h2><app-job-timeline [items]="jobs.shopTimeline(job)" /></section>
     }
 </main>

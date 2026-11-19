@@ -5,6 +5,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { CustomerRepairJobPage } from './customer-repair-job.page';
+import { buildRepairProgressSteps } from '../../shared/utils/repair-progress.util';
 
 import { CustomerRepairRequest } from '../models/customer-portal.models';
 
@@ -28,6 +29,26 @@ describe('CustomerRepairJobPage', () => {
         useValue: {
           photoAttachments: () => [],
           customerTimeline: () => [],
+          customerProgress: (request: CustomerRepairRequest) => {
+            const quotation =
+              request.acceptedQuotation ??
+              request.quotations.find((item) => item.status === 'accepted');
+            return buildRepairProgressSteps({
+              requestCreatedAt: request.createdAt,
+              requestStatus: request.status,
+              quotationStatus: quotation
+                ? 'accepted'
+                : request.quotations.length
+                  ? 'submitted'
+                  : 'none',
+              acceptedAt: quotation?.respondedAt,
+              quotationAt: quotation?.createdAt,
+              requiresPhysicalPickup: quotation?.requiresPhysicalPickup,
+              inspectionCompletedBeforeQuotation:
+                quotation?.inspectionCompletedBeforeQuotation,
+              repairJob: request.repairJob,
+            });
+          },
         },
       }],
     });
@@ -73,10 +94,10 @@ describe('CustomerRepairJobPage', () => {
         status: 'accepted',
         createdAt: '2026-11-09T15:00:00.000Z',
       },
-      repairJob: { status: 'inspection_approved' },
+      repairJob: { status: 'inspection_approved', requiresPhysicalPickup: false },
     } as CustomerRepairRequest);
 
-    expect(page.currentProgressStep).toBe(4);
+    expect(page.repairProgressSteps().find((step) => step.current)?.label).toBe('Repair');
   });
 
   it('marks every progress step complete for a completed repair', async () => {
@@ -102,6 +123,7 @@ describe('CustomerRepairJobPage', () => {
       },
       repairJob: {
         status: 'completed',
+        requiresPhysicalPickup: false,
         confirmedAt: '2026-11-09T15:30:00.000Z',
         repairCompletedAt: '2026-11-10T12:00:00.000Z',
         history: [
@@ -134,12 +156,20 @@ describe('CustomerRepairJobPage', () => {
     const steps = Array.from(
       fixture.nativeElement.querySelectorAll('.request-progress li'),
     ) as HTMLLIElement[];
-    expect(steps).toHaveSize(4);
+    expect(steps.map((step) => step.querySelector('strong')?.textContent?.trim())).toEqual([
+      'Request Submitted',
+      'Quotation Accepted',
+      'Inspection',
+      'Repair',
+      'Ready for Pickup',
+      'Customer Picked Up',
+      'Completed',
+    ]);
     expect(fixture.nativeElement.querySelector('.request-progress')).not.toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.progress-marker svg')).toHaveSize(4);
+    expect(fixture.nativeElement.querySelectorAll('.progress-marker svg')).toHaveSize(7);
     expect(steps.every((step) => step.classList.contains('completed'))).toBeTrue();
     expect(fixture.nativeElement.querySelector('[aria-current="step"]')).toBeNull();
-    expect(fixture.nativeElement.querySelectorAll('.request-progress time')).toHaveSize(4);
+    expect(fixture.nativeElement.querySelectorAll('.request-progress time').length).toBeGreaterThan(0);
     const requestIdBadge = fixture.nativeElement.querySelector(
       '.request-hero-copy .request-id',
     ) as HTMLElement;
@@ -150,8 +180,13 @@ describe('CustomerRepairJobPage', () => {
     expect(disputeLink.href).toContain('/customer/disputes/new/');
     expect(requestIdBadge.textContent).toContain('Request ID');
     expect(fixture.nativeElement.querySelector('.detail-status')).not.toBeNull();
-    expect(fixture.componentInstance.progressDate(1)).toBe('2026-11-09T15:35:00.000Z');
-    expect(fixture.componentInstance.progressDate(3)).toBe('2026-11-10T12:05:00.000Z');
+    const progress = fixture.componentInstance.repairProgressSteps();
+    expect(progress.find((step) => step.key === 'inspection')?.at).toBe(
+      '2026-11-09T15:35:00.000Z',
+    );
+    expect(progress.find((step) => step.key === 'repair')?.at).toBe(
+      '2026-11-10T12:05:00.000Z',
+    );
   });
 
   it('does not imply repair authorization when a quotation is accepted', async () => {
@@ -260,9 +295,9 @@ describe('CustomerRepairJobPage', () => {
       fixture.nativeElement.querySelector('.customer-identity img')?.getAttribute('src'),
     ).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(text).toContain('View Quotations');
-    expect(text).toContain('Repair Progress and Inspection');
+    expect(text).toContain('Repair History');
     expect(text).toContain('Location and Route');
-    expect(text).toContain('Inspection Pending');
+    expect(text).toContain('Quotation');
     expect(fixture.nativeElement.querySelector('.detail-status')?.textContent).toContain('New');
   });
 

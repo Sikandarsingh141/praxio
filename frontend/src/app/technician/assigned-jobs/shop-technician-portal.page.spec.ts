@@ -9,6 +9,7 @@ import { ShopTechnicianPortalPage } from './shop-technician-portal.page';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { ToastService } from '../../core/toast/toast.service';
 import { ChatService } from '../../shared/services/chat.service';
+import { JobSharedService } from '../../shared/services/job-shared.service';
 
 describe('ShopTechnicianPortalPage', () => {
   let component: ShopTechnicianPortalPage;
@@ -115,6 +116,13 @@ describe('ShopTechnicianPortalPage', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: TechniciansService, useValue: techniciansService },
+        {
+          provide: JobSharedService,
+          useValue: {
+            technicianProgress: () => [],
+            technicianTimeline: () => [],
+          },
+        },
         { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['show', 'success', 'error']) },
         { provide: ChatService, useValue: jasmine.createSpyObj('ChatService', ['openChatWithUser']) },
       ],

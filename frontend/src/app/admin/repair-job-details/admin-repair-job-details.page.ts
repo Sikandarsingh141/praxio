@@ -1,10 +1,13 @@
 import { CommonModule, CurrencyPipe, DatePipe, TitleCasePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ShopRepairRouteComponent } from '../../shop/repair-job-details/components/shop-repair-route.component';
 import { AdminMapEntity, AdminRepairJob, AdminService } from '../services/admin.service';
 import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
+import { RepairProgressComponent } from '../../shared/components/repair-progress/repair-progress.component';
+import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
+import { buildRepairProgressSteps } from '../../shared/utils/repair-progress.util';
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -16,6 +19,8 @@ type Coordinates = { latitude: number; longitude: number };
     CurrencyPipe,
     DatePipe,
     RouterLink,
+    RepairProgressComponent,
+    JobTimelineComponent,
     ShopRepairRouteComponent,
     TitleCasePipe,
   ],
@@ -33,12 +38,34 @@ export class AdminRepairJobDetailsPage implements OnInit {
   readonly mapError = signal('');
   readonly heroImageUnavailable = signal(false);
   readonly customerImageUnavailable = signal(false);
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
+  readonly repairProgressSteps = computed(() => {
+    const repair = this.job();
+    if (!repair) return [];
+    const quotation = repair.quotation;
+    return buildRepairProgressSteps({
+      requestCreatedAt: repair.createdAt,
+      requestStatus: repair.repairJob.status,
+      quotationStatus:
+        quotation?.status === 'accepted' ? 'accepted' : quotation ? 'submitted' : 'none',
+      acceptedAt: repair.repairJob.confirmedAt,
+      quotationAt: quotation?.createdAt,
+      requiresPhysicalPickup:
+        quotation?.requiresPhysicalPickup ?? repair.repairJob.requiresPhysicalPickup,
+      inspectionCompletedBeforeQuotation:
+        quotation?.inspectionCompletedBeforeQuotation ??
+        repair.repairJob.inspectionCompletedBeforeQuotation,
+      repairJob: repair.repairJob,
+    });
+  });
+  readonly repairHistory = computed(() =>
+    (this.job()?.repairJob.history ?? []).map((event) => ({
+      title: event.action
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      description: event.notes,
+      at: event.at,
+    })),
+  );
   readonly adminDirectionsLoader = (requestId: string) =>
     this.adminService.getMapRoute(requestId);
 
@@ -126,55 +153,6 @@ export class AdminRepairJobDetailsPage implements OnInit {
     return job.repairJob.status
       .replace(/_/g, ' ')
       .replace(/^\w/, (letter) => letter.toUpperCase());
-  }
-
-  isRepairComplete(job: AdminRepairJob): boolean {
-    return job.repairJob.status === 'completed';
-  }
-
-  currentProgressStep(job: AdminRepairJob): number {
-    const status = job.repairJob.status;
-    if (
-      status === 'in_progress' ||
-      status === 'on_hold' ||
-      status === 'repair_completed' ||
-      status === 'ready_for_pickup' ||
-      status === 'picked_up' ||
-      status === 'completed'
-    ) {
-      return 4;
-    }
-    if (
-      status === 'awaiting_customer_approval' ||
-      status === 'inspection_approved' ||
-      status === 'repair_declined' ||
-      !!job.quotation
-    ) {
-      return 3;
-    }
-    return 2;
-  }
-
-  progressDate(job: AdminRepairJob, index: number): string | undefined {
-    const historyDate = (action: string): string | undefined =>
-      job.repairJob.history?.find((event) => event.action === action)?.at;
-    switch (index) {
-      case 0:
-        return job.createdAt;
-      case 1:
-        return historyDate('inspection_pending') ?? job.repairJob.confirmedAt;
-      case 2:
-        return job.quotation?.createdAt ?? job.repairJob.inspection?.submittedAt;
-      case 3:
-        return (
-          historyDate('repair_completed') ??
-          job.repairJob.repairCompletedAt ??
-          job.repairJob.readyForPickupAt ??
-          job.repairJob.completedAt
-        );
-      default:
-        return undefined;
-    }
   }
 
   customerCoordinates(): Coordinates | null {

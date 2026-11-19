@@ -49,32 +49,7 @@
       </span>
     </section>
 
-    <ol
-      class="request-progress"
-      aria-label="Repair request progress"
-      tabindex="0"
-      [style.--progress-step-count]="progressSteps().length"
-    >
-      @for (step of progressSteps(); track step.key; let index = $index) {
-        <li
-          [class.completed]="step.completed"
-          [class.current]="step.current"
-          [attr.aria-current]="step.current ? 'step' : null"
-        >
-          <span class="progress-marker" aria-hidden="true">
-            @if (step.completed) {
-              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-            } @else {
-              {{ index + 1 }}
-            }
-          </span>
-          <strong>{{ step.label }}</strong>
-          @if (step.at; as stepDate) {
-            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
-          }
-        </li>
-      }
-    </ol>
+    <app-repair-progress [steps]="progressSteps()" />
 
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
@@ -227,15 +202,13 @@
             }
           </section>
 
-          @if (job.repairJob?.history?.length) {
-            <section class="customer-detail-block repair-history-card" aria-labelledby="repair-history-title">
-              <h2 class="section-heading" id="repair-history-title">
-                <span class="card-icon" aria-hidden="true">↻</span>
-                Repair History
-              </h2>
-              <app-job-timeline [items]="jobs.customerTimeline(job)" />
-            </section>
-          }
+          <section class="customer-detail-block repair-history-card" aria-labelledby="repair-history-title">
+            <h2 class="section-heading" id="repair-history-title">
+              <span class="card-icon" aria-hidden="true">↻</span>
+              Repair History
+            </h2>
+            <app-job-timeline [items]="jobs.customerTimeline(job)" />
+          </section>
         </section>
       </div>
 

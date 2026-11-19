@@ -11,6 +11,7 @@ import {
   TechnicianAssignment,
   TechnicianJob,
   TechnicianJobSummary,
+  TechnicianRepairDetails,
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { RepairRoute } from '../models/repair-route.models';
@@ -53,6 +54,121 @@ describe('JobSharedService', () => {
       ],
     });
     service = TestBed.inject(JobSharedService);
+  });
+
+  it('builds the same accepted repair lifecycle for customer, shop, and technician details', () => {
+    const acceptedAt = '2026-11-18T12:00:00.000Z';
+    const repairJob: RepairWorkflowJob = {
+      status: 'inspection_approved',
+      requiresPhysicalPickup: false,
+      inspectionCompletedBeforeQuotation: true,
+    };
+    const customer = customerRequest('customer-detail', 'inspection_approved');
+    customer.acceptedQuotationId = 'quote-1';
+    customer.quotations = [
+      {
+        _id: 'quote-1',
+        repairRequestId: customer._id,
+        shopId: 'shop-1',
+        amount: 125,
+        currency: 'USD',
+        message: 'Repair',
+        status: 'accepted',
+        respondedAt: acceptedAt,
+        createdAt: acceptedAt,
+        requiresPhysicalPickup: false,
+        inspectionCompletedBeforeQuotation: true,
+      },
+    ];
+    customer.repairJob = repairJob;
+
+    const shop = shopRequest('shop-detail', 'customer_accepted', 'inspection_approved');
+    shop.acceptedQuotationId = 'quote-1';
+    shop.quotations = [
+      {
+        _id: 'quote-1',
+        repairRequestId: shop._id,
+        amount: 125,
+        currency: 'USD',
+        message: 'Repair',
+        status: 'accepted',
+        respondedAt: acceptedAt,
+        createdAt: acceptedAt,
+        requiresPhysicalPickup: false,
+        inspectionCompletedBeforeQuotation: true,
+      },
+    ];
+    shop.repairJob = repairJob;
+
+    const technician: TechnicianRepairDetails = {
+      id: 'technician-detail',
+      appliance: 'Phone',
+      brand: 'Fixora',
+      model: 'A1',
+      status: 'inspection_approved',
+      assignedAt: acceptedAt,
+      shopId: 'shop-1',
+      description: 'Screen repair',
+      photos: [],
+      customer: 'Test Customer',
+      phone: null,
+      serviceType: 'shop_visit',
+      quotations: [
+        {
+          id: 'quote-1',
+          amount: 125,
+          currency: 'USD',
+          status: 'accepted',
+          message: 'Repair',
+          inspectionCharge: 0,
+          partsCost: 0,
+          labourCharge: 125,
+          additionalCharges: 0,
+          respondedAt: acceptedAt,
+          createdAt: acceptedAt,
+          requiresPhysicalPickup: false,
+          inspectionCompletedBeforeQuotation: true,
+        },
+      ],
+      repairJobDetails: repairJob,
+    };
+    const expectedLabels = [
+      'Request Submitted',
+      'Quotation Accepted',
+      'Inspection Approved',
+      'Repair',
+      'Ready for Pickup',
+      'Customer Picked Up',
+      'Completed',
+    ];
+
+    expect(service.customerProgress(customer).map((step) => step.label)).toEqual(expectedLabels);
+    expect(service.shopProgress(shop).map((step) => step.label)).toEqual(expectedLabels);
+    expect(service.technicianProgress(technician).map((step) => step.label)).toEqual(
+      expectedLabels,
+    );
+    expect(service.technicianProgress(technician).find((step) => step.current)?.label).toBe(
+      'Repair',
+    );
+
+    technician.timeline = [
+      {
+        action: 'repair_started',
+        notes: 'Work began after approval.',
+        at: acceptedAt,
+        actorName: 'Alex Technician',
+        actorRole: 'technician',
+      },
+    ];
+    expect(service.technicianTimeline(technician)).toEqual([
+      {
+        title: 'Repair Started',
+        description: 'Work began after approval.',
+        at: acceptedAt,
+        actorName: 'Alex Technician',
+        actorRole: 'technician',
+      },
+    ]);
   });
 
   it('keeps quoted customer requests in New Jobs while retaining other status categories', (done) => {

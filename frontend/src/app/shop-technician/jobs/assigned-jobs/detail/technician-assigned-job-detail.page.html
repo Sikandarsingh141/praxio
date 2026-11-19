@@ -55,27 +55,7 @@
       </span>
     </section>
 
-    <ol class="request-progress" aria-label="Repair request progress">
-      @for (step of progressSteps; track step; let index = $index) {
-        <li
-          [class.completed]="isRepairComplete(job) || index + 1 < currentProgressStep(job)"
-          [class.current]="!isRepairComplete(job) && index + 1 === currentProgressStep(job)"
-          [attr.aria-current]="index + 1 === currentProgressStep(job) ? 'step' : null"
-        >
-          <span class="progress-marker" aria-hidden="true">
-            @if (isRepairComplete(job) || index + 1 < currentProgressStep(job)) {
-              <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-            } @else {
-              {{ index + 1 }}
-            }
-          </span>
-          <strong>{{ step }}</strong>
-          @if (progressDate(job, index); as stepDate) {
-            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
-          }
-        </li>
-      }
-    </ol>
+    <app-repair-progress [steps]="repairProgressSteps()" />
 
     <section class="technician-assignment-card detail-section" aria-labelledby="technician-assignment-title">
       <header>

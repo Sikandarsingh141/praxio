@@ -1,5 +1,3 @@
-import type { RepairWorkflowJob } from '../models/repair-workflow.models';
-
 export type RepairQuotationProgress = 'none' | 'submitted' | 'accepted';
 
 export interface RepairProgressStep {
@@ -16,7 +14,32 @@ export interface RepairProgressInput {
   quotationStatus: RepairQuotationProgress;
   acceptedAt?: string;
   quotationAt?: string;
-  repairJob?: RepairWorkflowJob;
+  requiresPhysicalPickup?: boolean;
+  inspectionCompletedBeforeQuotation?: boolean;
+  repairJob?: RepairProgressWorkflowJob;
+}
+
+export interface RepairProgressWorkflowJob {
+  status: string;
+  confirmedAt?: string;
+  requiresPhysicalPickup?: boolean;
+  inspectionCompletedBeforeQuotation?: boolean;
+  servicePickup?: {
+    scheduledAt?: string;
+    collectedAt?: string;
+  };
+  inspection?: {
+    status?: string;
+    decidedAt?: string;
+  };
+  inspectionStartedAt?: string;
+  inspectionCompletedAt?: string;
+  startedAt?: string;
+  repairCompletedAt?: string;
+  readyForPickupAt?: string;
+  pickedUpAt?: string;
+  completedAt?: string;
+  history?: Array<{ action: string; at: string }>;
 }
 
 export function buildRepairProgressSteps(input: RepairProgressInput): RepairProgressStep[] {
@@ -69,10 +92,11 @@ export function buildRepairProgressSteps(input: RepairProgressInput): RepairProg
     'picked_up',
     'completed',
   ];
+  const pickupRequirement =
+    input.requiresPhysicalPickup ?? repairJob?.requiresPhysicalPickup;
   const pickupRequired =
-    repairJob?.requiresPhysicalPickup === true ||
-    (repairJob?.requiresPhysicalPickup === undefined &&
-      pickupStatuses.includes(status ?? ''));
+    pickupRequirement === true ||
+    (pickupRequirement === undefined && pickupStatuses.includes(status ?? ''));
   if (pickupRequired) {
     const pickupScheduled = Boolean(
       repairJob?.servicePickup?.scheduledAt ||
@@ -148,7 +172,9 @@ export function buildRepairProgressSteps(input: RepairProgressInput): RepairProg
   const readyForPickup = ['ready_for_pickup', 'picked_up', 'completed'].includes(status ?? '');
   const customerPickedUp = ['picked_up', 'completed'].includes(status ?? '');
   const inspectionCompletedBeforeQuotation =
-    repairJob?.inspectionCompletedBeforeQuotation === true && !pickupRequired;
+    (input.inspectionCompletedBeforeQuotation ??
+      repairJob?.inspectionCompletedBeforeQuotation) === true &&
+    !pickupRequired;
   steps.push(
     {
       key: 'inspection',
@@ -160,13 +186,18 @@ export function buildRepairProgressSteps(input: RepairProgressInput): RepairProg
         historyAt('inspection_approved') ??
         repairJob?.inspectionStartedAt ??
         historyAt('inspection_started') ??
+        historyAt('inspection_pending') ??
         acceptedAt,
     },
     {
       key: 'repair',
       label: 'Repair',
       completed: repairCompleted,
-      at: repairJob?.startedAt ?? historyAt('repair_started'),
+      at:
+        repairJob?.startedAt ??
+        historyAt('repair_started') ??
+        historyAt('repair_completed') ??
+        repairJob?.repairCompletedAt,
     },
     {
       key: 'ready-for-pickup',

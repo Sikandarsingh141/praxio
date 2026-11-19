@@ -303,6 +303,8 @@ export interface TechnicianQuotation {
   proposedSolution?: string;
   warrantyInformation?: string;
   estimatedDays?: number | null;
+  inspectionCompletedBeforeQuotation?: boolean;
+  requiresPhysicalPickup?: boolean;
   validUntil?: string | null;
   rejectionReason?: string;
   respondedAt?: string | null;

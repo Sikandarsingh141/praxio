@@ -23,6 +23,10 @@ import {
   disputeToJobListItem,
 } from '../models/job.models';
 import { DisputesService } from './disputes.service';
+import {
+  RepairProgressStep,
+  buildRepairProgressSteps,
+} from '../utils/repair-progress.util';
 
 const PAGE_LIMIT = 50;
 const PRE_REPAIR_STATUSES = [
@@ -150,6 +154,122 @@ export class JobSharedService {
     return this.technicians.myJobDetails(id);
   }
 
+  customerProgress(request: CustomerRepairRequest): RepairProgressStep[] {
+    const acceptedQuotation =
+      request.acceptedQuotation ??
+      request.quotations.find(
+        (quotation) =>
+          quotation._id === request.acceptedQuotationId || quotation.status === 'accepted',
+      );
+    const latestQuotation = [...request.quotations].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    )[0];
+    const quotationAccepted = Boolean(
+      request.acceptedQuotationId ||
+        request.repairJob?.acceptedQuotationId ||
+        acceptedQuotation?.status === 'accepted' ||
+        request.shops?.some((shop) => shop.responseStatus === 'customer_accepted'),
+    );
+    const quotationSubmitted =
+      request.quotations.length > 0 ||
+      request.shops?.some((shop) => shop.responseStatus === 'quotation_submitted');
+    return buildRepairProgressSteps({
+      requestCreatedAt: request.createdAt,
+      requestStatus: request.status,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : quotationSubmitted
+          ? 'submitted'
+          : 'none',
+      acceptedAt: acceptedQuotation?.respondedAt ?? request.repairJob?.confirmedAt,
+      quotationAt:
+        acceptedQuotation?.respondedAt ??
+        latestQuotation?.createdAt ??
+        request.acceptedQuotation?.createdAt,
+      requiresPhysicalPickup: acceptedQuotation?.requiresPhysicalPickup,
+      inspectionCompletedBeforeQuotation: acceptedQuotation?.inspectionCompletedBeforeQuotation,
+      repairJob: request.repairJob,
+    });
+  }
+
+  shopProgress(request: ShopRepairRequest): RepairProgressStep[] {
+    const acceptedQuotation =
+      request.quotations.find(
+        (quotation) =>
+          quotation._id === request.acceptedQuotationId || quotation.status === 'accepted',
+      );
+    const latestQuotation = [...request.quotations].sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    )[0];
+    const quotationAccepted = Boolean(
+      request.acceptedQuotationId ||
+        request.repairJob?.acceptedQuotationId ||
+        acceptedQuotation ||
+        request.shopResponse.status === 'customer_accepted',
+    );
+    return buildRepairProgressSteps({
+      requestCreatedAt: request.createdAt,
+      requestStatus: request.status,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : latestQuotation || request.shopResponse.status === 'quotation_submitted'
+          ? 'submitted'
+          : 'none',
+      acceptedAt:
+        acceptedQuotation?.respondedAt ??
+        request.shopResponse.respondedAt ??
+        request.repairJob?.confirmedAt,
+      quotationAt:
+        acceptedQuotation?.respondedAt ??
+        latestQuotation?.createdAt ??
+        request.repairJob?.confirmedAt,
+      requiresPhysicalPickup: acceptedQuotation?.requiresPhysicalPickup,
+      inspectionCompletedBeforeQuotation: acceptedQuotation?.inspectionCompletedBeforeQuotation,
+      repairJob: request.repairJob,
+    });
+  }
+
+  technicianProgress(request: TechnicianRepairDetails): RepairProgressStep[] {
+    const repairJob = request.repairJobDetails ?? request.repairJob ?? undefined;
+    const acceptedQuotation = request.quotations.find(
+      (quotation) => quotation.status === 'accepted',
+    );
+    const latestQuotation = [...request.quotations].sort((left, right) =>
+      (right.createdAt ?? '').localeCompare(left.createdAt ?? ''),
+    )[0];
+    const quotationAccepted = Boolean(
+      acceptedQuotation ||
+        request.quotation?.approvedAt ||
+        repairJob?.acceptedQuotationId ||
+        request.shopResponse?.status === 'customer_accepted',
+    );
+    return buildRepairProgressSteps({
+      requestCreatedAt: request.createdAt ?? request.assignedAt,
+      requestStatus: request.requestStatus ?? request.status,
+      quotationStatus: quotationAccepted
+        ? 'accepted'
+        : latestQuotation ||
+            request.quotation ||
+            request.shopResponse?.status === 'quotation_submitted'
+          ? 'submitted'
+          : 'none',
+      acceptedAt:
+        acceptedQuotation?.respondedAt ??
+        request.quotation?.approvedAt ??
+        request.shopResponse?.respondedAt ??
+        repairJob?.confirmedAt,
+      quotationAt:
+        acceptedQuotation?.respondedAt ??
+        latestQuotation?.createdAt ??
+        request.quotation?.approvedAt ??
+        undefined,
+      requiresPhysicalPickup: acceptedQuotation?.requiresPhysicalPickup,
+      inspectionCompletedBeforeQuotation:
+        acceptedQuotation?.inspectionCompletedBeforeQuotation,
+      repairJob,
+    });
+  }
+
   technicianDirections(requestId: string): Observable<RepairRoute> {
     return this.technicians.myJobDirections(requestId);
   }
@@ -172,9 +292,11 @@ export class JobSharedService {
 
   technicianTimeline(request: TechnicianRepairDetails): JobTimelineEntry[] {
     return (request.timeline ?? []).map((event) => ({
-      title: event.action.replace(/_/g, ' '),
-      description: [event.actorName, event.notes].filter(Boolean).join(' · '),
+      title: event.action.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      description: event.notes,
       at: event.at,
+      actorName: event.actorName,
+      actorRole: event.actorRole,
     }));
   }
 

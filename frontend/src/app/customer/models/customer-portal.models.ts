@@ -43,6 +43,8 @@ export interface RepairQuotation {
   proposedSolution?: string;
   warrantyInformation?: string;
   additionalNotes?: string;
+  inspectionCompletedBeforeQuotation?: boolean;
+  requiresPhysicalPickup?: boolean;
   validUntil?: string;
   status: 'pending' | 'sent' | 'accepted' | 'rejected' | 'declined' | 'expired' | 'withdrawn';
   rejectionReason?: string;

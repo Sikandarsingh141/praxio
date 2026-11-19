@@ -1327,60 +1327,7 @@
                   </span>
                 }
 
-                @if (isCompletedJobsRoute()) {
-                  <div class="job-progress-stepper completed-job-stepper" aria-label="Job progress">
-                    <div class="progress-step complete">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
-                      <span>Assigned</span>
-                      <small class="step-date-sub">{{ getStepperAssignedDate(repair) }}</small>
-                    </div>
-                    <span class="progress-line complete"></span>
-                    <div class="progress-step complete">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
-                      <span>In Progress</span>
-                      <small class="step-date-sub">{{ getStepperInProgressDate(repair) }}</small>
-                    </div>
-                    <span class="progress-line complete"></span>
-                    <div class="progress-step complete">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
-                      <span>Testing</span>
-                      <small class="step-date-sub">{{ getStepperTestingDate(repair) }}</small>
-                    </div>
-                    <span class="progress-line complete"></span>
-                    <div class="progress-step complete">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
-                      <span>Completed</span>
-                      <small class="step-date-sub">{{ getStepperCompletedDate(repair) }}</small>
-                    </div>
-                  </div>
-                } @else {
-                  <div class="job-progress-stepper" aria-label="Job progress">
-                    <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) > 1" [class.active]="getCurrentJobStep(repair.status) === 1">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
-                      <span>Assigned</span>
-                    </div>
-                    <span class="progress-line" [class.complete]="getCurrentJobStep(repair.status) > 1"></span>
-                    <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) > 2" [class.active]="getCurrentJobStep(repair.status) === 2">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></span>
-                      <span>{{ isActiveJobsRoute() ? 'Inspection' : 'In Progress' }}</span>
-                      @if (isActiveJobsRoute() && getCurrentJobStep(repair.status) === 2) {
-                        <small class="step-status-pill">
-                          {{ repair.status === 'on_hold' ? 'On Hold' : 'In Progress' }}
-                        </small>
-                      }
-                    </div>
-                    <span class="progress-line" [class.complete]="getCurrentJobStep(repair.status) > 2"></span>
-                    <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) > 3" [class.active]="getCurrentJobStep(repair.status) === 3">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 12 11 14 15 10"/><circle cx="12" cy="12" r="9"/></svg></span>
-                      <span>Testing</span>
-                    </div>
-                    <span class="progress-line" [class.complete]="getCurrentJobStep(repair.status) > 3"></span>
-                    <div class="progress-step" [class.complete]="getCurrentJobStep(repair.status) === 4">
-                      <span class="progress-node"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></span>
-                      <span>Completed</span>
-                    </div>
-                  </div>
-                }
+                <app-repair-progress [steps]="repairProgressSteps(repair)" />
               </div>
 
               <!-- Action Buttons Row -->
@@ -2363,29 +2310,13 @@
               @if (detailTab() === 'timeline') {
                 <div class="timeline-subtab-view">
                   <header class="subtab-header">
-                    <h4>Repair History &amp; Events</h4>
+                    <h4>Repair History</h4>
                     <button type="button" class="timeline-add-note-btn" (click)="openProgressModal()">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                       Add Note
                     </button>
                   </header>
-                  <ol class="timeline-items-flow">
-                    @for (ev of repair.timeline; track $index) {
-                      <li class="flow-item">
-                        <div class="flow-marker"></div>
-                        <div class="flow-card">
-                          <div class="flow-head">
-                            <strong>{{ ev.action.replace('_', ' ') | titlecase }}</strong>
-                            <time>{{ ev.at | date: 'medium' }}</time>
-                          </div>
-                          <span class="flow-author">by {{ ev.actorName }} ({{ ev.actorRole | titlecase }})</span>
-                          @if (ev.notes) {
-                            <p class="flow-notes">“{{ ev.notes }}”</p>
-                          }
-                        </div>
-                      </li>
-                    }
-                  </ol>
+                  <app-job-timeline [items]="repairHistory(repair)" />
                 </div>
               }
 

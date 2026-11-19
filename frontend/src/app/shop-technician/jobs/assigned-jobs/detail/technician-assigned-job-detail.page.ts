@@ -11,6 +11,7 @@ import {
 import { TechnicianJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
 import { TechnicianRepairDetails } from '../../../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../../../shop/technicians/technicians.service';
@@ -50,6 +51,7 @@ type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
+    RepairProgressComponent,
     ShopRepairRouteComponent,
     TechnicianAdditionalChargesComponent,
     ConfirmationDialogComponent,
@@ -103,12 +105,6 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
       this.amount(this.inspectionCharge()) +
       this.amount(this.inspectionOtherCharges()),
   );
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
   readonly backRoute = '/technician/assigned-jobs';
   readonly backLabel = 'Assigned Requests';
   readonly pageTitle = 'Assigned Request Details';
@@ -183,65 +179,6 @@ export class TechnicianAssignedJobDetailPage extends TechnicianJobDetailPageBase
         inspection.images?.length ||
         (inspection.status && inspection.status !== 'in_progress' && inspection.status !== 'draft'),
     );
-  }
-
-  isRepairComplete(request: TechnicianRepairDetails): boolean {
-    return (
-      request.repairJobDetails?.status === 'completed' ||
-      request.requestStatus === 'completed'
-    );
-  }
-
-  currentProgressStep(request: TechnicianRepairDetails): number {
-    const status = request.repairJobDetails?.status;
-    if (
-      status === 'in_progress' ||
-      status === 'on_hold' ||
-      status === 'repair_completed' ||
-      status === 'ready_for_pickup' ||
-      status === 'picked_up' ||
-      status === 'completed' ||
-      status === 'inspection_approved' ||
-      request.shopResponse?.status === 'customer_accepted'
-    ) {
-      return 4;
-    }
-    if (
-      status === 'awaiting_customer_approval' ||
-      status === 'repair_declined' ||
-      request.shopResponse?.status === 'quotation_submitted' ||
-      request.quotations.length > 0
-    ) {
-      return 3;
-    }
-    return 2;
-  }
-
-  progressDate(request: TechnicianRepairDetails, index: number): string | undefined {
-    const repair = request.repairJobDetails;
-    switch (index) {
-      case 0:
-        return request.createdAt;
-      case 1:
-        return (
-          request.timeline?.find((event) => event.action === 'inspection_pending')?.at ??
-          repair?.confirmedAt
-        );
-      case 2:
-        return (
-          request.quotations.find((quotation) => quotation.status === 'accepted')?.respondedAt ??
-          request.quotations[0]?.createdAt
-        );
-      case 3:
-        return (
-          request.timeline?.find((event) => event.action === 'repair_completed')?.at ??
-          repair?.repairCompletedAt ??
-          repair?.readyForPickupAt ??
-          repair?.completedAt
-        );
-      default:
-        return undefined;
-    }
   }
 
   startInspection(): void {

@@ -5,11 +5,19 @@ import { ShopJobDetailPageBase } from '../../../../shared/components/job-page-ba
 import { JobStatusBadgeComponent } from '../../../../shared/components/job-status-badge/job-status-badge.component';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 
 @Component({
   selector: 'app-shop-active-job-detail-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, JobStatusBadgeComponent, JobAttachmentsComponent, JobTimelineComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    JobStatusBadgeComponent,
+    JobAttachmentsComponent,
+    JobTimelineComponent,
+    RepairProgressComponent,
+  ],
   templateUrl: './shop-active-job-detail.page.html',
   styleUrl: './shop-active-job-detail.page.scss',
 })

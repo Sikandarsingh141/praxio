@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -8,6 +8,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { UserProfile } from '../../core/auth/auth.models';
 import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
+import { RepairProgressComponent } from '../../shared/components/repair-progress/repair-progress.component';
 import { JobSharedService } from '../../shared/services/job-shared.service';
 import { CustomerRepairRequest } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
@@ -24,6 +25,7 @@ import { ToastService } from '../../core/toast/toast.service';
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
+    RepairProgressComponent,
     CustomerRepairWorkflowComponent,
   ],
   templateUrl: './customer-repair-job.page.html',
@@ -40,12 +42,10 @@ export class CustomerRepairJobPage implements OnInit {
   readonly error = signal('');
   readonly notice = signal('');
   readonly issueDescription = signal('');
-  readonly progressSteps = [
-    'Request Submitted',
-    'Inspection Pending',
-    'Quotation',
-    'Repair & Complete',
-  ];
+  readonly repairProgressSteps = computed(() => {
+    const request = this.job();
+    return request ? this.jobs.customerProgress(request) : [];
+  });
   private requestId = '';
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -163,66 +163,6 @@ export class CustomerRepairJobPage implements OnInit {
   shopMapEmbedUrl(address: string): SafeResourceUrl {
     const url = `https://maps.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
-
-  get currentProgressStep(): number {
-    const repair = this.job();
-    if (!repair) return 1;
-    const status = repair.repairJob?.status;
-    if (
-      status === 'awaiting_customer_approval' ||
-      status === 'repair_declined'
-    ) {
-      return 3;
-    }
-    if (status === 'inspection_approved') return 4;
-    if (
-      status === 'in_progress' ||
-      status === 'on_hold' ||
-      status === 'repair_completed' ||
-      status === 'ready_for_pickup' ||
-      status === 'picked_up' ||
-      status === 'completed' ||
-      status === 'disputed'
-    ) {
-      return 4;
-    }
-    if (repair.repairJob) return 2;
-    return repair.quotations.length ? 3 : 2;
-  }
-
-  get isRepairComplete(): boolean {
-    return this.job()?.repairJob?.status === 'completed';
-  }
-
-  progressDate(index: number): string | undefined {
-    const repair = this.job();
-    const repairJob = repair?.repairJob;
-    const historyAt = (action: string): string | undefined =>
-      repairJob?.history?.find((event) => event.action === action)?.at;
-
-    switch (index) {
-      case 0:
-        return repair?.createdAt;
-      case 1:
-        return historyAt('inspection_pending') ?? repairJob?.confirmedAt;
-      case 2:
-        return (
-          repair?.acceptedQuotation?.respondedAt ??
-          repair?.acceptedQuotation?.createdAt ??
-          repair?.quotations[repair.quotations.length - 1]?.createdAt
-        );
-      case 3:
-        return (
-          historyAt('repair_completed') ??
-          repairJob?.repairCompletedAt ??
-          historyAt('ready_for_pickup') ??
-          repairJob?.readyForPickupAt ??
-          repairJob?.completedAt
-        );
-      default:
-        return undefined;
-    }
   }
 
   shopDirectionsUrl(address: string): string | null {

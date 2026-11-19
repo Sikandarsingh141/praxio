@@ -131,14 +131,18 @@ describe('CustomerActiveJobDetailPage', () => {
     expect(page.querySelector('.repair-history-card')?.textContent).toContain('Inspection started');
   });
 
-  it('hides the Repair History card when no repair history has been recorded', () => {
+  it('shows an empty Repair History state when no history has been recorded', () => {
+    jobs.customerTimeline.and.returnValue([]);
     jobs.customerJob.and.returnValue(
       of({ ...request, repairJob: { ...request.repairJob!, history: [] } }),
     );
     const fixture = TestBed.createComponent(CustomerActiveJobDetailPage);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.repair-history-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.repair-history-card')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).toContain(
+      'No repair history has been recorded yet.',
+    );
   });
 
   it('matches the Shop progress stages and horizontal tracker when pickup is required', () => {

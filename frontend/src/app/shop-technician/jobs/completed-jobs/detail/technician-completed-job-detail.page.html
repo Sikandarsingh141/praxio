@@ -49,19 +49,7 @@
       </span>
     </section>
 
-    <ol class="request-progress" aria-label="Repair progress">
-      @for (step of progressSteps; track step; let index = $index) {
-        <li class="completed">
-          <span class="progress-marker" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></svg>
-          </span>
-          <strong>{{ step }}</strong>
-          @if (progressDate(job, index); as stepDate) {
-            <time>{{ stepDate | date: 'MMM d, y, h:mm a' }}</time>
-          }
-        </li>
-      }
-    </ol>
+    <app-repair-progress [steps]="repairProgressSteps()" />
 
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
@@ -251,11 +239,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
               Repair History
             </h2>
-            @if (jobs.technicianTimeline(job).length) {
-              <app-job-timeline [items]="jobs.technicianTimeline(job)" />
-            } @else {
-              <div class="timeline-empty"><strong>No repair history is available.</strong></div>
-            }
+            <app-job-timeline [items]="jobs.technicianTimeline(job)" />
           </section>
         </section>
       </div>
