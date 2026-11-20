@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { ShopProfile } from '../../core/auth/auth.models';
@@ -619,6 +619,8 @@ describe('ShopRepairRequestDetailsPage directions', () => {
 
   it('offers completed-inspection and shop-pickup choices with a neutral shop-inspection default', () => {
     const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    const router = TestBed.inject(Router);
+    spyOn(router, 'navigate');
     fixture.detectChanges();
     const component = fixture.componentInstance;
     component.setRequest({ ...request, serviceType: 'shop_visit' });
@@ -668,6 +670,10 @@ describe('ShopRepairRequestDetailsPage directions', () => {
         requiresPhysicalPickup: false,
       }),
     );
+    expect(router.navigate).toHaveBeenCalledWith([
+      '/shop/jobs/pending-jobs',
+      request._id,
+    ]);
   });
 
   it('supports completion multi-select, Other, dynamic parts, and preserves the API contract', () => {

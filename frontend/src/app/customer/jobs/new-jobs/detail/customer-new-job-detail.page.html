@@ -218,7 +218,27 @@
             />
           </section>
 
-          @if (shopDetails(job); as shop) {
+          @if (job.shops?.length) {
+            <section class="customer-detail-block repair-shop-section">
+              <h2 class="section-heading">Selected Shops</h2>
+              @for (shop of job.shops; track shop.id) {
+                <div class="shop-summary">
+                  <span class="shop-logo" aria-hidden="true">
+                    @if (hasSelectedShopLogo(shop.id, shop.logoUrl)) {
+                      <img [src]="shop.logoUrl" alt="" (error)="onSelectedShopLogoError(shop.id)" />
+                    } @else {
+                      {{ shopInitials(shop.name) }}
+                    }
+                  </span>
+                  <div class="shop-copy">
+                    <strong>{{ shop.name }}</strong>
+                    <span>{{ shopResponseStatusLabel(shop.responseStatus) }}</span>
+                  </div>
+                  <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
+                </div>
+              }
+            </section>
+          } @else if (shopDetails(job); as shop) {
             <section class="customer-detail-block repair-shop-section">
               <h2 class="section-heading">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" /></svg>

@@ -30,7 +30,7 @@ h1 { margin: 0; color: #17231c; font-size: clamp(1.45rem, 3vw, 1.9rem); font-wei
 .issue-note svg { width: 1.05rem; height: 1.05rem; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
 
 .shop-summary { display: grid; min-width: 0; grid-template-columns: 3rem minmax(0, 1fr) auto; align-items: center; gap: .65rem; padding: .7rem; border-radius: .7rem; background: #f3f8f3; }
-.shop-logo { display: grid; width: 3rem; height: 3rem; overflow: hidden; place-items: center; border-radius: 50%; background: #e5f1e7; color: #087c3b; }
+.shop-logo { display: grid; width: 3rem; height: 3rem; overflow: hidden; place-items: center; border-radius: 50%; background: #e5f1e7; color: #087c3b; font-size: .95rem; font-weight: 750; }
 .shop-logo img { width: 100%; height: 100%; object-fit: cover; }
 .shop-logo svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.6; }
 .shop-copy { display: grid; min-width: 0; gap: .25rem; }

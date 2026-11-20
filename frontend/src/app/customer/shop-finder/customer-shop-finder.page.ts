@@ -459,7 +459,7 @@ export class CustomerShopFinderPage implements OnInit, OnDestroy {
       .subscribe({
         next: (requestId) => {
           this.submitting.set(false);
-          void this.router.navigate(['/customer/repair-requests', requestId]);
+          void this.router.navigate(['/customer/jobs/new-jobs', requestId]);
         },
         error: (error: HttpErrorResponse) => {
           this.requestError.set(

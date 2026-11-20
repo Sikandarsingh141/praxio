@@ -428,7 +428,7 @@ describe('CustomerShopFinderPage', () => {
       jasmine.objectContaining({ shopIds: ['shop-id', 'another-shop-id'] }),
     );
     expect(router.navigate).toHaveBeenCalledWith([
-      '/customer/repair-requests',
+      '/customer/jobs/new-jobs',
       'created-request-id',
     ]);
   });

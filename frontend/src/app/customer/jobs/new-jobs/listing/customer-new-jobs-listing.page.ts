@@ -11,7 +11,11 @@ import {
   FilterConfig,
   FilterValues,
 } from '../../../../shared/components/filters/common-filter.component';
-import { CustomerJobCategory, JobListItem } from '../../../../shared/models/job.models';
+import {
+  CustomerJobCategory,
+  JobListItem,
+  JobShopPartner,
+} from '../../../../shared/models/job.models';
 import { TableScrollIndicatorsDirective } from '../../../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
@@ -38,6 +42,7 @@ export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
   readonly detailRoute: string = '/customer/jobs/new-jobs';
   readonly appliedFilters = signal<FilterValues>({});
   readonly failedImages = signal<Set<string>>(new Set<string>());
+  readonly failedShopImages = signal<Set<string>>(new Set<string>());
   readonly openActionsJobId = signal<string | null>(null);
   readonly detailMenuPositions: ConnectedPosition[] = [
     { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
@@ -86,6 +91,38 @@ export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
     if (brand) return brand;
     if (model) return model;
     return 'Brand not specified';
+  }
+
+  shopPartners(job: JobListItem): JobShopPartner[] {
+    if (job.shopPartners?.length) return job.shopPartners;
+    return job.shopName ? [{ id: job.id, name: job.shopName }] : [];
+  }
+
+  hasShopImage(shopId: string, logoUrl?: string | null): boolean {
+    return !!logoUrl && !this.failedShopImages().has(shopId);
+  }
+
+  onShopImageError(shopId: string): void {
+    const updated = new Set(this.failedShopImages());
+    updated.add(shopId);
+    this.failedShopImages.set(updated);
+  }
+
+  visibleShopPartners(job: JobListItem): JobShopPartner[] {
+    return this.shopPartners(job).slice(0, 4);
+  }
+
+  additionalShopCount(job: JobListItem): number {
+    return Math.max(0, this.shopPartners(job).length - 4);
+  }
+
+  shopPartnersLabel(job: JobListItem): string {
+    const names = this.shopPartners(job).map((shop) => shop.name);
+    return names.length ? `Selected shops: ${names.join(', ')}` : 'No shops selected';
+  }
+
+  shopInitial(name: string): string {
+    return name.trim().charAt(0).toLocaleUpperCase() || 'S';
   }
 
   getDeviceType(item: JobListItem): 'cooler' | 'laptop' | 'mobile' | 'tv' | 'washing_machine' | 'headphone' | 'refrigerator' | 'printer' | 'ac' | 'generic' {

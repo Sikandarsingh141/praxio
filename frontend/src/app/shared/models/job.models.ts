@@ -18,6 +18,12 @@ export interface PendingJobQuotation {
   currency: string;
 }
 
+export interface JobShopPartner {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+}
+
 export interface JobListItem {
   id: string;
   title: string;
@@ -27,6 +33,7 @@ export interface JobListItem {
   customerProfileImageUrl?: string | null;
   shopName?: string;
   shopLogoUrl?: string | null;
+  shopPartners?: JobShopPartner[];
   brand?: string;
   model?: string;
   imageData?: string | null;

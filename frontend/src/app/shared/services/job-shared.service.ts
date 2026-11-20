@@ -503,6 +503,11 @@ export class JobSharedService {
         request.shop?.logoUrl ??
         request.shops?.[0]?.logoUrl ??
         null,
+      shopPartners: request.shops?.length
+        ? request.shops.map(({ id, name, logoUrl }) => ({ id, name, logoUrl }))
+        : request.shop
+          ? [{ id: request.shop.id, name: request.shop.name, logoUrl: request.shop.logoUrl }]
+          : [],
       brand: request.brand,
       model: request.model,
       imageData: request.photos?.[0]?.data ?? null,

@@ -199,6 +199,26 @@ describe('JobSharedService', () => {
     });
   });
 
+  it('keeps every selected shop on customer open request list items', (done) => {
+    const request = customerRequest('multi-shop');
+    request.shopIds = ['shop-1', 'shop-2', 'shop-3'];
+    request.shops = [
+      { id: 'shop-1', name: 'North Repairs', logoUrl: '/north.png' },
+      { id: 'shop-2', name: 'Central Repairs', logoUrl: '/central.png' },
+      { id: 'shop-3', name: 'South Repairs', logoUrl: '/south.png' },
+    ];
+    customerApi.getRepairRequests.and.returnValue(of([request]));
+
+    service.customerJobs('new').subscribe((items) => {
+      expect(items[0].shopPartners).toEqual([
+        { id: 'shop-1', name: 'North Repairs', logoUrl: '/north.png' },
+        { id: 'shop-2', name: 'Central Repairs', logoUrl: '/central.png' },
+        { id: 'shop-3', name: 'South Repairs', logoUrl: '/south.png' },
+      ]);
+      done();
+    });
+  });
+
   it('keeps accepted requests pending until the shop starts inspection', (done) => {
     const confirmedRequest = customerRequest('accepted-confirmed', 'confirmed');
     const inspectionPendingRequest = customerRequest('accepted-inspection-pending', 'inspection_pending');

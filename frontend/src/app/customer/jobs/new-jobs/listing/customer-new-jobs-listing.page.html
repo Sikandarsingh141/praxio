@@ -198,16 +198,35 @@
               <!-- Shop (with Shop Image/Icon) -->
               <td class="td-shop">
                 <div class="shop-cell">
-                  @if (job.shopLogoUrl) {
-                    <img [src]="job.shopLogoUrl" alt="{{ job.shopName }}" class="shop-thumb-img" />
-                  } @else {
-                    <span class="shop-store-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M4 10V20h16V10M3 9l2-5h14l2 5M3 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0M9 20v-6h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
+                  <div
+                    class="shop-avatar-stack"
+                    role="img"
+                    [attr.aria-label]="shopPartnersLabel(job)"
+                    [title]="shopPartnersLabel(job)"
+                  >
+                    @for (shop of visibleShopPartners(job); track shop.id) {
+                      <span class="shop-avatar-initial" aria-hidden="true">
+                        @if (hasShopImage(shop.id, shop.logoUrl)) {
+                          <img [src]="shop.logoUrl" alt="" (error)="onShopImageError(shop.id)" />
+                        } @else {
+                          {{ shopInitial(shop.name) }}
+                        }
+                      </span>
+                    }
+                    @if (additionalShopCount(job) > 0) {
+                      <span class="shop-avatar-more" aria-hidden="true">
+                        +{{ additionalShopCount(job) }}
+                      </span>
+                    }
+                  </div>
+                  @if (shopPartners(job).length) {
+                    <span class="shop-count">
+                      {{ shopPartners(job).length }}
+                      {{ shopPartners(job).length === 1 ? 'shop' : 'shops' }}
                     </span>
+                  } @else {
+                    <span class="shop-count">No shops selected</span>
                   }
-                  <span class="shop-name-text">{{ job.shopName || 'Sikandar Repairing Shop' }}</span>
                 </div>
               </td>
 

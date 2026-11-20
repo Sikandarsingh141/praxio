@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ShopProfile } from '../../core/auth/auth.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { ShopRepairRequest } from '../repair-requests/shop-repair-requests.models';
@@ -87,6 +87,7 @@ type ReplacedPart = {
 export class ShopRepairRequestDetailsPage implements OnInit {
   @ViewChild(ShopRepairWorkflowComponent) private repairWorkflow?: ShopRepairWorkflowComponent;
 
+  private readonly router = inject(Router);
   readonly jobs = inject(JobSharedService);
   readonly reasons = DECLINE_REASONS;
   readonly request = signal<ShopRepairRequest | null>(null);
@@ -530,7 +531,7 @@ export class ShopRepairRequestDetailsPage implements OnInit {
           );
           this.quotationOpen.set(false);
           this.submitting.set(false);
-          this.reloadRequest(request._id);
+          void this.router.navigate(['/shop/jobs/pending-jobs', request._id]);
         },
         error: (error: HttpErrorResponse) => {
           const msg = error.error?.message || 'Quotation could not be submitted.';

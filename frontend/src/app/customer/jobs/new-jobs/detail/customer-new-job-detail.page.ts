@@ -34,6 +34,7 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
   readonly authService = inject(AuthService);
   readonly heroImageUnavailable = signal(false);
   readonly shopLogoUnavailable = signal<string | null>(null);
+  readonly failedSelectedShopLogos = signal<Set<string>>(new Set<string>());
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
@@ -103,6 +104,20 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
       : null;
   }
 
+  shopInitials(name: string): string {
+    return name.trim().charAt(0).toLocaleUpperCase() || 'S';
+  }
+
+  hasSelectedShopLogo(shopId: string, logoUrl?: string | null): boolean {
+    return !!logoUrl && !this.failedSelectedShopLogos().has(shopId);
+  }
+
+  onSelectedShopLogoError(shopId: string): void {
+    const updated = new Set(this.failedSelectedShopLogos());
+    updated.add(shopId);
+    this.failedSelectedShopLogos.set(updated);
+  }
+
   statusLabel(job: CustomerRepairRequest): string {
     const status = job.repairJob?.status ?? job.status;
     if (!job.repairJob && status === 'open') return 'New';
@@ -154,6 +169,11 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  shopResponseStatusLabel(status?: string): string {
+    if (!status || status === 'new') return 'Pending';
+    return this.formatStatus(status);
   }
 
   private isValidCoordinates(
