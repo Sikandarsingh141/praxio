@@ -107,7 +107,17 @@ describe('ShopDashboardPage', () => {
           total: 0,
           fiveStar: 0,
           distribution: [],
-          recent: [],
+          recent: [
+            {
+              _id: 'review-1',
+              overallRating: 5,
+              title: 'Excellent service',
+              reviewText: 'Very helpful and quick.',
+              createdAt: '2026-01-04T00:00:00.000Z',
+              customerName: 'Customer One',
+              customerProfileImageUrl: 'data:image/png;base64,dGVzdA==',
+            },
+          ],
         },
         revenue: { available: false, reason: 'Repair transactions are not configured.' },
       },
@@ -155,7 +165,11 @@ describe('ShopDashboardPage', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Washer four');
     expect(fixture.nativeElement.textContent).not.toContain('Samsung TV');
     expect(fixture.nativeElement.textContent).toContain('No quotations to show yet.');
-    expect(fixture.nativeElement.textContent).toContain('No customer reviews to show yet.');
+    expect(fixture.nativeElement.textContent).toContain('Excellent service');
+    expect(fixture.nativeElement.textContent).toContain('Customer One');
+    expect(
+      (fixture.nativeElement.querySelector('.review-avatar') as HTMLImageElement).src,
+    ).toContain('dGVzdA==');
     expect(fixture.nativeElement.textContent).not.toContain('Your dashboard');
     expect(fixture.nativeElement.querySelector('.chart-tooltip')).toBeFalsy();
 

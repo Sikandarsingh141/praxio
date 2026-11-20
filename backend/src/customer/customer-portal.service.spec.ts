@@ -239,6 +239,69 @@ describe('CustomerPortalService', () => {
     });
   });
 
+  it('includes customer profile images in shop quotation responses', async () => {
+    const requestId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const quoteId = new Types.ObjectId();
+    userModel.findById.mockReturnValue(
+      createQuery({
+        ...shops[0],
+        accountType: 'shop',
+        accountStatus: 'active',
+      }),
+    );
+    quotationModel.find
+      .mockReturnValueOnce(createQuery([]))
+      .mockReturnValueOnce(
+        createQuery([
+          {
+            _id: quoteId,
+            repairRequestId: requestId,
+            shopId: nearShopId,
+            amount: 125,
+            currency: 'USD',
+            status: 'accepted',
+            createdAt: new Date('2026-10-02T00:00:00.000Z'),
+          },
+        ]),
+      );
+    repairRequestModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: requestId,
+          customerId,
+          appliance: 'Laptop',
+          description: 'Screen repair',
+          photos: [],
+        },
+      ]),
+    );
+    userModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: customerId,
+          firstName: 'Ava',
+          lastName: 'Customer',
+          profileImageData: 'data:image/png;base64,customer',
+        },
+      ]),
+    );
+
+    const result = (await service.getShopQuotations(
+      nearShopId.toString(),
+      {},
+    )) as {
+      quotations: Array<{ customer: { profileImageUrl?: string | null } }>;
+    };
+
+    expect(result.quotations[0]?.customer.profileImageUrl).toBe(
+      'data:image/png;base64,customer',
+    );
+    expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
+      'firstName lastName fullName profileImageData',
+    );
+  });
+
   it('filters by supported service, text terms, and distance without inventing distance', async () => {
     const results = await service.searchShops({
       query: 'Central Pune 411001',
@@ -770,6 +833,39 @@ describe('CustomerPortalService', () => {
       .calls[0]?.[0] as unknown[];
     expect(JSON.stringify(reviewPipeline)).not.toContain('$arrayElemAt');
     expect(JSON.stringify(reviewPipeline)).toContain('$customer.firstName');
+    expect(JSON.stringify(reviewPipeline)).toContain('"profileImageData":1');
+    expect(JSON.stringify(reviewPipeline)).toContain('$customer.profileImageData');
+  });
+
+  it('includes customer profile images in shop review results', async () => {
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: nearShopId,
+        accountType: 'shop',
+        accountStatus: 'active',
+      }),
+    );
+    reviewModel.aggregate
+      .mockReturnValueOnce(
+        createQuery([
+          {
+            repairRequestId: 'repair-1',
+            customerName: 'Customer One',
+            customerProfileImageUrl: 'data:image/png;base64,dGVzdA==',
+          },
+        ]),
+      )
+      .mockReturnValueOnce(createQuery([{ _id: 5, count: 1 }]));
+
+    const result = (await service.getShopReviews(nearShopId.toString())) as {
+      reviews: Array<{ customerProfileImageUrl?: string | null }>;
+    };
+
+    expect(result.reviews[0]?.customerProfileImageUrl).toBe(
+      'data:image/png;base64,dGVzdA==',
+    );
+    const reviewPipeline = reviewModel.aggregate.mock.calls[0]?.[0] as unknown[];
+    expect(JSON.stringify(reviewPipeline)).toContain('$customer.profileImageData');
   });
 
   it('starts an accepted repair job atomically and notifies its customer', async () => {

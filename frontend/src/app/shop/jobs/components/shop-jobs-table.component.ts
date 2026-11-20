@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { JobListItem } from '../../../shared/models/job.models';
+import { profileImageSource } from '../../../shared/utils/appliance-thumbnail.util';
 
 @Component({
   selector: 'app-shop-jobs-table',
@@ -21,6 +22,7 @@ export class ShopJobsTableComponent {
   @Input() showAssignedDate = false;
 
   private readonly unavailableImages = new Set<string>();
+  private readonly unavailableCustomerImages = new Set<string>();
   readonly openActionsJobId = signal<string | null>(null);
   readonly actionMenuPositions: ConnectedPosition[] = [
     { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
@@ -53,6 +55,15 @@ export class ShopJobsTableComponent {
       .map((part) => part[0].toLocaleUpperCase())
       .join('');
     return initials || 'CU';
+  }
+
+  customerPhotoSource(job: JobListItem): string | null {
+    if (this.unavailableCustomerImages.has(job.id)) return null;
+    return profileImageSource(job.customerProfileImageUrl);
+  }
+
+  markCustomerImageUnavailable(jobId: string): void {
+    this.unavailableCustomerImages.add(jobId);
   }
 
   assigneeInitials(name?: string): string {

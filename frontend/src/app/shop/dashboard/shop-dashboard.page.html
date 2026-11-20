@@ -411,7 +411,19 @@
             <article class="review-item">
               <div class="review-top">
                 <div class="review-author-wrap">
-                  <span class="review-avatar">{{ (r.customerName || 'C').slice(0, 1).toUpperCase() }}</span>
+                  @if (reviewPhotoSource(r); as photo) {
+                    <img
+                      class="review-avatar"
+                      [src]="photo"
+                      style="object-fit: cover"
+                      [alt]="(r.customerName || 'Customer') + ' profile photo'"
+                      (error)="onReviewPhotoError(r._id)"
+                    />
+                  } @else {
+                    <span class="review-avatar" aria-hidden="true">
+                      {{ (r.customerName || 'C').slice(0, 1).toUpperCase() }}
+                    </span>
+                  }
                   <strong class="review-author-name">{{ r.customerName || 'Customer' }}</strong>
                 </div>
                 <span class="review-date">{{ r.createdAt | date: 'mediumDate' }}</span>

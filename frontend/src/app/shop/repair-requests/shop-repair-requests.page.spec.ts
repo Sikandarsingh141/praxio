@@ -66,4 +66,34 @@ describe('ShopRepairRequestsPage', () => {
     component.onPhotoError(withPhoto);
     expect(component.getCustomerPhoto(withPhoto)).toBeNull();
   });
+
+  it('normalizes customer profile photos and falls back when an image fails', () => {
+    const component = new ShopRepairRequestsPage(
+      {} as unknown as ShopRepairRequestsService,
+      { notifications$: of() } as unknown as NotificationRealtimeService,
+      { snapshot: { data: {} } } as ActivatedRoute,
+    );
+    const request = {
+      _id: 'request-1',
+      customer: { profileImageUrl: 'Y3VzdG9tZXI=' },
+    } as any;
+
+    expect(component.customerPhotoSource(request)).toBe(
+      'data:image/jpeg;base64,Y3VzdG9tZXI=',
+    );
+    component.onCustomerPhotoError(request);
+    expect(component.customerPhotoSource(request)).toBeNull();
+  });
+
+  it('keeps API-backed request page sizes within the server limit', () => {
+    const component = new ShopRepairRequestsPage(
+      {} as unknown as ShopRepairRequestsService,
+      { notifications$: of() } as unknown as NotificationRealtimeService,
+      { snapshot: { data: {} } } as ActivatedRoute,
+    );
+
+    expect(component.pageSizeOptions).toEqual([5, 10, 25, 50]);
+    component.changePageSize(100);
+    expect(component.pageSize()).toBe(10);
+  });
 });

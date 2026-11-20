@@ -14,7 +14,10 @@ import { PaginationComponent } from '../../shared/components/pagination/paginati
 import { ShopQuotationFilters, ShopQuotationPage } from '../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
-import { getCustomerUploadedPhoto } from '../../shared/utils/appliance-thumbnail.util';
+import {
+  getCustomerUploadedPhoto,
+  profileImageSource,
+} from '../../shared/utils/appliance-thumbnail.util';
 
 type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
 
@@ -167,7 +170,21 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
                       quote.repairRequestId.slice(-8).toUpperCase()
                     }}</strong></span
                   >
-                  <h2>{{ quote.customer.displayName || (quote.customer.firstName + ' ' + quote.customer.lastName) }}</h2>
+                  <div class="customer-name-row">
+                    @if (customerPhotoSource(quote); as customerPhoto) {
+                      <img
+                        class="customer-profile-avatar"
+                        [src]="customerPhoto"
+                        [alt]="customerName(quote) + ' profile photo'"
+                        (error)="onCustomerPhotoError(quote._id)"
+                      />
+                    } @else {
+                      <span class="customer-profile-avatar customer-profile-initials" aria-hidden="true">
+                        {{ customerInitials(quote) }}
+                      </span>
+                    }
+                    <h2>{{ customerName(quote) }}</h2>
+                  </div>
                   <p class="device-name">
                     {{ quote.repairRequest.appliance
                     }}{{ quote.repairRequest.brand ? ' · ' + quote.repairRequest.brand : ''
@@ -232,6 +249,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
           [total]="total()"
           [page]="page()"
           [pageSize]="limit()"
+          [pageSizeOptions]="pageSizeOptions"
           [disabled]="loading()"
           ariaLabel="Shop quotations pages"
           (pageChange)="changePage($event)"
@@ -311,6 +329,9 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
       height: 2rem;
     }
     .customer-copy { min-width: 0; }
+    .customer-name-row { display: flex; min-width: 0; align-items: center; gap: 0.5rem; }
+    .customer-profile-avatar { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; overflow: hidden; border-radius: 50%; object-fit: cover; background: #e5f6e8; }
+    .customer-profile-initials { color: #12732b; font-size: 0.68rem; font-weight: 750; }
     .customer-copy h2 { overflow: hidden; margin: 0.25rem 0; color: #1c2721; font-size: 0.98rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
     .device-name, .submitted-date { margin: 0.2rem 0; color: #68756d; font-size: 0.7rem; line-height: 1.4; }
     .quote-info { min-width: 0; padding: 0.1rem 0 0.1rem 0.9rem; border-left: 1px solid #e2e8e3; }
@@ -401,6 +422,7 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly page = signal(1);
   readonly limit = signal(10);
+  readonly pageSizeOptions = [5, 10, 25, 50];
   readonly total = signal(0);
   readonly appliedFilters = signal<FilterValues>({});
   readonly filterConfig: FilterConfig = {
@@ -525,7 +547,7 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
     this.load();
   }
   changePageSize(size: number): void {
-    if (![5, 10, 25, 100].includes(size) || size === this.limit()) return;
+    if (!this.pageSizeOptions.includes(size) || size === this.limit()) return;
     this.limit.set(size);
     this.page.set(1);
     this.load();
@@ -539,7 +561,33 @@ export class ShopQuotationsPage implements OnInit, OnDestroy {
     return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
+  customerName(quote: ShopQuotationPage['quotations'][number]): string {
+    return (
+      quote.customer.displayName?.trim() ||
+      `${quote.customer.firstName} ${quote.customer.lastName}`.trim() ||
+      'Customer'
+    );
+  }
+
+  customerInitials(quote: ShopQuotationPage['quotations'][number]): string {
+    return this.customerName(quote)
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
+  customerPhotoSource(quote: ShopQuotationPage['quotations'][number]): string | null {
+    if (this.failedCustomerPhotoIds.has(quote._id)) return null;
+    return profileImageSource(quote.customer.profileImageUrl);
+  }
+
+  onCustomerPhotoError(quoteId: string): void {
+    this.failedCustomerPhotoIds.add(quoteId);
+  }
+
   private readonly failedPhotoIds = new Set<string>();
+  private readonly failedCustomerPhotoIds = new Set<string>();
 
   getCustomerPhoto(quote: ShopQuotationPage['quotations'][number]): string | null {
     if (this.failedPhotoIds.has(quote._id)) {

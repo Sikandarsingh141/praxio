@@ -14,7 +14,12 @@ import { ChatModule } from './chat/chat.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: resolve(__dirname, '..', '.env'),
+      envFilePath: [
+        resolve(__dirname, '..', '.env'),
+        resolve(__dirname, '../..', '.env'),
+        resolve(process.cwd(), 'backend', '.env'),
+        resolve(process.cwd(), '.env'),
+      ],
       validationSchema: Joi.object({
         NODE_ENV: Joi.string()
           .valid('development', 'test', 'production')

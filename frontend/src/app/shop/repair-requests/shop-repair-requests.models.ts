@@ -119,7 +119,12 @@ export interface ShopQuotationPage {
         description: string;
         photos?: ShopRepairPhoto[];
       };
-      customer: { firstName: string; lastName: string; displayName?: string };
+      customer: {
+        firstName: string;
+        lastName: string;
+        displayName?: string;
+        profileImageUrl?: string | null;
+      };
       shop: { id: string; shopName: string };
     }
   >;
@@ -236,6 +241,7 @@ export interface ShopDashboardOverview {
       reviewText: string;
       createdAt: string;
       customerName?: string;
+      customerProfileImageUrl?: string | null;
     }>;
   };
   revenue: {
@@ -249,6 +255,7 @@ export interface ShopDashboardOverview {
 export interface ShopReview {
   repairRequestId: string;
   customerName: string;
+  customerProfileImageUrl?: string | null;
   overallRating: number;
   repairQuality: number;
   communication: number;

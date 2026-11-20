@@ -59,7 +59,9 @@
   height: 2rem;
   flex: 0 0 auto;
   place-items: center;
+  overflow: hidden;
   border-radius: 50%;
+  object-fit: cover;
   background: #e5f6e8;
   color: #12732b;
   font-size: 0.68rem;

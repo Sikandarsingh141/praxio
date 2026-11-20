@@ -210,6 +210,7 @@ export interface TechnicianAssignment {
   serviceType?: 'shop_visit' | 'home_service' | null;
   repairStatus: string;
   customer: string;
+  customerProfileImageUrl?: string | null;
   assignment: { technicianId: string; assignedAt: string; note?: string };
   isOwner: boolean;
   technician:

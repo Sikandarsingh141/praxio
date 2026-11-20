@@ -17,6 +17,9 @@ dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem
 dt { color: var(--fixora-color-muted); font-size: .75rem; }
 dd { margin: .2rem 0 0; color: var(--fixora-color-text); font-size: .88rem; font-weight: 650; }
 .shop-name { color: var(--fixora-color-heading) !important; font-weight: 700; }
+.customer-identity { display: flex; align-items: center; gap: .65rem; }
+.customer-avatar { display: grid; width: 2.4rem; height: 2.4rem; flex: 0 0 auto; place-items: center; overflow: hidden; border-radius: 50%; object-fit: cover; }
+.customer-avatar-fallback { background: #e5f6e8; color: #12732b; font-size: .75rem; }
 .price { color: var(--fixora-color-primary) !important; font-size: 1.3rem; font-weight: 750; }
 .quotation-row { padding: .75rem 0; border-top: 1px solid var(--fixora-color-border); }
 .quotation-row:first-of-type { border-top: 0; }

@@ -1197,7 +1197,7 @@ export class CustomerPortalService {
     const customers = customerIds.length
       ? await this.users
           .find({ _id: { $in: customerIds } })
-          .select('firstName lastName fullName')
+          .select('firstName lastName fullName profileImageData')
           .lean()
           .exec()
       : [];
@@ -1220,6 +1220,9 @@ export class CustomerPortalService {
               formatUserName(
                 customerMap.get(request!.customerId.toString()) ?? {},
               ) || 'Customer',
+            profileImageUrl:
+              customerMap.get(request!.customerId.toString())
+                ?.profileImageData ?? null,
           },
           shop: {
             id: shop._id.toString(),
@@ -1726,7 +1729,12 @@ export class CustomerPortalService {
                       foreignField: '_id',
                       pipeline: [
                         {
-                          $project: { firstName: 1, lastName: 1, fullName: 1 },
+                          $project: {
+                            firstName: 1,
+                            lastName: 1,
+                            fullName: 1,
+                            profileImageData: 1,
+                          },
                         },
                       ],
                       as: 'customer',
@@ -1746,6 +1754,7 @@ export class CustomerPortalService {
                       title: 1,
                       reviewText: 1,
                       createdAt: 1,
+                      customerProfileImageUrl: '$customer.profileImageData',
                       customerName: mongoCustomerDisplayName(
                         '$customer.firstName',
                         '$customer.lastName',
@@ -4475,6 +4484,9 @@ export class CustomerPortalService {
               wouldRecommend: 1,
               verifiedAt: 1,
               createdAt: 1,
+              customerProfileImageUrl: {
+                $arrayElemAt: ['$customer.profileImageData', 0],
+              },
             },
           },
         ])

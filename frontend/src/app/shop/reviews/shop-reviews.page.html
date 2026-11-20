@@ -79,7 +79,18 @@
           <article class="review-card">
             <header>
               <div class="review-identity">
-                <span class="review-avatar" aria-hidden="true">{{ reviewInitial(review.customerName) }}</span>
+                @if (reviewPhotoSource(review); as photo) {
+                  <img
+                    class="review-avatar"
+                    [src]="photo"
+                    [alt]="review.customerName + ' profile photo'"
+                    (error)="onReviewPhotoError(review.repairRequestId)"
+                  />
+                } @else {
+                  <span class="review-avatar" aria-hidden="true">
+                    {{ reviewInitial(review.customerName) }}
+                  </span>
+                }
                 <div>
                   <h2>{{ review.customerName }}</h2>
                   <p>Verified repair · {{ review.createdAt | date: 'mediumDate' }}</p>

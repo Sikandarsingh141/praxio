@@ -18,6 +18,7 @@ describe('ShopJobsTableComponent', () => {
         status: 'inspection_pending',
         description: 'Not draining',
         customerName: 'Ava Customer',
+        customerProfileImageUrl: 'Y3VzdG9tZXI=',
         brand: 'Fixora',
         model: 'WM-1',
         createdAt: '2026-01-15T12:00:00.000Z',
@@ -33,6 +34,9 @@ describe('ShopJobsTableComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Request ID');
     expect(row.textContent).toContain('Washing machine');
     expect(row.textContent).toContain('Ava Customer');
+    expect(
+      (row.querySelector('img.customer-avatar') as HTMLImageElement).src,
+    ).toContain('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(row.textContent).toContain('Not draining');
     expect(row.textContent).toContain('Inspection pending');
     expect(actionsButton.getAttribute('aria-expanded')).toBe('false');

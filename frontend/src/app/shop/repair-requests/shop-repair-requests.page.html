@@ -126,10 +126,18 @@
                 </span>
                 <h2>{{ request.appliance }}</h2>
                 <p class="customer-name">
-                  <svg class="summary-inline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
+                  @if (customerPhotoSource(request); as customerPhoto) {
+                    <img
+                      class="customer-profile-avatar"
+                      [src]="customerPhoto"
+                      [alt]="(request.customer.displayName || 'Customer') + ' profile photo'"
+                      (error)="onCustomerPhotoError(request)"
+                    />
+                  } @else {
+                    <span class="customer-profile-avatar customer-profile-initials" aria-hidden="true">
+                      {{ (request.customer.displayName || request.customer.firstName || 'C').slice(0, 1).toUpperCase() }}
+                    </span>
+                  }
                   <span>{{ request.customer.displayName || (request.customer.firstName + ' ' + request.customer.lastName) }}</span>
                 </p>
                 <p class="description">
@@ -212,6 +220,7 @@
         [total]="pageData()!.total"
         [page]="pageData()!.page"
       [pageSize]="pageSize()"
+        [pageSizeOptions]="pageSizeOptions"
         [disabled]="loading()"
         ariaLabel="Repair request pages"
         (pageChange)="goToPage($event)"

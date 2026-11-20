@@ -24,6 +24,7 @@ export interface JobListItem {
   status: string;
   description: string;
   customerName?: string;
+  customerProfileImageUrl?: string | null;
   shopName?: string;
   shopLogoUrl?: string | null;
   brand?: string;
@@ -66,6 +67,7 @@ export function disputeToJobListItem(dispute: RepairDispute): JobListItem {
     status: dispute.status,
     description: dispute.description,
     customerName: dispute.parties?.customer?.name,
+    customerProfileImageUrl: dispute.parties?.customer?.profileImageUrl ?? null,
     shopName: dispute.parties?.shop?.name,
     brand: dispute.repair?.brand,
     model: dispute.repair?.model,

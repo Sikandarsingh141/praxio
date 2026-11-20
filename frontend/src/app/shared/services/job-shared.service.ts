@@ -383,6 +383,7 @@ export class JobSharedService {
         status: 'assigned',
         description: assignment.description ?? '',
         customerName: assignment.customer,
+        customerProfileImageUrl: assignment.customerProfileImageUrl ?? null,
         brand: assignment.brand,
         model: assignment.model,
         imageData: assignment.photo ?? null,
@@ -535,6 +536,7 @@ export class JobSharedService {
       description: request.description,
       customerName: request.customer.displayName ??
         `${request.customer.firstName} ${request.customer.lastName}`.trim(),
+      customerProfileImageUrl: request.customer.profileImageUrl ?? null,
       brand: request.brand,
       model: request.model,
       imageData: request.photos?.[0]?.data ?? null,
@@ -562,6 +564,7 @@ export class JobSharedService {
       status: job.status,
       description: job.description ?? '',
       customerName: job.customer,
+      customerProfileImageUrl: job.customerProfileImageUrl ?? null,
       shopName: job.shopName,
       brand: job.brand,
       model: job.model,

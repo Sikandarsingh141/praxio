@@ -698,7 +698,7 @@ export class TechniciansService {
         .exec(),
       this.users
         .find({ _id: { $in: customerIds.map((id) => new Types.ObjectId(id)) } })
-        .select('firstName lastName fullName')
+        .select('firstName lastName fullName profileImageData')
         .lean()
         .exec(),
     ]);
@@ -728,6 +728,7 @@ export class TechniciansService {
           [customer?.firstName, customer?.lastName].filter(Boolean).join(' ') ||
           customer?.fullName ||
           'Customer',
+        customerProfileImageUrl: customer?.profileImageData ?? null,
         assignment,
         isOwner,
         technician: isOwner

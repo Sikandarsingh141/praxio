@@ -13,6 +13,7 @@ import {
 import { ShopDashboardOverview } from '../repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 @Component({
   selector: 'app-shop-dashboard-page',
@@ -29,6 +30,7 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
   readonly dashboardError = signal('');
   readonly dashboardLoading = signal(true);
   readonly dashboard = signal<ShopDashboardOverview | null>(null);
+  readonly unavailableReviewAvatarIds = signal<Set<string>>(new Set());
   readonly dateFrom = signal('');
   readonly dateTo = signal('');
   readonly appliedDateFilters = signal<FilterValues>({});
@@ -170,6 +172,15 @@ export class ShopDashboardPage implements OnInit, OnDestroy {
     if (status === 'sent') return 'Pending';
     if (status === 'declined') return 'Rejected';
     return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  reviewPhotoSource(review: ShopDashboardOverview['reviews']['recent'][number]): string | null {
+    const source = profileImageSource(review.customerProfileImageUrl);
+    return source && !this.unavailableReviewAvatarIds().has(review._id) ? source : null;
+  }
+
+  onReviewPhotoError(reviewId: string): void {
+    this.unavailableReviewAvatarIds.update((ids) => new Set(ids).add(reviewId));
   }
 
   customerName(request: any): string {

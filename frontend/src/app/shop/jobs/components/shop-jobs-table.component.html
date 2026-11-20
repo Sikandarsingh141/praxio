@@ -53,7 +53,18 @@
           </td>
           <td class="td-customer">
             <div class="customer-cell">
-              <span class="customer-avatar" aria-hidden="true">{{ customerInitials(job.customerName) }}</span>
+              @if (customerPhotoSource(job); as photo) {
+                <img
+                  class="customer-avatar"
+                  [src]="photo"
+                  [alt]="(job.customerName || 'Customer') + ' profile photo'"
+                  (error)="markCustomerImageUnavailable(job.id)"
+                />
+              } @else {
+                <span class="customer-avatar" aria-hidden="true">
+                  {{ customerInitials(job.customerName) }}
+                </span>
+              }
               <span class="customer-name">{{ job.customerName || 'Customer' }}</span>
             </div>
           </td>

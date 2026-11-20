@@ -13,6 +13,9 @@ describe('ShopReviewsPage pagination', () => {
       reviews: Array.from({ length: 11 }, (_, index) => ({
         repairRequestId: `repair-${index}`,
         customerName: `Customer ${index}`,
+        ...(index === 10
+          ? { customerProfileImageUrl: 'data:image/png;base64,dGVzdA==' }
+          : {}),
         overallRating: 5,
         repairQuality: 5,
         communication: 5,
@@ -38,6 +41,9 @@ describe('ShopReviewsPage pagination', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('.review-card').length).toBe(10);
     expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
+    expect(
+      (fixture.nativeElement.querySelector('img.review-avatar') as HTMLImageElement).src,
+    ).toContain('dGVzdA==');
 
     fixture.componentInstance.goToPage(2);
     fixture.detectChanges();

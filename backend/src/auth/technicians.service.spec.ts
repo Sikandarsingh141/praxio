@@ -83,7 +83,12 @@ describe('TechniciansService assignments', () => {
         )
         .mockReturnValueOnce(
           createQuery([
-            { _id: customerId, firstName: 'Ava', lastName: 'Customer' },
+            {
+              _id: customerId,
+              firstName: 'Ava',
+              lastName: 'Customer',
+              profileImageData: 'data:image/png;base64,customer',
+            },
           ]),
         ),
     };
@@ -137,6 +142,7 @@ describe('TechniciansService assignments', () => {
       serviceType: 'home_service',
       repairStatus: 'inspection_pending',
       customer: 'Ava Customer',
+      customerProfileImageUrl: 'data:image/png;base64,customer',
       assignment: { technicianId, assignedAt },
       isOwner: false,
       technician: {

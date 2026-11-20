@@ -14,7 +14,10 @@ import {
 } from '../../shared/components/filters/common-filter.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
-import { getCustomerUploadedPhoto } from '../../shared/utils/appliance-thumbnail.util';
+import {
+  getCustomerUploadedPhoto,
+  profileImageSource,
+} from '../../shared/utils/appliance-thumbnail.util';
 
 const TABS = [
   { label: 'All Requests', value: 'all' },
@@ -46,6 +49,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   readonly sort = signal<'newest' | 'oldest'>('newest');
   readonly page = signal(1);
   readonly pageSize = signal(10);
+  readonly pageSizeOptions = [5, 10, 25, 50];
   readonly pageData = signal<ShopRepairRequestPage | null>(null);
   readonly loading = signal(true);
   readonly searchLoading = signal(false);
@@ -90,6 +94,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   private readonly destroyed = new Subject<void>();
   private readonly realtimeSubscription: Subscription;
   private readonly failedPhotoIds = new Set<string>();
+  private readonly failedCustomerPhotoIds = new Set<string>();
   private activeLoads = 0;
   private requestSequence = 0;
 
@@ -236,7 +241,7 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
   }
 
   changePageSize(size: number): void {
-    if (![5, 10, 25, 100].includes(size) || size === this.pageSize()) return;
+    if (!this.pageSizeOptions.includes(size) || size === this.pageSize()) return;
     this.pageSize.set(size);
     this.page.set(1);
     this.load();
@@ -277,5 +282,16 @@ export class ShopRepairRequestsPage implements OnInit, OnDestroy {
 
   onPhotoError(request: ShopRepairRequestPage['requests'][number]): void {
     this.failedPhotoIds.add(request._id);
+  }
+
+  customerPhotoSource(request: ShopRepairRequestPage['requests'][number]): string | null {
+    if (this.failedCustomerPhotoIds.has(request._id)) {
+      return null;
+    }
+    return profileImageSource(request.customer.profileImageUrl);
+  }
+
+  onCustomerPhotoError(request: ShopRepairRequestPage['requests'][number]): void {
+    this.failedCustomerPhotoIds.add(request._id);
   }
 }

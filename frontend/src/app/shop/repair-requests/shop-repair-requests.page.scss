@@ -265,6 +265,33 @@ app-common-filter {
   color: #45554a;
   font-size: 0.72rem;
   display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.customer-profile-avatar {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e5f6e8;
+}
+
+.customer-profile-initials {
+  color: #12732b;
+  font-size: 0.65rem;
+  font-weight: 750;
+}
+
+.customer-name > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   align-items: center;
   gap: 0.35rem;
 }

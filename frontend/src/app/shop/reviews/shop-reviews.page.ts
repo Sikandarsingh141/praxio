@@ -6,6 +6,7 @@ import { ShopReview, ShopReviewSummary } from '../repair-requests/shop-repair-re
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 @Component({
   selector: 'app-shop-reviews-page',
@@ -18,6 +19,7 @@ export class ShopReviewsPage implements OnInit {
   readonly summary = signal<ShopReviewSummary | null>(null);
   readonly loading = signal(true);
   readonly error = signal('');
+  readonly unavailableReviewAvatarIds = signal<Set<string>>(new Set());
   readonly searchText = signal('');
   readonly ratingFilter = signal('all');
   readonly sortOrder = signal<'newest' | 'oldest'>('newest');
@@ -105,6 +107,17 @@ export class ShopReviewsPage implements OnInit {
 
   reviewInitial(name: string): string {
     return name.trim().charAt(0).toUpperCase() || 'C';
+  }
+
+  reviewPhotoSource(review: ShopReview): string | null {
+    const source = profileImageSource(review.customerProfileImageUrl);
+    return source && !this.unavailableReviewAvatarIds().has(review.repairRequestId)
+      ? source
+      : null;
+  }
+
+  onReviewPhotoError(reviewId: string): void {
+    this.unavailableReviewAvatarIds.update((ids) => new Set(ids).add(reviewId));
   }
 
   reviewStars(rating: number): string {
