@@ -3,6 +3,7 @@ import {
   AfterViewInit,
   Directive,
   ElementRef,
+  Input,
   OnDestroy,
   Renderer2,
   inject,
@@ -13,6 +14,8 @@ import {
   standalone: true,
 })
 export class TableScrollIndicatorsDirective implements AfterViewInit, OnDestroy {
+  @Input() tableAppearance?: 'curved' | 'normal';
+
   private readonly host = inject(ElementRef<HTMLElement>).nativeElement;
   private readonly document = inject(DOCUMENT);
   private readonly renderer = inject(Renderer2);
@@ -91,8 +94,12 @@ export class TableScrollIndicatorsDirective implements AfterViewInit, OnDestroy 
     const maxScroll = Math.max(0, scrollWidth - clientWidth);
     const scrollLeft = Math.min(maxScroll, Math.max(0, this.host.scrollLeft));
     const canScroll = maxScroll > 1;
-    const curved =
-      this.document.documentElement.getAttribute('data-table-appearance') !== 'normal';
+    const appearance =
+      this.tableAppearance ??
+      (this.document.documentElement.getAttribute('data-table-appearance') === 'normal'
+        ? 'normal'
+        : 'curved');
+    const curved = appearance === 'curved';
     const leftVisible = canScroll && curved && scrollLeft > 1;
     const rightVisible = curved;
     const indicatorWidth = this.leftIndicator.getBoundingClientRect().width;

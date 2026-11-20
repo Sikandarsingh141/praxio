@@ -6,7 +6,10 @@ import { TableScrollIndicatorsDirective } from './table-scroll-indicators.direct
   standalone: true,
   imports: [TableScrollIndicatorsDirective],
   template: `
-    <div appTableScrollIndicators>
+    <div id="default-appearance" appTableScrollIndicators>
+      <table><tbody><tr><td>Table content</td></tr></tbody></table>
+    </div>
+    <div id="normal-appearance" appTableScrollIndicators tableAppearance="normal">
       <table><tbody><tr><td>Table content</td></tr></tbody></table>
     </div>
   `,
@@ -22,7 +25,7 @@ describe('TableScrollIndicatorsDirective', () => {
     const fixture = TestBed.createComponent(TableScrollHostComponent);
     fixture.detectChanges();
     const host = fixture.nativeElement.querySelector(
-      '[appTableScrollIndicators]',
+      '#default-appearance',
     ) as HTMLElement;
     const left = host.querySelector('.table-scroll-indicator-left') as HTMLElement;
     const right = host.querySelector('.table-scroll-indicator-right') as HTMLElement;
@@ -78,6 +81,24 @@ describe('TableScrollIndicatorsDirective', () => {
     host.dispatchEvent(new Event('scroll'));
     expect(left.style.visibility).toBe('hidden');
     expect(right.style.visibility).toBe('visible');
+
+    fixture.destroy();
+  });
+
+  it('allows one table to use normal edges without changing the global preference', () => {
+    const fixture = TestBed.createComponent(TableScrollHostComponent);
+    fixture.detectChanges();
+
+    const defaultRight = fixture.nativeElement.querySelector(
+      '#default-appearance .table-scroll-indicator-right',
+    ) as HTMLElement;
+    const normalRight = fixture.nativeElement.querySelector(
+      '#normal-appearance .table-scroll-indicator-right',
+    ) as HTMLElement;
+
+    expect(document.documentElement.getAttribute('data-table-appearance')).toBe('curved');
+    expect(defaultRight.style.visibility).toBe('visible');
+    expect(normalRight.style.visibility).toBe('hidden');
 
     fixture.destroy();
   });
