@@ -1,0 +1,261 @@
+<main class="jobs-page quotations-page">
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="title">My Quotations</h1>
+    <p adminPageDescription class="admin-page-description">
+      Track customer responses to quotations submitted by your shop.
+    </p>
+    <a adminPageActions class="assign-job-button" routerLink="/shop/repair-requests">
+      View All Requests
+    </a>
+  </app-admin-page-header>
+
+  <section class="request-summary-grid" aria-label="Quotation summary">
+    @for (item of summaryItems; track item.key) {
+      <article class="summary-card" [attr.data-tone]="item.key">
+        <span class="summary-icon" aria-hidden="true">
+          @switch (item.key) {
+            @case ('total') {
+              <svg viewBox="0 0 24 24">
+                <path d="M7 3h7l5 5v13H7zM14 3v6h5M10 13h6m-6 4h6" />
+              </svg>
+            }
+            @case ('pending') {
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+            }
+            @case ('accepted') {
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="m8 12 2.5 2.5L16.5 9" />
+              </svg>
+            }
+            @case ('rejected') {
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9" />
+                <path d="m9 9 6 6m0-6-6 6" />
+              </svg>
+            }
+            @default {
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="5" width="16" height="15" rx="2" />
+                <path d="M8 3v4m8-4v4M4 10h16" />
+              </svg>
+            }
+          }
+        </span>
+        <span class="summary-copy">
+          <span>{{ item.label }}</span>
+          <strong>{{ summary()[item.key] }}</strong>
+        </span>
+      </article>
+    }
+  </section>
+
+  <form class="assignment-toolbar" (ngSubmit)="applyFilters()" role="search">
+    <label class="search-control">
+      <input
+        type="search"
+        name="search"
+        aria-label="Search quotations by customer, appliance, or request ID"
+        placeholder="Search customer, appliance, or request ID..."
+        [(ngModel)]="search"
+      />
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="10.8" cy="10.8" r="6.3" />
+        <path d="m16 16 4 4" />
+      </svg>
+    </label>
+    <app-common-filter
+      [config]="filterConfig"
+      [appliedFilters]="appliedFilters()"
+      (filtersChange)="applyCommonFilters($event)"
+    />
+    <label class="sort-control">
+      <span class="visually-hidden">Sort quotations</span>
+      <select aria-label="Sort quotations" name="sort" [(ngModel)]="sort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="amount_low">Amount: low to high</option>
+        <option value="amount_high">Amount: high to low</option>
+      </select>
+    </label>
+    <button class="assign-job-button apply-button" type="submit">Apply</button>
+  </form>
+
+  <section class="table-card quotation-table-card" aria-label="My quotations">
+    <nav class="request-tabs" role="tablist" aria-label="Filter quotations by status">
+      @for (tab of tabs; track tab.status) {
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="status() === tab.status"
+          [class.active]="status() === tab.status"
+          (click)="setStatus(tab.status)"
+        >
+          {{ tab.label }} <span>{{ summary()[tab.count] }}</span>
+        </button>
+      }
+    </nav>
+
+    @if (error()) {
+      <div class="state error" role="alert">
+        <p>{{ error() }}</p>
+        <button type="button" (click)="load()">Try again</button>
+      </div>
+    } @else if (loading()) {
+      <div class="state" role="status">Loading quotations...</div>
+    } @else if (!quotations().length) {
+      <div class="state empty">
+        <strong>No quotations found</strong>
+        <p>Quotes you submit for repair requests will appear here.</p>
+        <a routerLink="/shop/repair-requests">Browse All Requests</a>
+      </div>
+    } @else {
+      <div class="table-scroll">
+        <table class="jobs-table quotations-table">
+          <thead>
+            <tr>
+              <th scope="col">Request ID</th>
+              <th scope="col">Device &amp; Brand</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Issue / Quotation Details</th>
+              <th scope="col">Quote</th>
+              <th scope="col">Submitted / Validity</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="th-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (quote of quotations(); track quote._id) {
+              <tr>
+                <td class="request-id-cell">
+                  <span class="job-id">#{{ quote.repairRequestId.slice(-8).toUpperCase() }}</span>
+                </td>
+                <td>
+                  <div class="device-cell">
+                    <div class="device-thumbnail">
+                      @if (getCustomerPhoto(quote); as photoUrl) {
+                        <img
+                          [src]="photoUrl"
+                          [alt]="'Customer photo for ' + quote.repairRequest.appliance"
+                          (error)="onPhotoError(quote._id)"
+                          loading="lazy"
+                        />
+                      } @else {
+                        <svg viewBox="0 0 40 40" aria-hidden="true">
+                          <rect x="5" y="5" width="30" height="30" rx="5" />
+                          <circle cx="20" cy="20" r="6" />
+                        </svg>
+                      }
+                    </div>
+                    <div class="device-copy">
+                      <strong class="device-title">{{ quote.repairRequest.appliance }}</strong>
+                      <span class="device-brand-model">
+                        {{ quote.repairRequest.brand || 'Brand not specified' }}{{ quote.repairRequest.model ? ' · ' + quote.repairRequest.model : '' }}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="customer-cell">
+                    @if (customerPhotoSource(quote); as photo) {
+                      <img
+                        class="customer-avatar"
+                        [src]="photo"
+                        [alt]="customerName(quote) + ' profile photo'"
+                        (error)="onCustomerPhotoError(quote._id)"
+                      />
+                    } @else {
+                      <span class="customer-avatar" aria-hidden="true">
+                        {{ customerInitials(quote) }}
+                      </span>
+                    }
+                    <span class="customer-name">{{ customerName(quote) }}</span>
+                  </div>
+                </td>
+                <td class="quotation-details-cell">
+                  <div class="issue-cell" [title]="quote.repairRequest.description">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    <span>{{ quote.repairRequest.description || 'No issue details' }}</span>
+                  </div>
+                  <details class="quote-details">
+                    <summary>Quotation details</summary>
+                    <p>{{ quote.message }}</p>
+                    @if (quote.proposedSolution) {
+                      <p><strong>Proposed solution:</strong> {{ quote.proposedSolution }}</p>
+                    }
+                    @if (quote.warrantyInformation) {
+                      <p><strong>Warranty:</strong> {{ quote.warrantyInformation }}</p>
+                    }
+                    @if (quote.additionalNotes) {
+                      <p><strong>Additional notes:</strong> {{ quote.additionalNotes }}</p>
+                    }
+                    @if (quote.rejectionReason) {
+                      <p class="reason"><strong>Customer response:</strong> {{ quote.rejectionReason }}</p>
+                    }
+                    <div class="quote-meta">
+                      <span>Estimated {{ quote.estimatedDays ?? '—' }} days</span>
+                      <span>
+                        Valid until
+                        {{ quote.validUntil ? (quote.validUntil | date: 'mediumDate') : 'Not specified' }}
+                      </span>
+                    </div>
+                  </details>
+                </td>
+                <td class="quote-amount-cell">
+                  <strong class="quote-total">{{ quote.amount | currency: quote.currency }}</strong>
+                  <details class="cost-breakdown">
+                    <summary>Cost breakdown</summary>
+                    <span>Inspection {{ quote.inspectionCharge || 0 | currency: quote.currency }}</span>
+                    <span>Labour {{ quote.labourCharge || 0 | currency: quote.currency }}</span>
+                    <span>Parts {{ quote.partsCost || 0 | currency: quote.currency }}</span>
+                    <span>Additional {{ quote.additionalCharges || 0 | currency: quote.currency }}</span>
+                  </details>
+                </td>
+                <td>
+                  <div class="date-copy">
+                    <strong>{{ quote.createdAt | date: 'MMM d, y, h:mm a' }}</strong>
+                    <small class="cell-secondary">
+                      Valid until {{ quote.validUntil ? (quote.validUntil | date: 'mediumDate') : 'Not specified' }}
+                    </small>
+                  </div>
+                </td>
+                <td>
+                  <span
+                    class="job-status quotation-status"
+                    [attr.data-status]="quote.status === 'declined' ? 'rejected' : quote.status"
+                  >
+                    {{ quotationStatusLabel(quote.status) }}
+                  </span>
+                </td>
+                <td class="td-action">
+                  <a class="view-request-link" [routerLink]="['/shop/repair-requests', quote.repairRequestId]">
+                    View Request
+                    <span aria-hidden="true">→</span>
+                  </a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <app-pagination
+        [total]="total()"
+        [page]="page()"
+        [pageSize]="limit()"
+        [pageSizeOptions]="pageSizeOptions"
+        [disabled]="loading()"
+        ariaLabel="Shop quotations pages"
+        (pageChange)="changePage($event)"
+        (pageSizeChange)="changePageSize($event)"
+      />
+    }
+  </section>
+</main>
