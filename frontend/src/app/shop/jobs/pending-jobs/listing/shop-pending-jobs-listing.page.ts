@@ -17,7 +17,8 @@ import { ShopJobsTableComponent } from '../../components/shop-jobs-table.compone
 export class ShopPendingJobsListingPage extends ShopJobsListingPageBase {
   protected override readonly category = 'pending' as const;
   readonly title = 'Pending Requests';
-  readonly description = 'Track requests waiting for a response or decision.';
+  readonly description =
+    'Review quotations awaiting a decision and start accepted repairs before technician assignment.';
   readonly detailRoute = '/shop/jobs/pending-jobs';
 }
 

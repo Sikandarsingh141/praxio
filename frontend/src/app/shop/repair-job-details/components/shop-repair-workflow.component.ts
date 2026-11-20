@@ -57,6 +57,7 @@ export class ShopRepairWorkflowComponent implements OnChanges {
   @Input() inspectionSubmissionInSidebar = false;
   @Input() startRepairInSidebar = false;
   @Output() readonly requestUpdated = new EventEmitter<ShopRepairRequest>();
+  @Output() readonly inspectionStarted = new EventEmitter<void>();
 
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -242,7 +243,10 @@ export class ShopRepairWorkflowComponent implements OnChanges {
     this.submitting.set(true);
     this.error.set('');
     this.requests.startInspection(this.request._id).subscribe({
-      next: () => this.reloadRequest('Inspection started.'),
+      next: () => {
+        this.inspectionStarted.emit();
+        this.reloadRequest('Inspection started.');
+      },
       error: (error: HttpErrorResponse) => this.fail(error, 'Inspection could not be started.'),
     });
   }

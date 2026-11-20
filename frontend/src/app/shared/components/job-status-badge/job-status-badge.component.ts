@@ -37,6 +37,7 @@ export class JobStatusBadgeComponent {
   @Input({ required: true }) status = '';
 
   get label(): string {
+    if (this.status === 'customer_accepted') return 'Confirmed by customer';
     return this.status.replace(/_/g, ' ').toLocaleLowerCase();
   }
 }

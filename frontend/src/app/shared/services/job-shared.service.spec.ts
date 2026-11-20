@@ -382,7 +382,21 @@ describe('JobSharedService', () => {
 
   it('includes current assignments across active repair stages', (done) => {
     const awaitingAssignment = shopRequest('awaiting-assignment', 'customer_accepted', 'confirmed');
-    shopApi.list.and.returnValue(of(shopPage([awaitingAssignment], 1, 1)));
+    const pickupScheduled = shopRequest('pickup-scheduled', 'customer_accepted', 'pickup_scheduled');
+    const collected = shopRequest('collected', 'customer_accepted', 'inspection_pending');
+    const inspectionStarted = shopRequest(
+      'inspection-started',
+      'customer_accepted',
+      'inspection_in_progress',
+    );
+    if (!collected.repairJob) {
+      throw new Error('Collected request fixture must include repair details.');
+    }
+    collected.repairJob.requiresPhysicalPickup = true;
+    collected.repairJob.servicePickup = { collectedAt: '2026-11-20T10:00:00.000Z' };
+    shopApi.list.and.returnValue(
+      of(shopPage([awaitingAssignment, pickupScheduled, collected, inspectionStarted], 1, 4)),
+    );
     technicianApi.assignments.and.returnValue(
       of([
         assignmentRecord('technician-assignment', 'confirmed', false),
@@ -394,8 +408,15 @@ describe('JobSharedService', () => {
     forkJoin({
       pending: service.shopJobs('pending'),
       assigned: service.shopJobs('assigned'),
+      active: service.shopJobs('active'),
     }).subscribe((lists) => {
-      expect(lists.pending.map((item) => item.id)).toEqual(['awaiting-assignment']);
+      expect(lists.pending.map((item) => item.id)).toEqual([
+        'awaiting-assignment',
+        'pickup-scheduled',
+        'collected',
+      ]);
+      expect(lists.pending[0].status).toBe('customer_accepted');
+      expect(lists.active.map((item) => item.id)).toEqual(['inspection-started']);
       expect(lists.assigned.map((item) => item.id)).toEqual([
         'technician-assignment',
         'owner-assignment',

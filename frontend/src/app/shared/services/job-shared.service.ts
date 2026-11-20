@@ -531,13 +531,22 @@ export class JobSharedService {
     const quotations = request.quotations ?? [];
     const assignment = request.technicianAssignment?.current;
     const repairStatus = request.repairJob?.status;
+    const itemCollected = this.hasCollectedItem(request);
+    const acceptedAwaitingAssignment =
+      request.shopResponse.status === 'customer_accepted' &&
+      !assignment &&
+      (!repairStatus || PRE_REPAIR_STATUSES.includes(repairStatus));
     return {
       id: request._id,
       title: request.appliance,
       status:
-        assignment && (!repairStatus || PRE_REPAIR_STATUSES.includes(repairStatus))
+        !itemCollected &&
+        assignment &&
+        (!repairStatus || PRE_REPAIR_STATUSES.includes(repairStatus))
           ? 'assigned'
-          : repairStatus ?? request.shopResponse.status,
+          : acceptedAwaitingAssignment
+            ? 'customer_accepted'
+            : repairStatus ?? request.shopResponse.status,
       description: request.description,
       customerName: request.customer.displayName ??
         `${request.customer.firstName} ${request.customer.lastName}`.trim(),
@@ -560,6 +569,14 @@ export class JobSharedService {
       assignedToImageData: assignment?.profileImageData ?? null,
       assignedAt: assignment?.assignedAt,
     };
+  }
+
+  private hasCollectedItem(request: ShopRepairRequest): boolean {
+    return (
+      request.repairJob?.status === 'item_picked_up' ||
+      (request.repairJob?.requiresPhysicalPickup === true &&
+        !!request.repairJob.servicePickup?.collectedAt)
+    );
   }
 
   private technicianListItem(job: TechnicianJob): JobListItem {

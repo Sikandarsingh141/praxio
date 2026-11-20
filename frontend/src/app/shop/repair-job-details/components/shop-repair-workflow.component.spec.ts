@@ -6,6 +6,56 @@ import { ShopRepairWorkflowComponent } from './shop-repair-workflow.component';
 import { ShopRepairRequest } from '../../repair-requests/shop-repair-requests.models';
 
 describe('ShopRepairWorkflowComponent', () => {
+  it('emits inspectionStarted after the inspection action succeeds', async () => {
+    const requests = jasmine.createSpyObj<ShopRepairRequestsService>(
+      'ShopRepairRequestsService',
+      ['startInspection', 'get'],
+    );
+    const startedRequest: ShopRepairRequest = {
+      _id: 'request-1',
+      appliance: 'Washing machine',
+      description: 'It does not spin',
+      photos: [],
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      customer: { firstName: 'Customer', lastName: 'Example' },
+      shopResponse: { status: 'customer_accepted' },
+      quotations: [],
+      repairJob: { status: 'inspection_in_progress' },
+    };
+    requests.startInspection.and.returnValue(of(undefined));
+    requests.get.and.returnValue(of(startedRequest));
+    const toast = jasmine.createSpyObj<ToastService>('ToastService', [
+      'success',
+      'error',
+    ]);
+
+    await TestBed.configureTestingModule({
+      imports: [ShopRepairWorkflowComponent],
+      providers: [
+        { provide: ShopRepairRequestsService, useValue: requests },
+        { provide: ToastService, useValue: toast },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(ShopRepairWorkflowComponent);
+    fixture.componentRef.setInput('request', {
+      ...startedRequest,
+      repairJob: { status: 'inspection_pending' },
+    });
+    fixture.detectChanges();
+    const inspectionStarted = spyOn(
+      fixture.componentInstance.inspectionStarted,
+      'emit',
+    );
+
+    fixture.componentInstance.startInspection();
+
+    expect(requests.startInspection).toHaveBeenCalledOnceWith('request-1');
+    expect(inspectionStarted).toHaveBeenCalledTimes(1);
+    expect(requests.get).toHaveBeenCalledOnceWith('request-1');
+  });
+
   it('restores a saved inspection draft and renders its form', async () => {
     await TestBed.configureTestingModule({
       imports: [ShopRepairWorkflowComponent],

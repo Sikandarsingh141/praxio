@@ -187,7 +187,7 @@ describe('CustomerPortalService', () => {
     );
   });
 
-  it('includes this shop’s quotations in repair-request list responses', async () => {
+  it('recovers accepted requests when the stored shop response status is stale', async () => {
     const requestId = new Types.ObjectId();
     const customerId = new Types.ObjectId();
     const quoteId = new Types.ObjectId();
@@ -195,12 +195,16 @@ describe('CustomerPortalService', () => {
       _id: requestId,
       customerId,
       shopIds: [nearShopId],
-      shopResponses: [{ shopId: nearShopId, status: 'customer_accepted' }],
+      shopResponses: [{ shopId: nearShopId, status: 'quotation_submitted' }],
       acceptedQuotationId: quoteId,
       appliance: 'Laptop',
       description: 'Screen repair',
       status: 'completed',
-      repairJob: { status: 'completed' },
+      repairJob: {
+        status: 'completed',
+        requiresPhysicalPickup: true,
+        servicePickup: { collectedAt: new Date('2026-10-03T00:00:00.000Z') },
+      },
       createdAt: new Date('2026-10-01T00:00:00.000Z'),
     };
     const quotation = {
@@ -236,6 +240,69 @@ describe('CustomerPortalService', () => {
     expect(result.requests[0]).toMatchObject({
       quotations: [quotation],
       shopResponse: { status: 'customer_accepted' },
+      repairJob: {
+        status: 'completed',
+        requiresPhysicalPickup: true,
+        servicePickup: { collectedAt: new Date('2026-10-03T00:00:00.000Z') },
+      },
+    });
+    expect(result.summary.accepted).toBe(1);
+  });
+
+  it('lists accepted pickup requests even when their shop response is missing and quotation status is stale', async () => {
+    const requestId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const quoteId = new Types.ObjectId();
+    const request = {
+      _id: requestId,
+      customerId,
+      shopIds: [nearShopId],
+      acceptedQuotationId: quoteId,
+      appliance: 'Phone',
+      description: 'Screen repair',
+      status: 'open',
+      repairJob: {
+        status: 'pickup_scheduled',
+        requiresPhysicalPickup: true,
+        servicePickup: { scheduledAt: new Date('2026-11-20T10:00:00.000Z') },
+      },
+      createdAt: new Date('2026-11-20T09:00:00.000Z'),
+    };
+    const quotation = {
+      _id: quoteId,
+      repairRequestId: requestId,
+      shopId: nearShopId,
+      amount: 125,
+      currency: 'USD',
+      status: 'sent',
+      createdAt: new Date('2026-11-20T09:30:00.000Z'),
+    };
+    userModel.findById.mockReturnValue(
+      createQuery({
+        ...shops[0],
+        accountType: 'shop',
+        accountStatus: 'active',
+      }),
+    );
+    userModel.find.mockReturnValue(createQuery([]));
+    repairRequestModel.find.mockReturnValue(createQuery([request]));
+    repairRequestModel.updateOne.mockReturnValue(
+      createQuery({ modifiedCount: 1 }),
+    );
+    quotationModel.findOne.mockReturnValue(createQuery(quotation));
+    quotationModel.find.mockReturnValue(createQuery([quotation]));
+
+    const result = await service.getShopRepairRequests(nearShopId.toString(), {
+      status: 'all',
+      page: 1,
+      limit: 50,
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.requests[0]).toMatchObject({
+      _id: requestId,
+      shopResponse: { status: 'customer_accepted' },
+      repairJob: { status: 'pickup_scheduled' },
     });
   });
 
@@ -1694,6 +1761,19 @@ describe('CustomerPortalService', () => {
       { new: true },
     );
     expect(quotationModel.findOneAndUpdate).toHaveBeenCalled();
+    expect(repairRequestModel.updateOne).toHaveBeenCalledWith(
+      {
+        _id: requestId,
+        shopResponses: { $elemMatch: { shopId } },
+      },
+      {
+        $set: {
+          'shopResponses.$[response].status': 'customer_accepted',
+          'shopResponses.$[response].respondedAt': expect.any(Date),
+        },
+      },
+      { arrayFilters: [{ 'response.shopId': shopId }] },
+    );
   });
 
   it('does not infer completed inspection or physical pickup from service type', async () => {

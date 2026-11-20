@@ -39,6 +39,9 @@ describe('ShopJobsTableComponent', () => {
     ).toContain('data:image/jpeg;base64,Y3VzdG9tZXI=');
     expect(row.textContent).toContain('Not draining');
     expect(row.textContent).toContain('Inspection pending');
+    expect(fixture.componentInstance.formatStatus('customer_accepted')).toBe(
+      'Confirmed by customer',
+    );
     expect(actionsButton.getAttribute('aria-expanded')).toBe('false');
 
     fixture.componentInstance.toggleActions('request-12345678');

@@ -32,7 +32,7 @@
   } @else if (!filteredItems().length) {
     <app-empty-state
       [title]="search() ? 'No matching requests' : 'No pending requests'"
-      [description]="search() ? 'Try another device, customer, or request ID.' : 'Requests waiting for a decision will appear here.'"
+      [description]="search() ? 'Try another device, customer, or request ID.' : 'Requests awaiting a quotation decision or technician assignment will appear here.'"
     />
   } @else {
     <app-shop-jobs-table [jobs]="pageItems()" [detailRoute]="detailRoute" title="Pending Requests">

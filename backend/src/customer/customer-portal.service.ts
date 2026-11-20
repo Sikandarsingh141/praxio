@@ -1363,6 +1363,11 @@ export class CustomerPortalService {
                       repairJob: {
                         status: '$repairJob.status',
                         activeAssignment: '$repairJob.activeAssignment',
+                        requiresPhysicalPickup:
+                          '$repairJob.requiresPhysicalPickup',
+                        servicePickup: {
+                          collectedAt: '$repairJob.servicePickup.collectedAt',
+                        },
                       },
                       technicianAssignment: {
                         $cond: [
@@ -1965,13 +1970,36 @@ export class CustomerPortalService {
         .lean()
         .exec();
     }
-    const accessibleRequests = rawRequests.filter((request) => {
-      if (!request.acceptedQuotationId) return true;
-      const response = request.shopResponses?.find(
-        (item) => item.shopId.toString() === shop._id.toString(),
-      );
-      return response?.status === 'customer_accepted';
-    });
+    const acceptedQuotationIds = rawRequests
+      .map((request) => request.acceptedQuotationId)
+      .filter((id): id is Types.ObjectId => !!id);
+    const acceptedQuotations = acceptedQuotationIds.length
+      ? await this.quotations
+          .find({
+            _id: { $in: acceptedQuotationIds },
+            shopId: shop._id,
+          })
+          .select('_id')
+          .lean()
+          .exec()
+      : [];
+    const acceptedQuotationIdsForShop = new Set(
+      acceptedQuotations.map((quotation) => quotation._id.toString()),
+    );
+    const isAcceptedByThisShop = (request: (typeof rawRequests)[number]): boolean =>
+      !!request.acceptedQuotationId &&
+      acceptedQuotationIdsForShop.has(request.acceptedQuotationId.toString());
+    const responseStatusForRequest = (
+      request: (typeof rawRequests)[number],
+    ): string | undefined =>
+      isAcceptedByThisShop(request)
+        ? 'customer_accepted'
+        : request.shopResponses?.find(
+            (item) => item.shopId.toString() === shop._id.toString(),
+          )?.status;
+    const accessibleRequests = rawRequests.filter(
+      (request) => !request.acceptedQuotationId || isAcceptedByThisShop(request),
+    );
     const customerIds = [
       ...new Set(accessibleRequests.map((request) => request.customerId)),
     ];
@@ -1987,10 +2015,11 @@ export class CustomerPortalService {
       const response = request.shopResponses?.find(
         (item) => item.shopId.toString() === shop._id.toString(),
       );
-      if (!response) {
+      if (!response && !isAcceptedByThisShop(request)) {
         return false;
       }
-      const status = response.status;
+      const status = responseStatusForRequest(request);
+      if (!status) return false;
       const statusMatches =
         !filters.status ||
         filters.status === 'all' ||
@@ -2086,9 +2115,23 @@ export class CustomerPortalService {
         photos: [],
         shopResponses: [],
         repairJob: request.repairJob
-          ? { status: request.repairJob.status }
+          ? {
+              status: request.repairJob.status,
+              requiresPhysicalPickup:
+                request.repairJob.requiresPhysicalPickup,
+              servicePickup: request.repairJob.servicePickup?.collectedAt
+                ? {
+                    collectedAt:
+                      request.repairJob.servicePickup.collectedAt,
+                  }
+                : undefined,
+            }
           : undefined,
       };
+      const shopResponse = request.shopResponses?.find(
+        (item) => item.shopId.toString() === shop._id.toString(),
+      );
+      const acceptedByThisShop = isAcceptedByThisShop(request);
       const customer = customerMap.get(request.customerId.toString());
       const assignment = request.repairJob?.activeAssignment;
       const assignedUser = assignment
@@ -2127,16 +2170,16 @@ export class CustomerPortalService {
               : (customer?.location ?? null),
         },
         quotations: quotationsByRequest.get(request._id.toString()) ?? [],
-        shopResponse: request.shopResponses?.find(
-          (item) => item.shopId.toString() === shop._id.toString(),
-        ),
+        shopResponse: acceptedByThisShop
+          ? {
+              ...(shopResponse ?? { shopId: shop._id }),
+              status: 'customer_accepted',
+            }
+          : shopResponse,
       };
     });
     const statuses = accessibleRequests.map(
-      (request) =>
-        request.shopResponses?.find(
-          (item) => item.shopId.toString() === shop._id.toString(),
-        )?.status,
+      (request) => responseStatusForRequest(request),
     );
     return {
       requests,
@@ -2721,12 +2764,7 @@ export class CustomerPortalService {
       .updateOne(
         {
           _id: request._id,
-          shopResponses: {
-            $elemMatch: {
-              shopId: quotation.shopId,
-              status: 'quotation_submitted',
-            },
-          },
+          shopResponses: { $elemMatch: { shopId: quotation.shopId } },
         },
         {
           $set: {
@@ -2738,7 +2776,6 @@ export class CustomerPortalService {
           arrayFilters: [
             {
               'response.shopId': quotation.shopId,
-              'response.status': 'quotation_submitted',
             },
           ],
         },

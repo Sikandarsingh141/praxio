@@ -39,6 +39,7 @@ export class ShopJobsTableComponent {
   }
 
   formatStatus(status: string): string {
+    if (status === 'customer_accepted') return 'Confirmed by customer';
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
