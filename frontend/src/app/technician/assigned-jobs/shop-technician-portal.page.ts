@@ -27,6 +27,7 @@ import {
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 import { JobSharedService } from '../../shared/services/job-shared.service';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 export type JobFilter = 'all' | 'pending' | 'active' | 'completed' | 'today';
 export type TechnicianPageView = 'dashboard' | 'jobs' | 'active' | 'completed' | 'history' | 'job-detail';
@@ -70,6 +71,7 @@ type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
     PaginationComponent,
     JobTimelineComponent,
     RepairProgressComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './shop-technician-portal.page.html',
   styleUrl: './shop-technician-portal.page.scss',

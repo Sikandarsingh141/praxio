@@ -12,6 +12,7 @@ import {
   FilterValues,
 } from '../../../../shared/components/filters/common-filter.component';
 import { JobListItem } from '../../../../shared/models/job.models';
+import { TableScrollIndicatorsDirective } from '../../../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
   selector: 'app-customer-completed-jobs-listing-page',
@@ -24,6 +25,7 @@ import { JobListItem } from '../../../../shared/models/job.models';
     EmptyStateComponent,
     JobPaginationComponent,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './customer-completed-jobs-listing.page.html',
   styleUrl: './customer-completed-jobs-listing.page.scss',

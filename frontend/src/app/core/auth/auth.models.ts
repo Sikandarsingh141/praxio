@@ -5,6 +5,7 @@ export interface UserProfile {
   accountType?: 'customer' | 'shop' | 'admin' | 'technician';
   accountStatus?: 'active' | 'pending_approval' | 'rejected';
   accountLifecycleStatus?: 'active' | 'inactive' | 'suspended';
+  tableAppearance?: 'curved' | 'normal';
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string;

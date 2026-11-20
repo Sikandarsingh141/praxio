@@ -1,5 +1,5 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, effect, Injectable, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { SKIP_GLOBAL_LOADER } from '../loading/global-loader.context';
@@ -31,7 +31,14 @@ export class AuthService {
   readonly shopName = this.shopNameState.asReadonly();
   readonly isAuthenticated = computed(() => this.userState() !== null);
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {
+    effect(() => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.dataset['tableAppearance'] =
+          this.userState()?.tableAppearance ?? 'curved';
+      }
+    });
+  }
 
   getToken(): string | null {
     if (this.tokenState) return this.tokenState;
@@ -190,6 +197,20 @@ export class AuthService {
         firstName,
         lastName,
       })
+      .pipe(
+        map((response) => response.data.user),
+        tap((user) => this.userState.set(user)),
+      );
+  }
+
+  updateMyTableAppearance(
+    tableAppearance: 'curved' | 'normal',
+  ): Observable<UserProfile> {
+    return this.http
+      .patch<ApiEnvelope<{ user: UserProfile }>>(
+        `${environment.apiBaseUrl}/users/me/table-appearance`,
+        { tableAppearance },
+      )
       .pipe(
         map((response) => response.data.user),
         tap((user) => this.userState.set(user)),

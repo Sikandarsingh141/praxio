@@ -13,6 +13,7 @@ import {
 } from '../../shared/components/filters/common-filter.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
 import { AdminDashboardOverview, AdminService } from '../services/admin.service';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 type DashboardRange = 'today' | '7d' | '30d' | '90d' | 'month' | 'last-month' | 'year' | 'custom';
 
@@ -22,6 +23,7 @@ type DashboardRange = 'today' | '7d' | '30d' | '90d' | 'month' | 'last-month' | 
   imports: [
     AdminPageHeaderComponent,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
     DatePipe,
     DecimalPipe,
     RouterLink,

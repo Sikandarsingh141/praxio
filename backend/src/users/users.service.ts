@@ -158,6 +158,27 @@ export class UsersService {
     return user;
   }
 
+  async updateTableAppearance(
+    id: string,
+    tableAppearance: User['tableAppearance'],
+  ): Promise<UserDocument> {
+    if (!isObjectIdOrHexString(id)) {
+      throw new NotFoundException('User account was not found');
+    }
+
+    const user = await this.users
+      .findByIdAndUpdate(
+        id,
+        { $set: { tableAppearance } },
+        { new: true, runValidators: true },
+      )
+      .exec();
+    if (!user) {
+      throw new NotFoundException('User account was not found');
+    }
+    return user;
+  }
+
   async updateShopImage(
     id: string,
     shopImageData: string,

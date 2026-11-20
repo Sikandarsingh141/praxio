@@ -25,6 +25,7 @@ import type { AuthenticatedRequest } from './interfaces/authenticated-request.in
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateTableAppearanceDto } from './dto/update-table-appearance.dto';
 import {
   hasValidImageSignature,
   UPLOADED_IMAGE_MAX_BYTES,
@@ -80,6 +81,24 @@ export class ProfileController {
       firstName: input.firstName.trim(),
       lastName: input.lastName.trim(),
     });
+    return { data: { user: await this.authService.toAuthenticatedUser(user) } };
+  }
+
+  @Patch('me/table-appearance')
+  @ApiOperation({ summary: 'Update the authenticated user table appearance' })
+  async updateTableAppearance(
+    @Req() request: AuthenticatedRequest,
+    @Body() input: UpdateTableAppearanceDto,
+  ): Promise<{ data: { user: SafeUser } }> {
+    const userId = request.auth?.userId;
+    if (!userId) {
+      throw new UnauthorizedException('Authentication required');
+    }
+
+    const user = await this.usersService.updateTableAppearance(
+      userId,
+      input.tableAppearance,
+    );
     return { data: { user: await this.authService.toAuthenticatedUser(user) } };
   }
 

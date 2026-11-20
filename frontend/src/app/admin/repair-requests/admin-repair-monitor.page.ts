@@ -15,6 +15,7 @@ import {
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
 import { ToastService } from '../../core/toast/toast.service';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 type MonitorView = 'jobs' | 'completed' | 'reviews';
 
@@ -28,6 +29,7 @@ type MonitorView = 'jobs' | 'completed' | 'reviews';
     PaginationComponent,
     RouterLink,
     TitleCasePipe,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './admin-repair-monitor.page.html',
 })

@@ -59,7 +59,7 @@
       <section class="detail-card table-card">
         <h2>Assigned Requests</h2>
         @if (technician.jobs?.length) {
-          <div class="table-wrap"><table><thead><tr><th>Repair Request</th><th>Device</th><th>Status</th><th>Assignment Date</th><th>Completion Date</th><th></th></tr></thead><tbody>
+          <div class="table-wrap" appTableScrollIndicators><table><thead><tr><th>Repair Request</th><th>Device</th><th>Status</th><th>Assignment Date</th><th>Completion Date</th><th></th></tr></thead><tbody>
             @for (job of technician.jobs; track job.id) { <tr><td>{{ job.id.slice(-8).toUpperCase() }}</td><td>{{ job.appliance }} {{ job.brand }} {{ job.model }}</td><td><span class="repair-status">{{ job.status.replace('_', ' ') | titlecase }}</span></td><td>{{ job.assignedAt | date: 'mediumDate' }}</td><td>{{ job.completedAt ? (job.completedAt | date: 'mediumDate') : '—' }}</td><td><a [routerLink]="['/shop/repair-requests', job.id]">View request</a></td></tr> }
           </tbody></table></div>
         } @else { <p class="muted">No repair requests have been assigned to this technician.</p> }

@@ -3,11 +3,18 @@ import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProfileEditorComponent } from '../../shared/components/profile-editors/profile-editor.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { TableAppearanceControlComponent } from '../../shared/components/table-appearance-control/table-appearance-control.component';
 
 @Component({
   selector: 'app-admin-profile-page',
   standalone: true,
-  imports: [AdminPageHeaderComponent, DatePipe, TitleCasePipe, ProfileEditorComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    DatePipe,
+    TitleCasePipe,
+    ProfileEditorComponent,
+    TableAppearanceControlComponent,
+  ],
   template: `
     <section class="admin-profile-page" aria-labelledby="admin-profile-title">
       <app-admin-page-header>
@@ -124,6 +131,7 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
             }
           </main>
         </div>
+        <app-table-appearance-control />
       }
     </section>
   `,

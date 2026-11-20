@@ -17,6 +17,7 @@ import { TechnicianRepairDetails } from '../../../../shop/technicians/technician
 import { TechniciansService } from '../../../../shop/technicians/technicians.service';
 import { TechnicianAdditionalChargesComponent } from '../../components/technician-additional-charges.component';
 import { ToastService } from '../../../../core/toast/toast.service';
+import { TableScrollIndicatorsDirective } from '../../../../shared/directives/table-scroll-indicators.directive';
 import {
   InspectionReportInput,
   RepairEstimatePartInput,
@@ -55,6 +56,7 @@ type ProblemCategory = (typeof PROBLEM_CATEGORIES)[number];
     ShopRepairRouteComponent,
     TechnicianAdditionalChargesComponent,
     ConfirmationDialogComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './technician-assigned-job-detail.page.html',
   styleUrl: './technician-assigned-job-detail.page.scss',

@@ -44,6 +44,7 @@ import { JobPaginationComponent } from '../job-pagination/job-pagination.compone
 import { PaginationComponent } from '../pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../page-header/admin-page-header.component';
 import { ToastService } from '../../../core/toast/toast.service';
+import { TableScrollIndicatorsDirective } from '../../directives/table-scroll-indicators.directive';
 
 type DisputeConfirmationAction =
   | 'confirmResolution'
@@ -104,6 +105,7 @@ const RETURN_DISPUTE_CATEGORIES: DisputeCategory[] = ['item_not_returned'];
     PaginationComponent,
     AdminPageHeaderComponent,
     ShopRepairRouteComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './dispute-center.component.html',
   styleUrl: './dispute-center.component.scss',

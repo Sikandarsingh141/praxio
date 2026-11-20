@@ -6,11 +6,18 @@ import { RouterLink } from '@angular/router';
 import { Technician, TechnicianAvailability } from './technicians.models';
 import { TechniciansService } from './technicians.service';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
   selector: 'app-shop-technicians-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, PaginationComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    PaginationComponent,
+    TableScrollIndicatorsDirective,
+  ],
   templateUrl: './shop-technicians.page.html',
   styleUrl: './shop-technicians.page.scss',
 })

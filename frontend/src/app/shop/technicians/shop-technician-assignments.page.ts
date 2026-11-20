@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TechnicianAssignment } from './technicians.models';
 import { TechniciansService } from './technicians.service';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
   selector: 'app-shop-technician-assignments-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TableScrollIndicatorsDirective],
   template: `
     <section class="assignments-page">
       <header class="page-heading">
@@ -21,7 +22,7 @@ import { TechniciansService } from './technicians.service';
         <label class="search"><span>⌕</span><input type="search" placeholder="Search request, technician, or customer" [ngModel]="search()" (ngModelChange)="search.set($event)" /></label>
         @if (loading()) { <p class="state" role="status">Loading assignments…</p> }
         @else if (filtered().length) {
-          <div class="table-wrap"><table><thead><tr><th>Repair Request</th><th>Customer</th><th>Technician</th><th>Repair Status</th><th>Assigned On</th><th></th></tr></thead><tbody>
+          <div class="table-wrap" appTableScrollIndicators><table><thead><tr><th>Repair Request</th><th>Customer</th><th>Technician</th><th>Repair Status</th><th>Assigned On</th><th></th></tr></thead><tbody>
             @for (assignment of filtered(); track assignment.requestId) {
               <tr><td><strong>{{ assignment.appliance }}</strong><small>{{ assignment.requestId.slice(-8).toUpperCase() }} · {{ assignment.brand }} {{ assignment.model }}</small></td><td>{{ assignment.customer }}</td><td>@if (assignment.technician; as tech) { <a class="tech-link" [routerLink]="['/shop/technicians', tech.id]" [attr.aria-label]="'View ' + tech.name + ' profile'"><strong class="tech-name">{{ tech.name }}</strong></a> } @else { <strong class="tech-name">Unknown technician</strong> }<small>{{ assignment.technician?.availability | titlecase }} · {{ assignment.technician?.workload }} active repairs</small></td><td><span class="status">{{ assignment.repairStatus.replace('_', ' ') | titlecase }}</span></td><td>{{ assignment.assignment.assignedAt | date: 'mediumDate' }}</td><td><a [routerLink]="['/shop/repair-requests', assignment.requestId]">Manage</a></td></tr>
             }

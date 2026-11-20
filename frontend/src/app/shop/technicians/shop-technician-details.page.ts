@@ -4,13 +4,14 @@ import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Technician, TechnicianActivity } from './technicians.models';
 import { TechniciansService } from './technicians.service';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 type DetailsTab = 'overview' | 'jobs' | 'performance' | 'activity';
 
 @Component({
   selector: 'app-shop-technician-details-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TableScrollIndicatorsDirective],
   templateUrl: './shop-technician-details.page.html',
   styleUrl: './shop-technician-details.page.scss',
 })

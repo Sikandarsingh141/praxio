@@ -187,6 +187,19 @@ describe('UsersService', () => {
     ).rejects.toMatchObject({ status: 404 });
   });
 
+  it('persists a validated table appearance for the user account', async () => {
+    await service.updateTableAppearance('507f1f77bcf86cd799439011', 'normal');
+
+    expect(model.findByIdAndUpdate).toHaveBeenCalledWith(
+      '507f1f77bcf86cd799439011',
+      { $set: { tableAppearance: 'normal' } },
+      { new: true, runValidators: true },
+    );
+    await expect(
+      service.updateTableAppearance('not-an-object-id', 'curved'),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
   it('updates shop image data only for shop accounts', async () => {
     const shopImageData = 'data:image/png;base64,abc';
     await service.updateShopImage('507f1f77bcf86cd799439011', shopImageData);

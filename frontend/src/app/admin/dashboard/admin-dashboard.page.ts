@@ -24,6 +24,7 @@ import {
 } from '../services/admin.service';
 import { ToastService } from '../../core/toast/toast.service';
 import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 type RequestStatus = 'all' | 'pending' | 'approved' | 'declined' | 'suspended';
 type AccountStatus = 'all' | 'active' | 'inactive' | 'suspended';
@@ -50,6 +51,7 @@ interface RegistrationConfirmation {
     ConfirmationDialogComponent,
     CommonFilterComponent,
     PaginationComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './admin-dashboard.page.html',
   styleUrl: './admin-dashboard.page.scss',

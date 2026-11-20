@@ -4,11 +4,12 @@ import { Component, Input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { JobListItem } from '../../../shared/models/job.models';
 import { profileImageSource } from '../../../shared/utils/appliance-thumbnail.util';
+import { TableScrollIndicatorsDirective } from '../../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
   selector: 'app-shop-jobs-table',
   standalone: true,
-  imports: [CommonModule, OverlayModule, RouterLink],
+  imports: [CommonModule, OverlayModule, RouterLink, TableScrollIndicatorsDirective],
   templateUrl: './shop-jobs-table.component.html',
   styleUrl: './shop-jobs-table.component.scss',
 })

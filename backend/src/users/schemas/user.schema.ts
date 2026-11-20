@@ -17,6 +17,7 @@ export const ACCOUNT_LIFECYCLE_STATUSES = [
   'inactive',
   'suspended',
 ] as const;
+export const TABLE_APPEARANCES = ['curved', 'normal'] as const;
 
 @Schema({ _id: false })
 export class LocationCoordinates {
@@ -193,6 +194,9 @@ export class User {
     required: true,
   })
   accountLifecycleStatus!: (typeof ACCOUNT_LIFECYCLE_STATUSES)[number];
+
+  @Prop({ type: String, enum: TABLE_APPEARANCES, default: 'curved', required: true })
+  tableAppearance!: (typeof TABLE_APPEARANCES)[number];
 
   @Prop({ type: String, trim: true, match: /^\+\d{1,4}$/ })
   countryCode?: string;

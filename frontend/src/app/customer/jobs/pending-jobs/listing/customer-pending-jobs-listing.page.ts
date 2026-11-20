@@ -19,6 +19,7 @@ import {
 } from '../../../../shared/models/job.models';
 import { CustomerPortalService } from '../../../services/customer-portal.service';
 import { ToastService } from '../../../../core/toast/toast.service';
+import { TableScrollIndicatorsDirective } from '../../../../shared/directives/table-scroll-indicators.directive';
 
 type QuotationResponseStatus = 'accepted' | 'declined';
 
@@ -39,6 +40,7 @@ interface PendingQuotationResponse {
     EmptyStateComponent,
     JobPaginationComponent,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './customer-pending-jobs-listing.page.html',
   styleUrl: './customer-pending-jobs-listing.page.scss',

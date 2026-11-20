@@ -4,6 +4,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { LocationMapComponent } from '../../shared/components/maps/location-map.component';
 import { ProfileEditorComponent } from '../../shared/components/profile-editors/profile-editor.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { TableAppearanceControlComponent } from '../../shared/components/table-appearance-control/table-appearance-control.component';
 
 @Component({
   selector: 'app-customer-profile-page',
@@ -13,6 +14,7 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
     DatePipe,
     LocationMapComponent,
     ProfileEditorComponent,
+    TableAppearanceControlComponent,
     TitleCasePipe,
   ],
   template: `
@@ -146,6 +148,8 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
             }
           </main>
         </div>
+
+        <app-table-appearance-control />
 
         @if (user.location) {
           <app-location-map [location]="user.location" title="Customer map location" />

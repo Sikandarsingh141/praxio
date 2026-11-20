@@ -686,7 +686,7 @@
       <!-- Completed Jobs Table Card -->
       <div class="completed-table-card">
         @if (pagedCompletedJobs().length > 0) {
-          <div class="table-responsive">
+          <div class="table-responsive" appTableScrollIndicators>
             <table class="completed-jobs-table">
               <thead>
                 <tr>
@@ -2215,26 +2215,28 @@
                       @if (insp.parts && insp.parts.length) {
                         <div class="report-parts-section">
                           <h5>Required Parts</h5>
-                          <table class="report-parts-table">
-                            <thead>
-                              <tr>
-                                <th>Part Name</th>
-                                <th>Qty</th>
-                                <th>Price Each</th>
-                                <th>Total</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (p of insp.parts; track $index) {
+                          <div class="report-parts-table-scroll" appTableScrollIndicators>
+                            <table class="report-parts-table">
+                              <thead>
                                 <tr>
-                                  <td class="font-medium">{{ p.name }}</td>
-                                  <td>{{ p.quantity }}</td>
-                                  <td>₹{{ p.unitPrice | number: '1.2-2' }}</td>
-                                  <td class="font-semibold">₹{{ (p.total || (p.quantity * p.unitPrice)) | number: '1.2-2' }}</td>
+                                  <th>Part Name</th>
+                                  <th>Qty</th>
+                                  <th>Price Each</th>
+                                  <th>Total</th>
                                 </tr>
-                              }
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                @for (p of insp.parts; track $index) {
+                                  <tr>
+                                    <td class="font-medium">{{ p.name }}</td>
+                                    <td>{{ p.quantity }}</td>
+                                    <td>₹{{ p.unitPrice | number: '1.2-2' }}</td>
+                                    <td class="font-semibold">₹{{ (p.total || (p.quantity * p.unitPrice)) | number: '1.2-2' }}</td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       }
 

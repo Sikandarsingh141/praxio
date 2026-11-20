@@ -14,12 +14,15 @@ import { ShopRepairRequestsService } from '../repair-requests/shop-repair-reques
 import { ShopInvoice, ShopInvoicePage } from '../../core/auth/auth.models';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { TableAppearanceControlComponent } from '../../shared/components/table-appearance-control/table-appearance-control.component';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
   selector: 'app-shop-registration-status-page',
   standalone: true,
   imports: [
     AdminPageHeaderComponent,
+    TableAppearanceControlComponent,
     DatePipe,
     DecimalPipe,
     TitleCasePipe,
@@ -28,6 +31,7 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
     ProfileEditorComponent,
     ShopImageEditorComponent,
     ShopProfileEditorComponent,
+    TableScrollIndicatorsDirective,
     PaginationComponent,
   ],
   template: `
@@ -426,7 +430,7 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
                           Stripe issues them.
                         </p>
                       } @else {
-                        <div class="invoice-table-wrap">
+                        <div class="invoice-table-wrap" appTableScrollIndicators>
                           <table class="invoice-table">
                             <thead>
                               <tr>
@@ -504,6 +508,8 @@ import { AdminPageHeaderComponent } from '../../shared/components/page-header/ad
               }
             </main>
           </div>
+
+          <app-table-appearance-control />
 
           @if (editingProfile()) {
             <section class="editing-panel" aria-label="Edit account profile">

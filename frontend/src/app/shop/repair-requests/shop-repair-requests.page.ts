@@ -18,6 +18,7 @@ import {
   getCustomerUploadedPhoto,
   profileImageSource,
 } from '../../shared/utils/appliance-thumbnail.util';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 const TABS = [
   { label: 'All Requests', value: 'all' },
@@ -38,6 +39,7 @@ const TABS = [
     PaginationComponent,
     RouterLink,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './shop-repair-requests.page.html',
   styleUrl: './shop-repair-requests.page.scss',

@@ -348,6 +348,7 @@
       <p class="state-card" role="status">Loading disputes…</p>
     } @else if (list()?.items?.length) {
       <section class="customer-dispute-table-card" aria-label="Dispute cases">
+        <div class="dispute-table-scroll" appTableScrollIndicators>
         <table class="customer-dispute-table">
             <thead>
               <tr>
@@ -498,6 +499,7 @@
               }
             </tbody>
         </table>
+        </div>
       </section>
       @if (role() !== 'admin') {
         @if ((list()?.pagination?.total ?? 0) > pageSize) {

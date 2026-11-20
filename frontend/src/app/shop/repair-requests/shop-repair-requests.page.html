@@ -99,7 +99,7 @@
     } @else if (loading()) {
       <div class="state" role="status">Loading repair requests...</div>
     } @else if (pageData()?.requests?.length) {
-      <div class="table-scroll">
+      <div class="table-scroll" appTableScrollIndicators>
         <table class="jobs-table requests-table">
           <thead>
             <tr>

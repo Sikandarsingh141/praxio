@@ -38,6 +38,7 @@ export interface SafeUser {
   accountType: 'customer' | 'shop' | 'admin' | 'technician';
   accountStatus: 'active' | 'pending_approval' | 'rejected';
   accountLifecycleStatus: 'active' | 'inactive' | 'suspended';
+  tableAppearance: 'curved' | 'normal';
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string;
@@ -378,6 +379,7 @@ export class AuthService {
       accountLifecycleStatus:
         user.accountLifecycleStatus ??
         (user.accountStatus === 'active' ? 'active' : 'inactive'),
+      tableAppearance: user.tableAppearance ?? 'curved',
       ...(user.firstName || user.fullName
         ? { firstName: user.firstName ?? this.legacyFirstName(user.fullName) }
         : {}),

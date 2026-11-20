@@ -84,6 +84,7 @@ describe('AuthController', () => {
   const usersService = {
     findById: jest.fn().mockResolvedValue(safeUser),
     updateProfile: jest.fn().mockResolvedValue(safeUser),
+    updateTableAppearance: jest.fn().mockResolvedValue(safeUser),
     updateShopImage: jest.fn().mockResolvedValue(safeUser),
     updateShopBusinessDetails: jest.fn().mockResolvedValue(safeUser),
   };
@@ -463,6 +464,41 @@ describe('AuthController', () => {
       firstName: 'Updated',
       lastName: 'Person',
     });
+  });
+
+  it('updates the authenticated user table appearance', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/users/me/table-appearance')
+      .set('Cookie', `access_token=${token}`)
+      .send({ tableAppearance: 'normal' })
+      .expect(200, { data: { user: serializedUser } });
+
+    expect(usersService.updateTableAppearance).toHaveBeenCalledWith(
+      safeUser.id,
+      'normal',
+    );
+  });
+
+  it('rejects unsupported table appearance values', async () => {
+    const jwtService = app.get(JwtService);
+    const token = await jwtService.signAsync({
+      sub: safeUser.id,
+      email: safeUser.email,
+    });
+
+    await request(app.getHttpServer())
+      .patch('/api/users/me/table-appearance')
+      .set('Cookie', `access_token=${token}`)
+      .send({ tableAppearance: 'rounded' })
+      .expect(400);
+
+    expect(usersService.updateTableAppearance).not.toHaveBeenCalled();
   });
 
   it('changes the authenticated user password', async () => {

@@ -27,6 +27,34 @@
   box-sizing: border-box;
 }
 
+.table-scroll-indicators {
+  position: relative;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.table-scroll-indicator {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  display: block;
+  width: clamp(1.25rem, 3vw, 2rem);
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    visibility 160ms ease;
+}
+
+.table-scroll-indicator-left {
+  background: linear-gradient(90deg, rgb(20 37 26 / 14%), rgb(20 37 26 / 0%));
+  border-radius: 0 0.6rem 0.6rem 0;
+}
+
+.table-scroll-indicator-right {
+  background: linear-gradient(270deg, rgb(20 37 26 / 14%), rgb(20 37 26 / 0%));
+  border-radius: 0.6rem 0 0 0.6rem;
+}
+
 .request-reference {
   color: #087c3b;
   font-weight: 750;

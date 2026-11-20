@@ -17,6 +17,7 @@ import { TechnicianRepairDetails } from '../../../../shop/technicians/technician
 import { TechniciansService } from '../../../../shop/technicians/technicians.service';
 import { TechnicianAdditionalChargesComponent } from '../../components/technician-additional-charges.component';
 import { ToastService } from '../../../../core/toast/toast.service';
+import { TableScrollIndicatorsDirective } from '../../../../shared/directives/table-scroll-indicators.directive';
 
 @Component({
   selector: 'app-technician-active-job-detail-page',
@@ -31,6 +32,7 @@ import { ToastService } from '../../../../core/toast/toast.service';
     ShopRepairRouteComponent,
     TechnicianAdditionalChargesComponent,
     ConfirmationDialogComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './technician-active-job-detail.page.html',
   styleUrl: './technician-active-job-detail.page.scss',

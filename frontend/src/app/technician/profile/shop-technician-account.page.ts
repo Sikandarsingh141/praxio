@@ -5,13 +5,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Technician } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
+import { TableAppearanceControlComponent } from '../../shared/components/table-appearance-control/table-appearance-control.component';
 
 type TechnicianAccountView = 'performance' | 'availability' | 'profile';
 
 @Component({
   selector: 'app-shop-technician-account-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TableAppearanceControlComponent],
   templateUrl: './shop-technician-account.page.html',
   styleUrl: './shop-technician-account.page.scss',
 })

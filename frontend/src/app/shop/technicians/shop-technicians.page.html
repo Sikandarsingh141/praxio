@@ -58,7 +58,7 @@
     @if (loading()) {
       <div class="empty-state" role="status">Loading technicians…</div>
     } @else if (visibleTechnicians().length) {
-      <div class="table-wrap">
+      <div class="table-wrap" appTableScrollIndicators>
         <table>
           <thead>
             <tr>

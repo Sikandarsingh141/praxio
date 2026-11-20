@@ -18,6 +18,7 @@ import {
   getCustomerUploadedPhoto,
   profileImageSource,
 } from '../../shared/utils/appliance-thumbnail.util';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
 
@@ -31,6 +32,7 @@ type QuotationStatus = NonNullable<ShopQuotationFilters['status']>;
     PaginationComponent,
     RouterLink,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './shop-quotations.page.html',
   styleUrl: './shop-quotations.page.scss',
