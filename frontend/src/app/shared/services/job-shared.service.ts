@@ -483,11 +483,15 @@ export class JobSharedService {
       case 'active':
         return request.status === 'open' &&
           !!status &&
-          ![...PRE_REPAIR_STATUSES, 'repair_declined', 'completed', 'disputed'].includes(
-            status,
-          );
+          ![
+            ...PRE_REPAIR_STATUSES,
+            'repair_declined',
+            'picked_up',
+            'completed',
+            'disputed',
+          ].includes(status);
       case 'completed':
-        return request.status === 'completed' || status === 'completed';
+        return request.status === 'completed' || status === 'picked_up' || status === 'completed';
     }
   }
 

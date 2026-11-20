@@ -332,10 +332,11 @@ describe('JobSharedService', () => {
             shopRequest('pending', 'quotation_submitted'),
             shopRequest('assigned', 'customer_accepted', 'confirmed'),
             shopRequest('active', 'customer_accepted', 'in_progress'),
+            shopRequest('picked-up', 'customer_accepted', 'picked_up'),
             shopRequest('completed', 'customer_accepted', 'completed'),
           ],
           1,
-          5,
+          6,
         ),
       ),
     );
@@ -360,7 +361,7 @@ describe('JobSharedService', () => {
         assigned: 2,
         active: 1,
         disputed: 3,
-        completed: 1,
+        completed: 2,
       });
       expect(shopApi.list).toHaveBeenCalledOnceWith({
         status: 'all',
@@ -369,6 +370,20 @@ describe('JobSharedService', () => {
       });
       expect(technicianApi.assignments).toHaveBeenCalledTimes(1);
       expect(disputesApi.list).toHaveBeenCalledOnceWith('shop', { page: 1, limit: 1 });
+      done();
+    });
+  });
+
+  it('moves customer-confirmed pickups to Shop completed jobs', (done) => {
+    const pickedUp = shopRequest('picked-up', 'customer_accepted', 'picked_up');
+    shopApi.list.and.returnValue(of(shopPage([pickedUp], 1, 1)));
+
+    forkJoin({
+      active: service.shopJobs('active'),
+      completed: service.shopJobs('completed'),
+    }).subscribe((lists) => {
+      expect(lists.active).toEqual([]);
+      expect(lists.completed.map((item) => item.id)).toEqual(['picked-up']);
       done();
     });
   });
