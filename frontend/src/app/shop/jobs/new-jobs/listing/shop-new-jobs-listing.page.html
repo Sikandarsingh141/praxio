@@ -31,8 +31,12 @@
     </section>
   } @else if (!filteredItems().length) {
     <app-empty-state
-      [title]="search() ? 'No matching requests' : 'No new requests'"
-      [description]="search() ? 'Adjust your search or filters to see more requests.' : 'New customer repair requests will appear here.'"
+      [title]="!items().length && !search() ? 'No new requests' : 'No matching requests'"
+      [description]="
+        !items().length && !search()
+          ? 'New customer repair requests will appear here as soon as they’re submitted.'
+          : 'Adjust your search or filters to see more requests.'
+      "
     />
   } @else {
     <app-shop-jobs-table
