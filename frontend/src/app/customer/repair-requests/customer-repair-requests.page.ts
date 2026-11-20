@@ -18,6 +18,7 @@ import {
 } from '../../shared/components/filters/common-filter.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed';
 
@@ -31,6 +32,7 @@ type RequestStatusTab = 'all' | 'open' | 'in_progress' | 'completed';
     PaginationComponent,
     RouterLink,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
   ],
   templateUrl: './customer-repair-requests.page.html',
   styleUrl: './customer-repair-requests.page.scss',

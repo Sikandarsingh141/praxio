@@ -39,15 +39,26 @@ describe('ShopReviewsPage pagination', () => {
 
     const fixture = TestBed.createComponent(ShopReviewsPage);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.review-card').length).toBe(10);
-    expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.review-table tbody tr').length).toBe(10);
+    expect(fixture.nativeElement.querySelector('.review-table')).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('.review-table-scroll.table-scroll-indicators'),
+    ).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('.review-table-scroll .table-scroll-indicator-right'),
+    ).toBeTruthy();
+    const pagination = fixture.nativeElement.querySelector(
+      '.review-table-card app-pagination nav',
+    ) as HTMLElement;
+    expect(pagination).toBeTruthy();
+    expect(pagination.classList.contains('brand')).toBeTrue();
     expect(
       (fixture.nativeElement.querySelector('img.review-avatar') as HTMLImageElement).src,
     ).toContain('dGVzdA==');
 
     fixture.componentInstance.goToPage(2);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.review-card').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.review-table tbody tr').length).toBe(1);
 
     fixture.componentInstance.changeRatingFilter('4');
     fixture.detectChanges();

@@ -6,12 +6,19 @@ import { ShopReview, ShopReviewSummary } from '../repair-requests/shop-repair-re
 import { ShopRepairRequestsService } from '../repair-requests/shop-repair-requests.service';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 
 @Component({
   selector: 'app-shop-reviews-page',
   standalone: true,
-  imports: [AdminPageHeaderComponent, CommonModule, FormsModule, PaginationComponent],
+  imports: [
+    AdminPageHeaderComponent,
+    CommonModule,
+    FormsModule,
+    PaginationComponent,
+    TableScrollIndicatorsDirective,
+  ],
   templateUrl: './shop-reviews.page.html',
   styleUrl: './shop-reviews.page.scss',
 })

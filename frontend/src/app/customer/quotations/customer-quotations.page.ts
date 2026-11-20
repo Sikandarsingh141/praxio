@@ -11,6 +11,7 @@ import {
   FilterValues,
 } from '../../shared/components/filters/common-filter.component';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 import { CustomerQuotation, QuotationListFilters } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { AdminPageHeaderComponent } from '../../shared/components/page-header/admin-page-header.component';
@@ -30,6 +31,7 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
     PaginationComponent,
     RouterLink,
     CommonFilterComponent,
+    TableScrollIndicatorsDirective,
   ],
   template: `
     <section class="page customer-quotations-page" aria-labelledby="title">
@@ -170,168 +172,199 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
             </div>
           </section>
         }
-        <div class="list">
-          @for (quote of quotations(); track quote._id) {
-            <article class="card">
-              <section class="shop-info" aria-label="Repair shop">
-                <div class="product-thumbnail-wrap">
-                  @if (getCustomerPhoto(quote); as photoUrl) {
-                    <img
-                      class="product-thumbnail-img is-uploaded"
-                      [src]="photoUrl"
-                      [alt]="'Customer photo for ' + quote.repairRequest.appliance"
-                      (error)="onPhotoError(quote._id)"
-                      loading="lazy"
-                    />
-                  } @else {
-                    <div class="product-thumbnail-fallback" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                        <rect x="4" y="4" width="16" height="16" rx="3" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </div>
-                  }
-                </div>
-                <div class="shop-copy">
-                  <span class="eyebrow"
-                    >Request ID:
-                    <strong class="request-reference">{{
-                      quote.repairRequestId.slice(-8).toUpperCase()
-                    }}</strong></span
-                  >
-                  <h2>{{ quote.shop.shopName }}</h2>
-                  <p class="shop-address">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
-                      <circle cx="12" cy="10" r="2.2" />
-                    </svg>
-                    {{ quote.shop.address || 'Shop address unavailable' }}
-                  </p>
-                  <p class="rating">
-                    <span aria-hidden="true">☆</span>
-                    {{
-                      quote.shop.rating !== null
-                        ? (quote.shop.rating | number: '1.1-1') +
-                          ' (' +
-                          quote.shop.reviewCount +
-                          ' reviews)'
-                        : 'Rating not available'
-                    }}
-                  </p>
-                </div>
-              </section>
-
-              <section class="quote-info" aria-label="Quotation details">
-                <div class="quote-title">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="6" y="3" width="12" height="18" rx="2" />
-                    <path d="M6 9h12m-8-3v1m0 5v2m4-2v2" />
-                  </svg>
-                  <strong>
-                    {{ quote.repairRequest.appliance
-                    }}{{ quote.repairRequest.brand ? ' · ' + quote.repairRequest.brand : ''
-                    }}{{ quote.repairRequest.model ? ' (' + quote.repairRequest.model + ')' : '' }}
-                  </strong>
-                </div>
-                <p class="issue"><strong>Issue:</strong> {{ quote.repairRequest.description }}</p>
-                <div class="quote-total">{{ quote.amount | currency: quote.currency }}</div>
-                <div class="details">
-                  <span>Inspection: {{ quote.inspectionCharge || 0 | currency: quote.currency }}</span>
-                  <span>Labour: {{ quote.labourCharge || 0 | currency: quote.currency }}</span>
-                  <span>Parts: {{ quote.partsCost || 0 | currency: quote.currency }}</span>
-                  <span
-                    >Additional: {{ quote.additionalCharges || 0 | currency: quote.currency }}</span
-                  >
-                </div>
-                <details class="more-details">
-                  <summary>More quotation information</summary>
-                  <p>{{ quote.message }}</p>
-                  @if (quote.proposedSolution) {
-                    <p><strong>Proposed solution:</strong> {{ quote.proposedSolution }}</p>
-                  }
-                  @if (quote.warrantyInformation) {
-                    <p><strong>Warranty:</strong> {{ quote.warrantyInformation }}</p>
-                  }
-                  <div class="quote-meta">
-                    <span>Submitted {{ quote.createdAt | date: 'mediumDate' }}</span>
-                    <span>Completion {{ quote.estimatedDays ?? '—' }} days</span>
-                    <span
-                      >Valid until
-                      {{
-                        quote.validUntil ? (quote.validUntil | date: 'mediumDate') : 'Not specified'
-                      }}</span
+        <section class="quotation-table-card" aria-label="My quotations">
+          <div class="quotation-table-scroll" appTableScrollIndicators>
+            <table class="quotation-table">
+              <thead>
+                <tr>
+                  <th scope="col">Request ID</th>
+                  <th scope="col">Device &amp; Issue</th>
+                  <th scope="col">Repair Shop</th>
+                  <th scope="col">Quotation</th>
+                  <th scope="col">Repair Status</th>
+                  <th scope="col">Quote Status</th>
+                  <th scope="col" class="quotation-action-heading">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (quote of quotations(); track quote._id) {
+                <tr>
+                  <td class="quote-request-id-cell">
+                    <a
+                      class="quote-request-id"
+                      [routerLink]="['/customer/repair-requests', quote.repairRequest._id]"
+                      [attr.aria-label]="
+                        'View request ' + quote.repairRequestId.slice(-8).toUpperCase() + ' details'
+                      "
                     >
-                  </div>
-                </details>
-                @if (quote.status === 'accepted') {
-                  <div class="repair-active-row">
-                    <span class="repair-active-badge">
-                      {{ repairStatusLabel(quote.repairRequest) }}
-                    </span>
-                    <a [routerLink]="['/customer/repair-requests', quote.repairRequest._id]">
-                      Repair status
+                      #{{ quote.repairRequestId.slice(-8).toUpperCase() }}
                     </a>
-                  </div>
-                }
-                @if (quote.rejectionReason) {
-                  <p class="reason">Response: {{ quote.rejectionReason }}</p>
-                }
-              </section>
-
-              <aside class="card-actions">
-                <span
-                  class="badge"
-                  [attr.data-status]="quote.status === 'declined' ? 'rejected' : quote.status"
-                >
-                  {{ quotationStatusLabel(quote.status) }}
-                </span>
-                <a
-                  class="view-details"
-                  [routerLink]="['/customer/repair-requests', quote.repairRequest._id]"
-                >
-                  View details
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m9 5 7 7-7 7" />
-                  </svg>
-                </a>
-                @if (quote.status === 'pending') {
-                  <div class="actions">
-                    <button
-                      type="button"
-                      class="compare-button"
-                      (click)="toggleCompare(quote)"
+                  </td>
+                  <td class="quote-device-cell">
+                    <div class="quote-device">
+                      <div class="product-thumbnail-wrap">
+                        @if (getCustomerPhoto(quote); as photoUrl) {
+                          <img
+                            class="product-thumbnail-img is-uploaded"
+                            [src]="photoUrl"
+                            [alt]="'Customer photo for ' + quote.repairRequest.appliance"
+                            (error)="onPhotoError(quote._id)"
+                            loading="lazy"
+                          />
+                        } @else {
+                          <div class="product-thumbnail-fallback" aria-hidden="true">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.8"
+                            >
+                              <rect x="4" y="4" width="16" height="16" rx="3" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                          </div>
+                        }
+                      </div>
+                      <div class="quote-device-copy">
+                        <strong>{{ quote.repairRequest.appliance }}</strong>
+                        <span>
+                          {{ quote.repairRequest.brand || 'Brand not provided'
+                          }}{{ quote.repairRequest.model ? ' · ' + quote.repairRequest.model : '' }}
+                        </span>
+                        <small>{{ quote.repairRequest.description }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="quote-shop-cell">
+                    <div class="shop-copy">
+                      <strong>{{ quote.shop.shopName }}</strong>
+                      <span class="shop-address">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+                          <circle cx="12" cy="10" r="2.2" />
+                        </svg>
+                        {{ quote.shop.address || 'Shop address unavailable' }}
+                      </span>
+                      <span class="rating">
+                        <span aria-hidden="true">☆</span>
+                        {{
+                          quote.shop.rating !== null
+                            ? (quote.shop.rating | number: '1.1-1') +
+                              ' (' +
+                              quote.shop.reviewCount +
+                              ' reviews)'
+                            : 'Rating not available'
+                        }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="quote-info">
+                    <div class="quote-total">{{ quote.amount | currency: quote.currency }}</div>
+                    <div class="details">
+                      <span>
+                        Inspection: {{ quote.inspectionCharge || 0 | currency: quote.currency }}
+                      </span>
+                      <span>Labour: {{ quote.labourCharge || 0 | currency: quote.currency }}</span>
+                      <span>Parts: {{ quote.partsCost || 0 | currency: quote.currency }}</span>
+                      <span>
+                        Additional: {{ quote.additionalCharges || 0 | currency: quote.currency }}
+                      </span>
+                    </div>
+                    <details class="more-details">
+                      <summary>More quotation information</summary>
+                      <p>{{ quote.message }}</p>
+                      @if (quote.proposedSolution) {
+                        <p><strong>Proposed solution:</strong> {{ quote.proposedSolution }}</p>
+                      }
+                      @if (quote.warrantyInformation) {
+                        <p><strong>Warranty:</strong> {{ quote.warrantyInformation }}</p>
+                      }
+                      <div class="quote-meta">
+                        <span>Submitted {{ quote.createdAt | date: 'mediumDate' }}</span>
+                        <span>Completion {{ quote.estimatedDays ?? '—' }} days</span>
+                        <span
+                          >Valid until
+                          {{
+                            quote.validUntil
+                              ? (quote.validUntil | date: 'mediumDate')
+                              : 'Not specified'
+                          }}</span
+                        >
+                      </div>
+                    </details>
+                  </td>
+                  <td class="repair-status-cell">
+                    @if (quote.status === 'accepted') {
+                      <span class="repair-active-badge">
+                        {{ repairStatusLabel(quote.repairRequest) }}
+                      </span>
+                      <a [routerLink]="['/customer/repair-requests', quote.repairRequest._id]">
+                        Repair status
+                      </a>
+                    } @else {
+                      <span class="status-unavailable">—</span>
+                          }
+                  </td>
+                  <td class="quote-status-cell">
+                    <span
+                      class="badge"
+                      [attr.data-status]="quote.status === 'declined' ? 'rejected' : quote.status"
                     >
-                      {{ isCompared(quote) ? 'Remove comparison' : 'Compare' }}
-                    </button>
-                    <button
-                      type="button"
-                      class="accept"
-                      (click)="prepareResponse(quote, 'accepted')"
+                      {{ quotationStatusLabel(quote.status) }}
+                    </span>
+                    @if (quote.rejectionReason) {
+                      <small class="reason">Response: {{ quote.rejectionReason }}</small>
+                    }
+                  </td>
+                  <td class="quotation-actions-cell">
+                    <a
+                      class="view-details"
+                      [routerLink]="['/customer/repair-requests', quote.repairRequest._id]"
                     >
-                      Accept
-                    </button>
-                    <button
-                      type="button"
-                      class="reject"
-                      (click)="prepareResponse(quote, 'declined')"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                }
-              </aside>
-            </article>
+                      View details
+                    </a>
+                    @if (quote.status === 'pending') {
+                      <div class="actions">
+                        <button
+                          type="button"
+                          class="compare-button"
+                          (click)="toggleCompare(quote)"
+                        >
+                          {{ isCompared(quote) ? 'Remove comparison' : 'Compare' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="accept"
+                          (click)="prepareResponse(quote, 'accepted')"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          class="reject"
+                          (click)="prepareResponse(quote, 'declined')"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    }
+                  </td>
+                </tr>
           }
-        </div>
-        <app-pagination
-          [total]="total()"
-          [page]="page()"
-          [pageSize]="limit()"
-          [disabled]="loading()"
-          ariaLabel="Customer quotations pages"
-          (pageChange)="changePage($event)"
-          (pageSizeChange)="changePageSize($event)"
-        />
+              </tbody>
+            </table>
+          </div>
+          <app-pagination
+            variant="brand"
+            [total]="total()"
+            [page]="page()"
+            [pageSize]="limit()"
+            [disabled]="loading()"
+            ariaLabel="Customer quotations pages"
+            (pageChange)="changePage($event)"
+            (pageSizeChange)="changePageSize($event)"
+          />
+        </section>
       }
 
       @if (response(); as pending) {
@@ -429,29 +462,38 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
     .filters app-common-filter { display: block; flex: 0 0 auto; }
     .apply-button { min-height: 2.5rem; padding: 0.55rem 0.9rem; border: 1px solid #dfe5e1; border-radius: 0.7rem; background: #fff; color: #334139; cursor: pointer; font: inherit; font-size: 0.76rem; font-weight: 650; white-space: nowrap; }
     .apply-button { border-color: #087c3b; background: #087c3b; color: #fff; }
-    .list { display: grid; gap: 0.75rem; }
-    .card { display: grid; grid-template-columns: minmax(15rem, 0.95fr) minmax(18rem, 1.2fr) minmax(8.5rem, auto); align-items: center; gap: 1rem; padding: 0.8rem; box-shadow: 0 1px 2px rgb(20 40 28 / 3%); }
-    .shop-info { display: flex; min-width: 0; align-items: center; gap: 0.8rem; }
+    .quotation-table-card { overflow: hidden; display: flex; min-width: 0; flex-direction: column; border: 1px solid #e2e8e4; border-radius: 0.85rem; background: #fff; box-shadow: 0 2px 8px rgb(20 40 28 / 5%); }
+    .quotation-table-scroll { width: 100%; min-width: 0; overflow-x: auto; }
+    .quotation-table { width: 100%; min-width: 1250px; border-collapse: collapse; text-align: left; }
+    .quotation-table thead { background: #edf8ef; }
+    .quotation-table th { padding: 0.8rem 0.7rem; border-bottom: 1px solid #e2e8e4; color: #173c26; font-size: 0.73rem; font-weight: 750; white-space: nowrap; }
+    .quotation-table td { padding: 0.75rem 0.7rem; border-bottom: 1px solid #edf1ed; color: #33443a; font-size: 0.79rem; vertical-align: middle; }
+    .quotation-table tbody tr:last-child td { border-bottom: 0; }
+    .quotation-table tbody tr:hover { background: #fbfdfb; }
+    .quote-request-id-cell { min-width: 7rem; white-space: nowrap; }
+    .quote-request-id { color: #087c3b; font-size: 0.78rem; font-weight: 800; text-decoration: none; }
+    .quote-request-id:focus-visible { border-radius: 0.15rem; outline: 2px solid #087c3b; outline-offset: 2px; }
+    .quote-device-cell { min-width: 15rem; max-width: 18rem; }
+    .quote-device { display: inline-flex; min-width: 0; align-items: center; gap: 0.65rem; }
     .product-thumbnail-wrap {
       position: relative;
-      width: 76px;
-      height: 76px;
-      border-radius: 10px;
-      border: 1px solid #e5ebe6;
+      width: 2.75rem;
+      height: 2.75rem;
+      flex: 0 0 auto;
+      border: 1px solid #e2e8e4;
+      border-radius: 0.55rem;
       background: #f8fafc;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      flex-shrink: 0;
-      box-shadow: 0 1px 2px rgba(20, 40, 28, 0.04);
     }
     .product-thumbnail-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
-      border-radius: 9px;
+      border-radius: 0.5rem;
     }
     .product-thumbnail-fallback {
       width: 100%;
@@ -466,47 +508,46 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
       width: 2rem;
       height: 2rem;
     }
-    .shop-copy { min-width: 0; }
-    .shop-copy h2 { margin: 0.25rem 0 0.35rem; color: #1c2721; font-size: 1rem; font-weight: 750; }
-    .shop-address, .rating { display: flex; align-items: flex-start; gap: 0.35rem; margin: 0.2rem 0; color: #68756d; font-size: 0.72rem; line-height: 1.4; }
+    .quote-device-copy { display: grid; min-width: 0; gap: 0.12rem; }
+    .quote-device-copy strong { overflow: hidden; color: #0f172a; font-size: 0.8rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .quote-device-copy span, .quote-device-copy small { overflow: hidden; color: #64748b; font-size: 0.68rem; text-overflow: ellipsis; white-space: nowrap; }
+    .quote-shop-cell { min-width: 13rem; max-width: 17rem; }
+    .shop-copy { display: grid; min-width: 0; gap: 0.3rem; }
+    .shop-copy > strong { overflow: hidden; color: #0f172a; font-size: 0.8rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .shop-address, .rating { display: flex; align-items: flex-start; gap: 0.35rem; margin: 0; color: #68756d; font-size: 0.68rem; line-height: 1.4; }
     .shop-address svg { width: 0.95rem; height: 0.95rem; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
     .rating span { color: #b18419; font-size: 1rem; line-height: 0.9; }
-    .quote-info { min-width: 0; padding: 0.15rem 0 0.15rem 1rem; border-left: 1px solid #e2e8e3; }
-    .quote-title { display: flex; align-items: center; gap: 0.55rem; color: #202a24; font-size: 0.85rem; }
-    .quote-title svg { width: 1.1rem; height: 1.1rem; flex: 0 0 auto; fill: none; stroke: #34493c; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
-    .issue { margin: 0.45rem 0; color: #5f6c63; font-size: 0.76rem; }
-    .quote-total { color: #17643b; font-size: 1.35rem; font-weight: 800; letter-spacing: -0.03em; }
-    .details { display: flex; flex-wrap: wrap; gap: 0.35rem 0.8rem; padding: 0.3rem 0 0.15rem; color: #536057; font-size: 0.7rem; }
+    .quote-info { min-width: 17rem; max-width: 22rem; }
+    .quote-total { color: #17643b; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.03em; white-space: nowrap; }
+    .details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.25rem 0.55rem; padding: 0.3rem 0 0.15rem; color: #536057; font-size: 0.68rem; }
+    .details span { white-space: nowrap; }
     .more-details { margin-top: 0.35rem; color: #68756d; font-size: 0.72rem; }
     .more-details summary { width: fit-content; color: #315d4b; cursor: pointer; font-weight: 650; }
     .more-details p { margin: 0.45rem 0; line-height: 1.45; }
     .quote-meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.8rem; padding-top: 0.4rem; border-top: 1px solid #edf1ed; color: #77867c; font-size: 0.68rem; }
-    .card-actions { display: flex; min-width: 8rem; flex-direction: column; align-items: flex-end; justify-content: center; gap: 0.65rem; }
-    .view-details { display: inline-flex; min-height: 2.4rem; align-items: center; justify-content: space-between; gap: 0.6rem; padding: 0.5rem 0.7rem; border: 1px solid #d4dfd7; border-radius: 0.65rem; color: #17643b; font-size: 0.74rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .repair-status-cell { min-width: 9rem; }
+    .repair-status-cell > a { display: block; margin-top: 0.35rem; color: #315d4b; font-size: 0.72rem; font-weight: 700; text-decoration: none; }
+    .repair-status-cell > a:hover { text-decoration: underline; }
+    .status-unavailable { color: #94a3b8; }
+    .quote-status-cell { min-width: 8rem; }
+    .reason { display: block; max-width: 10rem; margin-top: 0.35rem; color: #a34842; font-size: 0.68rem; }
+    .quotation-action-heading, .quotation-actions-cell { min-width: 9rem; text-align: right; }
+    .quotation-actions-cell { min-width: 10rem; }
+    .view-details { display: inline-flex; min-height: 2rem; align-items: center; justify-content: center; gap: 0.6rem; padding: 0.4rem 0.6rem; border: 1px solid #d4dfd7; border-radius: 0.65rem; color: #17643b; font-size: 0.72rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
     .view-details:hover { background: #f1f8f3; }
-    .view-details svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
-    .actions { display: flex; flex-direction: column; flex-wrap: wrap; gap: 0.35rem; }
+    .actions { display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; margin-top: 0.4rem; }
     .actions button { min-height: 2rem; padding: 0.4rem 0.6rem; border: 1px solid transparent; border-radius: 0.55rem; cursor: pointer; font: inherit; font-size: 0.68rem; font-weight: 650; }
     .accept { background: #087c3b; color: #fff; }
     .reject { border-color: #f0dfdc !important; background: #fff0ee; color: #a34842; }
     .compare-button { border-color: #e2e8e2 !important; background: #eff5ef; color: #405447; }
     @media (max-width: 900px) {
       .summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .card { grid-template-columns: minmax(13rem, 0.8fr) minmax(16rem, 1.2fr); }
-      .card-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: flex-end; }
-      .actions { flex-direction: row; }
     }
     @media (max-width: 700px) {
       .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .filters { flex-wrap: wrap; }
       .search-control { flex-basis: 100%; }
       .sort-control { flex: 1; }
-      .card { grid-template-columns: minmax(0, 1fr) auto; gap: 0.7rem; }
-      .shop-info, .quote-info { grid-column: 1 / -1; }
-      .quote-info { padding: 0.75rem 0 0; border-top: 1px solid #e2e8e3; border-left: 0; }
-      .product-thumbnail-wrap { width: 64px; height: 64px; }
-      .card-actions { grid-column: 1 / -1; width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-      .actions { flex-direction: row; flex-wrap: wrap; }
     }
     @media (max-width: 430px) {
       .summary { gap: 0.45rem; }
@@ -514,10 +555,6 @@ type SummaryKey = 'total' | 'pending' | 'accepted' | 'rejected' | 'expired' | 'w
       .summary-icon { width: 2.2rem; height: 2.2rem; }
       .summary-icon svg { width: 1.2rem; height: 1.2rem; }
       .summary-copy span { font-size: 0.65rem; }
-      .card { padding: 0.65rem; }
-      .shop-info { gap: 0.6rem; }
-      .product-thumbnail-wrap { width: 52px; height: 52px; }
-      .shop-copy h2 { font-size: 0.9rem; }
     }
   `,
 })

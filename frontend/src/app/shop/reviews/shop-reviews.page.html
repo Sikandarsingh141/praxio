@@ -74,76 +74,105 @@
     </div>
 
     @if (filteredReviews().length) {
-      <div class="review-list">
-        @for (review of pagedReviews(); track review.repairRequestId) {
-          <article class="review-card">
-            <header>
-              <div class="review-identity">
-                @if (reviewPhotoSource(review); as photo) {
-                  <img
-                    class="review-avatar"
-                    [src]="photo"
-                    [alt]="review.customerName + ' profile photo'"
-                    (error)="onReviewPhotoError(review.repairRequestId)"
-                  />
-                } @else {
-                  <span class="review-avatar" aria-hidden="true">
-                    {{ reviewInitial(review.customerName) }}
-                  </span>
-                }
-                <div>
-                  <h2>{{ review.customerName }}</h2>
-                  <p>Verified repair · {{ review.createdAt | date: 'mediumDate' }}</p>
-                </div>
-              </div>
-              <span class="rating" [attr.data-rating]="review.overallRating">
-                <span aria-hidden="true">★</span> {{ review.overallRating }} / 5
-              </span>
-            </header>
-            <div class="review-comment">
-              <span class="stars" [attr.aria-label]="review.overallRating + ' out of 5 stars'">
-                {{ reviewStars(review.overallRating) }}
-              </span>
-              @if (review.title) {
-                <strong>{{ review.title }}</strong>
+      <section class="review-table-card" aria-label="Customer reviews">
+        <div class="review-table-scroll" appTableScrollIndicators>
+          <table class="review-table">
+            <thead>
+              <tr>
+                <th scope="col">Customer</th>
+                <th scope="col">Rating</th>
+                <th scope="col">Review</th>
+                <th scope="col">Rating breakdown</th>
+                <th scope="col">Recommendation</th>
+                <th scope="col">Verified</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (review of pagedReviews(); track review.repairRequestId) {
+                <tr>
+                  <td class="review-customer-cell">
+                    <div class="review-identity">
+                      @if (reviewPhotoSource(review); as photo) {
+                        <img
+                          class="review-avatar"
+                          [src]="photo"
+                          [alt]="review.customerName + ' profile photo'"
+                          (error)="onReviewPhotoError(review.repairRequestId)"
+                        />
+                      } @else {
+                        <span class="review-avatar" aria-hidden="true">
+                          {{ reviewInitial(review.customerName) }}
+                        </span>
+                      }
+                      <div class="review-customer-copy">
+                        <strong>{{ review.customerName }}</strong>
+                        <span>Verified repair · {{ review.createdAt | date: 'mediumDate' }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="review-rating-cell">
+                    <span
+                      class="stars"
+                      [attr.aria-label]="review.overallRating + ' out of 5 stars'"
+                    >
+                      {{ reviewStars(review.overallRating) }}
+                    </span>
+                    <strong>{{ review.overallRating }} / 5</strong>
+                  </td>
+                  <td class="review-content-cell">
+                    @if (review.title) {
+                      <strong>{{ review.title }}</strong>
+                    }
+                    @if (review.reviewText) {
+                      <p class="review-text">{{ review.reviewText }}</p>
+                    }
+                    @if (review.liked) {
+                      <p class="review-detail"><strong>What they liked:</strong> {{ review.liked }}</p>
+                    }
+                    @if (review.improvement) {
+                      <p class="review-detail">
+                        <strong>Suggested improvement:</strong> {{ review.improvement }}
+                      </p>
+                    }
+                    @if (!review.title && !review.reviewText && !review.liked && !review.improvement) {
+                      <span class="no-review-text">No written feedback</span>
+                    }
+                  </td>
+                  <td class="review-breakdown-cell">
+                    <div class="rating-tags">
+                      <span>Quality ({{ review.repairQuality }})</span>
+                      <span>Communication ({{ review.communication }})</span>
+                      <span>Professionalism ({{ review.professionalism }})</span>
+                      <span>Timeliness ({{ review.timeliness }})</span>
+                      <span>Value ({{ review.valueForMoney }})</span>
+                    </div>
+                  </td>
+                  <td class="review-recommendation-cell">
+                    <span [class.not-recommended]="!review.wouldRecommend">
+                      {{ review.wouldRecommend ? 'Would recommend' : 'Would not recommend' }}
+                    </span>
+                  </td>
+                  <td class="review-verified-cell">
+                    <span class="verified-date">
+                      <span aria-hidden="true">♢</span>
+                      {{ review.verifiedAt | date: 'mediumDate' }}
+                    </span>
+                  </td>
+                </tr>
               }
-            </div>
-            @if (review.reviewText) {
-              <p class="review-text">{{ review.reviewText }}</p>
-            }
-            <div class="rating-tags">
-              <span>Quality ({{ review.repairQuality }})</span>
-              <span>Communication ({{ review.communication }})</span>
-              <span>Professionalism ({{ review.professionalism }})</span>
-              <span>Timeliness ({{ review.timeliness }})</span>
-              <span>Value ({{ review.valueForMoney }})</span>
-            </div>
-            @if (review.liked) {
-              <p class="review-detail"><strong>What they liked:</strong> {{ review.liked }}</p>
-            }
-            @if (review.improvement) {
-              <p class="review-detail">
-                <strong>Suggested improvement:</strong> {{ review.improvement }}
-              </p>
-            }
-            <footer>
-              <span>{{ review.wouldRecommend ? 'Would recommend your shop' : 'Would not recommend your shop' }}</span>
-              <span class="verified-date">
-                <span aria-hidden="true">♢</span>
-                Verified {{ review.verifiedAt | date: 'mediumDate' }}
-              </span>
-            </footer>
-          </article>
-        }
-      </div>
-      <app-pagination
-        [total]="filteredReviews().length"
-        [page]="page()"
-        [pageSize]="pageSize()"
-        ariaLabel="Review pages"
-        (pageChange)="goToPage($event)"
-        (pageSizeChange)="changePageSize($event)"
-      />
+            </tbody>
+          </table>
+        </div>
+        <app-pagination
+          variant="brand"
+          [total]="filteredReviews().length"
+          [page]="page()"
+          [pageSize]="pageSize()"
+          ariaLabel="Review pages"
+          (pageChange)="goToPage($event)"
+          (pageSizeChange)="changePageSize($event)"
+        />
+      </section>
     } @else {
       <div class="state-card empty">
         <h2>{{ data.reviews.length ? 'No matching reviews' : 'No reviews yet' }}</h2>

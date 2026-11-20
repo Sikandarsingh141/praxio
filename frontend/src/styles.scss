@@ -2827,14 +2827,14 @@
     color: #a34842;
   }
 
-  .pagination {
+  .pagination:not(.brand) {
     display: flex;
     justify-content: center;
     gap: 0.7rem;
     margin: 1rem;
   }
 
-  .pagination button {
+  .pagination:not(.brand) button {
     min-height: 2.5rem;
     padding: 0.55rem 0.9rem;
     border: 1px solid #dfe5e1;
@@ -2848,7 +2848,7 @@
     white-space: nowrap;
   }
 
-  .pagination button:disabled,
+  .pagination:not(.brand) button:disabled,
   .dialog button:disabled {
     cursor: wait;
     opacity: 0.55;

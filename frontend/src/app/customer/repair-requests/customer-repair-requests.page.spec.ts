@@ -84,13 +84,13 @@ describe('CustomerRepairRequestsPage editing', () => {
     fixture.detectChanges();
 
     const statuses = Array.from(
-      fixture.nativeElement.querySelectorAll('.request-card .status'),
+      fixture.nativeElement.querySelectorAll('.request-table .status'),
       (element: Element) => element.textContent?.trim(),
     );
     expect(statuses).toEqual(['Active', 'Completed', 'Active', 'Cancelled']);
   });
 
-  it('filters request cards by lifecycle status and sorts them by date', () => {
+  it('filters request rows by lifecycle status and sorts them by date', () => {
     const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
     const page = fixture.componentInstance;
     portal.getRepairRequests.and.returnValue(
@@ -148,18 +148,22 @@ describe('CustomerRepairRequestsPage editing', () => {
     fixture.detectChanges();
     const page = fixture.componentInstance;
 
-    expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(10);
-    expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.request-table tbody tr').length).toBe(10);
+    const pagination = fixture.nativeElement.querySelector(
+      '.request-table-card app-pagination nav',
+    ) as HTMLElement;
+    expect(pagination).toBeTruthy();
+    expect(pagination.classList.contains('brand')).toBeTrue();
 
     page.goToPage(2);
     fixture.detectChanges();
     expect(page.page()).toBe(2);
-    expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.request-table tbody tr').length).toBe(1);
 
     page.selectStatus('completed');
     fixture.detectChanges();
     expect(page.page()).toBe(1);
-    expect(fixture.nativeElement.querySelectorAll('.request-card').length).toBe(1);
+    expect(fixture.nativeElement.querySelectorAll('.request-table tbody tr').length).toBe(1);
     expect(fixture.nativeElement.querySelector('app-pagination nav')).toBeNull();
   });
 
@@ -226,6 +230,19 @@ describe('CustomerRepairRequestsPage editing', () => {
   it('shows a detail-page action for requests without an active repair job', () => {
     const fixture = TestBed.createComponent(CustomerRepairRequestsPage);
     fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.request-table')).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('.request-table-scroll.table-scroll-indicators'),
+    ).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('.request-table-scroll .table-scroll-indicator-right'),
+    ).toBeTruthy();
+    const requestIdLink = fixture.nativeElement.querySelector(
+      '.request-id-link',
+    ) as HTMLAnchorElement;
+    expect(requestIdLink.textContent.trim()).toBe('#QUEST-ID');
+    expect(requestIdLink.getAttribute('href')).toBe('/customer/repair-requests/request-id');
 
     const detailLink = fixture.nativeElement.querySelector(
       '.repair-progress-link',

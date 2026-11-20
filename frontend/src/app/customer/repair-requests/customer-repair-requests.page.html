@@ -83,239 +83,267 @@
     @if (actionError()) {
       <p class="action-error" role="alert">{{ actionError() }}</p>
     }
-    <div class="request-list">
-      @for (request of pagedRequests(); track request._id) {
-        <article class="request-card">
-          <div class="request-summary">
-            @if (request.photos?.length) {
-              <div class="request-photos" aria-label="Repair request photos">
-                <img
-                  [src]="request.photos?.[0]?.data"
-                  [alt]="'Repair photo 1 for ' + request.appliance"
-                  loading="lazy"
-                />
-              </div>
-            } @else {
-              <div class="request-photo-placeholder" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <rect x="4" y="4" width="16" height="16" rx="3" />
-                  <path d="M8 15h8M9 10h6" />
-                </svg>
-              </div>
-            }
-            <div class="request-identity">
-              <h2>{{ request.appliance }}</h2>
-              <p class="description">{{ request.description }}</p>
-              @if (request.brand || request.model) {
-                <p class="repair-device">
-                  {{ request.brand || 'Brand not provided'
-                  }}{{ request.model ? ' · ' + request.model : '' }}
-                </p>
-              }
-              <span class="request-id">
-                Request ID:
-                <strong class="request-reference">{{ request._id.slice(-8).toUpperCase() }}</strong>
-              </span>
-              <span class="request-date">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <rect x="4" y="6" width="16" height="14" rx="2" />
-                  <path d="M8 4v4m8-4v4M4 10h16" />
-                </svg>
-                {{ request.createdAt | date: 'mediumDate' }}
-              </span>
-              @if (canEditRequest(request)) {
-                <button
-                  type="button"
-                  class="edit-request-button"
-                  [disabled]="updating() === request._id"
-                  (click)="openEdit(request)"
-                >
-                  Edit request
-                </button>
-              }
-              @if (canCancelRequest(request)) {
-                <button
-                  type="button"
-                  class="cancel-request-button"
-                  [disabled]="cancellingRequestId() === request._id"
-                  (click)="openCancel(request)"
-                >
-                  Cancel request
-                </button>
-              }
-            </div>
-          </div>
-          <section class="quotation-section" aria-label="Shop quotations">
-            <h3>Quotations</h3>
-            @if (request.shops?.length) {
-              <div class="shop-responses" aria-label="Shop responses">
-                @for (shop of request.shops; track shop.id) {
-                  @if (shop.responseStatus === 'declined') {
-                    <p class="shop-response declined">
-                      <span class="shop-thumb" aria-hidden="true">
-                        @if (shop.logoUrl) {
-                          <img [src]="shop.logoUrl" alt="" loading="lazy" />
-                        } @else {
-                          {{ shop.name.trim().charAt(0).toLocaleUpperCase() || 'S' }}
-                        }
+    <section class="request-table-card" aria-label="Repair requests">
+      <div class="request-table-scroll" appTableScrollIndicators>
+        <table class="request-table">
+          <thead>
+            <tr>
+              <th scope="col">Request ID</th>
+              <th scope="col">Device &amp; Brand</th>
+              <th scope="col">Issue / Problem</th>
+              <th scope="col">Request Date</th>
+              <th scope="col">Shops &amp; Quotations</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="request-action-heading">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of pagedRequests(); track request._id) {
+              <tr>
+                <td class="request-id-cell">
+                  <a
+                    class="request-id-link"
+                    [routerLink]="['/customer/repair-requests', request._id]"
+                    [attr.aria-label]="'View request ' + request._id.slice(-8).toUpperCase() + ' details'"
+                  >
+                    #{{ request._id.slice(-8).toUpperCase() }}
+                  </a>
+                </td>
+                <td class="request-device-cell">
+                  <div class="request-device-content">
+                    @if (request.photos?.length) {
+                      <div class="request-photos" aria-label="Repair request photo">
+                        <img
+                          [src]="request.photos?.[0]?.data"
+                          [alt]="'Repair photo 1 for ' + request.appliance"
+                          loading="lazy"
+                        />
+                      </div>
+                    } @else {
+                      <div class="request-photo-placeholder" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <rect x="4" y="4" width="16" height="16" rx="3" />
+                          <path d="M8 15h8M9 10h6" />
+                        </svg>
+                      </div>
+                    }
+                    <div class="request-device-copy">
+                      <strong>{{ request.appliance }}</strong>
+                      <span>
+                        {{ request.brand || 'Brand not provided'
+                        }}{{ request.model ? ' · ' + request.model : '' }}
                       </span>
-                      <strong>{{ shop.name }}</strong>
-                      <span class="response-badge">Declined</span>
-                      @if (shop.declineReason) {
-                        <small>{{ shop.declineReason }}</small>
-                      }
-                    </p>
-                  } @else if (shop.responseStatus === 'new' || shop.responseStatus === 'pending') {
-                    <p class="shop-response">
-                      <span class="shop-thumb" aria-hidden="true">
-                        @if (shop.logoUrl) {
-                          <img [src]="shop.logoUrl" alt="" loading="lazy" />
-                        } @else {
-                          {{ shop.name.trim().charAt(0).toLocaleUpperCase() || 'S' }}
-                        }
-                      </span>
-                      <strong>{{ shop.name }}</strong>
-                      <span class="response-badge pending">Awaiting response</span>
-                    </p>
-                  }
-                }
-              </div>
-            }
-            @if (request.quotations.length) {
-              @for (quote of request.quotations; track quote._id) {
-                <article class="quote-card">
-                  <div class="quote-heading">
-                    <span class="shop-thumb" aria-hidden="true">
-                      @if (shopLogo(request, quote.shopId); as logoUrl) {
-                        <img [src]="logoUrl" alt="" loading="lazy" />
-                      } @else {
-                        {{ shopInitial(request, quote.shopId) }}
-                      }
-                    </span>
-                    <strong>{{ shopName(request, quote.shopId) }}</strong>
-                    <span class="response-badge" [attr.data-status]="quote.status">
-                      {{ quote.status | titlecase }}
-                    </span>
+                    </div>
                   </div>
-                  <p class="quote-amount">{{ quote.amount | currency: quote.currency }}</p>
-                  <details class="quote-details">
-                    <summary>View quotation details</summary>
-                    <p>{{ quote.message }}</p>
-                    @if (
-                      quote.inspectionCharge ||
-                      quote.partsCost ||
-                      quote.labourCharge ||
-                      quote.additionalCharges
-                    ) {
-                      <dl class="quote-breakdown">
-                        @if (quote.inspectionCharge) {
-                          <div>
-                            <dt>Inspection</dt>
-                            <dd>{{ quote.inspectionCharge | currency: quote.currency }}</dd>
-                          </div>
+                </td>
+                <td class="request-issue-cell" [title]="request.description">
+                  {{ request.description }}
+                </td>
+                <td class="request-date-cell">
+                  <span class="request-date-copy">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="4" y="6" width="16" height="14" rx="2" />
+                      <path d="M8 4v4m8-4v4M4 10h16" />
+                    </svg>
+                    {{ request.createdAt | date: 'mediumDate' }}
+                  </span>
+                </td>
+                <td class="request-quotations-cell">
+                  @if (request.shops?.length) {
+                    <div class="shop-responses" aria-label="Shop responses">
+                      @for (shop of request.shops; track shop.id) {
+                        @if (shop.responseStatus === 'declined') {
+                          <p class="shop-response declined">
+                            <span class="shop-thumb" aria-hidden="true">
+                              @if (shop.logoUrl) {
+                                <img [src]="shop.logoUrl" alt="" loading="lazy" />
+                              } @else {
+                                {{ shop.name.trim().charAt(0).toLocaleUpperCase() || 'S' }}
+                              }
+                            </span>
+                            <strong>{{ shop.name }}</strong>
+                            <span class="response-badge">Declined</span>
+                            @if (shop.declineReason) {
+                              <small>{{ shop.declineReason }}</small>
+                            }
+                          </p>
+                        } @else if (shop.responseStatus === 'new' || shop.responseStatus === 'pending') {
+                          <p class="shop-response">
+                            <span class="shop-thumb" aria-hidden="true">
+                              @if (shop.logoUrl) {
+                                <img [src]="shop.logoUrl" alt="" loading="lazy" />
+                              } @else {
+                                {{ shop.name.trim().charAt(0).toLocaleUpperCase() || 'S' }}
+                              }
+                            </span>
+                            <strong>{{ shop.name }}</strong>
+                            <span class="response-badge pending">Awaiting response</span>
+                          </p>
                         }
-                        @if (quote.partsCost) {
-                          <div>
-                            <dt>Parts</dt>
-                            <dd>{{ quote.partsCost | currency: quote.currency }}</dd>
-                          </div>
-                        }
-                        @if (quote.labourCharge) {
-                          <div>
-                            <dt>Labour</dt>
-                            <dd>{{ quote.labourCharge | currency: quote.currency }}</dd>
-                          </div>
-                        }
-                        @if (quote.additionalCharges) {
-                          <div>
-                            <dt>Additional charges</dt>
-                            <dd>{{ quote.additionalCharges | currency: quote.currency }}</dd>
-                          </div>
-                        }
-                      </dl>
-                    }
-                    @if (quote.proposedSolution) {
-                      <p class="quote-detail">
-                        <strong>Proposed solution:</strong> {{ quote.proposedSolution }}
-                      </p>
-                    }
-                    @if (quote.warrantyInformation) {
-                      <p class="quote-detail">
-                        <strong>Warranty:</strong> {{ quote.warrantyInformation }}
-                      </p>
-                    }
-                    @if (quote.additionalNotes) {
-                      <p class="quote-detail">
-                        <strong>Notes:</strong> {{ quote.additionalNotes }}
-                      </p>
-                    }
-                    @if (quote.estimatedDays !== undefined) {
-                      <span class="estimate">Estimated time: {{ quote.estimatedDays }} days</span>
-                    }
-                    @if (quote.validUntil) {
-                      <span class="estimate"
-                        >Valid until {{ quote.validUntil | date: 'mediumDate' }}</span
-                      >
-                    }
-                  </details>
-                  @if (quote.status === 'sent' || quote.status === 'pending') {
-                    <div class="quote-actions">
-                      <button
-                        type="button"
-                        class="accept"
-                        [disabled]="updating() === quote._id"
-                        (click)="setQuotationStatus(quote._id, 'accepted')"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        type="button"
-                        class="decline"
-                        [disabled]="updating() === quote._id"
-                        (click)="setQuotationStatus(quote._id, 'declined')"
-                      >
-                        Decline
-                      </button>
+                      }
                     </div>
                   }
-                </article>
-              }
-            } @else {
-              <p class="no-quotes">
-                Waiting for a separate quotation from
-                @for (shopId of request.shopIds; track shopId; let last = $last) {
-                  {{ shopName(request, shopId) }}{{ last ? '.' : ', ' }}
-                }
-              </p>
+                  @if (request.quotations.length) {
+                    @for (quote of request.quotations; track quote._id) {
+                      <article class="quote-card">
+                        <div class="quote-heading">
+                          <span class="shop-thumb" aria-hidden="true">
+                            @if (shopLogo(request, quote.shopId); as logoUrl) {
+                              <img [src]="logoUrl" alt="" loading="lazy" />
+                            } @else {
+                              {{ shopInitial(request, quote.shopId) }}
+                            }
+                          </span>
+                          <strong>{{ shopName(request, quote.shopId) }}</strong>
+                          <span class="response-badge" [attr.data-status]="quote.status">
+                            {{ quote.status | titlecase }}
+                          </span>
+                        </div>
+                        <p class="quote-amount">{{ quote.amount | currency: quote.currency }}</p>
+                        <details class="quote-details">
+                          <summary>View quotation details</summary>
+                          <p>{{ quote.message }}</p>
+                          @if (
+                            quote.inspectionCharge ||
+                            quote.partsCost ||
+                            quote.labourCharge ||
+                            quote.additionalCharges
+                          ) {
+                            <dl class="quote-breakdown">
+                              @if (quote.inspectionCharge) {
+                                <div>
+                                  <dt>Inspection</dt>
+                                  <dd>{{ quote.inspectionCharge | currency: quote.currency }}</dd>
+                                </div>
+                              }
+                              @if (quote.partsCost) {
+                                <div>
+                                  <dt>Parts</dt>
+                                  <dd>{{ quote.partsCost | currency: quote.currency }}</dd>
+                                </div>
+                              }
+                              @if (quote.labourCharge) {
+                                <div>
+                                  <dt>Labour</dt>
+                                  <dd>{{ quote.labourCharge | currency: quote.currency }}</dd>
+                                </div>
+                              }
+                              @if (quote.additionalCharges) {
+                                <div>
+                                  <dt>Additional charges</dt>
+                                  <dd>{{ quote.additionalCharges | currency: quote.currency }}</dd>
+                                </div>
+                              }
+                            </dl>
+                          }
+                          @if (quote.proposedSolution) {
+                            <p class="quote-detail">
+                              <strong>Proposed solution:</strong> {{ quote.proposedSolution }}
+                            </p>
+                          }
+                          @if (quote.warrantyInformation) {
+                            <p class="quote-detail">
+                              <strong>Warranty:</strong> {{ quote.warrantyInformation }}
+                            </p>
+                          }
+                          @if (quote.additionalNotes) {
+                            <p class="quote-detail">
+                              <strong>Notes:</strong> {{ quote.additionalNotes }}
+                            </p>
+                          }
+                          @if (quote.estimatedDays !== undefined) {
+                            <span class="estimate">Estimated time: {{ quote.estimatedDays }} days</span>
+                          }
+                          @if (quote.validUntil) {
+                            <span class="estimate"
+                              >Valid until {{ quote.validUntil | date: 'mediumDate' }}</span
+                            >
+                          }
+                        </details>
+                        @if (quote.status === 'sent' || quote.status === 'pending') {
+                          <div class="quote-actions">
+                            <button
+                              type="button"
+                              class="accept"
+                              [disabled]="updating() === quote._id"
+                              (click)="setQuotationStatus(quote._id, 'accepted')"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              class="decline"
+                              [disabled]="updating() === quote._id"
+                              (click)="setQuotationStatus(quote._id, 'declined')"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        }
+                      </article>
+                    }
+                  } @else {
+                    <p class="no-quotes">
+                      Waiting for a separate quotation from
+                      @for (shopId of request.shopIds; track shopId; let last = $last) {
+                        {{ shopName(request, shopId) }}{{ last ? '.' : ', ' }}
+                      }
+                    </p>
+                  }
+                </td>
+                <td>
+                  <span
+                    class="status"
+                    [class.active]="requestStatusLabel(request) === 'Active'"
+                    [class.completed]="requestStatusLabel(request) === 'Completed'"
+                    [class.cancelled]="requestStatusLabel(request) === 'Cancelled'"
+                  >
+                    {{ requestStatusLabel(request) }}
+                  </span>
+                </td>
+                <td class="request-actions-cell">
+                  <a
+                    class="repair-progress-link"
+                    [routerLink]="['/customer/repair-requests', request._id]"
+                  >
+                    View details
+                  </a>
+                  @if (canEditRequest(request)) {
+                    <button
+                      type="button"
+                      class="edit-request-button"
+                      [disabled]="updating() === request._id"
+                      (click)="openEdit(request)"
+                    >
+                      Edit request
+                    </button>
+                  }
+                  @if (canCancelRequest(request)) {
+                    <button
+                      type="button"
+                      class="cancel-request-button"
+                      [disabled]="cancellingRequestId() === request._id"
+                      (click)="openCancel(request)"
+                    >
+                      Cancel request
+                    </button>
+                  }
+                </td>
+              </tr>
             }
-          </section>
-          <aside class="request-actions">
-            <span
-              class="status"
-              [class.active]="requestStatusLabel(request) === 'Active'"
-              [class.completed]="requestStatusLabel(request) === 'Completed'"
-              [class.cancelled]="requestStatusLabel(request) === 'Cancelled'"
-            >
-              {{ requestStatusLabel(request) }}
-            </span>
-            <a
-              class="repair-progress-link"
-              [routerLink]="['/customer/repair-requests', request._id]"
-            >
-              View details
-            </a>
-          </aside>
-        </article>
-      }
-    </div>
-    <app-pagination
-      [total]="visibleRequests().length"
-      [page]="page()"
-      [pageSize]="pageSize()"
-      ariaLabel="Repair request pages"
-      (pageChange)="goToPage($event)"
-      (pageSizeChange)="changePageSize($event)"
-    />
+          </tbody>
+        </table>
+      </div>
+      <app-pagination
+        variant="brand"
+        [total]="visibleRequests().length"
+        [page]="page()"
+        [pageSize]="pageSize()"
+        ariaLabel="Repair request pages"
+        (pageChange)="goToPage($event)"
+        (pageSizeChange)="changePageSize($event)"
+      />
+    </section>
   }
 
   @if (editRequest(); as request) {
