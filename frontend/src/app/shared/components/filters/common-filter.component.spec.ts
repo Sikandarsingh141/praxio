@@ -66,6 +66,27 @@ describe('CommonFilterComponent', () => {
     expect(component.drawerOpen).toBe(false);
   });
 
+  it('shows field-specific placeholders when filter configs omit them', () => {
+    component.toggleDrawer();
+    fixture.detectChanges();
+
+    const placeholder = (selector: string) =>
+      (fixture.nativeElement.querySelector(selector) as HTMLInputElement).getAttribute(
+        'placeholder',
+      );
+
+    expect(placeholder('#query')).toBe('Enter text search');
+    expect(placeholder('#singleDate')).toBe('Select single date');
+    expect(placeholder('#created-from')).toBe('Start date');
+    expect(placeholder('#created-to')).toBe('End date');
+    expect(placeholder('#amount-min')).toBe('Minimum amount');
+    expect(placeholder('#amount-max')).toBe('Maximum amount');
+    expect(placeholder('#count')).toBe('Enter count');
+    expect(
+      (fixture.nativeElement.querySelector('#status option') as HTMLOptionElement).textContent?.trim(),
+    ).toBe('Any status');
+  });
+
   it('does not apply draft changes until Apply filters is clicked', () => {
     const changes = jasmine.createSpy('filtersChange');
     component.filtersChange.subscribe(changes);

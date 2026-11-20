@@ -125,7 +125,7 @@ export type FilterValues = Record<string, FilterValue>;
                     <input
                       [id]="field.key"
                       type="text"
-                      [placeholder]="field.placeholder || ''"
+                      [placeholder]="placeholderFor(field)"
                       [required]="field.required || false"
                       [ngModel]="textValue(field.key)"
                       [ngModelOptions]="{ standalone: true }"
@@ -141,7 +141,7 @@ export type FilterValues = Record<string, FilterValue>;
                       [ngModelOptions]="{ standalone: true }"
                       (ngModelChange)="updateValue(field.key, $event)"
                     >
-                      <option value="">{{ field.placeholder || 'Any' }}</option>
+                      <option value="">{{ placeholderFor(field) }}</option>
                       @for (option of field.options || []; track option.value) {
                         <option [value]="option.value">{{ option.label }}</option>
                       }
@@ -166,6 +166,7 @@ export type FilterValues = Record<string, FilterValue>;
                     <input
                       [id]="field.key"
                       type="date"
+                      [placeholder]="placeholderFor(field)"
                       [required]="field.required || false"
                       [ngModel]="textValue(field.key)"
                       [ngModelOptions]="{ standalone: true }"
@@ -181,6 +182,7 @@ export type FilterValues = Record<string, FilterValue>;
                           <input
                             [id]="field.key + '-from'"
                             type="date"
+                            [placeholder]="placeholderFor(field, 'from')"
                             [ngModel]="rangeValue(field.key).from || ''"
                             [ngModelOptions]="{ standalone: true }"
                             (ngModelChange)="updateRange(field.key, 'from', $event)"
@@ -191,6 +193,7 @@ export type FilterValues = Record<string, FilterValue>;
                           <input
                             [id]="field.key + '-to'"
                             type="date"
+                            [placeholder]="placeholderFor(field, 'to')"
                             [ngModel]="rangeValue(field.key).to || ''"
                             [ngModelOptions]="{ standalone: true }"
                             (ngModelChange)="updateRange(field.key, 'to', $event)"
@@ -208,7 +211,7 @@ export type FilterValues = Record<string, FilterValue>;
                       [max]="field.max ?? null"
                       [step]="field.step ?? 1"
                       [required]="field.required || false"
-                      [placeholder]="field.placeholder || ''"
+                      [placeholder]="placeholderFor(field)"
                       [ngModel]="numberValue(field.key)"
                       [ngModelOptions]="{ standalone: true }"
                       (ngModelChange)="updateNumber(field.key, $event)"
@@ -225,6 +228,7 @@ export type FilterValues = Record<string, FilterValue>;
                             type="number"
                             [min]="field.min ?? null"
                             [step]="field.step ?? 1"
+                            [placeholder]="placeholderFor(field, 'min')"
                             [ngModel]="numberRangeValue(field.key).min ?? ''"
                             [ngModelOptions]="{ standalone: true }"
                             (ngModelChange)="updateNumberRange(field.key, 'min', $event)"
@@ -237,6 +241,7 @@ export type FilterValues = Record<string, FilterValue>;
                             type="number"
                             [max]="field.max ?? null"
                             [step]="field.step ?? 1"
+                            [placeholder]="placeholderFor(field, 'max')"
                             [ngModel]="numberRangeValue(field.key).max ?? ''"
                             [ngModelOptions]="{ standalone: true }"
                             (ngModelChange)="updateNumberRange(field.key, 'max', $event)"
@@ -524,6 +529,30 @@ export class CommonFilterComponent {
   @Input({ required: true }) config: FilterConfig = { fields: [] };
   @Input() appliedFilters: FilterValues = {};
   @Output() readonly filtersChange = new EventEmitter<FilterValues>();
+
+  placeholderFor(
+    field: FilterFieldConfig,
+    endpoint?: 'from' | 'to' | 'min' | 'max',
+  ): string {
+    if (field.placeholder?.trim()) return field.placeholder;
+    const label = field.label.toLowerCase();
+
+    switch (field.type) {
+      case 'select':
+        return `Any ${label}`;
+      case 'date':
+        return `Select ${label}`;
+      case 'date-range':
+        return endpoint === 'to' ? 'End date' : 'Start date';
+      case 'number-range':
+        return `${endpoint === 'max' ? 'Maximum' : 'Minimum'} ${label}`;
+      case 'text':
+      case 'number':
+        return `Enter ${label}`;
+      default:
+        return `Select ${label}`;
+    }
+  }
 
   drawerOpen = false;
   private draftFilters: FilterValues = {};
