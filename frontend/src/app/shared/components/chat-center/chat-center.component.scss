@@ -93,14 +93,42 @@ app-chat-center {
 
   .chat-workspace {
     display: grid;
-    height: min(72vh, 760px);
-    min-height: 32rem;
+    height: calc(100dvh - var(--chat-workspace-viewport-offset, 7rem));
+    min-height: min(
+      32rem,
+      calc(100dvh - var(--chat-workspace-viewport-offset, 7rem))
+    );
     grid-template-columns: minmax(270px, 302px) minmax(0, 1fr);
     overflow: hidden;
     border: 1px solid #e8ede9;
     border-radius: 1rem;
     background: #fff;
     box-shadow: 0 8px 26px rgb(34 54 44 / 5%);
+  }
+
+  @at-root {
+    .technician-portal app-chat-center .messages-page,
+    .portal app-chat-center .messages-page {
+      margin-bottom: -1.65rem;
+    }
+
+    @media (max-width: 1024px) {
+      .shop-portal app-chat-center {
+        --chat-workspace-viewport-offset: 10rem;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .technician-portal app-chat-center .messages-page {
+        margin-bottom: -1rem;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .portal app-chat-center .messages-page {
+        margin-bottom: -1rem;
+      }
+    }
   }
 
   .conversation-panel {
@@ -844,8 +872,8 @@ app-chat-center {
   .action-popover {
     position: absolute;
     z-index: 3;
-    top: 100%;
-    right: 0;
+    top: 50%;
+    left: calc(100% + 0.35rem);
     display: grid;
     min-width: 9.5rem;
     padding: 0.3rem;
@@ -853,6 +881,12 @@ app-chat-center {
     border-radius: 0.6rem;
     background: #fff;
     box-shadow: 0 8px 22px rgb(25 44 31 / 14%);
+    transform: translateY(-50%);
+  }
+
+  .message-row.outgoing .action-popover {
+    right: calc(100% + 0.35rem);
+    left: auto;
   }
 
   .action-popover button {
@@ -1398,6 +1432,21 @@ app-chat-center {
       height: auto;
       min-height: calc(100dvh - 13rem);
       grid-template-columns: 1fr;
+    }
+
+    .action-popover {
+      top: calc(100% + 0.25rem);
+      transform: none;
+    }
+
+    .message-row:not(.outgoing) .action-popover {
+      right: auto;
+      left: 0;
+    }
+
+    .message-row.outgoing .action-popover {
+      right: 0;
+      left: auto;
     }
 
     .conversation-panel {
