@@ -31,6 +31,11 @@
 .shop-profile-state { margin: 0; color: #627168; font-size: .78rem; }
 .shop-profile-state.error { color: #a34842; }
 
+:host(.compact) .shop-profile-card { gap: .5rem; padding-top: .4rem; }
+:host(.compact) .shop-profile-identities { gap: .65rem; padding-top: .15rem; padding-bottom: .55rem; }
+:host(.compact) .shop-profile-details { gap: .4rem; }
+:host(.compact) .shop-detail-card { min-height: 3.7rem; padding: .5rem .65rem; }
+
 @media (max-width: 600px) {
   .shop-profile-identities { grid-template-columns: minmax(0, 1fr); gap: .9rem; padding: .25rem .2rem .7rem; }
   .shop-profile-divider { width: 100%; height: 1px; }

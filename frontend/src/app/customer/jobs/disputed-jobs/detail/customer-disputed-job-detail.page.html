@@ -70,6 +70,7 @@
         <section class="detail-section customer-detail-main-card" aria-label="Issue details">
           <section class="customer-detail-block repair-shop-section">
             <app-customer-repair-shop-profile
+              class="compact"
               [shopId]="dispute.shopId"
               [shopName]="dispute.parties?.shop?.name || 'Repair Shop'"
               [ownerName]="dispute.parties?.shop?.personName || ''"

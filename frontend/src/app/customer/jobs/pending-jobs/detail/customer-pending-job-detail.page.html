@@ -60,6 +60,7 @@
           <section class="customer-detail-block repair-shop-section">
             @if (shopDetails(job); as shop) {
               <app-customer-repair-shop-profile
+                class="compact"
                 [shopId]="shop.id"
                 [shopName]="shop.name"
                 [fallbackLogoUrl]="shop.logoUrl ?? null"
@@ -70,6 +71,7 @@
               />
             } @else {
               <app-customer-repair-shop-profile
+                class="compact"
                 [loading]="shopLocationLoading()"
                 [error]="shopProfileError()"
               />

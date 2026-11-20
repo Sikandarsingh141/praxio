@@ -65,6 +65,7 @@
           <section class="customer-detail-block repair-shop-section">
             @let shop = shopDetails(job);
             <app-customer-repair-shop-profile
+              class="compact"
               [shopId]="shop?.id ?? null"
               [shopName]="shop?.name || 'Repair Shop'"
               [fallbackLogoUrl]="shop?.logoUrl ?? null"
