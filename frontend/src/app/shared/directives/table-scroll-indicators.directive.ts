@@ -94,7 +94,7 @@ export class TableScrollIndicatorsDirective implements AfterViewInit, OnDestroy 
     const curved =
       this.document.documentElement.getAttribute('data-table-appearance') !== 'normal';
     const leftVisible = canScroll && curved && scrollLeft > 1;
-    const rightVisible = canScroll && curved && scrollLeft < maxScroll - 1;
+    const rightVisible = curved;
     const indicatorWidth = this.leftIndicator.getBoundingClientRect().width;
 
     this.setStyle(this.leftIndicator, 'left', `${scrollLeft}px`);

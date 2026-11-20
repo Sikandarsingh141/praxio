@@ -18,7 +18,7 @@ describe('TableScrollIndicatorsDirective', () => {
     document.documentElement.removeAttribute('data-table-appearance');
   });
 
-  it('updates both edge indicators from the actual scroll position', () => {
+  it('keeps the right edge curved while the left indicator follows scroll position', () => {
     const fixture = TestBed.createComponent(TableScrollHostComponent);
     fixture.detectChanges();
     const host = fixture.nativeElement.querySelector(
@@ -56,7 +56,7 @@ describe('TableScrollIndicatorsDirective', () => {
     host.scrollLeft = 300;
     host.dispatchEvent(new Event('scroll'));
     expect(left.style.visibility).toBe('visible');
-    expect(right.style.visibility).toBe('hidden');
+    expect(right.style.visibility).toBe('visible');
     expect(left.style.left).toBe('300px');
     expect(Number.parseFloat(right.style.left)).toBeCloseTo(
       600 - right.getBoundingClientRect().width,
@@ -73,9 +73,11 @@ describe('TableScrollIndicatorsDirective', () => {
       value: 300,
     });
     host.scrollLeft = 0;
+    document.documentElement.setAttribute('data-table-appearance', 'curved');
+    window.dispatchEvent(new Event('resize'));
     host.dispatchEvent(new Event('scroll'));
     expect(left.style.visibility).toBe('hidden');
-    expect(right.style.visibility).toBe('hidden');
+    expect(right.style.visibility).toBe('visible');
 
     fixture.destroy();
   });
