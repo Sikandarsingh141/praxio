@@ -211,19 +211,22 @@
           <label><span>Total estimated amount (₹) <b>*</b></span><input type="number" name="quotationAmount" min="0.01" step="0.01" required [ngModel]="quotationAmount()" (ngModelChange)="quotationAmount.set($event)" />@if (quotationAttempted() && (quotationAmount() === null || quotationAmount()! <= 0)) { <small class="field-error">Enter an amount greater than ₹0.</small> }</label>
           <label><span>Estimated completion time (days) <b>*</b></span><input type="number" name="completionDays" min="1" step="1" required [ngModel]="completionDays()" (ngModelChange)="completionDays.set($event)" />@if (quotationAttempted() && (completionDays() === null || completionDays()! < 1 || completionDays()! % 1 !== 0)) { <small class="field-error">Enter a positive whole number of days.</small> }</label>
           <label><span>Quotation validity (days) <b>*</b></span><input type="number" name="validityDays" min="1" max="365" step="1" required [ngModel]="validityDays()" (ngModelChange)="validityDays.set($event)" />@if (quotationAttempted() && (validityDays() === null || validityDays()! < 1 || validityDays()! > 365 || validityDays()! % 1 !== 0)) { <small class="field-error">Enter validity from 1 to 365 days.</small> }</label>
-          <label class="full-width">
+          <div class="full-width quotation-summary-field">
             <span>Quotation Summary / Repair Details <b>*</b></span>
             <div class="quotation-multiselect" [class.open]="quotationSummaryOpen()" [attr.aria-invalid]="quotationAttempted() && !quotationSummaries().length" (focusout)="closeQuotationSummaryDropdown($event)">
               <div class="quotation-chip-list">
                 @for (option of quotationSummaries(); track option) {
                   <span class="quotation-chip">{{ option }}<button type="button" [attr.aria-label]="'Remove ' + option" (click)="removeQuotationSummary(option); $event.stopPropagation(); $event.preventDefault()">×</button></span>
                 }
-                <input type="text" name="quotationSummarySearch" [attr.placeholder]="quotationSummaries().length ? 'Search more repair activities' : 'Search repair activities'" [ngModel]="quotationSummarySearch()" (ngModelChange)="quotationSummarySearch.set($event)" (focus)="quotationSummaryOpen.set(true)" />
+                <input type="text" name="quotationSummarySearch" aria-label="Search repair activities" [attr.placeholder]="quotationSummaries().length ? 'Search more repair activities' : 'Search repair activities'" [ngModel]="quotationSummarySearch()" (ngModelChange)="quotationSummarySearch.set($event)" (focus)="quotationSummaryOpen.set(true)" />
               </div>
               @if (quotationSummaryOpen()) {
-                <div class="quotation-options" role="listbox" aria-multiselectable="true">
+                <div class="quotation-options" role="group" aria-label="Repair activities">
                   @for (option of filteredQuotationSummaries(); track option) {
-                    <button type="button" class="quotation-option" role="option" [attr.aria-selected]="hasQuotationSummaryOption(option)" (click)="toggleQuotationSummary(option); $event.preventDefault()"><span class="quotation-option-check">{{ hasQuotationSummaryOption(option) ? '✓' : '' }}</span>{{ option }}</button>
+                    <label class="quotation-option" [class.selected]="hasQuotationSummaryOption(option)">
+                      <input type="checkbox" name="quotationSummaryOption" [value]="option" [checked]="hasQuotationSummaryOption(option)" (change)="toggleQuotationSummary(option)" />
+                      <span>{{ option }}</span>
+                    </label>
                   } @empty {
                     <p class="quotation-options-empty">No matching repair activities.</p>
                   }
@@ -231,7 +234,7 @@
               }
             </div>
             @if (quotationAttempted() && !quotationSummaries().length) { <small class="field-error">Select at least one repair activity.</small> }
-          </label>
+          </div>
           @if (hasQuotationSummaryOption('Other')) {
             <label class="full-width">
               <span>Additional Repair Details <b>*</b></span>

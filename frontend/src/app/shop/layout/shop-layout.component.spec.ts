@@ -1,16 +1,24 @@
+import { Component } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
 import { JobSharedService } from '../../shared/services/job-shared.service';
 import { ShopLayout } from './shop-layout.component';
 
+@Component({
+  standalone: true,
+  template: 'Request list',
+})
+class RequestListStub {}
+
 describe('ShopLayout', () => {
   let httpTestingController: HttpTestingController;
   let authService: AuthService;
+  let router: Router;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -18,7 +26,7 @@ describe('ShopLayout', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([]),
+        provideRouter([{ path: 'shop/jobs/new-jobs', component: RequestListStub }]),
         {
           provide: JobSharedService,
           useValue: {
@@ -30,13 +38,14 @@ describe('ShopLayout', () => {
     }).compileComponents();
     httpTestingController = TestBed.inject(HttpTestingController);
     authService = TestBed.inject(AuthService);
+    router = TestBed.inject(Router);
   });
 
   afterEach(() => {
     httpTestingController.verify();
   });
 
-  it('shows the shop identity, portal navigation, and searches existing shop activity', () => {
+  it('shows the shop identity, portal navigation, and searches existing shop activity', async () => {
     authService.login('shop@example.com', 'password').subscribe();
     httpTestingController.expectOne(`${environment.apiBaseUrl}/auth/login`).flush({
       data: {
@@ -147,6 +156,21 @@ describe('ShopLayout', () => {
       '/shop/jobs/completed-jobs',
     ]);
     expect(requestCounts).toEqual(['2', '3', '4', '5', '6', '7']);
+
+    const refreshedCounts = spyOn(
+      TestBed.inject(JobSharedService),
+      'shopJobCounts',
+    ).and.returnValue(
+      of({ new: 8, pending: 3, assigned: 4, active: 5, disputed: 6, completed: 7 }),
+    );
+    await router.navigateByUrl('/shop/jobs/new-jobs');
+    fixture.detectChanges();
+    expect(refreshedCounts).toHaveBeenCalledTimes(1);
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
+      ).map((element) => element.textContent?.trim()),
+    ).toEqual(['8', '3', '4', '5', '6', '7']);
 
     const updatedPhoto = 'data:image/jpeg;base64,bmV3';
     const image = new File([new Uint8Array([1, 2, 3])], 'profile.jpg', {

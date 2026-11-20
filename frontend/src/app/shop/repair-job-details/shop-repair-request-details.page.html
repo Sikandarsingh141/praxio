@@ -114,8 +114,16 @@
                 <span class="card-icon" aria-hidden="true">▤</span>
                 Quotation Details
               </h2>
-              <div class="quotation-table-wrap" appTableScrollIndicators>
+              <div class="quotation-table-wrap">
                 <table class="quotation-table">
+                  <colgroup>
+                    <col class="quotation-column-number" />
+                    <col class="quotation-column-shop" />
+                    <col class="quotation-column-services" />
+                    <col class="quotation-column-amount" />
+                    <col class="quotation-column-status" />
+                    <col class="quotation-column-details" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th scope="col">Quotation #</th>
@@ -668,7 +676,7 @@
               For inspection at the shop without pickup, leave both choices unselected.
             </p>
 
-            <label class="quotation-field quotation-summary-field">
+            <div class="quotation-field quotation-summary-field">
               <span class="quotation-field-label">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M6 3h9l5 5v13H6zM15 3v5h5M9 13h8m-8 4h8" />
@@ -697,6 +705,7 @@
                 <input
                   type="text"
                   name="quotationSummarySearch"
+                  aria-label="Search repair activities"
                   [attr.placeholder]="quotationSummaries().length ? 'Search more repair activities' : 'Search repair activities'"
                   [ngModel]="quotationSummarySearch()"
                   (ngModelChange)="quotationSummarySearch.set($event)"
@@ -704,20 +713,21 @@
                 />
               </div>
               @if (quotationSummaryOpen()) {
-                <div class="quotation-options" role="listbox" aria-multiselectable="true">
+                <div class="quotation-options" role="group" aria-label="Repair activities">
                   @for (option of filteredQuotationSummaries(); track option) {
-                    <button
-                      type="button"
+                    <label
                       class="quotation-option"
-                      role="option"
-                      [attr.aria-selected]="hasQuotationSummaryOption(option)"
-                      (click)="toggleQuotationSummary(option); $event.preventDefault()"
+                      [class.selected]="hasQuotationSummaryOption(option)"
                     >
-                      <span class="quotation-option-check">
-                        {{ hasQuotationSummaryOption(option) ? '✓' : '' }}
-                      </span>
-                      {{ option }}
-                    </button>
+                      <input
+                        type="checkbox"
+                        name="quotationSummaryOption"
+                        [value]="option"
+                        [checked]="hasQuotationSummaryOption(option)"
+                        (change)="toggleQuotationSummary(option)"
+                      />
+                      <span>{{ option }}</span>
+                    </label>
                   } @empty {
                     <p class="quotation-options-empty">No matching repair activities.</p>
                   }
@@ -727,7 +737,7 @@
             @if (quotationAttempted() && !quotationSummaries().length) {
               <small class="field-error">Select at least one repair activity.</small>
             }
-            </label>
+            </div>
           @if (hasQuotationSummaryOption('Other')) {
             <label class="quotation-field full-width">
               <span class="quotation-field-label">Additional Repair Details <b>*</b></span>

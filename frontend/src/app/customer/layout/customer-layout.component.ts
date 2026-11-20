@@ -38,6 +38,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly jobs = inject(JobSharedService);
   private readonly destroyRef = inject(DestroyRef);
+  private requestCountsRequestId = 0;
 
   readonly requestSubmenus: Array<{
     label: string;
@@ -53,20 +54,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     if (this.profileOnly()) return;
-    this.requestCountsLoading.set(true);
-    this.jobs
-      .customerJobCounts()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (counts) => {
-          this.requestCounts.set(counts);
-          this.requestCountsLoading.set(false);
-        },
-        error: () => {
-          this.requestCountsError.set('Request counts could not be loaded.');
-          this.requestCountsLoading.set(false);
-        },
-      });
+    this.loadRequestCounts();
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -74,6 +62,7 @@ export class CustomerLayout implements OnInit, OnDestroy {
       )
       .subscribe(() => {
         if (this.isRequestSectionActive()) this.requestSectionExpanded.set(true);
+        if (this.isRequestListRouteActive()) this.loadRequestCounts();
       });
     this.chat.connect();
     this.chat.refreshUnreadMessageCount();
@@ -195,6 +184,32 @@ export class CustomerLayout implements OnInit, OnDestroy {
   isRequestSubmenuActive(route: string): boolean {
     const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
     return currentRoute === route || currentRoute.startsWith(`${route}/`);
+  }
+
+  private isRequestListRouteActive(): boolean {
+    const currentRoute = this.router.url.split('?')[0].replace(/\/+$/, '');
+    return this.requestSubmenus.some((item) => currentRoute === item.route);
+  }
+
+  private loadRequestCounts(): void {
+    const requestId = ++this.requestCountsRequestId;
+    if (!this.requestCounts()) this.requestCountsLoading.set(true);
+    this.requestCountsError.set('');
+    this.jobs
+      .customerJobCounts()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (counts) => {
+          if (requestId !== this.requestCountsRequestId) return;
+          this.requestCounts.set(counts);
+          this.requestCountsLoading.set(false);
+        },
+        error: () => {
+          if (requestId !== this.requestCountsRequestId) return;
+          this.requestCountsError.set('Request counts could not be loaded.');
+          this.requestCountsLoading.set(false);
+        },
+      });
   }
 
   submitShopSearch(): void {

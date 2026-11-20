@@ -553,6 +553,14 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(text).toContain('Fixora Shop');
     expect(text).toContain('Inspection and service');
     expect(text).toContain('View Details');
+    const quotationTable = fixture.nativeElement.querySelector(
+      '.quotation-table',
+    ) as HTMLTableElement;
+    expect(quotationTable.querySelectorAll('colgroup col').length).toBe(6);
+    expect(getComputedStyle(quotationTable).tableLayout).toBe('fixed');
+    expect(
+      fixture.nativeElement.querySelector('.quotation-table-wrap .table-scroll-indicator'),
+    ).toBeNull();
     expect(text).toContain('Repair History');
     expect(text).toContain('CONFIRMED REPAIR');
     expect(text).toContain('Repair progress');
@@ -609,18 +617,32 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     const options: HTMLElement | null = fixture.nativeElement.querySelector('.quotation-options');
     expect(options).not.toBeNull();
     expect(getComputedStyle(options!).position).toBe('static');
-    expect(getComputedStyle(options!).overflowY).toBe('visible');
+    expect(getComputedStyle(options!).overflowY).toBe('auto');
+    expect(options!.querySelector('input[type="checkbox"]')).not.toBeNull();
 
     component.quotationSummarySearch.set('battery');
     expect(component.filteredQuotationSummaries().map((option) => option)).toEqual([
       'Battery Replacement',
     ]);
 
-    component.toggleQuotationSummary('General Repair');
-    component.toggleQuotationSummary('Other');
+    component.quotationSummarySearch.set('');
+    fixture.detectChanges();
+    const optionCheckbox = (option: string) =>
+      Array.from(
+        fixture.nativeElement.querySelectorAll(
+          '.quotation-option input[type="checkbox"]',
+        ) as NodeListOf<HTMLInputElement>,
+      ).find((checkbox) => checkbox.value === option)!;
+    const generalRepairCheckbox = optionCheckbox('General Repair');
+    generalRepairCheckbox.click();
+    fixture.detectChanges();
+    const otherCheckbox = optionCheckbox('Other');
+    otherCheckbox.click();
     fixture.detectChanges();
 
     expect(component.quotationSummaries()).toEqual(['General Repair', 'Other']);
+    expect(generalRepairCheckbox.checked).toBeTrue();
+    expect(otherCheckbox.checked).toBeTrue();
     expect(fixture.nativeElement.querySelectorAll('.quotation-chip').length).toBe(2);
     expect(fixture.nativeElement.textContent).toContain('Additional Repair Details');
 

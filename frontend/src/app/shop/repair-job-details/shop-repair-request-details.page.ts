@@ -21,7 +21,6 @@ import { Technician } from '../technicians/technicians.models';
 import { TechniciansService } from '../technicians/technicians.service';
 import { ToastService } from '../../core/toast/toast.service';
 import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
-import { TableScrollIndicatorsDirective } from '../../shared/directives/table-scroll-indicators.directive';
 
 const DECLINE_REASONS = [
   'Service not offered',
@@ -79,7 +78,6 @@ type ReplacedPart = {
     ShopRepairPickupComponent,
     ShopRepairWorkflowComponent,
     JobAttachmentsComponent,
-    TableScrollIndicatorsDirective,
   ],
   templateUrl: './shop-repair-request-details.page.html',
   styleUrl: './shop-repair-request-details.page.scss',

@@ -147,8 +147,18 @@ describe('CustomerLayout', () => {
 
     requestToggle.click();
     fixture.detectChanges();
+    const refreshedCounts = spyOn(
+      TestBed.inject(JobSharedService),
+      'customerJobCounts',
+    ).and.returnValue(of({ new: 8, pending: 2, active: 3, disputed: 1, completed: 5 }));
     await router.navigateByUrl('/customer/jobs/disputed-jobs');
     fixture.detectChanges();
+    expect(refreshedCounts).toHaveBeenCalledTimes(1);
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
+      ).map((element) => element.textContent?.trim()),
+    ).toEqual(['8', '2', '3', '1', '5']);
     expect(requestToggle.getAttribute('aria-expanded')).toBe('true');
     expect(
       fixture.nativeElement
