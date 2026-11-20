@@ -30,7 +30,14 @@ describe('ShopJobsTableComponent', () => {
 
     const row = fixture.nativeElement.querySelector('tbody tr') as HTMLTableRowElement;
     const actionsButton = row.querySelector('button') as HTMLButtonElement;
+    const requestIdLink = row.querySelector('a.job-id') as HTMLAnchorElement;
     expect(row.textContent).toContain('#12345678');
+    expect(requestIdLink.getAttribute('href')).toBe(
+      '/shop/jobs/assigned-jobs/request-12345678',
+    );
+    expect(requestIdLink.getAttribute('aria-label')).toBe(
+      'View request 12345678 details',
+    );
     expect(fixture.nativeElement.textContent).toContain('Request ID');
     expect(row.textContent).toContain('Washing machine');
     expect(row.textContent).toContain('Ava Customer');

@@ -13,8 +13,9 @@ import type { Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { UserProfile } from '../../../../core/auth/auth.models';
-import { CustomerRepairRequest } from '../../../models/customer-portal.models';
+import { CustomerRepairRequest, ShopSearchResult } from '../../../models/customer-portal.models';
 import { CustomerPortalService } from '../../../services/customer-portal.service';
+import { CustomerRepairShopProfileComponent } from '../../components/customer-repair-shop-profile.component';
 import { CustomerJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
@@ -44,6 +45,7 @@ interface CustomerShopSummary {
     RepairProgressComponent,
     CustomerRepairWorkflowComponent,
     ShopRepairRouteComponent,
+    CustomerRepairShopProfileComponent,
   ],
   templateUrl: './customer-active-job-detail.page.html',
   styleUrl: './customer-active-job-detail.page.scss',
@@ -56,6 +58,8 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
+  readonly shopProfile = signal<ShopSearchResult | null>(null);
+  readonly shopProfileError = signal('');
   readonly progressSteps = computed(() => {
     const request = this.record();
     if (!request) return [];
@@ -107,6 +111,8 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
       if (shopId === this.requestedShopId) return;
 
       this.requestedShopId = shopId;
+      this.shopProfile.set(null);
+      this.shopProfileError.set('');
       this.shopLocation.set(null);
       this.shopLocationError.set('');
       this.shopLocationLoading.set(!!shopId);
@@ -118,11 +124,13 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
         .subscribe({
           next: (shop) => {
             if (this.requestedShopId !== shopId) return;
+            this.shopProfile.set(shop);
             this.shopLocation.set(shop.location);
             this.shopLocationLoading.set(false);
           },
           error: () => {
             if (this.requestedShopId !== shopId) return;
+            this.shopProfileError.set('Shop profile information could not be loaded.');
             this.shopLocationError.set('The repair shop location could not be loaded.');
             this.shopLocationLoading.set(false);
           },
@@ -161,12 +169,18 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
       };
     }
 
+    const acceptedQuotation =
+      job.acceptedQuotation ?? job.quotations.find((quotation) => quotation.status === 'accepted');
     const shop =
-      job.shops?.find((item) => item.id === job.acceptedQuotation?.shopId) ??
+      job.shops?.find((item) => item.id === acceptedQuotation?.shopId) ??
       job.shops?.find((item) => item.responseStatus === 'customer_accepted') ??
       job.shops?.find((item) => item.responseStatus === 'quotation_submitted') ??
       job.shops?.[0];
-    return shop ? { id: shop.id, name: shop.name, logoUrl: shop.logoUrl } : null;
+    return shop
+      ? { id: shop.id, name: shop.name, logoUrl: shop.logoUrl }
+      : acceptedQuotation
+        ? { id: acceptedQuotation.shopId, name: 'Repair Shop' }
+        : null;
   }
 
   statusLabel(job: CustomerRepairRequest): string {

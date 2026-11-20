@@ -52,10 +52,11 @@ export class CustomerPortalService {
       .pipe(map((response) => response.data.shops));
   }
 
-  getShop(id: string): Observable<ShopSearchResult> {
+  getShop(id: string, skipGlobalLoader = false): Observable<ShopSearchResult> {
     return this.http
       .get<ApiEnvelope<{ shop: ShopSearchResult }>>(
         `${this.baseUrl}/shops/${encodeURIComponent(id)}`,
+        { context: new HttpContext().set(SKIP_GLOBAL_LOADER, skipGlobalLoader) },
       )
       .pipe(map((response) => response.data.shop));
   }

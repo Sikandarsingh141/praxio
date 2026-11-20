@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -8,6 +8,9 @@ import { JobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
 import { JobTimelineEntry, JobAttachment } from '../../../../shared/models/job.models';
+import { CustomerRepairShopProfileComponent } from '../../components/customer-repair-shop-profile.component';
+import { ShopSearchResult } from '../../../models/customer-portal.models';
+import { CustomerPortalService } from '../../../services/customer-portal.service';
 import {
   DisputeAttachment,
   DisputeStatus,
@@ -29,12 +32,14 @@ import {
     RouterLink,
     JobAttachmentsComponent,
     JobTimelineComponent,
+    CustomerRepairShopProfileComponent,
   ],
   templateUrl: './customer-disputed-job-detail.page.html',
   styleUrl: './customer-disputed-job-detail.page.scss',
 })
 export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispute> {
   private readonly disputes = inject(DisputesService);
+  private readonly customerPortal = inject(CustomerPortalService);
   private readonly destroyRef = inject(DestroyRef);
   readonly backRoute = '/customer/jobs/disputed-jobs';
   readonly backLabel = 'Disputes';
@@ -47,6 +52,9 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
   readonly reviewResolutionModalOpen = signal(false);
   readonly reinspectionSubmissionModalOpen = signal(false);
   readonly inspectionTestModalOpen = signal(false);
+  readonly shopProfile = signal<ShopSearchResult | null>(null);
+  readonly shopProfileLoading = signal(false);
+  readonly shopProfileError = signal('');
   message = '';
   conversationAttachments: DisputeAttachment[] = [];
   responseAttachments: DisputeAttachment[] = [];
@@ -82,6 +90,37 @@ export class CustomerDisputedJobDetailPage extends JobDetailPageBase<RepairDispu
     'REJECTED',
     'CUSTOMER_CONFIRMED',
   ];
+  private requestedShopId: string | null = null;
+
+  constructor() {
+    super();
+    effect(() => {
+      const shopId = this.record()?.shopId ?? null;
+      if (shopId === this.requestedShopId) return;
+
+      this.requestedShopId = shopId;
+      this.shopProfile.set(null);
+      this.shopProfileError.set('');
+      this.shopProfileLoading.set(!!shopId);
+      if (!shopId) return;
+
+      this.customerPortal
+        .getShop(shopId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (shop) => {
+            if (this.requestedShopId !== shopId) return;
+            this.shopProfile.set(shop);
+            this.shopProfileLoading.set(false);
+          },
+          error: () => {
+            if (this.requestedShopId !== shopId) return;
+            this.shopProfileError.set('Shop profile information could not be loaded.');
+            this.shopProfileLoading.set(false);
+          },
+        });
+    });
+  }
 
   protected override loadRecord(id: string) { return this.disputes.get('customer', id); }
 

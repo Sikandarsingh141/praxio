@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ShopSearchResult } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { formatShopAddress } from '../../shared/utils/format-shop-address';
+import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
 import { ShopResultsMapComponent } from '../shop-finder/components/shop-results-map.component';
 
 @Component({
@@ -20,9 +21,9 @@ export class CustomerShopDetailsPage implements OnInit {
     const shop = this.shop();
     return shop ? [shop] : [];
   });
-  readonly loading = signal(true);
   readonly error = signal('');
   readonly logoFailed = signal(false);
+  readonly ownerImageFailed = signal(false);
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -41,16 +42,14 @@ export class CustomerShopDetailsPage implements OnInit {
     this.shop.set(null);
     this.error.set('');
     this.logoFailed.set(false);
-    this.loading.set(true);
+    this.ownerImageFailed.set(false);
     if (!shopId) {
       this.error.set('Repair shop was not found.');
-      this.loading.set(false);
       return;
     }
     this.portal.getShop(shopId).subscribe({
       next: (shop) => {
         this.shop.set(shop);
-        this.loading.set(false);
       },
       error: (error: HttpErrorResponse) => {
         const message = error.error?.message;
@@ -59,7 +58,6 @@ export class CustomerShopDetailsPage implements OnInit {
             ? message
             : 'Repair shop could not be loaded.',
         );
-        this.loading.set(false);
       },
     });
   }
@@ -87,5 +85,15 @@ export class CustomerShopDetailsPage implements OnInit {
 
   get initial(): string {
     return this.shop()?.shopName.trim().charAt(0).toLocaleUpperCase() || 'S';
+  }
+
+  get ownerPhotoUrl(): string | null {
+    const image = this.shop()?.profileImageUrl;
+    return this.ownerImageFailed() ? null : profileImageSource(image);
+  }
+
+  get ownerInitial(): string {
+    const ownerName = this.shop()?.ownerName?.trim();
+    return ownerName?.charAt(0).toLocaleUpperCase() || 'O';
   }
 }

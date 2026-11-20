@@ -24,7 +24,13 @@
       @for (job of jobs; track job.id) {
         <tr class="job-table-row">
           <td class="td-request-id">
-            <span class="job-id">#{{ job.id.slice(-8).toUpperCase() }}</span>
+            <a
+              class="job-id"
+              [routerLink]="[detailRoute, job.id]"
+              [attr.aria-label]="'View request ' + job.id.slice(-8).toUpperCase() + ' details'"
+            >
+              #{{ job.id.slice(-8).toUpperCase() }}
+            </a>
           </td>
           <td class="td-device">
             <div class="device-cell">

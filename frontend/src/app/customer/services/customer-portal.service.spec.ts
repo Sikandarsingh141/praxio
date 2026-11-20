@@ -55,6 +55,16 @@ describe('CustomerPortalService', () => {
     request.flush({ data: { suggestions: [] } });
   });
 
+  it('can fetch a shop profile without showing the global loader', () => {
+    service
+      .getShop('shop-1', true)
+      .subscribe((shop) => expect(shop.id).toBe('shop-1'));
+
+    const request = http.expectOne(`${environment.apiBaseUrl}/customer/shops/shop-1`);
+    expect(request.request.context.get(SKIP_GLOBAL_LOADER)).toBeTrue();
+    request.flush({ data: { shop: { id: 'shop-1' } } });
+  });
+
   it('submits one repair request and the same selected shops with optional photos', () => {
     const photo = new File(['image'], 'repair.jpg', { type: 'image/jpeg' });
     service

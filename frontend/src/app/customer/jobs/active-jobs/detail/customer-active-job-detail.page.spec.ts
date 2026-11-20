@@ -112,6 +112,7 @@ describe('CustomerActiveJobDetailPage', () => {
     );
     const sectionTitles = mainSections.map(
       (section) =>
+        section.querySelector('.repair-shop-title')?.textContent?.trim() ??
         section.querySelector('.section-heading')?.textContent?.replace('↻', '').trim(),
     );
 
@@ -119,7 +120,7 @@ describe('CustomerActiveJobDetailPage', () => {
     expect(page.querySelector('.request-progress')).not.toBeNull();
     expect(page.querySelector('.customer-detail-layout')).not.toBeNull();
     expect(sectionTitles).toEqual([
-      'Customer Information',
+      'Repair Shop',
       'Problem Description',
       'Location and Route',
       'Quotation and Payment',

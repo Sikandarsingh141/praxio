@@ -79,6 +79,7 @@ function mongoCustomerDisplayName(
 
 export interface ShopSearchResult {
   id: string;
+  ownerName: string | null;
   shopName: string;
   businessType: string;
   description: string;
@@ -96,6 +97,7 @@ export interface ShopSearchResult {
   rating: number | null;
   reviewCount: number;
   logoUrl: string | null;
+  profileImageUrl: string | null;
   availability: 'unknown';
   phone: string | null;
   email: string;
@@ -344,7 +346,7 @@ export class CustomerPortalService {
     const shops = await this.users
       .find(query)
       .select(
-        'email countryCode mobileNumber shopDetails.shopName shopDetails.shopImageData shopDetails.businessType shopDetails.description shopDetails.yearsOfExperience shopDetails.services shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.country shopDetails.postalCode shopDetails.location',
+        'firstName lastName fullName email countryCode mobileNumber profileImageData shopDetails.shopName shopDetails.shopImageData shopDetails.businessType shopDetails.description shopDetails.yearsOfExperience shopDetails.services shopDetails.address shopDetails.street shopDetails.area shopDetails.city shopDetails.state shopDetails.country shopDetails.postalCode shopDetails.location',
       )
       .lean()
       .exec();
@@ -390,6 +392,7 @@ export class CustomerPortalService {
             : null;
         return {
           id: shop._id.toString(),
+          ownerName: formatUserName(shop) || null,
           shopName: details?.shopName ?? '',
           businessType: details?.businessType ?? '',
           description: details?.description ?? '',
@@ -409,6 +412,7 @@ export class CustomerPortalService {
           rating: shopRatings.get(shop._id.toString())?.rating ?? null,
           reviewCount: shopRatings.get(shop._id.toString())?.reviewCount ?? 0,
           logoUrl: shopImageUrl(details?.shopImageData),
+          profileImageUrl: shop.profileImageData ?? null,
           availability: 'unknown',
           phone:
             shop.mobileNumber && shop.countryCode

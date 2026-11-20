@@ -36,9 +36,21 @@
 }
 
 .job-id {
+  display: inline-block;
   color: #087c3b;
   font-size: 0.78rem;
   font-weight: 750;
+  text-decoration: none;
+}
+
+.job-id:hover {
+  text-decoration: none;
+}
+
+.job-id:focus-visible {
+  border-radius: 0.15rem;
+  outline: 2px solid #087c3b;
+  outline-offset: 2px;
 }
 
 .th-customer,

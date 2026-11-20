@@ -10,6 +10,41 @@ import { buildRepairProgressSteps } from '../../shared/utils/repair-progress.uti
 import { CustomerRepairRequest } from '../models/customer-portal.models';
 
 describe('CustomerRepairJobPage', () => {
+  function createPortalMock(): jasmine.SpyObj<CustomerPortalService> {
+    const portal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getRepairJob', 'getShop'],
+    );
+    portal.getShop.and.returnValue(
+      of({
+        id: 'shop-1',
+        ownerName: 'Shop Owner',
+        shopName: 'Repair Shop',
+        businessType: 'Electronics Repair Shop',
+        description: '',
+        yearsOfExperience: 0,
+        services: [],
+        address: 'Sector 70',
+        street: '',
+        area: '',
+        city: 'Mohali',
+        state: 'Punjab',
+        country: 'India',
+        postalCode: '140062',
+        location: null,
+        distanceKm: null,
+        rating: 4.7,
+        reviewCount: 15,
+        logoUrl: null,
+        profileImageUrl: null,
+        availability: 'unknown',
+        phone: '+91 1234567890',
+        email: 'shop@example.test',
+      }),
+    );
+    return portal;
+  }
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [{
@@ -56,10 +91,7 @@ describe('CustomerRepairJobPage', () => {
 
   it('moves an approved inspection estimate into the repair step', async () => {
     const requestId = 'request-id';
-    const portal = jasmine.createSpyObj<CustomerPortalService>(
-      'CustomerPortalService',
-      ['getRepairJob'],
-    );
+    const portal = createPortalMock();
     portal.getRepairJob.and.returnValue(of({} as CustomerRepairRequest));
 
     await TestBed.configureTestingModule({
@@ -132,10 +164,7 @@ describe('CustomerRepairJobPage', () => {
         ],
       },
     } as CustomerRepairRequest;
-    const portal = jasmine.createSpyObj<CustomerPortalService>(
-      'CustomerPortalService',
-      ['getRepairJob'],
-    );
+    const portal = createPortalMock();
     portal.getRepairJob.and.returnValue(of(request));
 
     await TestBed.configureTestingModule({
@@ -191,10 +220,7 @@ describe('CustomerRepairJobPage', () => {
 
   it('does not imply repair authorization when a quotation is accepted', async () => {
     const requestId = 'request-id';
-    const portal = jasmine.createSpyObj<CustomerPortalService>(
-      'CustomerPortalService',
-      ['getRepairJob'],
-    );
+    const portal = createPortalMock();
     portal.getRepairJob.and.returnValue(of({} as CustomerRepairRequest));
 
     await TestBed.configureTestingModule({
@@ -253,9 +279,7 @@ describe('CustomerRepairJobPage', () => {
       quotations: [],
       shops: [{ id: 'shop-1', name: 'Amit Sharma', responseStatus: 'new' }],
     };
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'getRepairJob',
-    ]);
+    const portal = createPortalMock();
     portal.getRepairJob.and.returnValue(of(request));
 
     await TestBed.configureTestingModule({
@@ -291,9 +315,13 @@ describe('CustomerRepairJobPage', () => {
     expect(text).toContain('Shop visit');
     expect(text).toContain('Amit Sharma');
     expect(text).toContain('AS');
-    expect(
-      fixture.nativeElement.querySelector('.customer-identity img')?.getAttribute('src'),
-    ).toBe('data:image/jpeg;base64,Y3VzdG9tZXI=');
+    const shopProfile = fixture.nativeElement.querySelector(
+      'app-customer-repair-shop-profile',
+    ) as HTMLElement;
+    expect(shopProfile.textContent).toContain('Shopkeeper Name');
+    expect(shopProfile.textContent).toContain('Shop Owner');
+    expect(shopProfile.textContent).toContain('Repair Shop');
+    expect(shopProfile.textContent).toContain('shop@example.test');
     expect(text).toContain('View Quotations');
     expect(text).toContain('Repair History');
     expect(text).toContain('Location and Route');
@@ -320,9 +348,7 @@ describe('CustomerRepairJobPage', () => {
         email: 'shop@example.test',
       },
     };
-    const portal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
-      'getRepairJob',
-    ]);
+    const portal = createPortalMock();
     portal.getRepairJob.and.returnValue(of(request));
 
     await TestBed.configureTestingModule({

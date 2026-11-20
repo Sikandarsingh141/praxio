@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { JobSharedService } from '../../../../shared/services/job-shared.service';
 import { RepairDispute } from '../../../../shared/models/disputes.models';
 import { DisputesService } from '../../../../shared/services/disputes.service';
+import { CustomerPortalService } from '../../../services/customer-portal.service';
 import { CustomerDisputedJobDetailPage } from './customer-disputed-job-detail.page';
 
 describe('CustomerDisputedJobDetailPage', () => {
@@ -106,6 +107,37 @@ describe('CustomerDisputedJobDetailPage', () => {
     disputes.reportUnresolved.and.returnValue(
       of({ ...dispute, status: 'UNDER_REVIEW' }),
     );
+    const customerPortal = jasmine.createSpyObj<CustomerPortalService>(
+      'CustomerPortalService',
+      ['getShop'],
+    );
+    customerPortal.getShop.and.returnValue(
+      of({
+        id: 'shop-1',
+        ownerName: 'Shop Owner',
+        shopName: 'Repair Shop',
+        businessType: 'Repair',
+        description: '',
+        yearsOfExperience: 0,
+        services: [],
+        address: '',
+        street: '',
+        area: '',
+        city: '',
+        state: '',
+        country: '',
+        postalCode: '',
+        location: null,
+        distanceKm: null,
+        rating: null,
+        reviewCount: 0,
+        logoUrl: null,
+        profileImageUrl: null,
+        availability: 'unknown',
+        phone: null,
+        email: 'shop@example.com',
+      }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [CustomerDisputedJobDetailPage],
@@ -114,6 +146,7 @@ describe('CustomerDisputedJobDetailPage', () => {
           { path: 'customer/jobs/disputed-jobs/:id', component: CustomerDisputedJobDetailPage },
         ]),
         { provide: DisputesService, useValue: disputes },
+        { provide: CustomerPortalService, useValue: customerPortal },
         {
           provide: JobSharedService,
           useValue: { errorMessage: jasmine.createSpy().and.returnValue('Unable to load details.') },
@@ -140,8 +173,8 @@ describe('CustomerDisputedJobDetailPage', () => {
     expect(
       Array.from(progress.querySelectorAll('li strong')).map((step) => step.textContent?.trim()),
     ).toEqual(['Dispute submitted', 'Under review', 'Resolution', 'Resolved / closed']);
-    expect(page.querySelector('.customer-facts dd')?.textContent?.trim()).toBe(
-      'customer@example.com',
+    expect(page.querySelector('.shop-profile-details dd a')?.textContent?.trim()).toBe(
+      'shop@example.com',
     );
     const disputeFacts = page.querySelectorAll(
       '.customer-detail-sidebar .sidebar-facts dd',

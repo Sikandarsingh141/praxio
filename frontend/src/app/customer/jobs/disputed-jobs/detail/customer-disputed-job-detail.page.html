@@ -68,40 +68,16 @@
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
         <section class="detail-section customer-detail-main-card" aria-label="Issue details">
-          <section class="customer-detail-block customer-information-card">
-            <h2 class="section-heading">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="8" r="3.5" />
-                <path d="M5 21a7 7 0 0 1 14 0" />
-              </svg>
-              Customer Information
-            </h2>
-            @if (dispute.parties?.customer; as customer) {
-              <div class="customer-information-row">
-                <div class="customer-identity">
-                  @if (customerPhotoSource(customer.profileImageUrl); as photo) {
-                    <img
-                      class="customer-avatar"
-                      [src]="photo"
-                      [alt]="(customer.name || 'Customer') + ' profile photo'"
-                      (error)="onCustomerImageError()"
-                    />
-                  } @else {
-                    <span class="customer-avatar" aria-hidden="true">
-                      {{ initials(customer.name, customer.email) }}
-                    </span>
-                  }
-                  <strong>{{ customer.name || 'Customer' }}</strong>
-                </div>
-                <dl class="customer-facts">
-                  <div><dt>Email</dt><dd>{{ customer.email || 'Not provided' }}</dd></div>
-                  <div><dt>Dispute reference</dt><dd>{{ dispute.reference }}</dd></div>
-                  <div><dt>Opened</dt><dd>{{ dispute.createdAt | date: 'MMM d, y' }}</dd></div>
-                </dl>
-              </div>
-            } @else {
-              <p class="muted-copy">Customer information is not available.</p>
-            }
+          <section class="customer-detail-block repair-shop-section">
+            <app-customer-repair-shop-profile
+              [shopId]="dispute.shopId"
+              [shopName]="dispute.parties?.shop?.name || 'Repair Shop'"
+              [ownerName]="dispute.parties?.shop?.personName || ''"
+              [fallbackLogoUrl]="dispute.parties?.shop?.shopImageUrl ?? null"
+              [profile]="shopProfile()"
+              [loading]="shopProfileLoading()"
+              [error]="shopProfileError()"
+            />
           </section>
 
           <section class="customer-detail-block problem-description-card">

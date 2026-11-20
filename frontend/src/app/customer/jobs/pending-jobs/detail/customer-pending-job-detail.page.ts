@@ -5,8 +5,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { UserProfile } from '../../../../core/auth/auth.models';
-import { CustomerRepairRequest, RepairQuotation } from '../../../models/customer-portal.models';
+import {
+  CustomerRepairRequest,
+  RepairQuotation,
+  ShopSearchResult,
+} from '../../../models/customer-portal.models';
+import { CustomerRepairShopProfileComponent } from '../../components/customer-repair-shop-profile.component';
 import { CustomerPortalService } from '../../../services/customer-portal.service';
 import { CustomerJobDetailPageBase } from '../../../../shared/components/job-page-base';
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
@@ -36,6 +40,7 @@ interface CustomerQuotationResponse {
     JobTimelineComponent,
     RepairProgressComponent,
     ShopRepairRouteComponent,
+    CustomerRepairShopProfileComponent,
   ],
   templateUrl: './customer-pending-job-detail.page.html',
   styleUrl: './customer-pending-job-detail.page.scss',
@@ -43,10 +48,11 @@ interface CustomerQuotationResponse {
 export class CustomerPendingJobDetailPage extends CustomerJobDetailPageBase {
   readonly authService = inject(AuthService);
   readonly heroImageUnavailable = signal(false);
-  readonly shopLogoUnavailable = signal<string | null>(null);
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
+  readonly shopProfile = signal<ShopSearchResult | null>(null);
+  readonly shopProfileError = signal('');
   readonly quotationResponse = signal<CustomerQuotationResponse | null>(null);
   readonly quotationResponseError = signal('');
   readonly quotationRejectionReason = signal('');
@@ -69,6 +75,8 @@ export class CustomerPendingJobDetailPage extends CustomerJobDetailPageBase {
       if (shopId === this.requestedShopId) return;
 
       this.requestedShopId = shopId;
+      this.shopProfile.set(null);
+      this.shopProfileError.set('');
       this.shopLocation.set(null);
       this.shopLocationError.set('');
       this.shopLocationLoading.set(!!shopId);
@@ -80,11 +88,13 @@ export class CustomerPendingJobDetailPage extends CustomerJobDetailPageBase {
         .subscribe({
           next: (shop) => {
             if (this.requestedShopId !== shopId) return;
+            this.shopProfile.set(shop);
             this.shopLocation.set(shop.location);
             this.shopLocationLoading.set(false);
           },
           error: () => {
             if (this.requestedShopId !== shopId) return;
+            this.shopProfileError.set('Shop profile information could not be loaded.');
             this.shopLocationError.set('The repair shop location could not be loaded.');
             this.shopLocationLoading.set(false);
           },
@@ -124,27 +134,6 @@ export class CustomerPendingJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
-  }
-
-  customerName(user: UserProfile): string {
-    return [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Customer';
-  }
-
-  customerInitials(user: UserProfile): string {
-    const name = this.customerName(user);
-    return name === 'Customer'
-      ? user.email.slice(0, 1).toUpperCase() || 'C'
-      : name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
-  }
-
-  customerPhone(user: UserProfile): string {
-    return [user.countryCode, user.mobileNumber].filter(Boolean).join(' ') || 'Not provided';
-  }
-
-  customerLocation(user: UserProfile): string {
-    return user.location
-      ? `${user.location.latitude.toFixed(5)}, ${user.location.longitude.toFixed(5)}`
-      : 'Not provided';
   }
 
   customerCoordinates(job: CustomerRepairRequest): Coordinates | null {

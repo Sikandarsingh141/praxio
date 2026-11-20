@@ -70,6 +70,33 @@ describe('CustomerCompletedJobDetailPage', () => {
       'getRepairRoute',
       'submitRepairReview',
     ]);
+    customerPortal.getShop.and.returnValue(
+      of({
+        id: 'shop-123',
+        ownerName: 'Shop Owner',
+        shopName: 'Fixora Shop',
+        businessType: 'Repair',
+        description: '',
+        yearsOfExperience: 0,
+        services: [],
+        address: 'Main Road',
+        street: '',
+        area: '',
+        city: 'Pune',
+        state: '',
+        country: 'India',
+        postalCode: '',
+        location: null,
+        distanceKm: null,
+        rating: 4.5,
+        reviewCount: 8,
+        logoUrl: null,
+        profileImageUrl: null,
+        availability: 'unknown',
+        phone: '+1 5550101',
+        email: 'shop@example.com',
+      }),
+    );
     repairInvoices = jasmine.createSpyObj<RepairInvoicesService>('RepairInvoicesService', [
       'getCustomerInvoiceForRepair',
     ]);
@@ -102,6 +129,19 @@ describe('CustomerCompletedJobDetailPage', () => {
         { provide: RepairInvoicesService, useValue: repairInvoices },
       ],
     }).compileComponents();
+  });
+
+  it('shows the repair shop profile on completed repair details', () => {
+    const fixture = TestBed.createComponent(CustomerCompletedJobDetailPage);
+    fixture.detectChanges();
+
+    const shopProfile = fixture.nativeElement.querySelector(
+      'app-customer-repair-shop-profile',
+    ) as HTMLElement;
+    expect(shopProfile.textContent).toContain('Shopkeeper Name');
+    expect(shopProfile.textContent).toContain('Shop Owner');
+    expect(shopProfile.textContent).toContain('Fixora Shop');
+    expect(shopProfile.textContent).toContain('shop@example.com');
   });
 
   it('opens the review popup from the completed repair details', () => {

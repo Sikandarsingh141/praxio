@@ -1,5 +1,6 @@
 export interface ShopSearchResult {
   id: string;
+  ownerName?: string | null;
   shopName: string;
   businessType: string;
   description: string;
@@ -17,6 +18,7 @@ export interface ShopSearchResult {
   rating: number | null;
   reviewCount: number;
   logoUrl: string | null;
+  profileImageUrl?: string | null;
   availability: 'unknown' | 'available' | 'unavailable';
   phone: string | null;
   email: string;

@@ -1,17 +1,12 @@
 <section class="shop-details-page" aria-label="Repair shop details">
-  <a class="back-link" routerLink="/customer/shops">
+  <a class="detail-back-link" routerLink="/customer/shops">
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m15 18-6-6 6-6M20 12H9" />
+      <path d="M19 12H5m7 7-7-7 7-7" />
     </svg>
     Back to shop search
   </a>
 
-  @if (loading()) {
-    <div class="state-card loading-state" role="status" aria-live="polite">
-      <span class="loading-spinner" aria-hidden="true"></span>
-      <span>Loading shop details…</span>
-    </div>
-  } @else if (error()) {
+  @if (error()) {
     <div class="state-card error-state" role="alert">
       <span class="state-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24">
@@ -29,83 +24,100 @@
     </div>
   } @else if (shop(); as shop) {
     <div class="shop-profile">
-      <header class="shop-hero">
-        <div class="hero-cover" aria-hidden="true"></div>
-        <div class="shop-hero-content">
-          <div class="shop-logo">
-            @if (shop.logoUrl && !logoFailed()) {
-              <img [src]="shop.logoUrl" alt="" (error)="logoFailed.set(true)" />
-            } @else {
-              <span class="shop-initials">{{ initial }}</span>
-            }
-          </div>
-
-          <div class="shop-identity">
-            <span class="approval-badge">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m5 12 4 4L19 6" />
-              </svg>
-              Approved on Fixora
-            </span>
-            <h1 id="shop-details-title">{{ shop.shopName }}</h1>
-            @if (shop.businessType) {
-              <p class="shop-category">{{ shop.businessType }}</p>
-            }
-            <div class="shop-highlights">
-              @if (shop.rating !== null) {
-                <span class="highlight-item rating-highlight">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
-                  </svg>
-                  <strong>{{ shop.rating | number: '1.1-1' }}</strong>
-                  <span>/ 5</span>
-                </span>
-              }
-              @if (shop.reviewCount > 0) {
-                <span class="highlight-item">
-                  {{ shop.reviewCount }}
-                  {{ shop.reviewCount === 1 ? 'customer review' : 'customer reviews' }}
-                </span>
-              } @else {
-                <span class="highlight-item">No reviews yet</span>
-              }
-              @if (shop.distanceKm !== null) {
-                <span class="highlight-item distance-highlight">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
-                    <circle cx="12" cy="10" r="2.5" />
-                  </svg>
-                  {{ shop.distanceKm | number: '1.0-1' }} km away
-                </span>
-              }
-            </div>
-            @if (address) {
-              <p class="shop-address">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
-                  <circle cx="12" cy="10" r="2.5" />
-                </svg>
-                {{ address }}
-              </p>
-            }
-          </div>
-
-          <a
-            class="button button-primary hero-request-button"
-            [routerLink]="['/customer/shops']"
-            [queryParams]="{ shop: shop.id }"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 5v14m-7-7h14" />
-            </svg>
-            Request a repair
-          </a>
-        </div>
-      </header>
-
       <div class="shop-content-grid">
         <div class="shop-main-column">
-          <section class="detail-card about-card" aria-labelledby="about-shop-title">
+          <header class="shop-hero panel-section">
+            <div class="shop-hero-content">
+              <div class="shop-logo">
+                @if (shop.logoUrl && !logoFailed()) {
+                  <img [src]="shop.logoUrl" alt="" (error)="logoFailed.set(true)" />
+                } @else {
+                  <span class="shop-initials">{{ initial }}</span>
+                }
+              </div>
+
+              <div class="shop-identity">
+                <span class="approval-badge">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m5 12 4 4L19 6" />
+                  </svg>
+                  Approved on Fixora
+                </span>
+                <h1 id="shop-details-title">{{ shop.shopName }}</h1>
+                @if (shop.businessType) {
+                  <p class="shop-category">{{ shop.businessType }}</p>
+                }
+                @let displayOwnerName = shop.ownerName || 'Name not provided';
+                <div class="owner-profile">
+                  <span class="owner-profile-photo">
+                    @if (ownerPhotoUrl; as ownerPhoto) {
+                      <img
+                        [src]="ownerPhoto"
+                        [alt]="displayOwnerName + ' profile photo'"
+                        (error)="ownerImageFailed.set(true)"
+                      />
+                    } @else {
+                      <span aria-hidden="true">{{ ownerInitial }}</span>
+                    }
+                  </span>
+                  <span class="owner-profile-copy">
+                    <span class="owner-profile-label">Shop owner</span>
+                    <strong>{{ displayOwnerName }}</strong>
+                  </span>
+                </div>
+                <div class="shop-highlights">
+                  @if (shop.rating !== null) {
+                    <span class="highlight-item rating-highlight">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+                      </svg>
+                      <strong>{{ shop.rating | number: '1.1-1' }}</strong>
+                      <span>/ 5</span>
+                    </span>
+                  }
+                  @if (shop.reviewCount > 0) {
+                    <span class="highlight-item">
+                      {{ shop.reviewCount }}
+                      {{ shop.reviewCount === 1 ? 'customer review' : 'customer reviews' }}
+                    </span>
+                  } @else {
+                    <span class="highlight-item">No reviews yet</span>
+                  }
+                  @if (shop.distanceKm !== null) {
+                    <span class="highlight-item distance-highlight">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                        <circle cx="12" cy="10" r="2.5" />
+                      </svg>
+                      {{ shop.distanceKm | number: '1.0-1' }} km away
+                    </span>
+                  }
+                </div>
+                @if (address) {
+                  <p class="shop-address">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+                      <circle cx="12" cy="10" r="2.5" />
+                    </svg>
+                    {{ address }}
+                  </p>
+                }
+              </div>
+
+              <a
+                class="button button-primary hero-request-button"
+                [routerLink]="['/customer/shops']"
+                [queryParams]="{ shop: shop.id }"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 5v14m-7-7h14" />
+                </svg>
+                Request a Repair
+              </a>
+            </div>
+          </header>
+
+          <section class="panel-section about-card" aria-labelledby="about-shop-title">
             <div class="section-heading">
               <span class="section-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -114,7 +126,7 @@
                 </svg>
               </span>
               <div>
-                <h2 id="about-shop-title">About the shop</h2>
+                <h2 id="about-shop-title">About the Shop</h2>
                 <p>Business profile and experience</p>
               </div>
             </div>
@@ -134,16 +146,10 @@
                   <dd>{{ shop.yearsOfExperience }} years</dd>
                 </div>
               }
-              @if (shop.distanceKm !== null) {
-                <div class="business-fact">
-                  <dt>Distance</dt>
-                  <dd>{{ shop.distanceKm | number: '1.0-1' }} km</dd>
-                </div>
-              }
             </dl>
           </section>
 
-          <section class="detail-card services-card" aria-labelledby="services-title">
+          <section class="panel-section services-card" aria-labelledby="services-title">
             <div class="section-heading">
               <span class="section-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -151,7 +157,7 @@
                 </svg>
               </span>
               <div>
-                <h2 id="services-title">Services offered</h2>
+                <h2 id="services-title">Services Offered</h2>
                 <p>Repair services listed by this shop</p>
               </div>
             </div>
@@ -171,7 +177,7 @@
             }
           </section>
 
-          <section class="detail-card location-card" aria-labelledby="location-title">
+          <section class="panel-section location-card" aria-labelledby="location-title">
             <div class="section-heading">
               <span class="section-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -218,7 +224,7 @@
         </div>
 
         <aside class="shop-side-column" aria-label="Shop contact and reviews">
-          <section class="detail-card contact-card" aria-labelledby="contact-title">
+          <section class="panel-section contact-card" aria-labelledby="contact-title">
             <div class="section-heading">
               <span class="section-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -226,7 +232,7 @@
                 </svg>
               </span>
               <div>
-                <h2 id="contact-title">Contact the shop</h2>
+                <h2 id="contact-title">Contact the Shop</h2>
                 <p>Reach out directly</p>
               </div>
             </div>
@@ -248,15 +254,24 @@
             }
 
             @if (shop.phone) {
-              <a class="button button-secondary contact-action" [href]="phoneHref">Call shop</a>
+              <a class="button button-primary contact-action" [href]="phoneHref">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M21 16.5v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 1.1 3.8 2 2 0 0 1 3.1 1.5h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L7 9.5a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.7 2.1Z" />
+                </svg>
+                Call Shop
+              </a>
             } @else if (shop.email) {
-              <a class="button button-secondary contact-action" [href]="'mailto:' + shop.email">
-                Email shop
+              <a class="button button-primary contact-action" [href]="'mailto:' + shop.email">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="1" />
+                  <path d="m3 7 9 6 9-6" />
+                </svg>
+                Email Shop
               </a>
             }
           </section>
 
-          <section class="detail-card rating-card" aria-labelledby="rating-title">
+          <section class="panel-section rating-card" aria-labelledby="rating-title">
             <div class="section-heading">
               <span class="section-icon rating-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -264,12 +279,17 @@
                 </svg>
               </span>
               <div>
-                <h2 id="rating-title">Customer reviews</h2>
+                <h2 id="rating-title">Customer Reviews</h2>
                 <p>Ratings from completed repair experiences</p>
               </div>
             </div>
             @if (shop.reviewCount > 0) {
               <div class="rating-summary">
+                @if (shop.rating !== null) {
+                  <svg class="rating-star" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+                  </svg>
+                }
                 @if (shop.rating !== null) {
                   <strong class="rating-value">{{ shop.rating | number: '1.1-1' }}</strong>
                   <span class="rating-out-of">/ 5</span>

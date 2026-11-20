@@ -164,12 +164,16 @@ describe('CustomerPortalService', () => {
     expect(results[0]?.availability).toBe('unknown');
   });
 
-  it('includes an uploaded shop image data URL in search results', async () => {
+  it('includes the shop logo and owner profile photo in search results', async () => {
     const shopImageData = 'data:image/png;base64,AA==';
+    const profileImageData = 'data:image/png;base64,BB==';
     userModel.find.mockReturnValue(
       createQuery([
         {
           ...shops[0],
+          firstName: 'Asha',
+          lastName: 'Patel',
+          profileImageData,
           shopDetails: { ...shops[0].shopDetails, shopImageData },
         },
       ]),
@@ -177,9 +181,17 @@ describe('CustomerPortalService', () => {
 
     const results = await service.searchShops({});
 
+    expect(results[0]?.ownerName).toBe('Asha Patel');
     expect(results[0]?.logoUrl).toBe(shopImageData);
+    expect(results[0]?.profileImageUrl).toBe(profileImageData);
     expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
       expect.stringContaining('shopDetails.shopImageData'),
+    );
+    expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
+      expect.stringContaining('profileImageData'),
+    );
+    expect(userModel.find.mock.results[0]?.value.select).toHaveBeenCalledWith(
+      expect.stringContaining('firstName lastName fullName'),
     );
   });
 

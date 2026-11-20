@@ -55,39 +55,8 @@
       <div class="customer-detail-main">
         <section
           class="detail-section customer-detail-main-card"
-          aria-label="Customer repair request details"
+          aria-label="Repair request details"
         >
-          <section class="customer-detail-block customer-information-card">
-            <h2 class="section-heading">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
-              Customer Information
-            </h2>
-            @if (authService.currentUser(); as customer) {
-              <div class="customer-information-row">
-                <div class="customer-identity">
-                  @if (customerPhotoSource(customer.profileImageUrl); as photo) {
-                    <img
-                      class="customer-avatar"
-                      [src]="photo"
-                      [alt]="customerName(customer) + ' profile photo'"
-                      (error)="onCustomerImageError()"
-                    />
-                  } @else {
-                    <span class="customer-avatar" aria-hidden="true">{{ customerInitials(customer) }}</span>
-                  }
-                  <strong>{{ customerName(customer) }}</strong>
-                </div>
-                <dl class="customer-facts">
-                  <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
-                  <div><dt>Phone</dt><dd>{{ customerPhone(customer) }}</dd></div>
-                  <div><dt>Location</dt><dd>{{ customerLocation(customer) }}</dd></div>
-                </dl>
-              </div>
-            } @else {
-              <p class="muted-copy">Customer information is not available.</p>
-            }
-          </section>
-
           <section class="customer-detail-block problem-description-card">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M8 13h8m-8 4h8" /></svg>

@@ -1,20 +1,26 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { AuthService } from '../../core/auth/auth.service';
-import { UserProfile } from '../../core/auth/auth.models';
 import { JobAttachmentsComponent } from '../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../shared/components/job-timeline/job-timeline.component';
 import { RepairProgressComponent } from '../../shared/components/repair-progress/repair-progress.component';
 import { JobSharedService } from '../../shared/services/job-shared.service';
-import { CustomerRepairRequest } from '../models/customer-portal.models';
+import { CustomerRepairRequest, ShopSearchResult } from '../models/customer-portal.models';
 import { CustomerPortalService } from '../services/customer-portal.service';
 import { CustomerRepairWorkflowComponent } from '../repair-requests/components/customer-repair-workflow.component';
-import { profileImageSource } from '../../shared/utils/appliance-thumbnail.util';
+import { CustomerRepairShopProfileComponent } from '../jobs/components/customer-repair-shop-profile.component';
 import { ToastService } from '../../core/toast/toast.service';
+
+interface CustomerShopSummary {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  address?: string;
+}
 
 @Component({
   selector: 'app-customer-repair-job-page',
@@ -27,18 +33,20 @@ import { ToastService } from '../../core/toast/toast.service';
     JobTimelineComponent,
     RepairProgressComponent,
     CustomerRepairWorkflowComponent,
+    CustomerRepairShopProfileComponent,
   ],
   templateUrl: './customer-repair-job.page.html',
   styleUrl: './customer-repair-job.page.scss',
 })
 export class CustomerRepairJobPage implements OnInit {
-  readonly authService = inject(AuthService);
   readonly jobs = inject(JobSharedService);
   readonly job = signal<CustomerRepairRequest | null>(null);
   readonly loading = signal(true);
   readonly submitting = signal(false);
   readonly heroImageUnavailable = signal(false);
-  readonly customerAvatarUnavailable = signal(false);
+  readonly shopProfile = signal<ShopSearchResult | null>(null);
+  readonly shopProfileLoading = signal(false);
+  readonly shopProfileError = signal('');
   readonly error = signal('');
   readonly notice = signal('');
   readonly issueDescription = signal('');
@@ -48,13 +56,43 @@ export class CustomerRepairJobPage implements OnInit {
   });
   private requestId = '';
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly destroyRef = inject(DestroyRef);
+  private requestedShopId: string | null = null;
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly portal: CustomerPortalService,
     private readonly toastService: ToastService,
-  ) {}
+  ) {
+    effect(() => {
+      const request = this.job();
+      const shopId = request ? this.shopDetails(request)?.id ?? null : null;
+      if (shopId === this.requestedShopId) return;
+
+      this.requestedShopId = shopId;
+      this.shopProfile.set(null);
+      this.shopProfileError.set('');
+      this.shopProfileLoading.set(!!shopId);
+      if (!shopId) return;
+
+      this.portal
+        .getShop(shopId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (shop) => {
+            if (this.requestedShopId !== shopId) return;
+            this.shopProfile.set(shop);
+            this.shopProfileLoading.set(false);
+          },
+          error: () => {
+            if (this.requestedShopId !== shopId) return;
+            this.shopProfileError.set('Shop profile information could not be loaded.');
+            this.shopProfileLoading.set(false);
+          },
+        });
+    });
+  }
 
   ngOnInit(): void {
     this.requestId = this.route.snapshot.paramMap.get('id') ?? '';
@@ -72,7 +110,6 @@ export class CustomerRepairJobPage implements OnInit {
       next: (job) => {
         this.job.set(job);
         this.heroImageUnavailable.set(false);
-        this.customerAvatarUnavailable.set(false);
         this.loading.set(false);
       },
       error: (error: HttpErrorResponse) => {
@@ -131,33 +168,28 @@ export class CustomerRepairJobPage implements OnInit {
     return `data:${photo.mimeType || 'image/jpeg'};base64,${data}`;
   }
 
-  customerPhotoSource(value?: string | null): string | null {
-    const source = profileImageSource(value);
-    return source && !this.customerAvatarUnavailable() ? source : null;
-  }
+  shopDetails(job: CustomerRepairRequest): CustomerShopSummary | null {
+    if (job.shop) {
+      return {
+        id: job.shop.id,
+        name: job.shop.name,
+        logoUrl: job.shop.logoUrl,
+        address: job.shop.address,
+      };
+    }
 
-  customerName(user: UserProfile): string {
-    return [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Customer';
-  }
-
-  customerInitials(user: UserProfile): string {
-    const name = this.customerName(user);
-    return name === 'Customer' ? user.email.slice(0, 1).toUpperCase() || 'C' :
-      name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
-  }
-
-  customerPhone(user: UserProfile): string {
-    return [user.countryCode, user.mobileNumber].filter(Boolean).join(' ') || 'Not provided';
-  }
-
-  customerLocation(user: UserProfile): string {
-    return user.location
-      ? `${user.location.latitude.toFixed(5)}, ${user.location.longitude.toFixed(5)}`
-      : 'Not provided';
-  }
-
-  customerMapUrl(location: NonNullable<UserProfile['location']>): string {
-    return `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
+    const acceptedQuotation =
+      job.acceptedQuotation ?? job.quotations.find((quotation) => quotation.status === 'accepted');
+    const shop =
+      job.shops?.find((item) => item.id === acceptedQuotation?.shopId) ??
+      job.shops?.find((item) => item.responseStatus === 'customer_accepted') ??
+      job.shops?.find((item) => item.responseStatus === 'quotation_submitted') ??
+      job.shops?.[0];
+    return shop
+      ? { id: shop.id, name: shop.name, logoUrl: shop.logoUrl }
+      : acceptedQuotation
+        ? { id: acceptedQuotation.shopId, name: 'Repair Shop' }
+        : null;
   }
 
   shopMapEmbedUrl(address: string): SafeResourceUrl {

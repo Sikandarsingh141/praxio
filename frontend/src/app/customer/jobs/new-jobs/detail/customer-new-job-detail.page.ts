@@ -4,7 +4,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../../core/auth/auth.service';
-import { UserProfile } from '../../../../core/auth/auth.models';
 import { CustomerRepairRequest } from '../../../models/customer-portal.models';
 import { CustomerPortalService } from '../../../services/customer-portal.service';
 import { CustomerJobDetailPageBase } from '../../../../shared/components/job-page-base';
@@ -124,27 +123,6 @@ export class CustomerNewJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
-  }
-
-  customerName(user: UserProfile): string {
-    return [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Customer';
-  }
-
-  customerInitials(user: UserProfile): string {
-    const name = this.customerName(user);
-    return name === 'Customer'
-      ? user.email.slice(0, 1).toUpperCase() || 'C'
-      : name.split(/\s+/).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('');
-  }
-
-  customerPhone(user: UserProfile): string {
-    return [user.countryCode, user.mobileNumber].filter(Boolean).join(' ') || 'Not provided';
-  }
-
-  customerLocation(user: UserProfile): string {
-    return user.location
-      ? `${user.location.latitude.toFixed(5)}, ${user.location.longitude.toFixed(5)}`
-      : 'Not provided';
   }
 
   customerCoordinates(job: CustomerRepairRequest): Coordinates | null {

@@ -55,36 +55,24 @@
       <div class="customer-detail-main">
         <section
           class="detail-section customer-detail-main-card"
-          aria-label="Customer repair request details"
+          aria-label="Repair request details"
         >
-          <section class="customer-detail-block customer-information-card">
-            <h2 class="section-heading">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
-              Customer Information
-            </h2>
-            @if (authService.currentUser(); as customer) {
-              <div class="customer-information-row">
-                <div class="customer-identity">
-                  @if (customerPhotoSource(customer.profileImageUrl); as photo) {
-                    <img
-                      class="customer-avatar"
-                      [src]="photo"
-                      [alt]="customerName(customer) + ' profile photo'"
-                      (error)="onCustomerImageError()"
-                    />
-                  } @else {
-                    <span class="customer-avatar" aria-hidden="true">{{ customerInitials(customer) }}</span>
-                  }
-                  <strong>{{ customerName(customer) }}</strong>
-                </div>
-                <dl class="customer-facts">
-                  <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
-                  <div><dt>Phone</dt><dd>{{ customerPhone(customer) }}</dd></div>
-                  <div><dt>Location</dt><dd>{{ customerLocation(customer) }}</dd></div>
-                </dl>
-              </div>
+          <section class="customer-detail-block repair-shop-section">
+            @if (shopDetails(job); as shop) {
+              <app-customer-repair-shop-profile
+                [shopId]="shop.id"
+                [shopName]="shop.name"
+                [fallbackLogoUrl]="shop.logoUrl ?? null"
+                [fallbackAddress]="shop.address ?? ''"
+                [profile]="shopProfile()"
+                [loading]="shopLocationLoading()"
+                [error]="shopProfileError()"
+              />
             } @else {
-              <p class="muted-copy">Customer information is not available.</p>
+              <app-customer-repair-shop-profile
+                [loading]="shopLocationLoading()"
+                [error]="shopProfileError()"
+              />
             }
           </section>
 
@@ -239,24 +227,6 @@
             />
           </section>
 
-          @if (shopDetails(job); as shop) {
-            <section class="customer-detail-block repair-shop-section">
-              <h2 class="section-heading">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" /></svg>
-                Repair Shop
-              </h2>
-              <div class="shop-summary">
-                <span class="shop-logo">
-                  @if (shop.logoUrl && shopLogoUnavailable() !== shop.logoUrl) {
-                    <img [src]="shop.logoUrl" [alt]="shop.name" (error)="shopLogoUnavailable.set(shop.logoUrl)" />
-                  }
-                  @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" /></svg> }
-                </span>
-                <div class="shop-copy"><strong>{{ shop.name }}</strong><span>{{ shop.address || 'Address not available' }}</span></div>
-              </div>
-              <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
-            </section>
-          }
         </section>
       </aside>
     </div>

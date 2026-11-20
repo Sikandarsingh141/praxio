@@ -62,46 +62,17 @@
           class="detail-section customer-detail-main-card"
           aria-label="Customer repair request details"
         >
-          <section class="customer-detail-block customer-information-card">
-            <h2 class="section-heading">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21a7 7 0 0 1 14 0" /></svg>
-              Customer Information
-            </h2>
-            @if (authService.currentUser(); as customer) {
-              <div class="customer-information-row">
-                <div class="customer-identity">
-                  @if (customerPhotoSource(customer.profileImageUrl); as photo) {
-                    <img
-                      class="customer-avatar"
-                      [src]="photo"
-                      [alt]="customerName(customer) + ' profile photo'"
-                      (error)="customerAvatarUnavailable.set(true)"
-                    />
-                  } @else {
-                    <span class="customer-avatar" aria-hidden="true">{{ customerInitials(customer) }}</span>
-                  }
-                  <strong>{{ customerName(customer) }}</strong>
-                </div>
-                <dl class="customer-facts">
-                  <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
-                  <div><dt>Phone</dt><dd>{{ customerPhone(customer) }}</dd></div>
-                  <div>
-                    <dt>Location</dt>
-                    <dd>
-                      @if (customer.location; as location) {
-                        <a [href]="customerMapUrl(location)" target="_blank" rel="noopener noreferrer">
-                          {{ customerLocation(customer) }}
-                        </a>
-                      } @else {
-                        {{ customerLocation(customer) }}
-                      }
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            } @else {
-              <p class="muted-copy">Customer information is not available.</p>
-            }
+          <section class="customer-detail-block repair-shop-section">
+            @let shop = shopDetails(job);
+            <app-customer-repair-shop-profile
+              [shopId]="shop?.id ?? null"
+              [shopName]="shop?.name || 'Repair Shop'"
+              [fallbackLogoUrl]="shop?.logoUrl ?? null"
+              [fallbackAddress]="shop?.address ?? ''"
+              [profile]="shopProfile()"
+              [loading]="shopProfileLoading()"
+              [error]="shopProfileError()"
+            />
           </section>
 
           <section class="customer-detail-block problem-description-card">
