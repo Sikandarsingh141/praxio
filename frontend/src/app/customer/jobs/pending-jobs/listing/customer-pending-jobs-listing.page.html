@@ -48,6 +48,7 @@
         <table class="jobs-table">
         <thead>
           <tr>
+            <th scope="col" class="th-job-id">Request ID</th>
             <th scope="col" class="th-device">Device &amp; Brand</th>
             <th scope="col" class="th-issue">Issue / Problem</th>
             <th scope="col" class="th-date">Request Date</th>
@@ -59,6 +60,17 @@
         <tbody>
           @for (job of pageItems(); track job.id; let isLast = $last) {
             <tr class="job-table-row">
+              <!-- Request ID -->
+              <td class="td-job-id">
+                <a
+                  class="job-id-text"
+                  [routerLink]="[detailRoute, job.id]"
+                  [attr.aria-label]="'View request ' + formatJobId(job.id) + ' details'"
+                >
+                  #{{ formatJobId(job.id) }}
+                </a>
+              </td>
+
               <!-- Device & Brand with Device Image -->
               <td class="td-device">
                 <div class="device-cell">

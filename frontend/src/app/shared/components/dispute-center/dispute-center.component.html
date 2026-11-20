@@ -368,9 +368,14 @@
               @for (item of list()?.items; track item._id) {
                 <tr>
                   <td class="dispute-request-id-cell">
-                    <strong [title]="item.repairRequestId">
-                      #{{ item.repairRequestId.slice(-8).toUpperCase() }}
-                    </strong>
+                    <a
+                      [routerLink]="disputeDetailLink(item._id)"
+                      [attr.aria-label]="'View dispute ' + item.reference + ' details'"
+                    >
+                      <strong [title]="item.repairRequestId">
+                        #{{ item.repairRequestId.slice(-8).toUpperCase() }}
+                      </strong>
+                    </a>
                     <span>Dispute {{ item.reference }}</span>
                   </td>
                   <td class="dispute-device-cell">

@@ -62,7 +62,13 @@
             <tr class="job-table-row">
               <!-- Request ID -->
               <td class="td-job-id">
-                <span class="job-id-text">#{{ formatJobId(job.id) }}</span>
+                <a
+                  class="job-id-text"
+                  [routerLink]="[detailRoute, job.id]"
+                  [attr.aria-label]="'View request ' + formatJobId(job.id) + ' details'"
+                >
+                  #{{ formatJobId(job.id) }}
+                </a>
               </td>
 
               <!-- Device & Brand with Device Image -->

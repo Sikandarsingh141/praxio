@@ -234,6 +234,13 @@ describe('DisputeCenterComponent customer views', () => {
     expect(
       fixture.nativeElement.querySelector('.dispute-request-id-cell strong')?.textContent,
     ).toContain('#12345678');
+    expect(
+      (
+        fixture.nativeElement.querySelector(
+          '.dispute-request-id-cell a',
+        ) as HTMLAnchorElement
+      ).href,
+    ).toContain('/customer/disputes/dispute-id');
     expect(fixture.nativeElement.querySelector('.dispute-action-menu summary')).not.toBeNull();
     expect(
       (fixture.nativeElement.querySelector('.dispute-action-popup a') as HTMLAnchorElement).href,

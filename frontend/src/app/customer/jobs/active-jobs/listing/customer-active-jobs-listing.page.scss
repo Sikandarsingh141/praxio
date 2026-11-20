@@ -87,7 +87,7 @@
 
 .jobs-table {
   width: 100%;
-  min-width: 1000px;
+  min-width: 1050px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -130,6 +130,17 @@
   color: #1e293b;
   font-size: 0.8rem;
   vertical-align: middle;
+}
+
+.td-job-id {
+  white-space: nowrap;
+}
+
+.job-id-text {
+  color: #087c3b;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .td-device {

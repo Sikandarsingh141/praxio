@@ -73,6 +73,11 @@ export abstract class JobListingPageBase implements OnInit {
     return [...new Set(this.items().map((item) => item.status))].sort();
   }
 
+  formatJobId(id: string): string {
+    if (!id) return '';
+    return id.length > 8 ? id.slice(-8).toUpperCase() : id.toUpperCase();
+  }
+
   setSearch(value: string): void {
     this.search.set(value);
     this.page.set(1);

@@ -79,11 +79,6 @@ export class CustomerNewJobsListingPage extends CustomerJobsListingPageBase {
     this.failedImages.set(updated);
   }
 
-  formatJobId(id: string): string {
-    if (!id) return '';
-    return id.length > 8 ? id.slice(-8).toUpperCase() : id.toUpperCase();
-  }
-
   formatBrandModel(job: JobListItem): string {
     const brand = job.brand?.trim() || '';
     const model = job.model?.trim() || '';

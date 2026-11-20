@@ -91,7 +91,7 @@
 
 .jobs-table {
   width: 100%;
-  min-width: 1000px;
+  min-width: 1050px;
   border-collapse: collapse;
   text-align: left;
 
@@ -136,6 +136,17 @@
     &.td-action {
       text-align: right;
       padding-right: 0.6rem;
+    }
+  }
+
+  .td-job-id {
+    white-space: nowrap;
+
+    .job-id-text {
+      color: #087c3b;
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-decoration: none;
     }
   }
 
