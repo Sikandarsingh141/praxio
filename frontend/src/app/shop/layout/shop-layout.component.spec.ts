@@ -84,9 +84,11 @@ describe('ShopLayout', () => {
     expect(fixture.nativeElement.textContent).toContain('Dashboard');
     expect(fixture.nativeElement.textContent).toContain('Repair Requests');
     expect(fixture.nativeElement.textContent).toContain('All Requests');
-    expect(fixture.nativeElement.querySelector('a[href="/shop/repair-requests"]')?.textContent).toContain(
-      'All Requests',
-    );
+    const allRequestsLink = fixture.nativeElement.querySelector(
+      'a[href="/shop/repair-requests"]',
+    ) as HTMLAnchorElement;
+    expect(allRequestsLink.textContent).toContain('All Requests');
+    expect(allRequestsLink.querySelector('.portal-nav-icon')?.textContent?.trim()).toBe('⚒');
     expect(fixture.nativeElement.textContent).toContain('Quotations');
     expect(fixture.nativeElement.textContent).toContain('Technicians');
     expect(fixture.nativeElement.textContent).toContain('Business profile');

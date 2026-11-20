@@ -448,6 +448,16 @@
   stroke-width: 1.7;
 }
 
+.portal-nav-icon {
+  display: inline-grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
 .portal-nav.active {
   background: #edf4ee;
   color: #315d4b;
