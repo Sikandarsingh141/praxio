@@ -1005,11 +1005,16 @@ export class CustomerPortalService {
     const requestConditions: Record<string, unknown>[] = [];
     if (filters.status === 'completed') {
       requestConditions.push({
-        $or: [{ status: 'completed' }, { 'repairJob.status': 'completed' }],
+        $or: [
+          { status: 'completed' },
+          { 'repairJob.status': { $in: ['picked_up', 'completed'] } },
+        ],
       });
     } else if (filters.status === 'open') {
       requestFilter.status = 'open';
-      requestConditions.push({ 'repairJob.status': { $ne: 'completed' } });
+      requestConditions.push({
+        'repairJob.status': { $nin: ['picked_up', 'completed'] },
+      });
     } else if (filters.status) {
       requestFilter.status = filters.status;
     }
@@ -2296,6 +2301,12 @@ export class CustomerPortalService {
         quotation.status === 'accepted' &&
         quotation._id.toString() === request.acceptedQuotationId?.toString(),
     );
+    const review = acceptedByThisShop
+      ? await this.reviews
+          .findOne({ repairRequestId: request._id, shopId: shop._id })
+          .lean()
+          .exec()
+      : null;
     const { repairJob, ...safeRequest } = request;
     const activeAssignment = acceptedByThisShop
       ? repairJob?.activeAssignment
@@ -2358,6 +2369,7 @@ export class CustomerPortalService {
       },
       shopResponse,
       quotations,
+      review,
     };
   }
 

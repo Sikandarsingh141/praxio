@@ -27,9 +27,11 @@ type RepairRatingKey =
 export class CustomerRepairWorkflowComponent {
   @Input({ required: true }) request!: CustomerRepairRequest;
   @Input() showApprovalSummaryInFlow = true;
+  @Input() showCostSummary = true;
   @Input() pickupConfirmationInSidebar = false;
   @Input() reviewInSidebar = false;
   @Output() readonly requestUpdated = new EventEmitter<CustomerRepairRequest>();
+  @Output() readonly pickupConfirmed = new EventEmitter<CustomerRepairRequest>();
 
   readonly submitting = signal(false);
   readonly error = signal('');
@@ -170,6 +172,9 @@ export class CustomerRepairWorkflowComponent {
       .subscribe({
         next: (request) => {
           this.requestUpdated.emit(request);
+          if (request.repairJob?.status === 'picked_up') {
+            this.pickupConfirmed.emit(request);
+          }
           this.toastService.success(
             'Pickup Status',
             this.inspected()

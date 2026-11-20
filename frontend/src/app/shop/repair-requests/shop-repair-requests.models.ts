@@ -19,6 +19,7 @@ export type ShopRepairRoute = RepairRoute;
 
 export interface ShopRepairRequest {
   _id: string;
+  customerId?: string;
   appliance: string;
   brand?: string;
   model?: string;
@@ -40,6 +41,7 @@ export interface ShopRepairRequest {
     location?: { latitude: number; longitude: number } | null;
   };
   shopResponse: {
+    shopId?: string;
     status: ShopRequestStatus;
     declineReason?: string;
     respondedAt?: string;
@@ -48,6 +50,7 @@ export interface ShopRepairRequest {
   quotations: ShopQuotation[];
   acceptedQuotationId?: string;
   repairJob?: RepairWorkflowJob;
+  review?: ShopRepairReview | null;
   technicianAssignment?: {
     current: {
       technicianId: string;
@@ -66,6 +69,21 @@ export interface ShopRepairRequest {
       at: string;
     }>;
   } | null;
+}
+
+export interface ShopRepairReview {
+  overallRating: number;
+  repairQuality: number;
+  communication: number;
+  professionalism: number;
+  timeliness: number;
+  valueForMoney: number;
+  title?: string;
+  reviewText: string;
+  liked?: string;
+  improvement?: string;
+  wouldRecommend: boolean;
+  createdAt: string;
 }
 
 export interface ShopQuotation {

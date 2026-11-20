@@ -162,6 +162,24 @@ describe('ShopRepairRequestDetailsPage directions', () => {
     expect(text).not.toContain('12 min');
   });
 
+  it('navigates to the Shop Active Repair Details route after inspection starts', () => {
+    const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const navigate = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
+    fixture.componentInstance.setRequest({
+      ...request,
+      repairJob: { status: 'inspection_in_progress' },
+    });
+
+    fixture.componentInstance.onInspectionStarted();
+
+    expect(navigate).toHaveBeenCalledOnceWith([
+      '/shop/jobs/active-jobs',
+      request._id,
+    ]);
+  });
+
   it('presents the assigned shop owner as a readable technician profile card', () => {
     const fixture = TestBed.createComponent(ShopRepairRequestDetailsPage);
     fixture.detectChanges();

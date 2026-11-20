@@ -24,3 +24,37 @@
 
 @include buttons.job-buttons;
 
+.repair-review-action {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.repair-review-action p {
+  margin: 0;
+  color: #647a84;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.repair-review-action .job-button {
+  width: 100%;
+}
+
+.repair-cost-summary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e6ece9;
+}
+
+.repair-cost-summary h3 {
+  margin: 0 0 0.75rem;
+  color: #203239;
+  font-size: 0.95rem;
+}
+
+.repair-cost-summary .repair-cost-total {
+  padding-top: 0.65rem;
+  border-top: 1px solid #e6ece9;
+  font-weight: 700;
+}
+

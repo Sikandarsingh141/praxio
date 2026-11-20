@@ -13,6 +13,7 @@ import {
 } from '../../shop/technicians/technicians.models';
 import { TechniciansService } from '../../shop/technicians/technicians.service';
 import { DisputeAccessRole, RepairDispute } from '../models/disputes.models';
+import { RepairWorkflowJob } from '../models/repair-workflow.models';
 import {
   CustomerJobCategory,
   JobAttachment,
@@ -275,19 +276,11 @@ export class JobSharedService {
   }
 
   customerTimeline(request: CustomerRepairRequest): JobTimelineEntry[] {
-    return (request.repairJob?.history ?? []).map((event) => ({
-      title: event.action.replace(/_/g, ' '),
-      description: event.notes,
-      at: event.at,
-    }));
+    return this.repairTimeline(request.repairJob?.history, request.customerId);
   }
 
   shopTimeline(request: ShopRepairRequest): JobTimelineEntry[] {
-    return (request.repairJob?.history ?? []).map((event) => ({
-      title: event.action.replace(/_/g, ' '),
-      description: event.notes,
-      at: event.at,
-    }));
+    return this.repairTimeline(request.repairJob?.history, request.customerId);
   }
 
   technicianTimeline(request: TechnicianRepairDetails): JobTimelineEntry[] {
@@ -306,6 +299,25 @@ export class JobSharedService {
       mimeType: photo.mimeType,
       data: photo.data,
     }));
+  }
+
+  private repairTimeline(
+    history: RepairWorkflowJob['history'],
+    customerId?: string,
+  ): JobTimelineEntry[] {
+    return (history ?? []).map((event) => {
+      const customerAction = !!customerId && event.actorId === customerId;
+      const acceptedQuotation =
+        customerAction && event.notes?.toLocaleLowerCase().includes('accepted the quotation');
+      return {
+        title: acceptedQuotation
+          ? 'Quotation Accepted'
+          : event.action.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        description: event.notes,
+        at: event.at,
+        ...(event.actorId ? { actorRole: customerAction ? 'Customer' : 'Shop' } : {}),
+      };
+    });
   }
 
   filterAndSort(
@@ -435,11 +447,15 @@ export class JobSharedService {
       case 'active':
         return request.status === 'open' &&
           !!status &&
-          ![...PRE_REPAIR_STATUSES, 'repair_declined', 'completed', 'disputed'].includes(
-            status,
-          );
+          ![
+            ...PRE_REPAIR_STATUSES,
+            'repair_declined',
+            'picked_up',
+            'completed',
+            'disputed',
+          ].includes(status);
       case 'completed':
-        return request.status === 'completed' || status === 'completed';
+        return request.status === 'completed' || status === 'picked_up' || status === 'completed';
     }
   }
 

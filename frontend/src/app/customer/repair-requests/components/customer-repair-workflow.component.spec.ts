@@ -96,6 +96,7 @@ describe('CustomerRepairWorkflowComponent', () => {
     fixture.detectChanges();
     const component = fixture.componentInstance;
     spyOn(component.requestUpdated, 'emit');
+    const pickupConfirmed = spyOn(component.pickupConfirmed, 'emit');
 
     expect(fixture.nativeElement.textContent).toContain('Confirm item received');
     expect(fixture.nativeElement.textContent).not.toContain('Rate your repair experience');
@@ -109,6 +110,7 @@ describe('CustomerRepairWorkflowComponent', () => {
       issueDescription: undefined,
     });
     expect(component.requestUpdated.emit).toHaveBeenCalledWith(updatedRequest);
+    expect(pickupConfirmed).toHaveBeenCalledWith(updatedRequest);
     expect(component.submitting()).toBeFalse();
   });
 

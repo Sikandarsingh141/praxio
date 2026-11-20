@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
@@ -13,6 +13,7 @@ import { JobTimelineComponent } from '../../../../shared/components/job-timeline
 import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
+import { CustomerRepairWorkflowComponent } from '../../../repair-requests/components/customer-repair-workflow.component';
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -33,12 +34,14 @@ interface CustomerShopSummary {
     JobTimelineComponent,
     RepairProgressComponent,
     ShopRepairRouteComponent,
+    CustomerRepairWorkflowComponent,
   ],
   templateUrl: './customer-completed-job-detail.page.html',
   styleUrl: './customer-completed-job-detail.page.scss',
 })
 export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
   readonly authService = inject(AuthService);
+  readonly workflowRef = viewChild(CustomerRepairWorkflowComponent);
   readonly heroImageUnavailable = signal(false);
   readonly shopLogoUnavailable = signal<string | null>(null);
   readonly shopLocation = signal<Coordinates | null>(null);
@@ -121,6 +124,20 @@ export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
     return status
       .replace(/_/g, ' ')
       .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+  }
+
+  repairCostEstimate(job: CustomerRepairRequest): number {
+    const acceptedQuotation =
+      job.acceptedQuotation ??
+      job.quotations.find((quotation) => quotation.status === 'accepted');
+    return job.repairJob?.approvedRepairAmount ?? acceptedQuotation?.amount ?? 0;
+  }
+
+  repairCostCurrency(job: CustomerRepairRequest): string | undefined {
+    const acceptedQuotation =
+      job.acceptedQuotation ??
+      job.quotations.find((quotation) => quotation.status === 'accepted');
+    return acceptedQuotation?.currency ?? job.quotations[0]?.currency;
   }
 
   customerName(user: UserProfile): string {

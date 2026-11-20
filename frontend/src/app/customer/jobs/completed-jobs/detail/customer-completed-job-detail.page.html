@@ -51,6 +51,16 @@
 
     <app-repair-progress [steps]="repairProgressSteps()" />
 
+    @if (job.repairJob?.status === 'picked_up' && !job.review) {
+      <app-customer-repair-workflow
+        [request]="job"
+        [showApprovalSummaryInFlow]="false"
+        [showCostSummary]="false"
+        [reviewInSidebar]="true"
+        (requestUpdated)="refreshRecord($event)"
+      />
+    }
+
     <div class="customer-detail-layout">
       <div class="customer-detail-main">
         <section
@@ -148,6 +158,21 @@
             }
           </section>
 
+          @if (job.review; as review) {
+            <section class="customer-detail-block verified-review-card" aria-label="Customer rating">
+              <h2 class="section-heading">Your Rating</h2>
+              <p><strong>{{ review.overallRating }}/5</strong> · {{ review.title || 'Verified repair review' }}</p>
+              <p>{{ review.reviewText }}</p>
+              <dl class="sidebar-facts">
+                <div><dt>Repair quality</dt><dd>{{ review.repairQuality }}/5</dd></div>
+                <div><dt>Communication</dt><dd>{{ review.communication }}/5</dd></div>
+                <div><dt>Professionalism</dt><dd>{{ review.professionalism }}/5</dd></div>
+                <div><dt>Timeliness</dt><dd>{{ review.timeliness }}/5</dd></div>
+                <div><dt>Value for money</dt><dd>{{ review.valueForMoney }}/5</dd></div>
+              </dl>
+            </section>
+          }
+
           <section class="customer-detail-block quotation-section">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -190,6 +215,30 @@
                 <span>Quotation information is not available yet.</span>
               </div>
             }
+            @if (job.repairJob; as repair) {
+              <div class="repair-cost-summary" aria-label="Repair cost summary">
+                <h3>Repair Cost Summary</h3>
+                <dl class="sidebar-facts">
+                  <div>
+                    <dt>Approved repair estimate</dt>
+                    <dd>{{ repairCostEstimate(job) | currency: repairCostCurrency(job) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Approved additional charges</dt>
+                    <dd>{{ repair.approvedAdditionalCharges ?? 0 | currency: repairCostCurrency(job) }}</dd>
+                  </div>
+                  <div class="repair-cost-total">
+                    <dt>Total approved cost</dt>
+                    <dd>
+                      {{
+                        repairCostEstimate(job) + (repair.approvedAdditionalCharges ?? 0)
+                          | currency: repairCostCurrency(job)
+                      }}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            }
           </section>
 
           <section class="customer-detail-block timeline-section">
@@ -210,6 +259,22 @@
           class="detail-section customer-detail-sidebar-card"
           aria-label="Device and repair shop information"
         >
+          @if (job.repairJob?.status === 'picked_up' && !job.review) {
+            <section class="customer-detail-block repair-review-action">
+              <p>Share your repair experience to complete this repair.</p>
+              <button
+                type="button"
+                class="job-button"
+                aria-haspopup="dialog"
+                aria-controls="review-dialog"
+                [disabled]="!workflowRef() || workflowRef()?.submitting()"
+                (click)="workflowRef()?.openReviewDialog()"
+              >
+                Rate your repair experience
+              </button>
+            </section>
+          }
+
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">

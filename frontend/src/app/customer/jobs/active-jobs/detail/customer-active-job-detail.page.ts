@@ -134,6 +134,10 @@ export class CustomerActiveJobDetailPage extends CustomerJobDetailPageBase {
     return ['/customer/repair-requests', id];
   }
 
+  onPickupConfirmed(request: CustomerRepairRequest): void {
+    void this.router.navigate(['/customer/jobs/completed-jobs', request._id]);
+  }
+
   photoSource(photo: NonNullable<CustomerRepairRequest['photos']>[number]): string {
     const data = photo.data.trim();
     if (

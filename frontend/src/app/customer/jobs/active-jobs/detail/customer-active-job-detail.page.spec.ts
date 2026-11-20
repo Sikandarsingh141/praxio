@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerRepairRequest, RepairReview } from '../../../models/customer-portal.models';
@@ -218,6 +218,8 @@ describe('CustomerActiveJobDetailPage', () => {
     };
     jobs.customerJob.and.returnValue(of(readyRequest));
     customerPortal.getRepairJob.and.returnValue(of(pickedUpRequest));
+    const router = TestBed.inject(Router);
+    const navigate = spyOn(router, 'navigate').and.returnValue(Promise.resolve(true));
     const fixture = TestBed.createComponent(CustomerActiveJobDetailPage);
     fixture.detectChanges();
 
@@ -256,6 +258,10 @@ describe('CustomerActiveJobDetailPage', () => {
       comments: undefined,
       issueDescription: undefined,
     });
+    expect(navigate).toHaveBeenCalledWith([
+      '/customer/jobs/completed-jobs',
+      request._id,
+    ]);
     expect(fixture.nativeElement.querySelector('.pickup-confirmation-dialog')).toBeNull();
 
     const reviewAction = sidebar.querySelector('.repair-review-action') as HTMLElement;

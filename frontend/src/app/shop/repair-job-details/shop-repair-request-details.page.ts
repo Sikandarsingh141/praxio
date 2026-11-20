@@ -648,6 +648,13 @@ export class ShopRepairRequestDetailsPage implements OnInit {
     this.repairWorkflow.openInspectionModal();
   }
 
+  onInspectionStarted(): void {
+    const request = this.request();
+    if (request) {
+      void this.router.navigate(['/shop/jobs/active-jobs', request._id]);
+    }
+  }
+
   approvedRepairAmount(): number {
     const job = this.request()?.repairJob;
     return (

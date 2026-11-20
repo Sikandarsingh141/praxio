@@ -108,7 +108,7 @@ export interface RepairWorkflowJob {
     comments?: string;
     confirmedAt: string;
   };
-  history?: Array<{ action: string; notes?: string; at: string }>;
+  history?: Array<{ action: string; notes?: string; at: string; actorId?: string }>;
 }
 
 export interface RepairEstimatePartInput {

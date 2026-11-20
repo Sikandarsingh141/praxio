@@ -306,12 +306,13 @@
   }
 
   @if (
-    job.status === 'in_progress' ||
-    job.status === 'on_hold' ||
-    job.status === 'repair_completed' ||
-    job.status === 'ready_for_pickup' ||
-    job.status === 'picked_up' ||
-    job.status === 'completed'
+    showCostSummary &&
+    (job.status === 'in_progress' ||
+      job.status === 'on_hold' ||
+      job.status === 'repair_completed' ||
+      job.status === 'ready_for_pickup' ||
+      job.status === 'picked_up' ||
+      job.status === 'completed')
   ) {
     <section class="workflow-card" aria-labelledby="cost-summary-title">
       <header class="workflow-heading"><h2 id="cost-summary-title">Repair cost summary</h2></header>
@@ -352,8 +353,9 @@
         >
       </div>
     </section>
+  }
 
-    @if (hasReviewedAdditionalCharges) {
+  @if (hasReviewedAdditionalCharges) {
       <section class="workflow-card" aria-labelledby="additional-charges-title">
         <header class="workflow-heading">
           <h2 id="additional-charges-title">Additional charge requests</h2>
@@ -610,6 +612,7 @@
             <span>Review title (optional)</span>
             <input
               maxlength="120"
+              placeholder="Give your review a short title"
               [ngModel]="reviewTitle()"
               (ngModelChange)="reviewTitle.set($event)"
             />
@@ -620,6 +623,7 @@
               rows="4"
               maxlength="2000"
               required
+              placeholder="Tell us about your repair experience..."
               [ngModel]="reviewText()"
               (ngModelChange)="reviewText.set($event)"
             ></textarea>
@@ -629,6 +633,7 @@
             <textarea
               rows="2"
               maxlength="1000"
+              placeholder="What did you like most about the service?"
               [ngModel]="liked()"
               (ngModelChange)="liked.set($event)"
             ></textarea>
@@ -638,6 +643,7 @@
             <textarea
               rows="2"
               maxlength="1000"
+              placeholder="What could we do better next time?"
               [ngModel]="improvement()"
               (ngModelChange)="improvement.set($event)"
             ></textarea>
@@ -705,8 +711,6 @@
         <p>{{ review.reviewText }}</p>
       </section>
     }
-  }
-
   @if (confirmingCharge(); as charge) {
     <div class="dialog-backdrop" role="presentation">
       <section

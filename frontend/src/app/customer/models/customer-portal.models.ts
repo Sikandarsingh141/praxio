@@ -111,6 +111,7 @@ import { RepairWorkflowJob } from '../../shared/models/repair-workflow.models';
 
 export interface CustomerRepairRequest {
   _id: string;
+  customerId?: string;
   shopIds: string[];
   appliance: string;
   brand?: string;

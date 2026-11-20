@@ -546,7 +546,10 @@ describe('CustomerPortalService', () => {
       customerId,
       $and: [
         {
-          $or: [{ status: 'completed' }, { 'repairJob.status': 'completed' }],
+          $or: [
+            { status: 'completed' },
+            { 'repairJob.status': { $in: ['picked_up', 'completed'] } },
+          ],
         },
       ],
     });
@@ -571,7 +574,7 @@ describe('CustomerPortalService', () => {
     expect(filter).toMatchObject({
       customerId,
       status: 'open',
-      $and: [{ 'repairJob.status': { $ne: 'completed' } }],
+      $and: [{ 'repairJob.status': { $nin: ['picked_up', 'completed'] } }],
     });
   });
 
@@ -1464,6 +1467,90 @@ describe('CustomerPortalService', () => {
     );
 
     expect(result).not.toHaveProperty('repairJob');
+  });
+
+  it('returns the customer review to the shop that owns the accepted repair', async () => {
+    const shopId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const acceptedQuotationId = new Types.ObjectId();
+    const review = {
+      _id: new Types.ObjectId(),
+      repairRequestId: requestId,
+      shopId,
+      overallRating: 5,
+      repairQuality: 5,
+      communication: 4,
+      professionalism: 5,
+      timeliness: 4,
+      valueForMoney: 5,
+      reviewText: 'Excellent repair.',
+      wouldRecommend: true,
+      createdAt: new Date('2026-11-20T12:00:00.000Z'),
+    };
+    userModel.findById
+      .mockReturnValueOnce(
+        createQuery({
+          _id: shopId,
+          accountType: 'shop',
+          accountStatus: 'active',
+          shopDetails: { shopName: 'Authorized Shop' },
+        }),
+      )
+      .mockReturnValueOnce(
+        createQuery({
+          _id: customerId,
+          firstName: 'Ava',
+          lastName: 'Customer',
+          email: 'customer@example.com',
+        }),
+      );
+    registrationModel.findOne.mockReturnValue(
+      createQuery({ registrationStatus: 'approved', paymentStatus: 'paid' }),
+    );
+    repairRequestModel.findOne.mockReturnValue(
+      createQuery({
+        _id: requestId,
+        customerId,
+        shopIds: [shopId],
+        shopResponses: [{ shopId, status: 'customer_accepted' }],
+        acceptedQuotationId,
+        appliance: 'Phone',
+        description: 'Screen repair',
+        status: 'completed',
+        createdAt: new Date('2026-11-19T12:00:00.000Z'),
+        repairJob: { status: 'completed' },
+      }),
+    );
+    quotationModel.find.mockReturnValue(
+      createQuery([
+        {
+          _id: acceptedQuotationId,
+          repairRequestId: requestId,
+          shopId,
+          status: 'accepted',
+          amount: 125,
+          currency: 'USD',
+          message: 'Screen repair',
+          createdAt: new Date('2026-11-19T12:30:00.000Z'),
+        },
+      ]),
+    );
+    quotationModel.findOne.mockReturnValue(
+      createQuery({ _id: acceptedQuotationId, shopId }),
+    );
+    reviewModel.findOne.mockReturnValue(createQuery(review));
+
+    const result = await service.getShopRepairRequest(
+      shopId.toString(),
+      requestId.toString(),
+    );
+
+    expect(reviewModel.findOne).toHaveBeenCalledWith({
+      repairRequestId: requestId,
+      shopId,
+    });
+    expect(result).toMatchObject({ review });
   });
 
   it('does not expose a request whose accepted quotation belongs to another shop', async () => {

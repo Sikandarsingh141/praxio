@@ -171,12 +171,56 @@ describe('JobSharedService', () => {
     ]);
   });
 
+  it('shows repair actions with readable labels and the customer or shop actor', () => {
+    const acceptedAt = '2026-11-20T12:00:00.000Z';
+    const pickupAt = '2026-11-20T13:00:00.000Z';
+    const history: NonNullable<RepairWorkflowJob['history']> = [
+      {
+        actorId: 'customer-1',
+        action: 'confirmed',
+        notes: 'Customer accepted the quotation.',
+        at: acceptedAt,
+      },
+      {
+        actorId: 'shop-1',
+        action: 'pickup_scheduled',
+        notes: 'Collection scheduled.',
+        at: pickupAt,
+      },
+    ];
+    const customer = customerRequest('customer-timeline', 'confirmed');
+    customer.customerId = 'customer-1';
+    customer.repairJob = { status: 'confirmed', history };
+    const shop = shopRequest('shop-timeline', 'customer_accepted', 'confirmed');
+    shop.customerId = 'customer-1';
+    shop.repairJob = { status: 'confirmed', history };
+
+    const expected = [
+      {
+        title: 'Quotation Accepted',
+        description: 'Customer accepted the quotation.',
+        at: acceptedAt,
+        actorRole: 'Customer',
+      },
+      {
+        title: 'Pickup Scheduled',
+        description: 'Collection scheduled.',
+        at: pickupAt,
+        actorRole: 'Shop',
+      },
+    ];
+
+    expect(service.customerTimeline(customer)).toEqual(expected);
+    expect(service.shopTimeline(shop)).toEqual(expected);
+  });
+
   it('keeps quoted customer requests in New Jobs while retaining other status categories', (done) => {
     customerApi.getRepairRequests.and.returnValue(of([
       customerRequest('new'),
       customerRequest('pending', undefined, true),
       customerRequest('assigned', 'confirmed'),
       customerRequest('active', 'in_progress'),
+      customerRequest('picked-up', 'picked_up'),
       customerRequest('completed', 'completed', false, 'completed'),
     ]));
 
@@ -193,7 +237,7 @@ describe('JobSharedService', () => {
       expect(lists.pending.map((item) => item.id)).toEqual(['pending']);
       expect(lists.assigned.map((item) => item.id)).toEqual(['assigned']);
       expect(lists.active.map((item) => item.id)).toEqual(['active']);
-      expect(lists.completed.map((item) => item.id)).toEqual(['completed']);
+      expect(lists.completed.map((item) => item.id)).toEqual(['picked-up', 'completed']);
       expect(customerApi.getRepairRequests).toHaveBeenCalledTimes(5);
       done();
     });
@@ -253,6 +297,7 @@ describe('JobSharedService', () => {
         customerRequest('open'),
         pendingRequest,
         customerRequest('active', 'in_progress'),
+        customerRequest('picked-up', 'picked_up'),
         customerRequest('completed', 'completed', false, 'completed'),
       ]),
     );
@@ -270,7 +315,7 @@ describe('JobSharedService', () => {
         pending: 1,
         active: 1,
         disputed: 2,
-        completed: 1,
+        completed: 2,
       });
       expect(customerApi.getRepairRequests).toHaveBeenCalledTimes(1);
       expect(disputesApi.list).toHaveBeenCalledOnceWith('customer', { page: 1, limit: 1 });

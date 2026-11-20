@@ -155,6 +155,7 @@
               [pickupConfirmationInSidebar]="true"
               [reviewInSidebar]="true"
               (requestUpdated)="refreshRecord($event)"
+              (pickupConfirmed)="onPickupConfirmed($event)"
             />
           }
 
