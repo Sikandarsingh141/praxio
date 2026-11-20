@@ -14,6 +14,7 @@ import { RepairProgressComponent } from '../../../../shared/components/repair-pr
 import type { RepairRoute } from '../../../../shared/models/repair-route.models';
 import { ShopRepairRouteComponent } from '../../../../shop/repair-job-details/components/shop-repair-route.component';
 import { CustomerRepairWorkflowComponent } from '../../../repair-requests/components/customer-repair-workflow.component';
+import { RepairInvoiceSectionComponent } from '../../../../shared/components/repair-invoice-section/repair-invoice-section.component';
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -35,6 +36,7 @@ interface CustomerShopSummary {
     RepairProgressComponent,
     ShopRepairRouteComponent,
     CustomerRepairWorkflowComponent,
+    RepairInvoiceSectionComponent,
   ],
   templateUrl: './customer-completed-job-detail.page.html',
   styleUrl: './customer-completed-job-detail.page.scss',
@@ -47,6 +49,7 @@ export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
   readonly shopLocation = signal<Coordinates | null>(null);
   readonly shopLocationLoading = signal(false);
   readonly shopLocationError = signal('');
+  readonly invoiceModalOpen = signal(false);
   private readonly customerPortal = inject(CustomerPortalService);
   private readonly destroyRef = inject(DestroyRef);
   private requestedShopId: string | null = null;
@@ -60,7 +63,7 @@ export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
     super();
     effect(() => {
       const request = this.record();
-      const shopId = request ? this.shopDetails(request)?.id ?? null : null;
+      const shopId = request ? (this.shopDetails(request)?.id ?? null) : null;
       if (shopId === this.requestedShopId) return;
 
       this.requestedShopId = shopId;
@@ -121,22 +124,18 @@ export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
   statusLabel(job: CustomerRepairRequest): string {
     const status = job.repairJob?.status ?? job.status;
     if (!job.repairJob && status === 'open') return 'New';
-    return status
-      .replace(/_/g, ' ')
-      .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+    return status.replace(/_/g, ' ').replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
   repairCostEstimate(job: CustomerRepairRequest): number {
     const acceptedQuotation =
-      job.acceptedQuotation ??
-      job.quotations.find((quotation) => quotation.status === 'accepted');
+      job.acceptedQuotation ?? job.quotations.find((quotation) => quotation.status === 'accepted');
     return job.repairJob?.approvedRepairAmount ?? acceptedQuotation?.amount ?? 0;
   }
 
   repairCostCurrency(job: CustomerRepairRequest): string | undefined {
     const acceptedQuotation =
-      job.acceptedQuotation ??
-      job.quotations.find((quotation) => quotation.status === 'accepted');
+      job.acceptedQuotation ?? job.quotations.find((quotation) => quotation.status === 'accepted');
     return acceptedQuotation?.currency ?? job.quotations[0]?.currency;
   }
 
@@ -167,8 +166,7 @@ export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
 
   customerCoordinates(job: CustomerRepairRequest): Coordinates | null {
     const requestCoordinates =
-      typeof job.customerLatitude === 'number' &&
-      typeof job.customerLongitude === 'number'
+      typeof job.customerLatitude === 'number' && typeof job.customerLongitude === 'number'
         ? { latitude: job.customerLatitude, longitude: job.customerLongitude }
         : null;
     const profileLocation = this.authService.currentUser()?.location ?? null;
@@ -184,14 +182,18 @@ export class CustomerCompletedJobDetailPage extends CustomerJobDetailPageBase {
   }
 
   formatStatus(status: string): string {
-    return status
-      .replace(/_/g, ' ')
-      .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+    return status.replace(/_/g, ' ').replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
-  private isValidCoordinates(
-    location: Coordinates | null | undefined,
-  ): location is Coordinates {
+  openInvoiceModal(): void {
+    this.invoiceModalOpen.set(true);
+  }
+
+  closeInvoiceModal(): void {
+    this.invoiceModalOpen.set(false);
+  }
+
+  private isValidCoordinates(location: Coordinates | null | undefined): location is Coordinates {
     return (
       !!location &&
       Number.isFinite(location.latitude) &&

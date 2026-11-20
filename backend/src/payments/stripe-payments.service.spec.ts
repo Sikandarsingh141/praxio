@@ -12,7 +12,10 @@ import { StripePaymentsService } from './stripe-payments.service';
 const mockStripeClient = {
   checkout: {
     sessions: {
-      create: jest.fn(),
+      create: jest.fn<
+        Promise<{ id: string; status: 'open'; url: string }>,
+        [Record<string, unknown>]
+      >(),
       retrieve: jest.fn(),
       expire: jest.fn(),
     },
@@ -56,6 +59,13 @@ describe('StripePaymentsService', () => {
   const invoiceCountQuery = {
     exec: jest.fn().mockResolvedValue(0),
   };
+  const repairInvoiceLookupQuery = {
+    exec: jest.fn().mockResolvedValue(null),
+  };
+  const repairInvoices = {
+    findOne: jest.fn().mockReturnValue(repairInvoiceLookupQuery),
+    findById: jest.fn().mockReturnValue(repairInvoiceLookupQuery),
+  };
   const registrationRequests = {
     findOne: jest.fn().mockReturnValue(lookupQuery),
     findOneAndUpdate: jest
@@ -85,8 +95,8 @@ describe('StripePaymentsService', () => {
       .mockReturnValue(updateQuery),
   };
   const configValues: Record<string, string> = {
-    STRIPE_SECRET_KEY: 'sk_test_local_only',
-    STRIPE_WEBHOOK_SECRET: 'whsec_local_only',
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY ?? '',
+    STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET ?? '',
     FRONTEND_ORIGINS: 'http://localhost:4200,http://localhost:3000',
   };
   const configService = {
@@ -97,6 +107,7 @@ describe('StripePaymentsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    configValues.STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY ?? '';
     registrationRequest.registrationStatus = 'pending';
     registrationRequest.paymentStatus = 'unpaid';
     registrationRequest.stripeCheckoutSessionId = undefined;
@@ -109,6 +120,7 @@ describe('StripePaymentsService', () => {
     subscriptionInvoices.countDocuments.mockReturnValue(invoiceCountQuery);
     invoiceListQuery.exec.mockResolvedValue([]);
     invoiceCountQuery.exec.mockResolvedValue(0);
+    repairInvoiceLookupQuery.exec.mockResolvedValue(null);
     mockStripeClient.invoices.retrieve.mockResolvedValue({
       id: 'in_test_invoice',
       number: 'INV-1001',
@@ -137,7 +149,234 @@ describe('StripePaymentsService', () => {
       subscriptionInvoices as unknown as import('mongoose').Model<
         import('./schemas/shop-subscription-invoice.schema').ShopSubscriptionInvoice
       >,
+      repairInvoices as unknown as import('mongoose').Model<
+        import('../invoices/repair-invoice.schema').RepairInvoice
+      >,
     );
+  });
+
+  it('creates a one-time Stripe checkout for only the outstanding repair invoice balance', async () => {
+    const invoice = {
+      _id: new Types.ObjectId(),
+      repairRequestId: new Types.ObjectId(),
+      customerId: new Types.ObjectId(userId),
+      shopId: new Types.ObjectId(),
+      invoiceNumber: 'FIX-INV-2026-000001',
+      invoiceStatus: 'issued',
+      currency: 'USD',
+      balanceDue: 12.5,
+      payments: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    repairInvoiceLookupQuery.exec.mockResolvedValueOnce(invoice);
+
+    await expect(
+      service.createRepairInvoiceCheckout(
+        invoice._id.toString(),
+        userId,
+        'customer@example.com',
+      ),
+    ).resolves.toBe('https://checkout.stripe.test/session');
+
+    expect(mockStripeClient.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'payment',
+        customer_email: 'customer@example.com',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              unit_amount: 1250,
+              product_data: {
+                name: 'Fixora repair invoice FIX-INV-2026-000001',
+              },
+            },
+            quantity: 1,
+          },
+        ],
+      }),
+    );
+    expect(
+      mockStripeClient.checkout.sessions.create.mock.calls[0]?.[0],
+    ).toHaveProperty('metadata.paymentType', 'repair_invoice');
+    expect(
+      mockStripeClient.checkout.sessions.create.mock.calls[0]?.[0],
+    ).toHaveProperty('metadata.invoiceId', invoice._id.toString());
+    expect(
+      mockStripeClient.checkout.sessions.create.mock.calls[0]?.[0],
+    ).toHaveProperty('metadata.customerId', userId);
+    expect(invoice.payments).toHaveLength(1);
+    expect(invoice.payments[0]).toMatchObject({
+      amount: 12.5,
+      currency: 'USD',
+      method: 'stripe',
+      status: 'pending',
+      checkoutUrl: 'https://checkout.stripe.test/session',
+    });
+  });
+
+  it('rejects placeholder Stripe keys for repair invoice checkout', async () => {
+    configValues.STRIPE_SECRET_KEY = 'sk_test_REPLACEWITHROTATEDTESTSECRET';
+    const invoice = {
+      _id: new Types.ObjectId(),
+      repairRequestId: new Types.ObjectId(),
+      customerId: new Types.ObjectId(userId),
+      shopId: new Types.ObjectId(),
+      invoiceNumber: 'FIX-INV-2026-000001',
+      invoiceStatus: 'issued',
+      currency: 'USD',
+      balanceDue: 12.5,
+      payments: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    repairInvoiceLookupQuery.exec.mockResolvedValueOnce(invoice);
+
+    await expect(
+      service.createRepairInvoiceCheckout(
+        invoice._id.toString(),
+        userId,
+        'customer@example.com',
+      ),
+    ).rejects.toMatchObject({
+      status: 503,
+      message: 'Shop payments are not configured. Please try again later.',
+    });
+  });
+
+  it('explains when Stripe rejects an invoice balance below its minimum', async () => {
+    const invoice = {
+      _id: new Types.ObjectId(),
+      repairRequestId: new Types.ObjectId(),
+      customerId: new Types.ObjectId(userId),
+      shopId: new Types.ObjectId(),
+      invoiceStatus: 'issued',
+      currency: 'INR',
+      balanceDue: 1.95,
+      customer: { name: 'Customer' },
+      payments: [] as Array<{ status: string }>,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    repairInvoiceLookupQuery.exec.mockResolvedValue(invoice);
+    mockStripeClient.checkout.sessions.create.mockRejectedValueOnce({
+      type: 'StripeInvalidRequestError',
+      code: 'amount_too_small',
+      requestId: 'req_test',
+    });
+
+    await expect(
+      service.createRepairInvoiceCheckout(invoice._id.toString(), userId),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: expect.stringContaining('below the minimum'),
+    });
+
+    expect(invoice.payments[0]?.status).toBe('failed');
+  });
+
+  it('records repair invoice payments only after a signed paid Checkout webhook', async () => {
+    const invoiceId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const paymentAttemptId = 'repair-payment-attempt';
+    const pendingPayment = {
+      amount: 10,
+      status: 'pending',
+      stripeAttemptId: paymentAttemptId,
+      stripeCheckoutSessionId: 'cs_test_checkout',
+    };
+    const invoice = {
+      _id: invoiceId,
+      customerId: new Types.ObjectId(userId),
+      shopId,
+      invoiceStatus: 'issued',
+      currency: 'USD',
+      grandTotal: 25,
+      amountPaid: 0,
+      balanceDue: 25,
+      paymentStatus: 'UNPAID',
+      payments: [pendingPayment],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    repairInvoiceLookupQuery.exec.mockResolvedValueOnce(invoice);
+    mockStripeClient.webhooks.constructEvent.mockReturnValueOnce({
+      id: 'evt_repair_paid',
+      type: 'checkout.session.completed',
+      created: 1794268800,
+      data: {
+        object: {
+          id: 'cs_test_checkout',
+          mode: 'payment',
+          payment_status: 'paid',
+          amount_total: 1000,
+          currency: 'usd',
+          payment_intent: 'pi_repair',
+          metadata: {
+            paymentType: 'repair_invoice',
+            invoiceId: invoiceId.toString(),
+            customerId: userId,
+            shopId: shopId.toString(),
+            paymentAttemptId,
+          },
+        },
+      },
+    });
+
+    await service.handleWebhook(Buffer.from('{}'), 'stripe-signature');
+
+    expect(invoice.amountPaid).toBe(10);
+    expect(invoice.balanceDue).toBe(15);
+    expect(invoice.paymentStatus).toBe('PARTIALLY_PAID');
+    expect(pendingPayment).toMatchObject({
+      status: 'succeeded',
+      reference: 'pi_repair',
+      stripePaymentIntentId: 'pi_repair',
+      stripeEventId: 'evt_repair_paid',
+    });
+    expect(invoice.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an asynchronous repair checkout pending until Stripe confirms settlement', async () => {
+    const invoiceId = new Types.ObjectId();
+    const shopId = new Types.ObjectId();
+    const paymentAttemptId = 'repair-async-payment-attempt';
+    const pendingPayment = {
+      amount: 10,
+      status: 'pending',
+      stripeAttemptId: paymentAttemptId,
+      stripeCheckoutSessionId: 'cs_test_async',
+    };
+    const invoice = {
+      _id: invoiceId,
+      customerId: new Types.ObjectId(userId),
+      shopId,
+      invoiceStatus: 'issued',
+      payments: [pendingPayment],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    repairInvoiceLookupQuery.exec.mockResolvedValueOnce(invoice);
+    mockStripeClient.webhooks.constructEvent.mockReturnValueOnce({
+      id: 'evt_repair_checkout_completed',
+      type: 'checkout.session.completed',
+      created: 1794268800,
+      data: {
+        object: {
+          id: 'cs_test_async',
+          mode: 'payment',
+          payment_status: 'unpaid',
+          metadata: {
+            paymentType: 'repair_invoice',
+            invoiceId: invoiceId.toString(),
+            customerId: userId,
+            shopId: shopId.toString(),
+            paymentAttemptId,
+          },
+        },
+      },
+    });
+
+    await service.handleWebhook(Buffer.from('{}'), 'stripe-signature');
+
+    expect(pendingPayment.status).toBe('pending');
+    expect(invoice.save).not.toHaveBeenCalled();
   });
 
   it('lists only the authenticated shop invoices with official Stripe document links', async () => {
@@ -386,7 +625,7 @@ describe('StripePaymentsService', () => {
     expect(mockStripeClient.webhooks.constructEvent).toHaveBeenCalledWith(
       Buffer.from('{}'),
       'stripe-signature',
-      'whsec_local_only',
+      configValues.STRIPE_WEBHOOK_SECRET,
     );
     const updatePayload =
       registrationRequests.findOneAndUpdate.mock.calls[0]?.[1];

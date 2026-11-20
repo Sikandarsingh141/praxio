@@ -49,6 +49,17 @@ import {
   CustomerRepairWorkflowController,
   ShopRepairWorkflowController,
 } from '../customer/repair-workflow.controller';
+import {
+  CustomerRepairInvoicesController,
+  ShopRepairInvoicesController,
+} from '../invoices/repair-invoices.controller';
+import {
+  RepairInvoice,
+  RepairInvoiceSchema,
+  RepairInvoiceSequence,
+  RepairInvoiceSequenceSchema,
+} from '../invoices/repair-invoice.schema';
+import { RepairInvoicesService } from '../invoices/repair-invoices.service';
 
 @Module({
   imports: [
@@ -58,6 +69,8 @@ import {
       { name: RegistrationRequest.name, schema: RegistrationRequestSchema },
       { name: RepairRequest.name, schema: RepairRequestSchema },
       { name: RepairQuotation.name, schema: RepairQuotationSchema },
+      { name: RepairInvoice.name, schema: RepairInvoiceSchema },
+      { name: RepairInvoiceSequence.name, schema: RepairInvoiceSequenceSchema },
       { name: RepairReview.name, schema: RepairReviewSchema },
       { name: ChatConversation.name, schema: ChatConversationSchema },
       { name: Dispute.name, schema: DisputeSchema },
@@ -92,6 +105,8 @@ import {
     ShopDashboardController,
     CustomerRepairWorkflowController,
     ShopRepairWorkflowController,
+    CustomerRepairInvoicesController,
+    ShopRepairInvoicesController,
   ],
   providers: [
     AuthService,
@@ -100,6 +115,7 @@ import {
     TechnicianPortalGuard,
     CustomerPortalService,
     TechniciansService,
+    RepairInvoicesService,
   ],
   exports: [JwtAuthGuard, ShopPortalGuard, TechnicianPortalGuard, JwtModule],
 })

@@ -23,7 +23,11 @@
           (input)="updateSearchQuery($event)"
         />
         @if (searchLoading()) {
-          <span class="inline-search-spinner" role="status" aria-label="Searching shop activity"></span>
+          <span
+            class="inline-search-spinner"
+            role="status"
+            aria-label="Searching shop activity"
+          ></span>
         }
       </span>
       <kbd>Ctrl + K</kbd>
@@ -47,7 +51,8 @@
                   <span>
                     {{ result.details }}
                     @if (result.requestReference) {
-                      · Request ID: <strong class="request-reference">{{ result.requestReference }}</strong>
+                      · Request ID:
+                      <strong class="request-reference">{{ result.requestReference }}</strong>
                     }
                   </span>
                   <small>{{ result.kind === 'request' ? 'Repair request' : 'Quotation' }}</small>
@@ -148,7 +153,9 @@
         (click)="toggleRequestSection()"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" />
+          <path
+            d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z"
+          />
         </svg>
         Repair Requests
         <svg
@@ -202,6 +209,12 @@
           <path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7" />
         </svg>
         Quotations
+      </a>
+      <a class="portal-nav" routerLink="/shop/invoices" routerLinkActive="active">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 3h14v18l-3-2-4 2-4-2-3 2zM8 8h8M8 12h8M8 16h4" />
+        </svg>
+        Invoices
       </a>
       <a
         class="portal-nav"

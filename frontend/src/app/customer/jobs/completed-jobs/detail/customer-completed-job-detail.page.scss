@@ -58,3 +58,112 @@
   font-weight: 700;
 }
 
+.invoice-popup-block {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.invoice-open-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid #187543;
+  border-radius: 0.55rem;
+  background: #187543;
+  color: #fff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.invoice-open-button:hover {
+  background: #146238;
+  border-color: #146238;
+}
+
+.invoice-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(17, 24, 19, 0.45);
+}
+
+.invoice-modal-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 56rem);
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18);
+}
+
+.invoice-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid #e7ece8;
+}
+
+.invoice-modal-header h2 {
+  margin: 0;
+  color: #23352a;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.invoice-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid #dfe8df;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #516156;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.invoice-modal-close:hover {
+  background: #f6f8f6;
+}
+
+.invoice-modal-body {
+  overflow: auto;
+  padding: 1rem 1.15rem;
+}
+
+.invoice-modal-body .invoice-section {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 640px) {
+  .invoice-modal-backdrop {
+    padding: 0.5rem;
+  }
+
+  .invoice-modal-dialog {
+    max-height: calc(100vh - 1rem);
+  }
+
+  .invoice-modal-header,
+  .invoice-modal-body {
+    padding: 0.85rem;
+  }
+}
+

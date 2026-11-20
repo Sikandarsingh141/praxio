@@ -45,6 +45,7 @@ import { ChatModule } from './chat/chat.module';
         JWT_EXPIRES_IN: Joi.number().integer().valid(86400).default(86400),
         STRIPE_SECRET_KEY: Joi.string()
           .pattern(/^sk_(test|live)_[A-Za-z0-9]+$/)
+          .invalid('sk_test_REPLACEWITHROTATEDTESTSECRET')
           .optional(),
         STRIPE_WEBHOOK_SECRET: Joi.string()
           .pattern(/^whsec_[A-Za-z0-9]+$/)

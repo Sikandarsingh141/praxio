@@ -90,6 +90,9 @@ describe('ShopLayout', () => {
     expect(allRequestsLink.textContent).toContain('All Requests');
     expect(allRequestsLink.querySelector('.portal-nav-icon')?.textContent?.trim()).toBe('⚒');
     expect(fixture.nativeElement.textContent).toContain('Quotations');
+    expect(fixture.nativeElement.querySelector('a[href="/shop/invoices"]')?.textContent).toContain(
+      'Invoices',
+    );
     expect(fixture.nativeElement.textContent).toContain('Technicians');
     expect(fixture.nativeElement.textContent).toContain('Business profile');
     expect(fixture.nativeElement.querySelector('.portal-brand small')?.textContent).toContain(
@@ -98,9 +101,7 @@ describe('ShopLayout', () => {
     const headerSearchInput = fixture.nativeElement.querySelector(
       '#shop-global-search',
     ) as HTMLInputElement;
-    expect(
-      headerSearchInput.placeholder,
-    ).toBe('Search requests, quotations, or customers...');
+    expect(headerSearchInput.placeholder).toBe('Search requests, quotations, or customers...');
     const shortcut = new KeyboardEvent('keydown', {
       key: 'k',
       ctrlKey: true,
@@ -118,9 +119,7 @@ describe('ShopLayout', () => {
     requestToggle.click();
     fixture.detectChanges();
     const submenuLabels = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        '.request-submenu-label',
-      ) as NodeListOf<HTMLElement>,
+      fixture.nativeElement.querySelectorAll('.request-submenu-label') as NodeListOf<HTMLElement>,
     ).map((element) => element.textContent?.trim());
     const requestCounts = Array.from(
       fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
@@ -186,9 +185,9 @@ describe('ShopLayout', () => {
     );
     (fixture.nativeElement.querySelector('.account-menu-trigger') as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(
-      (fixture.nativeElement.querySelector('.dropdown-avatar') as HTMLImageElement).src,
-    ).toBe(updatedPhoto);
+    expect((fixture.nativeElement.querySelector('.dropdown-avatar') as HTMLImageElement).src).toBe(
+      updatedPhoto,
+    );
     expect(fixture.nativeElement.querySelector('.dropdown-identity strong')?.textContent).toContain(
       'Updated Shop Owner',
     );

@@ -2,13 +2,23 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
+import { randomUUID } from 'crypto';
 import Stripe from 'stripe';
 import { Model, Types } from 'mongoose';
+import {
+  RepairInvoice,
+  RepairInvoicePayment,
+} from '../invoices/repair-invoice.schema';
+import {
+  roundCurrencyAmount,
+  toMinorCurrencyUnits,
+} from '../invoices/repair-invoice-money.util';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { ShopSubscriptionInvoice } from './schemas/shop-subscription-invoice.schema';
 import {
@@ -57,13 +67,183 @@ const DEFAULT_SHOP_INVOICE_PAGE_SIZE = 10;
 
 @Injectable()
 export class StripePaymentsService {
+  private readonly logger = new Logger(StripePaymentsService.name);
+
   constructor(
     private readonly configService: ConfigService,
     @InjectModel(RegistrationRequest.name)
     private readonly registrationRequests: Model<RegistrationRequest>,
     @InjectModel(ShopSubscriptionInvoice.name)
     private readonly subscriptionInvoices: Model<ShopSubscriptionInvoice>,
+    @InjectModel(RepairInvoice.name)
+    private readonly repairInvoices: Model<RepairInvoice>,
   ) {}
+
+  async createRepairInvoiceCheckout(
+    invoiceId: string,
+    customerId: string,
+    customerEmail?: string,
+  ): Promise<string> {
+    if (
+      !Types.ObjectId.isValid(invoiceId) ||
+      !Types.ObjectId.isValid(customerId)
+    ) {
+      throw new NotFoundException('Issued invoice was not found.');
+    }
+    const invoice = await this.repairInvoices
+      .findOne({
+        _id: new Types.ObjectId(invoiceId),
+        customerId: new Types.ObjectId(customerId),
+        invoiceStatus: 'issued',
+      })
+      .exec();
+    if (!invoice) throw new NotFoundException('Issued invoice was not found.');
+    if (invoice.balanceDue <= 0)
+      throw new ConflictException('This invoice has no balance due.');
+
+    const now = new Date();
+    const activeAttempt = invoice.payments.find(
+      (payment) =>
+        payment.method === 'stripe' &&
+        payment.status === 'pending' &&
+        payment.checkoutExpiresAt &&
+        payment.checkoutExpiresAt.getTime() > now.getTime(),
+    );
+    if (activeAttempt) {
+      if (!activeAttempt.checkoutUrl) {
+        throw new ConflictException(
+          'A secure payment session is already being prepared.',
+        );
+      }
+      return activeAttempt.checkoutUrl;
+    }
+
+    for (const payment of invoice.payments) {
+      if (
+        payment.method === 'stripe' &&
+        payment.status === 'pending' &&
+        (!payment.checkoutExpiresAt ||
+          payment.checkoutExpiresAt.getTime() <= now.getTime())
+      ) {
+        payment.status = 'cancelled';
+      }
+    }
+
+    const paymentAttemptId = randomUUID();
+    const amount = roundCurrencyAmount(invoice.balanceDue, invoice.currency);
+    invoice.payments.push({
+      amount,
+      currency: invoice.currency,
+      method: 'stripe',
+      status: 'pending',
+      reference: null,
+      paymentDate: now,
+      recordedAt: now,
+      recordedBy: invoice.customerId,
+      recordedByName: customerEmail || invoice.customer.name,
+      stripeAttemptId: paymentAttemptId,
+      stripeCheckoutSessionId: null,
+      stripePaymentIntentId: null,
+      checkoutUrl: null,
+      checkoutExpiresAt: new Date(now.getTime() + 30 * 60 * 1000),
+    } as RepairInvoicePayment);
+    await invoice.save();
+
+    const origin = this.configService
+      .get<string>('FRONTEND_ORIGINS')
+      ?.split(',')[0]
+      ?.trim();
+    if (!origin) {
+      await this.markRepairInvoiceAttemptFailed(
+        invoice._id.toString(),
+        paymentAttemptId,
+      );
+      throw new ServiceUnavailableException(
+        'Repair invoice payments are not configured.',
+      );
+    }
+
+    const metadata = {
+      paymentType: 'repair_invoice',
+      invoiceId: invoice._id.toString(),
+      customerId: invoice.customerId.toString(),
+      shopId: invoice.shopId.toString(),
+      paymentAttemptId,
+    };
+    try {
+      const session = await this.getStripe().checkout.sessions.create({
+        mode: 'payment',
+        customer_email: customerEmail || undefined,
+        line_items: [
+          {
+            price_data: {
+              currency: invoice.currency.toLowerCase(),
+              unit_amount: toMinorCurrencyUnits(amount, invoice.currency),
+              product_data: {
+                name: `Fixora repair invoice ${invoice.invoiceNumber || ''}`.trim(),
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        metadata,
+        payment_intent_data: { metadata },
+        success_url: `${origin}/customer/jobs/completed-jobs/${encodeURIComponent(
+          invoice.repairRequestId.toString(),
+        )}?payment=success`,
+        cancel_url: `${origin}/customer/jobs/completed-jobs/${encodeURIComponent(
+          invoice.repairRequestId.toString(),
+        )}?payment=cancelled`,
+      });
+      if (!session.url) {
+        await this.markRepairInvoiceAttemptFailed(
+          invoice._id.toString(),
+          paymentAttemptId,
+        );
+        throw new ServiceUnavailableException(
+          'Stripe did not return a payment URL.',
+        );
+      }
+
+      const storedPayment = invoice.payments.find(
+        (entry) => entry.stripeAttemptId === paymentAttemptId,
+      );
+      if (!storedPayment)
+        throw new ConflictException('The payment attempt could not be stored.');
+      storedPayment.stripeCheckoutSessionId = session.id;
+      storedPayment.checkoutUrl = session.url;
+      storedPayment.checkoutExpiresAt = session.expires_at
+        ? new Date(session.expires_at * 1000)
+        : new Date(now.getTime() + 30 * 60 * 1000);
+      await invoice.save();
+      return session.url;
+    } catch (error) {
+      await this.markRepairInvoiceAttemptFailed(
+        invoice._id.toString(),
+        paymentAttemptId,
+      );
+      const stripeError = this.getStripeErrorDetails(error);
+      if (stripeError) {
+        this.logger.error(
+          `Repair invoice Checkout failed: type=${stripeError.type} code=${stripeError.code ?? 'unknown'} requestId=${stripeError.requestId ?? 'unknown'}`,
+        );
+        if (stripeError.code === 'amount_too_small') {
+          throw new BadRequestException(
+            'The remaining balance is below the minimum supported by Stripe. Record the payment using an offline method.',
+          );
+        }
+        if (stripeError.code === 'currency_not_supported') {
+          throw new BadRequestException(
+            'The configured Stripe account does not support this invoice currency. Record the payment using an offline method.',
+          );
+        }
+        throw new ServiceUnavailableException(
+          'Stripe could not start this payment. Please try again later or use an offline payment method.',
+        );
+      }
+      throw error;
+    }
+  }
 
   ensureConfigured(): void {
     this.getStripe();
@@ -236,7 +416,9 @@ export class StripePaymentsService {
       throw new BadRequestException('Invoice page must be a positive integer.');
     }
     if (![5, 10, 25, 100].includes(limit)) {
-      throw new BadRequestException('Invoice page size must be 5, 10, 25, or 100.');
+      throw new BadRequestException(
+        'Invoice page size must be 5, 10, 25, or 100.',
+      );
     }
 
     const userObjectId = this.toObjectId(userId);
@@ -410,6 +592,36 @@ export class StripePaymentsService {
       event.data.object.payment_status === 'paid'
     ) {
       await this.markPaid(event.data.object, event.id);
+      return;
+    }
+
+    if (
+      event.type === 'checkout.session.completed' ||
+      event.type === 'checkout.session.async_payment_succeeded' ||
+      event.type === 'checkout.session.async_payment_failed' ||
+      event.type === 'checkout.session.expired'
+    ) {
+      const session = event.data.object;
+      if (
+        session.mode === 'payment' &&
+        session.metadata?.paymentType === 'repair_invoice'
+      ) {
+        if (
+          (event.type === 'checkout.session.completed' ||
+            event.type === 'checkout.session.async_payment_succeeded') &&
+          session.payment_status === 'paid'
+        ) {
+          await this.markRepairInvoicePayment(session, event.id, event.created);
+        } else if (
+          event.type === 'checkout.session.async_payment_failed' ||
+          event.type === 'checkout.session.expired'
+        ) {
+          await this.markRepairInvoiceAttemptClosed(
+            session,
+            event.type === 'checkout.session.expired' ? 'cancelled' : 'failed',
+          );
+        }
+      }
       return;
     }
 
@@ -827,9 +1039,178 @@ export class StripePaymentsService {
     );
   }
 
+  private getStripeErrorDetails(
+    error: unknown,
+  ): { type: string; code?: string; requestId?: string } | null {
+    if (typeof error !== 'object' || error === null) return null;
+    const details = error as Record<string, unknown>;
+    if (
+      typeof details.type !== 'string' ||
+      !details.type.startsWith('Stripe')
+    ) {
+      return null;
+    }
+    return {
+      type: details.type,
+      ...(typeof details.code === 'string' ? { code: details.code } : {}),
+      ...(typeof details.requestId === 'string'
+        ? { requestId: details.requestId }
+        : {}),
+    };
+  }
+
+  private async markRepairInvoicePayment(
+    session: Stripe.Checkout.Session,
+    eventId: string,
+    eventCreated: number,
+  ): Promise<void> {
+    const metadata = session.metadata;
+    if (
+      !metadata?.invoiceId ||
+      !metadata.customerId ||
+      !metadata.shopId ||
+      !metadata.paymentAttemptId ||
+      !Types.ObjectId.isValid(metadata.invoiceId) ||
+      !Types.ObjectId.isValid(metadata.customerId) ||
+      !Types.ObjectId.isValid(metadata.shopId)
+    ) {
+      throw new BadRequestException(
+        'Repair invoice payment metadata is incomplete.',
+      );
+    }
+
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const invoice = await this.repairInvoices
+        .findOne({
+          _id: new Types.ObjectId(metadata.invoiceId),
+          customerId: new Types.ObjectId(metadata.customerId),
+          shopId: new Types.ObjectId(metadata.shopId),
+          invoiceStatus: 'issued',
+        })
+        .exec();
+      if (!invoice)
+        throw new NotFoundException('The payment invoice was not found.');
+
+      const payment = invoice.payments.find(
+        (entry) => entry.stripeAttemptId === metadata.paymentAttemptId,
+      );
+      if (!payment)
+        throw new ConflictException('The payment attempt was not found.');
+      if (payment.status === 'succeeded') return;
+      if (payment.status !== 'pending') {
+        throw new ConflictException(
+          'The payment attempt is no longer pending.',
+        );
+      }
+      if (
+        (payment.stripeCheckoutSessionId &&
+          payment.stripeCheckoutSessionId !== session.id) ||
+        session.amount_total !==
+          toMinorCurrencyUnits(payment.amount, invoice.currency) ||
+        session.currency?.toUpperCase() !== invoice.currency.toUpperCase()
+      ) {
+        throw new BadRequestException(
+          'Stripe payment details do not match the invoice.',
+        );
+      }
+
+      const paymentIntentId =
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null);
+      const amountPaid = roundCurrencyAmount(
+        invoice.amountPaid + payment.amount,
+        invoice.currency,
+      );
+      const balanceDue = roundCurrencyAmount(
+        Math.max(0, invoice.grandTotal - amountPaid),
+        invoice.currency,
+      );
+      payment.status = 'succeeded';
+      payment.paymentDate = new Date(eventCreated * 1000);
+      payment.reference = paymentIntentId || session.id;
+      payment.stripeCheckoutSessionId = session.id;
+      payment.stripePaymentIntentId = paymentIntentId;
+      payment.stripeEventId = eventId;
+      invoice.amountPaid = amountPaid;
+      invoice.balanceDue = balanceDue;
+      invoice.paymentStatus = balanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID';
+      try {
+        await invoice.save();
+        return;
+      } catch (error) {
+        if (
+          !(error instanceof Error && error.name === 'VersionError') ||
+          attempt === 3
+        ) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private async markRepairInvoiceAttemptClosed(
+    session: Stripe.Checkout.Session,
+    status: 'failed' | 'cancelled',
+  ): Promise<void> {
+    const metadata = session.metadata;
+    if (
+      !metadata?.invoiceId ||
+      !metadata.customerId ||
+      !metadata.shopId ||
+      !metadata.paymentAttemptId ||
+      !Types.ObjectId.isValid(metadata.invoiceId) ||
+      !Types.ObjectId.isValid(metadata.customerId) ||
+      !Types.ObjectId.isValid(metadata.shopId)
+    ) {
+      return;
+    }
+    const invoice = await this.repairInvoices
+      .findOne({
+        _id: new Types.ObjectId(metadata.invoiceId),
+        customerId: new Types.ObjectId(metadata.customerId),
+        shopId: new Types.ObjectId(metadata.shopId),
+        invoiceStatus: 'issued',
+      })
+      .exec();
+    if (!invoice) return;
+    const payment = invoice.payments.find(
+      (entry) => entry.stripeAttemptId === metadata.paymentAttemptId,
+    );
+    if (!payment || payment.status !== 'pending') return;
+    if (
+      payment.stripeCheckoutSessionId &&
+      payment.stripeCheckoutSessionId !== session.id
+    ) {
+      throw new BadRequestException(
+        'Stripe session does not match the invoice payment attempt.',
+      );
+    }
+    payment.status = status;
+    payment.stripeCheckoutSessionId = session.id;
+    await invoice.save();
+  }
+
+  private async markRepairInvoiceAttemptFailed(
+    invoiceId: string,
+    paymentAttemptId: string,
+  ): Promise<void> {
+    const invoice = await this.repairInvoices.findById(invoiceId).exec();
+    const payment = invoice?.payments.find(
+      (entry) => entry.stripeAttemptId === paymentAttemptId,
+    );
+    if (!invoice || !payment || payment.status !== 'pending') return;
+    payment.status = 'failed';
+    await invoice.save();
+  }
+
   private getStripe(): Stripe {
     const secretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
-    if (!secretKey) {
+    if (
+      !secretKey ||
+      secretKey === 'sk_test_REPLACEWITHROTATEDTESTSECRET' ||
+      secretKey.includes('REPLACE')
+    ) {
       throw new ServiceUnavailableException(
         'Shop payments are not configured. Please try again later.',
       );

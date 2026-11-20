@@ -1,0 +1,302 @@
+<section class="invoice-section" aria-labelledby="repair-invoice-title">
+    <div class="invoice-heading">
+      <div>
+        <h2 id="repair-invoice-title">Invoice</h2>
+        <p>Repair billing document and payment history.</p>
+      </div>
+      @if (invoice(); as current) {
+        <span class="invoice-status" [attr.data-status]="current.invoiceStatus">
+          {{ statusLabel(current.invoiceStatus) }}
+        </span>
+      }
+    </div>
+
+    @if (error()) {
+      <p class="invoice-error" role="alert">{{ error() }}</p>
+    }
+
+    @if (loading()) {
+      @if (mode === 'shop') {
+        <p class="invoice-state" role="status">Loading invoice details…</p>
+      } @else {
+        <p class="invoice-state" role="status">Checking invoice availability…</p>
+      }
+    } @else if (invoice(); as current) {
+      <dl class="invoice-summary">
+        @if (repairRequestId) {
+          <div>
+            <dt>Request ID</dt>
+            <dd>#{{ repairRequestId.slice(-8).toUpperCase() }}</dd>
+          </div>
+        }
+        <div>
+          <dt>Invoice number</dt>
+          <dd>{{ current.invoiceNumber || 'Assigned when issued' }}</dd>
+        </div>
+        <div>
+          <dt>Invoice date</dt>
+          <dd>
+            {{ current.invoiceDate ? (current.invoiceDate | date: 'mediumDate') : 'Not issued' }}
+          </dd>
+        </div>
+        <div>
+          <dt>Total amount</dt>
+          <dd>{{ current.grandTotal | currency: current.currency }}</dd>
+        </div>
+        <div>
+          <dt>Payment status</dt>
+          <dd>{{ statusLabel(current.paymentStatus) }}</dd>
+        </div>
+      </dl>
+
+      <div class="invoice-details">
+        <div class="invoice-party">
+          <h3>Shop</h3>
+          <strong>{{ current.shop.name }}</strong>
+          <span>{{ current.shop.address || 'Address not provided' }}</span>
+          <span>{{ current.shop.phone || 'Phone not provided' }}</span>
+          <span>{{ current.shop.email || 'Email not provided' }}</span>
+        </div>
+        <div class="invoice-party">
+          <h3>Customer</h3>
+          <strong>{{ current.customer.name }}</strong>
+          <span>{{ current.customer.address || 'Address not provided' }}</span>
+          <span>{{ current.customer.phone || 'Phone not provided' }}</span>
+          <span>{{ current.customer.email || 'Email not provided' }}</span>
+        </div>
+      </div>
+
+      <div class="invoice-table-wrap">
+        <table class="invoice-items">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Qty</th>
+              <th>Unit price</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of current.items; track $index) {
+              <tr>
+                <td>{{ item.description }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unitPrice | currency: current.currency }}</td>
+                <td>{{ item.amount | currency: current.currency }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <dl class="invoice-totals">
+        <div>
+          <dt>Subtotal</dt>
+          <dd>{{ current.subtotal | currency: current.currency }}</dd>
+        </div>
+        <div>
+          <dt>Discount</dt>
+          <dd>{{ current.discount | currency: current.currency }}</dd>
+        </div>
+        <div>
+          <dt>Taxable amount</dt>
+          <dd>{{ current.taxableAmount | currency: current.currency }}</dd>
+        </div>
+        @if (current.taxDetails.length) {
+          @for (tax of current.taxDetails; track tax.type) {
+            <div>
+              <dt>{{ tax.type }} ({{ tax.rate }}%)</dt>
+              <dd>{{ tax.amount | currency: current.currency }}</dd>
+            </div>
+          }
+        } @else {
+          <div>
+            <dt>Tax</dt>
+            <dd>Not configured</dd>
+          </div>
+        }
+        <div class="invoice-grand-total">
+          <dt>Grand total</dt>
+          <dd>{{ current.grandTotal | currency: current.currency }}</dd>
+        </div>
+        <div>
+          <dt>Amount paid</dt>
+          <dd>{{ current.amountPaid | currency: current.currency }}</dd>
+        </div>
+        <div class="invoice-balance">
+          <dt>Balance due</dt>
+          <dd>{{ current.balanceDue | currency: current.currency }}</dd>
+        </div>
+      </dl>
+
+      @if (current.invoiceStatus === 'draft' && mode === 'shop') {
+        <div class="invoice-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="previewLoading()"
+            (click)="previewDraft()"
+          >
+            {{ previewLoading() ? 'Preparing preview…' : 'Preview PDF' }}
+          </button>
+          <button
+            type="button"
+            class="primary-button"
+            [disabled]="saving()"
+            (click)="issueInvoice()"
+          >
+            {{ saving() ? 'Issuing…' : 'Confirm and issue invoice' }}
+          </button>
+        </div>
+      }
+
+      @if (
+        (current.invoiceStatus === 'issued' || current.invoiceStatus === 'cancelled') &&
+        current.pdfAvailable
+      ) {
+        <div class="invoice-actions">
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="downloadLoading()"
+            (click)="viewPdf()"
+          >
+            {{ downloadLoading() ? 'Loading PDF…' : 'View Invoice' }}
+          </button>
+          @if (
+            mode === 'customer' && current.invoiceStatus === 'issued' && current.balanceDue > 0
+          ) {
+            <button
+              type="button"
+              class="primary-button invoice-pay-online-button"
+              [disabled]="paymentLoading()"
+              (click)="payOnline()"
+            >
+              {{ paymentLoading() ? 'Opening checkout…' : 'Pay online' }}
+            </button>
+          }
+          @if (mode === 'shop' && current.invoiceStatus === 'issued' && current.amountPaid === 0) {
+            <button
+              type="button"
+              class="secondary-button invoice-cancel-button"
+              [disabled]="saving()"
+              (click)="cancelInvoice()"
+            >
+              {{ saving() ? 'Cancelling…' : 'Cancel invoice' }}
+            </button>
+          }
+          <button
+            type="button"
+            class="primary-button invoice-download-button"
+            [disabled]="downloadLoading()"
+            (click)="downloadPdf()"
+          >
+            Download Invoice PDF
+          </button>
+        </div>
+      }
+
+      @if (previewUrl(); as pdfUrl) {
+        <div class="invoice-preview">
+          <h3>{{ current.invoiceStatus === 'draft' ? 'PDF preview' : 'Issued invoice PDF' }}</h3>
+          <iframe [src]="pdfUrl" title="Invoice PDF preview"></iframe>
+        </div>
+      }
+
+      @if (mode === 'shop' && current.invoiceStatus === 'issued' && current.balanceDue > 0) {
+        <form class="payment-form" (ngSubmit)="recordPayment()">
+          <h3>Record payment received</h3>
+          <p>Payments are appended to the audit history and cannot be overwritten.</p>
+          <div class="payment-fields">
+            <label>
+              Amount
+              <input
+                type="number"
+                name="paymentAmount"
+                min="0.01"
+                [max]="current.balanceDue"
+                step="0.01"
+                placeholder="0.00"
+                required
+                [(ngModel)]="paymentAmount"
+              />
+            </label>
+            <label>
+              Method
+              <select name="paymentMethod" [(ngModel)]="paymentMethod">
+                @for (method of paymentMethods; track method.value) {
+                  <option [value]="method.value">{{ method.label }}</option>
+                }
+              </select>
+            </label>
+            <label>
+              Payment date
+              <input type="date" name="paymentDate" required [(ngModel)]="paymentDate" />
+            </label>
+            <label>
+              Transaction reference (optional)
+              <input
+                type="text"
+                name="paymentReference"
+                maxlength="120"
+                placeholder="e.g. UTR123456789"
+                [(ngModel)]="paymentReference"
+              />
+            </label>
+          </div>
+          <button type="submit" class="secondary-button" [disabled]="paymentLoading()">
+            {{ paymentLoading() ? 'Recording…' : 'Record payment' }}
+          </button>
+        </form>
+      }
+
+      @if (current.payments.length) {
+        <div class="payment-history">
+          <h3>Payment history</h3>
+          <div class="invoice-table-wrap">
+            <table class="invoice-items payment-items">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Method</th>
+                  <th>Reference</th>
+                  <th>Recorded by</th>
+                  <th>Status</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (payment of current.payments; track payment.id) {
+                  <tr>
+                    <td>{{ payment.paymentDate | date: 'mediumDate' }}</td>
+                    <td>{{ statusLabel(payment.method) }}</td>
+                    <td>{{ payment.reference || '—' }}</td>
+                    <td>{{ payment.recordedBy }}</td>
+                    <td>{{ statusLabel(payment.status) }}</td>
+                    <td>{{ payment.amount | currency: payment.currency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+    } @else if (mode === 'shop') {
+      <p class="invoice-state">No invoice has been prepared for this completed repair.</p>
+      <button type="button" class="primary-button" [disabled]="saving()" (click)="createDraft()">
+        {{ saving() ? 'Preparing…' : 'Generate Invoice' }}
+      </button>
+    } @else {
+      <p class="invoice-state" role="status">
+        The shop has not generated the invoice yet. It will appear here once the shop issues it.
+      </p>
+    }
+  </section>
+
+  @if (confirmation(); as dialog) {
+    <app-confirmation-dialog
+      [config]="dialog"
+      (confirmed)="confirmPendingAction()"
+      (cancelled)="closeConfirmation()"
+    />
+  }

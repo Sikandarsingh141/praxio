@@ -237,9 +237,7 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () =>
-          import('./shop/dashboard/shop-dashboard.page').then(
-            (module) => module.ShopDashboardPage,
-          ),
+          import('./shop/dashboard/shop-dashboard.page').then((module) => module.ShopDashboardPage),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
@@ -255,9 +253,7 @@ export const routes: Routes = [
       {
         path: 'payment',
         loadComponent: () =>
-          import('./shop/payments/shop-payment.page').then(
-            (module) => module.ShopPaymentPage,
-          ),
+          import('./shop/payments/shop-payment.page').then((module) => module.ShopPaymentPage),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'payment' },
       },
@@ -424,6 +420,13 @@ export const routes: Routes = [
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
+        path: 'invoices',
+        loadComponent: () =>
+          import('./shop/invoices/shop-invoices.page').then((module) => module.ShopInvoicesPage),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
         path: 'messages',
         loadComponent: () =>
           import('./shared/components/chat-center/chat-center.component').then(
@@ -435,9 +438,7 @@ export const routes: Routes = [
       {
         path: 'reviews',
         loadComponent: () =>
-          import('./shop/reviews/shop-reviews.page').then(
-            (module) => module.ShopReviewsPage,
-          ),
+          import('./shop/reviews/shop-reviews.page').then((module) => module.ShopReviewsPage),
         canActivate: [authGuard],
         data: { accountType: 'shop', shopAccess: 'portal' },
       },

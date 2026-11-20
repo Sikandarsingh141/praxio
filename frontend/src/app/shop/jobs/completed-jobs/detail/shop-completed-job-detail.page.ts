@@ -5,6 +5,7 @@ import { ShopJobDetailPageBase } from '../../../../shared/components/job-page-ba
 import { JobAttachmentsComponent } from '../../../../shared/components/job-attachments/job-attachments.component';
 import { JobTimelineComponent } from '../../../../shared/components/job-timeline/job-timeline.component';
 import { RepairProgressComponent } from '../../../../shared/components/repair-progress/repair-progress.component';
+import { RepairInvoiceSectionComponent } from '../../../../shared/components/repair-invoice-section/repair-invoice-section.component';
 import { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests.models';
 
 @Component({
@@ -16,19 +17,22 @@ import { ShopRepairRequest } from '../../../repair-requests/shop-repair-requests
     JobAttachmentsComponent,
     JobTimelineComponent,
     RepairProgressComponent,
+    RepairInvoiceSectionComponent,
   ],
   templateUrl: './shop-completed-job-detail.page.html',
   styleUrl: './shop-completed-job-detail.page.scss',
 })
 export class ShopCompletedJobDetailPage extends ShopJobDetailPageBase {
   readonly heroImageUnavailable = signal(false);
+  readonly invoiceModalOpen = signal(false);
   readonly backRoute = '/shop/jobs/completed-jobs';
   readonly backLabel = 'Completed Repairs';
   readonly pageTitle = 'Completed Repair Details';
   readonly customerMapUrl = computed(() => {
     const job = this.record();
     if (!job) return null;
-    const location = job.customer.location ??
+    const location =
+      job.customer.location ??
       (typeof job.customerLatitude === 'number' && typeof job.customerLongitude === 'number'
         ? { latitude: job.customerLatitude, longitude: job.customerLongitude }
         : null);
@@ -77,10 +81,14 @@ export class ShopCompletedJobDetailPage extends ShopJobDetailPageBase {
 
   statusLabel(job: ShopRepairRequest): string {
     const status = job.repairJob?.status ?? job.shopResponse.status;
-    return status
-      .replace(/_/g, ' ')
-      .replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+    return status.replace(/_/g, ' ').replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
   }
 
-}
+  openInvoiceModal(): void {
+    this.invoiceModalOpen.set(true);
+  }
 
+  closeInvoiceModal(): void {
+    this.invoiceModalOpen.set(false);
+  }
+}

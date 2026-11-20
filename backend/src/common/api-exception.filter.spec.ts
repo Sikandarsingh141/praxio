@@ -3,6 +3,7 @@ import {
   Get,
   INestApplication,
   InternalServerErrorException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -24,6 +25,13 @@ class TestErrorController {
       message: 'Email or password is incorrect',
     });
   }
+
+  @Get('unavailable')
+  throwUnavailableError(): never {
+    throw new ServiceUnavailableException(
+      'Payments are not configured.',
+    );
+  }
 }
 
 describe('ApiExceptionFilter', () => {
@@ -42,6 +50,18 @@ describe('ApiExceptionFilter', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('returns a clear message for service unavailable errors', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/test-errors/unavailable')
+      .expect(503);
+
+    expect(response.body).toEqual({
+      statusCode: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'Payments are not configured.',
+    });
   });
 
   it('returns a generic message for internal errors', async () => {

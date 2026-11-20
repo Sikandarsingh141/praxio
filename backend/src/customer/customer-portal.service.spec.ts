@@ -127,11 +127,7 @@ describe('CustomerPortalService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string) =>
-              key === 'GOOGLE_APIKEY'
-                ? 'test-google-api-key'
-                : 'https://photon.komoot.io/api/',
-            ),
+            get: jest.fn(() => 'https://photon.komoot.io/api/'),
           },
         },
         { provide: NotificationsService, useValue: notificationsService },
@@ -1207,7 +1203,7 @@ describe('CustomerPortalService', () => {
         'https://routes.googleapis.com/directions/v2:computeRoutes',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'X-Goog-Api-Key': 'test-google-api-key',
+            'X-Goog-Api-Key': process.env.GOOGLE_APIKEY,
           }),
         }),
       );
@@ -1309,7 +1305,7 @@ describe('CustomerPortalService', () => {
       const fallbackUrl = new URL(String(fetch.mock.calls[1]?.[0]));
       expect(fallbackUrl.searchParams.get('origin')).toBe('30.72,76.72');
       expect(fallbackUrl.searchParams.get('destination')).toBe('30.7,76.7');
-      expect(fallbackUrl.searchParams.get('key')).toBe('test-google-api-key');
+      expect(fallbackUrl.searchParams.get('key')).toBe(process.env.GOOGLE_APIKEY);
     } finally {
       fetch.mockRestore();
     }
@@ -1381,7 +1377,7 @@ describe('CustomerPortalService', () => {
         ),
       );
       expect(loggerError.mock.calls.flat().join(' ')).not.toContain(
-        'test-google-api-key',
+        process.env.GOOGLE_APIKEY,
       );
     } finally {
       fetch.mockRestore();

@@ -93,9 +93,18 @@
                   <strong>{{ customerName(customer) }}</strong>
                 </div>
                 <dl class="customer-facts">
-                  <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
-                  <div><dt>Phone</dt><dd>{{ customerPhone(customer) }}</dd></div>
-                  <div><dt>Location</dt><dd>{{ customerLocation(customer) }}</dd></div>
+                  <div>
+                    <dt>Email</dt>
+                    <dd>{{ customer.email }}</dd>
+                  </div>
+                  <div>
+                    <dt>Phone</dt>
+                    <dd>{{ customerPhone(customer) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Location</dt>
+                    <dd>{{ customerLocation(customer) }}</dd>
+                  </div>
                 </dl>
               </div>
             } @else {
@@ -142,7 +151,11 @@
                     <circle cx="12" cy="10" r="2.5" />
                   </svg>
                   <p>
-                    {{ shopLocationLoading() ? 'Loading location details…' : shopLocationError() || 'Location details are not available yet.' }}
+                    {{
+                      shopLocationLoading()
+                        ? 'Loading location details…'
+                        : shopLocationError() || 'Location details are not available yet.'
+                    }}
                   </p>
                 </div>
               }
@@ -159,16 +172,37 @@
           </section>
 
           @if (job.review; as review) {
-            <section class="customer-detail-block verified-review-card" aria-label="Customer rating">
+            <section
+              class="customer-detail-block verified-review-card"
+              aria-label="Customer rating"
+            >
               <h2 class="section-heading">Your Rating</h2>
-              <p><strong>{{ review.overallRating }}/5</strong> · {{ review.title || 'Verified repair review' }}</p>
+              <p>
+                <strong>{{ review.overallRating }}/5</strong> ·
+                {{ review.title || 'Verified repair review' }}
+              </p>
               <p>{{ review.reviewText }}</p>
               <dl class="sidebar-facts">
-                <div><dt>Repair quality</dt><dd>{{ review.repairQuality }}/5</dd></div>
-                <div><dt>Communication</dt><dd>{{ review.communication }}/5</dd></div>
-                <div><dt>Professionalism</dt><dd>{{ review.professionalism }}/5</dd></div>
-                <div><dt>Timeliness</dt><dd>{{ review.timeliness }}/5</dd></div>
-                <div><dt>Value for money</dt><dd>{{ review.valueForMoney }}/5</dd></div>
+                <div>
+                  <dt>Repair quality</dt>
+                  <dd>{{ review.repairQuality }}/5</dd>
+                </div>
+                <div>
+                  <dt>Communication</dt>
+                  <dd>{{ review.communication }}/5</dd>
+                </div>
+                <div>
+                  <dt>Professionalism</dt>
+                  <dd>{{ review.professionalism }}/5</dd>
+                </div>
+                <div>
+                  <dt>Timeliness</dt>
+                  <dd>{{ review.timeliness }}/5</dd>
+                </div>
+                <div>
+                  <dt>Value for money</dt>
+                  <dd>{{ review.valueForMoney }}/5</dd>
+                </div>
               </dl>
             </section>
           }
@@ -188,7 +222,9 @@
                   <span class="quotation-status accepted">Accepted</span>
                 </div>
                 <p>{{ quotation.message }}</p>
-                @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+                @if (quotation.proposedSolution) {
+                  <p>{{ quotation.proposedSolution }}</p>
+                }
               </article>
             } @else if (job.quotations.length) {
               <div class="quotation-list">
@@ -201,7 +237,9 @@
                       </span>
                     </div>
                     <p>{{ quotation.message }}</p>
-                    @if (quotation.proposedSolution) { <p>{{ quotation.proposedSolution }}</p> }
+                    @if (quotation.proposedSolution) {
+                      <p>{{ quotation.proposedSolution }}</p>
+                    }
                   </article>
                 }
               </div>
@@ -225,7 +263,11 @@
                   </div>
                   <div>
                     <dt>Approved additional charges</dt>
-                    <dd>{{ repair.approvedAdditionalCharges ?? 0 | currency: repairCostCurrency(job) }}</dd>
+                    <dd>
+                      {{
+                        repair.approvedAdditionalCharges ?? 0 | currency: repairCostCurrency(job)
+                      }}
+                    </dd>
                   </div>
                   <div class="repair-cost-total">
                     <dt>Total approved cost</dt>
@@ -275,6 +317,19 @@
             </section>
           }
 
+          <section class="customer-detail-block invoice-popup-block">
+            <h2 class="section-heading">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 5h16v15H4zM8 9h8m-8 4h8m-8 4h4" />
+                <path d="M8 2v3m8-3v3" />
+              </svg>
+              Invoice
+            </h2>
+            <button type="button" class="invoice-open-button" (click)="openInvoiceModal()">
+              Download Invoice
+            </button>
+          </section>
+
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -283,18 +338,35 @@
               Device Information
             </h2>
             <dl class="sidebar-facts">
-              <div><dt>Device</dt><dd>{{ job.appliance }}</dd></div>
-              <div><dt>Brand</dt><dd>{{ job.brand || 'Not specified' }}</dd></div>
-              <div><dt>Model</dt><dd>{{ job.model || 'Not specified' }}</dd></div>
-              <div><dt>Category</dt><dd>{{ job.appliance }}</dd></div>
-              <div><dt>Submitted</dt><dd>{{ job.createdAt | date: 'MMM d, y' }}</dd></div>
+              <div>
+                <dt>Device</dt>
+                <dd>{{ job.appliance }}</dd>
+              </div>
+              <div>
+                <dt>Brand</dt>
+                <dd>{{ job.brand || 'Not specified' }}</dd>
+              </div>
+              <div>
+                <dt>Model</dt>
+                <dd>{{ job.model || 'Not specified' }}</dd>
+              </div>
+              <div>
+                <dt>Category</dt>
+                <dd>{{ job.appliance }}</dd>
+              </div>
+              <div>
+                <dt>Submitted</dt>
+                <dd>{{ job.createdAt | date: 'MMM d, y' }}</dd>
+              </div>
             </dl>
           </section>
 
           <section class="customer-detail-block">
             <h2 class="section-heading">
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z" />
+                <path
+                  d="m14.5 6.5a5 5 0 0 0-6.7 6.7L3 18l3 3 4.8-4.8a5 5 0 0 0 6.7-6.7L14 12l-2-2 2.5-3.5Z"
+                />
                 <path d="m14 14 6 6M17 13l3-3" />
               </svg>
               Service Details
@@ -306,7 +378,13 @@
               </div>
               <div>
                 <dt>Preferred Date</dt>
-                <dd>{{ job.preferredServiceDate ? (job.preferredServiceDate | date: 'MMM d, y') : 'Not specified' }}</dd>
+                <dd>
+                  {{
+                    job.preferredServiceDate
+                      ? (job.preferredServiceDate | date: 'MMM d, y')
+                      : 'Not specified'
+                  }}
+                </dd>
               </div>
               <div>
                 <dt>Visit Type</dt>
@@ -334,7 +412,9 @@
             <section class="customer-detail-block repair-shop-section">
               <h2 class="section-heading">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" />
+                  <path
+                    d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6"
+                  />
                 </svg>
                 Repair Shop
               </h2>
@@ -348,7 +428,9 @@
                     />
                   } @else {
                     <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6" />
+                      <path
+                        d="M3 10V20h18V10M2 9l2-5h16l2 5M2 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6"
+                      />
                     </svg>
                   }
                 </span>
@@ -363,5 +445,32 @@
         </section>
       </aside>
     </div>
+
+    @if (invoiceModalOpen()) {
+      <div class="invoice-modal-backdrop" (click)="closeInvoiceModal()" role="presentation">
+        <section
+          class="invoice-modal-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customer-invoice-modal-title"
+          (click)="$event.stopPropagation()"
+        >
+          <header class="invoice-modal-header">
+            <h2 id="customer-invoice-modal-title">Download Invoice</h2>
+            <button
+              type="button"
+              class="invoice-modal-close"
+              aria-label="Close invoice"
+              (click)="closeInvoiceModal()"
+            >
+              ×
+            </button>
+          </header>
+          <div class="invoice-modal-body">
+            <app-repair-invoice-section [repairRequestId]="job._id" mode="customer" />
+          </div>
+        </section>
+      </div>
+    }
   }
 </main>

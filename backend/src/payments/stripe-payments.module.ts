@@ -8,6 +8,10 @@ import {
   ShopSubscriptionInvoice,
   ShopSubscriptionInvoiceSchema,
 } from './schemas/shop-subscription-invoice.schema';
+import {
+  RepairInvoice,
+  RepairInvoiceSchema,
+} from '../invoices/repair-invoice.schema';
 import { StripePaymentsService } from './stripe-payments.service';
 
 @Module({
@@ -18,6 +22,7 @@ import { StripePaymentsService } from './stripe-payments.service';
         name: ShopSubscriptionInvoice.name,
         schema: ShopSubscriptionInvoiceSchema,
       },
+      { name: RepairInvoice.name, schema: RepairInvoiceSchema },
     ]),
   ],
   providers: [StripePaymentsService],

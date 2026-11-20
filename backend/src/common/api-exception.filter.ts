@@ -44,6 +44,22 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 
   private getErrorBody(exception: unknown, statusCode: number): ApiErrorBody {
+    if (statusCode === HttpStatus.SERVICE_UNAVAILABLE) {
+      const exceptionResponse = exception instanceof HttpException
+        ? exception.getResponse()
+        : undefined;
+      const message =
+        typeof exceptionResponse === 'string'
+          ? exceptionResponse
+          : this.isRecord(exceptionResponse) && typeof exceptionResponse.message === 'string'
+            ? exceptionResponse.message
+            : 'The service is temporarily unavailable';
+      return {
+        statusCode,
+        code: 'SERVICE_UNAVAILABLE',
+        message,
+      };
+    }
     if (statusCode >= 500) {
       return {
         statusCode,

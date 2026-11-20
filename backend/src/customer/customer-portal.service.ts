@@ -4634,7 +4634,7 @@ export class CustomerPortalService {
     const origin = reverseDirection ? customerLocation : shopLocation;
     const destination = reverseDirection ? shopLocation : customerLocation;
 
-    const apiKey = this.config.get<string>('GOOGLE_APIKEY')?.trim();
+    const apiKey = process.env.GOOGLE_APIKEY?.trim();
     if (!apiKey) {
       throw new ServiceUnavailableException(
         'Google Maps routing is not configured on the server.',

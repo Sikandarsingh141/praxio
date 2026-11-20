@@ -5,6 +5,7 @@ import { AuthService } from '../../../../core/auth/auth.service';
 import { CustomerRepairRequest } from '../../../models/customer-portal.models';
 import { CustomerPortalService } from '../../../services/customer-portal.service';
 import { JobSharedService } from '../../../../shared/services/job-shared.service';
+import { RepairInvoicesService } from '../../../../shared/services/repair-invoices.service';
 import { CustomerCompletedJobDetailPage } from './customer-completed-job-detail.page';
 
 describe('CustomerCompletedJobDetailPage', () => {
@@ -49,6 +50,7 @@ describe('CustomerCompletedJobDetailPage', () => {
   };
   let jobs: jasmine.SpyObj<JobSharedService>;
   let customerPortal: jasmine.SpyObj<CustomerPortalService>;
+  let repairInvoices: jasmine.SpyObj<RepairInvoicesService>;
 
   beforeEach(async () => {
     jobs = jasmine.createSpyObj<JobSharedService>('JobSharedService', [
@@ -63,10 +65,15 @@ describe('CustomerCompletedJobDetailPage', () => {
     jobs.customerProgress.and.returnValue([]);
     jobs.photoAttachments.and.returnValue([]);
 
-    customerPortal = jasmine.createSpyObj<CustomerPortalService>(
-      'CustomerPortalService',
-      ['getShop', 'getRepairRoute', 'submitRepairReview'],
-    );
+    customerPortal = jasmine.createSpyObj<CustomerPortalService>('CustomerPortalService', [
+      'getShop',
+      'getRepairRoute',
+      'submitRepairReview',
+    ]);
+    repairInvoices = jasmine.createSpyObj<RepairInvoicesService>('RepairInvoicesService', [
+      'getCustomerInvoiceForRepair',
+    ]);
+    repairInvoices.getCustomerInvoiceForRepair.and.returnValue(of(null));
 
     await TestBed.configureTestingModule({
       imports: [CustomerCompletedJobDetailPage],
@@ -92,6 +99,7 @@ describe('CustomerCompletedJobDetailPage', () => {
           },
         },
         { provide: CustomerPortalService, useValue: customerPortal },
+        { provide: RepairInvoicesService, useValue: repairInvoices },
       ],
     }).compileComponents();
   });
@@ -138,5 +146,20 @@ describe('CustomerCompletedJobDetailPage', () => {
     expect(quotationSection.textContent!.indexOf('Quotation and Payment')).toBeLessThan(
       quotationSection.textContent!.indexOf('Repair Cost Summary'),
     );
+  });
+
+  it('shows invoice availability in the customer invoice dialog', () => {
+    const fixture = TestBed.createComponent(CustomerCompletedJobDetailPage);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector(
+      '.invoice-open-button',
+    ) as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+
+    const dialog = fixture.nativeElement.querySelector('.invoice-modal-dialog') as HTMLElement;
+    expect(dialog.textContent).toContain('The shop has not generated the invoice yet.');
+    expect(dialog.textContent).toContain('It will appear here once the shop issues it.');
   });
 });
