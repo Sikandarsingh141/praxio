@@ -138,7 +138,7 @@ describe('CustomerCompletedJobDetailPage', () => {
     const shopProfile = fixture.nativeElement.querySelector(
       'app-customer-repair-shop-profile',
     ) as HTMLElement;
-    expect(shopProfile.textContent).toContain('Shopkeeper Name');
+    expect(shopProfile.textContent).toContain('Name');
     expect(shopProfile.textContent).toContain('Shop Owner');
     expect(shopProfile.textContent).toContain('Fixora Shop');
     expect(shopProfile.textContent).toContain('shop@example.com');

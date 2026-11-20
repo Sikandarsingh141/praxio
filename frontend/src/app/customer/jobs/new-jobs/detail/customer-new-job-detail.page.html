@@ -188,7 +188,7 @@
           </section>
 
           @if (job.shops?.length) {
-            <section class="customer-detail-block repair-shop-section">
+            <section class="customer-detail-block repair-shop-section selected-shops-section">
               <h2 class="section-heading">Selected Shops</h2>
               @for (shop of job.shops; track shop.id) {
                 <div class="shop-summary">
@@ -201,7 +201,9 @@
                   </span>
                   <div class="shop-copy">
                     <strong>{{ shop.name }}</strong>
-                    <span>{{ shopResponseStatusLabel(shop.responseStatus) }}</span>
+                    <span class="shop-response-status" [attr.data-status]="shop.responseStatus || 'pending'">
+                      {{ shopResponseStatusLabel(shop.responseStatus) }}
+                    </span>
                   </div>
                   <a class="shop-link" [routerLink]="['/customer/shops', shop.id]">View Shop</a>
                 </div>
