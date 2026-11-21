@@ -13,9 +13,11 @@ import {
   RepairInvoiceSchema,
 } from '../invoices/repair-invoice.schema';
 import { StripePaymentsService } from './stripe-payments.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
+    NotificationsModule,
     MongooseModule.forFeature([
       { name: RegistrationRequest.name, schema: RegistrationRequestSchema },
       {

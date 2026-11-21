@@ -36,6 +36,8 @@ export const NOTIFICATION_TYPES = [
   'additional_charges_requested',
   'additional_charges_approved',
   'additional_charges_declined',
+  'repair_invoice_issued',
+  'repair_invoice_payment_received',
   'new_dispute',
   'dispute_message',
   'dispute_shop_response',
@@ -95,6 +97,9 @@ export class Notification {
   @Prop({ type: String, trim: true, maxlength: 300 })
   link?: string;
 
+  @Prop({ type: String, trim: true, maxlength: 240 })
+  deduplicationKey?: string;
+
   @Prop({ type: Boolean, required: true, default: false })
   isRead!: boolean;
 
@@ -108,4 +113,12 @@ export const NotificationSchema = SchemaFactory.createForClass(Notification);
 NotificationSchema.index(
   { recipientId: 1, isRead: 1, createdAt: -1 },
   { name: 'IX_notifications_recipient_read_created' },
+);
+NotificationSchema.index(
+  { deduplicationKey: 1 },
+  {
+    unique: true,
+    sparse: true,
+    name: 'UQ_notifications_deduplication_key',
+  },
 );

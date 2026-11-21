@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Types } from 'mongoose';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { StripePaymentsService } from './stripe-payments.service';
 
@@ -66,6 +67,7 @@ describe('StripePaymentsService', () => {
     findOne: jest.fn().mockReturnValue(repairInvoiceLookupQuery),
     findById: jest.fn().mockReturnValue(repairInvoiceLookupQuery),
   };
+  const notifications = { notifyUsers: jest.fn().mockResolvedValue(undefined) };
   const registrationRequests = {
     findOne: jest.fn().mockReturnValue(lookupQuery),
     findOneAndUpdate: jest
@@ -121,6 +123,7 @@ describe('StripePaymentsService', () => {
     invoiceListQuery.exec.mockResolvedValue([]);
     invoiceCountQuery.exec.mockResolvedValue(0);
     repairInvoiceLookupQuery.exec.mockResolvedValue(null);
+    notifications.notifyUsers.mockClear();
     mockStripeClient.invoices.retrieve.mockResolvedValue({
       id: 'in_test_invoice',
       number: 'INV-1001',
@@ -152,6 +155,7 @@ describe('StripePaymentsService', () => {
       repairInvoices as unknown as import('mongoose').Model<
         import('../invoices/repair-invoice.schema').RepairInvoice
       >,
+      notifications as unknown as NotificationsService,
     );
   });
 
@@ -285,8 +289,11 @@ describe('StripePaymentsService', () => {
     };
     const invoice = {
       _id: invoiceId,
+      repairRequestId: new Types.ObjectId(),
+      invoiceNumber: 'FIX-INV-2026-000001',
       customerId: new Types.ObjectId(userId),
       shopId,
+      customer: { name: 'Customer' },
       invoiceStatus: 'issued',
       currency: 'USD',
       grandTotal: 25,
@@ -332,6 +339,17 @@ describe('StripePaymentsService', () => {
       stripeEventId: 'evt_repair_paid',
     });
     expect(invoice.save).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyUsers).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(
+      [shopId],
+      expect.objectContaining({
+        title: 'Online Invoice Payment Received',
+        type: 'repair_invoice_payment_received',
+        relatedEntityId: invoice.repairRequestId,
+        relatedEntityType: 'repair_request',
+        deduplicationKey: `repair-invoice-payment:${invoice.repairRequestId.toString()}:${paymentAttemptId}:${shopId.toString()}`,
+      }),
+    );
   });
 
   it('keeps an asynchronous repair checkout pending until Stripe confirms settlement', async () => {
@@ -377,6 +395,7 @@ describe('StripePaymentsService', () => {
 
     expect(pendingPayment.status).toBe('pending');
     expect(invoice.save).not.toHaveBeenCalled();
+    expect(notifications.notifyUsers).not.toHaveBeenCalled();
   });
 
   it('lists only the authenticated shop invoices with official Stripe document links', async () => {

@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Model, Types } from 'mongoose';
+import { ClientSession, HydratedDocument, Model, Types } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { FirebaseMessagingService } from './firebase-messaging.service';
 import { Notification } from './schemas/notification.schema';
@@ -29,6 +29,7 @@ export interface CreateUserNotification {
   relatedEntityId: Types.ObjectId;
   relatedEntityType: (typeof NOTIFICATION_ENTITY_TYPES)[number];
   link: string;
+  deduplicationKey?: string;
 }
 
 @Injectable()
@@ -211,13 +212,21 @@ export class NotificationsService {
       ...notification,
       message: notificationMessage,
     };
-    const savedNotifications = await this.notifications.insertMany(
-      uniqueRecipients.map((recipientId) => ({
-        recipientId,
-        ...enrichedNotification,
-        isRead: false,
-      })),
-    );
+    let savedNotifications: Array<HydratedDocument<Notification>>;
+    try {
+      savedNotifications = await this.notifications.insertMany(
+        uniqueRecipients.map((recipientId) => ({
+          recipientId,
+          ...enrichedNotification,
+          isRead: false,
+        })),
+      );
+    } catch (error) {
+      if (notification.deduplicationKey && this.isDuplicateKeyError(error)) {
+        return;
+      }
+      throw error;
+    }
     savedNotifications.forEach((savedNotification) => {
       this.gateway.notifyUser(savedNotification.recipientId.toString(), {
         id: savedNotification._id.toString(),
@@ -357,6 +366,15 @@ export class NotificationsService {
         : accountType === 'shop'
           ? '/shop/profile'
           : '/customer/profile',
+    );
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 11000
     );
   }
 }

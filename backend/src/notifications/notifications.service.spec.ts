@@ -210,6 +210,24 @@ describe('NotificationsService', () => {
     );
   });
 
+  it('does not duplicate notifications with an existing deduplication key', async () => {
+    const recipientId = new Types.ObjectId();
+    notifications.insertMany.mockRejectedValueOnce({ code: 11000 });
+
+    await expect(
+      service.notifyUsers([recipientId], {
+        title: 'Online Invoice Payment Received',
+        message: 'A customer paid online toward an invoice.',
+        type: 'repair_invoice_payment_received',
+        relatedEntityId: registrationRequestId,
+        relatedEntityType: 'repair_request',
+        link: '/shop/jobs/completed-jobs/request-id',
+        deduplicationKey: 'repair-invoice-payment:invoice:attempt:shop',
+      }),
+    ).resolves.toBeUndefined();
+    expect(firebaseMessaging.send).not.toHaveBeenCalled();
+  });
+
   it('displays the short ID on older repair notifications as well', async () => {
     const requestId = new Types.ObjectId('507f1f77bcf86cd7CEEBA068');
     const recipientId = new Types.ObjectId();

@@ -25,6 +25,7 @@ import {
 } from '../customer/repair-request.schema';
 import { StripePaymentsService } from '../payments/stripe-payments.service';
 import { User } from '../users/schemas/user.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   RecordInvoicePaymentDto,
   ShopInvoiceListQueryDto,
@@ -95,6 +96,7 @@ export class RepairInvoicesService {
     @InjectConnection()
     private readonly connection: Connection,
     private readonly stripePayments: StripePaymentsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async getShopInvoiceForRepair(userId: string, repairRequestId: string) {
@@ -211,8 +213,10 @@ export class RepairInvoicesService {
 
   async issueInvoice(userId: string, invoiceId: string) {
     const invoice = await this.getShopInvoice(userId, invoiceId);
-    if (invoice.invoiceStatus === 'issued')
+    if (invoice.invoiceStatus === 'issued') {
+      await this.notifyCustomerOfIssuedInvoice(invoice);
       return { invoice: this.toView(invoice) };
+    }
     if (invoice.invoiceStatus !== 'draft') {
       throw new ConflictException('This invoice cannot be issued.');
     }
@@ -239,6 +243,7 @@ export class RepairInvoicesService {
     }
 
     let uploadedFileId: Types.ObjectId | null = null;
+    let issued: RepairInvoiceDocument | null = null;
     try {
       const invoiceNumber =
         claimed.invoiceNumber ||
@@ -251,7 +256,7 @@ export class RepairInvoicesService {
       const pdf = await this.generatePdf(claimed, invoiceNumber, now);
       uploadedFileId = await this.savePdf(claimed, invoiceNumber, pdf);
 
-      const issued = await this.repairInvoices
+      issued = await this.repairInvoices
         .findOneAndUpdate(
           { _id: claimed._id, invoiceStatus: 'draft', issuing: true },
           {
@@ -268,7 +273,6 @@ export class RepairInvoicesService {
         .exec();
       if (!issued)
         throw new ConflictException('The invoice could not be finalized.');
-      return { invoice: this.toView(issued) };
     } catch (error) {
       if (uploadedFileId) {
         try {
@@ -288,6 +292,25 @@ export class RepairInvoicesService {
         .exec();
       throw error;
     }
+
+    if (!issued)
+      throw new ConflictException('The invoice could not be finalized.');
+    await this.notifyCustomerOfIssuedInvoice(issued);
+    return { invoice: this.toView(issued) };
+  }
+
+  private notifyCustomerOfIssuedInvoice(
+    invoice: RepairInvoiceDocument,
+  ): Promise<void> {
+    return this.notifications.notifyUsers([invoice.customerId], {
+      title: 'New Repair Invoice',
+      message: `${invoice.shop.name} has issued invoice ${invoice.invoiceNumber} for your repair.`,
+      type: 'repair_invoice_issued',
+      relatedEntityId: invoice.repairRequestId,
+      relatedEntityType: 'repair_request',
+      link: `/customer/jobs/completed-jobs/${invoice.repairRequestId.toString()}`,
+      deduplicationKey: `repair-invoice-issued:${invoice._id.toString()}:${invoice.customerId.toString()}`,
+    });
   }
 
   async cancelInvoice(userId: string, invoiceId: string) {

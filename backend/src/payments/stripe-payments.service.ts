@@ -19,6 +19,7 @@ import {
   roundCurrencyAmount,
   toMinorCurrencyUnits,
 } from '../invoices/repair-invoice-money.util';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { ShopSubscriptionInvoice } from './schemas/shop-subscription-invoice.schema';
 import {
@@ -77,6 +78,7 @@ export class StripePaymentsService {
     private readonly subscriptionInvoices: Model<ShopSubscriptionInvoice>,
     @InjectModel(RepairInvoice.name)
     private readonly repairInvoices: Model<RepairInvoice>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async createRepairInvoiceCheckout(
@@ -1096,7 +1098,10 @@ export class StripePaymentsService {
       );
       if (!payment)
         throw new ConflictException('The payment attempt was not found.');
-      if (payment.status === 'succeeded') return;
+      if (payment.status === 'succeeded') {
+        await this.notifyShopOfRepairInvoicePayment(invoice, payment);
+        return;
+      }
       if (payment.status !== 'pending') {
         throw new ConflictException(
           'The payment attempt is no longer pending.',
@@ -1137,7 +1142,6 @@ export class StripePaymentsService {
       invoice.paymentStatus = balanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID';
       try {
         await invoice.save();
-        return;
       } catch (error) {
         if (
           !(error instanceof Error && error.name === 'VersionError') ||
@@ -1145,8 +1149,26 @@ export class StripePaymentsService {
         ) {
           throw error;
         }
+        continue;
       }
+      await this.notifyShopOfRepairInvoicePayment(invoice, payment);
+      return;
     }
+  }
+
+  private notifyShopOfRepairInvoicePayment(
+    invoice: RepairInvoice,
+    payment: RepairInvoicePayment,
+  ): Promise<void> {
+    return this.notifications.notifyUsers([invoice.shopId], {
+      title: 'Online Invoice Payment Received',
+      message: `${invoice.customer.name} paid ${payment.amount} ${invoice.currency} online toward invoice ${invoice.invoiceNumber}.`,
+      type: 'repair_invoice_payment_received',
+      relatedEntityId: invoice.repairRequestId,
+      relatedEntityType: 'repair_request',
+      link: `/shop/jobs/completed-jobs/${invoice.repairRequestId.toString()}`,
+      deduplicationKey: `repair-invoice-payment:${invoice.repairRequestId.toString()}:${payment.stripeAttemptId}:${invoice.shopId.toString()}`,
+    });
   }
 
   private async markRepairInvoiceAttemptClosed(

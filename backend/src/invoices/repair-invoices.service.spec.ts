@@ -5,6 +5,7 @@ import {
   RepairRequest,
 } from '../customer/repair-request.schema';
 import { StripePaymentsService } from '../payments/stripe-payments.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { User } from '../users/schemas/user.schema';
 import {
   InvoicePaymentMethod,
@@ -79,6 +80,7 @@ describe('RepairInvoicesService', () => {
       .mockReturnValue(cancelQuery),
   };
   const users = { findById: jest.fn().mockReturnValue(userQuery) };
+  const notifications = { notifyUsers: jest.fn().mockResolvedValue(undefined) };
   let service: RepairInvoicesService;
 
   beforeEach(() => {
@@ -87,6 +89,9 @@ describe('RepairInvoicesService', () => {
     invoice.amountPaid = 0;
     invoice.balanceDue = 100;
     invoice.payments.splice(0);
+    notifications.notifyUsers.mockClear();
+    repairInvoices.findOneAndUpdate.mockClear();
+    repairInvoices.findOneAndUpdate.mockReturnValue(cancelQuery);
     invoiceQuery.exec.mockResolvedValue(invoice);
     userQuery.exec.mockResolvedValue({
       _id: shopId,
@@ -106,6 +111,53 @@ describe('RepairInvoicesService', () => {
       users as unknown as Model<User>,
       {} as never,
       {} as StripePaymentsService,
+      notifications as unknown as NotificationsService,
+    );
+  });
+
+  it('notifies the customer after the shop successfully issues an invoice', async () => {
+    invoice.invoiceStatus = 'draft';
+    const issuedInvoice = {
+      ...invoice,
+      invoiceStatus: 'issued',
+      pdfFileIds: [new Types.ObjectId()],
+    };
+    const claimedInvoice = {
+      ...invoice,
+      invoiceStatus: 'draft',
+      issuing: true,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+    repairInvoices.findOneAndUpdate
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue(claimedInvoice),
+      })
+      .mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValue(issuedInvoice),
+      });
+    Object.defineProperty(service, 'generatePdf', {
+      value: jest.fn().mockResolvedValue(Buffer.from('invoice PDF')),
+    });
+    Object.defineProperty(service, 'savePdf', {
+      value: jest.fn().mockResolvedValue(new Types.ObjectId()),
+    });
+
+    const result = await service.issueInvoice(
+      shopId.toString(),
+      invoiceId.toString(),
+    );
+
+    expect(result.invoice.invoiceStatus).toBe('issued');
+    expect(notifications.notifyUsers).toHaveBeenCalledTimes(1);
+    expect(notifications.notifyUsers).toHaveBeenCalledWith(
+      [invoice.customerId],
+      expect.objectContaining({
+        title: 'New Repair Invoice',
+        type: 'repair_invoice_issued',
+        relatedEntityId: invoice.repairRequestId,
+        relatedEntityType: 'repair_request',
+        link: `/customer/jobs/completed-jobs/${invoice.repairRequestId.toString()}`,
+      }),
     );
   });
 

@@ -158,6 +158,8 @@ export interface RegistrationNotification {
     | 'additional_charges_requested'
     | 'additional_charges_approved'
     | 'additional_charges_declined'
+    | 'repair_invoice_issued'
+    | 'repair_invoice_payment_received'
     | 'new_dispute'
     | 'dispute_message'
     | 'dispute_shop_response'
