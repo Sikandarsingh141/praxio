@@ -427,6 +427,15 @@ export const routes: Routes = [
         data: { accountType: 'shop', shopAccess: 'portal' },
       },
       {
+        path: 'financial-reporting',
+        loadComponent: () =>
+          import('./shop/financial-reporting/shop-financial-reporting.page').then(
+            (module) => module.ShopFinancialReportingPage,
+          ),
+        canActivate: [authGuard],
+        data: { accountType: 'shop', shopAccess: 'portal' },
+      },
+      {
         path: 'messages',
         loadComponent: () =>
           import('./shared/components/chat-center/chat-center.component').then(

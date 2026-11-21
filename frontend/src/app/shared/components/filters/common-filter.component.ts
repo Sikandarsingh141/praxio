@@ -18,12 +18,20 @@ export interface FilterOption {
   value: string | number;
 }
 
+export type FilterDateRangePresetValue = 'last-30-days' | 'last-90-days' | 'year-to-date';
+
+export interface FilterDateRangePreset {
+  label: string;
+  value: FilterDateRangePresetValue;
+}
+
 export interface FilterFieldConfig {
   key: string;
   label: string;
   type: FilterFieldType;
   placeholder?: string;
   options?: FilterOption[];
+  dateRangePresets?: FilterDateRangePreset[];
   defaultValue?: FilterValue;
   required?: boolean;
   min?: number;
@@ -33,6 +41,7 @@ export interface FilterFieldConfig {
 
 export interface FilterConfig {
   title?: string;
+  applyLabel?: string;
   fields: FilterFieldConfig[];
 }
 
@@ -176,6 +185,19 @@ export type FilterValues = Record<string, FilterValue>;
                   @case ('date-range') {
                     <fieldset>
                       <legend>{{ field.label }}</legend>
+                      @if (field.dateRangePresets?.length) {
+                        <div class="date-range-presets" aria-label="Quick date ranges">
+                          @for (preset of field.dateRangePresets; track preset.value) {
+                            <button
+                              type="button"
+                              [class.selected]="isDateRangePresetSelected(field.key, preset.value)"
+                              (click)="setDateRangePreset(field.key, preset.value)"
+                            >
+                              {{ preset.label }}
+                            </button>
+                          }
+                        </div>
+                      }
                       <div class="range-fields">
                         <label [for]="field.key + '-from'">
                           From
@@ -183,9 +205,8 @@ export type FilterValues = Record<string, FilterValue>;
                             [id]="field.key + '-from'"
                             type="date"
                             [placeholder]="placeholderFor(field, 'from')"
-                            [ngModel]="rangeValue(field.key).from || ''"
-                            [ngModelOptions]="{ standalone: true }"
-                            (ngModelChange)="updateRange(field.key, 'from', $event)"
+                            [value]="rangeValue(field.key).from || ''"
+                            (input)="updateRange(field.key, 'from', $any($event.target).value)"
                           />
                         </label>
                         <label [for]="field.key + '-to'">
@@ -194,9 +215,8 @@ export type FilterValues = Record<string, FilterValue>;
                             [id]="field.key + '-to'"
                             type="date"
                             [placeholder]="placeholderFor(field, 'to')"
-                            [ngModel]="rangeValue(field.key).to || ''"
-                            [ngModelOptions]="{ standalone: true }"
-                            (ngModelChange)="updateRange(field.key, 'to', $event)"
+                            [value]="rangeValue(field.key).to || ''"
+                            (input)="updateRange(field.key, 'to', $any($event.target).value)"
                           />
                         </label>
                       </div>
@@ -290,7 +310,7 @@ export type FilterValues = Record<string, FilterValue>;
           <footer class="drawer-footer">
             <button type="button" class="clear-draft" (click)="clearDraft()">Clear all</button>
             <button type="button" class="apply-button" (click)="applyFilters()">
-              Apply filters
+              {{ config.applyLabel || 'Apply filters' }}
             </button>
           </footer>
         </section>
@@ -469,6 +489,29 @@ export type FilterValues = Record<string, FilterValue>;
       gap: 0.65rem;
       margin-top: 0.5rem;
     }
+    .date-range-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.65rem;
+    }
+    .date-range-presets button {
+      min-height: 2rem;
+      padding: 0.35rem 0.55rem;
+      border: 1px solid #dfe7df;
+      border-radius: 0.5rem;
+      background: #fff;
+      color: #53645a;
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 650;
+      cursor: pointer;
+    }
+    .date-range-presets button.selected {
+      border-color: #315d4b;
+      background: #eff5ef;
+      color: #315d4b;
+    }
     .range-fields label {
       display: grid;
       gap: 0.35rem;
@@ -530,10 +573,7 @@ export class CommonFilterComponent {
   @Input() appliedFilters: FilterValues = {};
   @Output() readonly filtersChange = new EventEmitter<FilterValues>();
 
-  placeholderFor(
-    field: FilterFieldConfig,
-    endpoint?: 'from' | 'to' | 'min' | 'max',
-  ): string {
+  placeholderFor(field: FilterFieldConfig, endpoint?: 'from' | 'to' | 'min' | 'max'): string {
     if (field.placeholder?.trim()) return field.placeholder;
     const label = field.label.toLowerCase();
 
@@ -638,9 +678,7 @@ export class CommonFilterComponent {
 
   rangeValue(key: string): FilterRangeValue {
     const value = this.draftFilters[key];
-    return value && typeof value === 'object' && 'from' in value
-      ? (value as FilterRangeValue)
-      : {};
+    return value && typeof value === 'object' && 'from' in value ? (value as FilterRangeValue) : {};
   }
 
   numberRangeValue(key: string): NumberRangeValue {
@@ -676,6 +714,39 @@ export class CommonFilterComponent {
     this.updateValue(key, range.from || range.to ? range : null);
   }
 
+  setDateRangePreset(key: string, preset: FilterDateRangePresetValue): void {
+    this.updateValue(key, this.dateRangeForPreset(preset));
+  }
+
+  isDateRangePresetSelected(key: string, preset: FilterDateRangePresetValue): boolean {
+    const currentRange = this.rangeValue(key);
+    const presetRange = this.dateRangeForPreset(preset);
+    return currentRange.from === presetRange.from && currentRange.to === presetRange.to;
+  }
+
+  private dateRangeForPreset(preset: FilterDateRangePresetValue): FilterRangeValue {
+    const today = new Date();
+    const from =
+      preset === 'year-to-date'
+        ? new Date(today.getFullYear(), 0, 1)
+        : new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate() - (preset === 'last-30-days' ? 29 : 89),
+          );
+    return {
+      from: this.dateInput(from),
+      to: this.dateInput(today),
+    };
+  }
+
+  private dateInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
   updateNumberRange(key: string, bound: 'min' | 'max', value: string | number | null): void {
     const range = {
       ...this.numberRangeValue(key),
@@ -708,7 +779,9 @@ export class CommonFilterComponent {
   private formatValue(field: FilterFieldConfig, value: FilterValue): string {
     if (Array.isArray(value)) {
       return value
-        .map((item) => field.options?.find((option) => option.value === item)?.label ?? String(item))
+        .map(
+          (item) => field.options?.find((option) => option.value === item)?.label ?? String(item),
+        )
         .join(', ');
     }
     if (typeof value === 'object' && value) {

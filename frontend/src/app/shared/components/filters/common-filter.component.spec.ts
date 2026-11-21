@@ -83,7 +83,9 @@ describe('CommonFilterComponent', () => {
     expect(placeholder('#amount-max')).toBe('Maximum amount');
     expect(placeholder('#count')).toBe('Enter count');
     expect(
-      (fixture.nativeElement.querySelector('#status option') as HTMLOptionElement).textContent?.trim(),
+      (
+        fixture.nativeElement.querySelector('#status option') as HTMLOptionElement
+      ).textContent?.trim(),
     ).toBe('Any status');
   });
 
@@ -121,6 +123,47 @@ describe('CommonFilterComponent', () => {
       count: 3,
     } satisfies FilterValues);
     expect(component.activeFilterCount).toBe(9);
+  });
+
+  it('applies configured quick date ranges using the common drawer action label', () => {
+    component.config = {
+      title: 'Financial report filters',
+      applyLabel: 'Apply period',
+      fields: [
+        {
+          key: 'dateRange',
+          label: 'Date range',
+          type: 'date-range',
+          dateRangePresets: [
+            { label: 'Last 30 days', value: 'last-30-days' },
+            { label: 'Last 90 days', value: 'last-90-days' },
+            { label: 'Year to date', value: 'year-to-date' },
+          ],
+        },
+      ],
+    };
+    const changes = jasmine.createSpy('filtersChange');
+    component.filtersChange.subscribe(changes);
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('.filter-trigger').click();
+    fixture.detectChanges();
+    const preset = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.date-range-presets button',
+      ) as NodeListOf<HTMLButtonElement>,
+    ).find((button) => button.textContent?.includes('Last 30 days'));
+    preset?.click();
+    fixture.detectChanges();
+
+    const selectedRange = component.rangeValue('dateRange');
+    expect(selectedRange.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(selectedRange.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(component.isDateRangePresetSelected('dateRange', 'last-30-days')).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Apply period');
+    (fixture.nativeElement.querySelector('.apply-button') as HTMLButtonElement).click();
+
+    expect(changes).toHaveBeenCalledOnceWith({ dateRange: selectedRange });
   });
 
   it('removes one applied chip and clears all applied filters', () => {

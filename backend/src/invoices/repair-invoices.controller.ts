@@ -15,6 +15,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ShopPortalGuard } from '../auth/shop-portal.guard';
 import {
   RecordInvoicePaymentDto,
+  ShopFinancialReportQueryDto,
+  ShopFinancialTransactionsQueryDto,
   ShopInvoiceListQueryDto,
 } from './repair-invoices.dto';
 import { RepairInvoicesService } from './repair-invoices.service';
@@ -44,6 +46,32 @@ export class ShopRepairInvoicesController {
   ) {
     return {
       data: await this.invoices.listShopInvoices(requestUserId(request), query),
+    };
+  }
+
+  @Get('financial-report')
+  async financialReport(
+    @Req() request: InvoiceAuthenticatedRequest,
+    @Query() query: ShopFinancialReportQueryDto,
+  ) {
+    return {
+      data: await this.invoices.getShopFinancialReport(
+        requestUserId(request),
+        query,
+      ),
+    };
+  }
+
+  @Get('financial-transactions')
+  async financialTransactions(
+    @Req() request: InvoiceAuthenticatedRequest,
+    @Query() query: ShopFinancialTransactionsQueryDto,
+  ) {
+    return {
+      data: await this.invoices.listShopFinancialTransactions(
+        requestUserId(request),
+        query,
+      ),
     };
   }
 

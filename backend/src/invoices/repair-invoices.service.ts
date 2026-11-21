@@ -27,7 +27,11 @@ import { StripePaymentsService } from '../payments/stripe-payments.service';
 import { User } from '../users/schemas/user.schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
+  FinancialTransactionSortBy,
+  FinancialTransactionSortOrder,
   RecordInvoicePaymentDto,
+  ShopFinancialReportQueryDto,
+  ShopFinancialTransactionsQueryDto,
   ShopInvoiceListQueryDto,
 } from './repair-invoices.dto';
 import {
@@ -59,7 +63,7 @@ export interface InvoiceView {
   grandTotal: number;
   amountPaid: number;
   balanceDue: number;
-  customer: RepairInvoice['customer'];
+  customer: RepairInvoice['customer'] & { profileImageUrl?: string | null };
   shop: RepairInvoice['shop'];
   repair: Omit<RepairInvoice['repair'], 'completedAt'> & {
     completedAt: string | null;
@@ -76,6 +80,43 @@ export interface InvoiceView {
     recordedBy: string;
   }>;
   pdfAvailable: boolean;
+}
+
+interface ShopFinancialReportAggregation {
+  invoiceCounts: Array<{
+    _id: { invoiceStatus: string; paymentStatus: string };
+    count: number;
+  }>;
+  revenueByCurrency: Array<{
+    _id: string;
+    amount: number;
+    invoiceCount: number;
+    averageInvoiceValue: number;
+  }>;
+  collectionsByMethod: Array<{
+    _id: { currency: string; method: string };
+    amount: number;
+    paymentCount: number;
+  }>;
+  outstandingByCurrency: Array<{
+    _id: string;
+    amount: number;
+    invoiceCount: number;
+  }>;
+  taxByRate: Array<{
+    _id: { currency: string; type: string; rate: number };
+    amount: number;
+  }>;
+  revenueByCategory: Array<{
+    _id: { currency: string; category: string };
+    amount: number;
+  }>;
+  revenueTrend: Array<{
+    _id: { currency: string; date: string };
+    amount: number;
+  }>;
+  recentTransactions: Array<Record<string, unknown>>;
+  completedRepairs: Array<{ count: number }>;
 }
 
 @Injectable()
@@ -351,10 +392,354 @@ export class RepairInvoicesService {
     );
   }
 
+  async getShopFinancialReport(
+    userId: string,
+    query: ShopFinancialReportQueryDto,
+  ) {
+    const shop = await this.requireShop(userId);
+    const bounds = this.financialDateBounds(query.from, query.to);
+    const invoiceDateMatch = this.dateMatch('invoiceDate', bounds);
+    const paymentDateMatch = this.dateMatch('payments.paymentDate', bounds);
+    const [report] = await this.repairInvoices
+      .aggregate<ShopFinancialReportAggregation>([
+        { $match: { shopId: shop._id } },
+        {
+          $facet: {
+            invoiceCounts: [
+              {
+                $match: {
+                  invoiceStatus: { $in: ['issued', 'cancelled'] },
+                  ...invoiceDateMatch,
+                },
+              },
+              {
+                $group: {
+                  _id: {
+                    invoiceStatus: '$invoiceStatus',
+                    paymentStatus: '$paymentStatus',
+                  },
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            revenueByCurrency: [
+              {
+                $match: { invoiceStatus: 'issued', ...invoiceDateMatch },
+              },
+              {
+                $group: {
+                  _id: '$currency',
+                  amount: { $sum: '$taxableAmount' },
+                  invoiceCount: { $sum: 1 },
+                  averageInvoiceValue: { $avg: '$taxableAmount' },
+                },
+              },
+            ],
+            collectionsByMethod: [
+              { $unwind: '$payments' },
+              {
+                $match: {
+                  'payments.status': 'succeeded',
+                  ...paymentDateMatch,
+                },
+              },
+              {
+                $group: {
+                  _id: {
+                    currency: '$payments.currency',
+                    method: '$payments.method',
+                  },
+                  amount: { $sum: '$payments.amount' },
+                  paymentCount: { $sum: 1 },
+                },
+              },
+            ],
+            outstandingByCurrency: [
+              {
+                $match: {
+                  invoiceStatus: 'issued',
+                  balanceDue: { $gt: 0 },
+                  ...invoiceDateMatch,
+                },
+              },
+              {
+                $group: {
+                  _id: '$currency',
+                  amount: { $sum: '$balanceDue' },
+                  invoiceCount: { $sum: 1 },
+                },
+              },
+            ],
+            taxByRate: [
+              {
+                $match: { invoiceStatus: 'issued', ...invoiceDateMatch },
+              },
+              { $unwind: '$taxDetails' },
+              {
+                $group: {
+                  _id: {
+                    currency: '$currency',
+                    type: '$taxDetails.type',
+                    rate: '$taxDetails.rate',
+                  },
+                  amount: { $sum: '$taxDetails.amount' },
+                },
+              },
+            ],
+            revenueByCategory: [
+              {
+                $match: { invoiceStatus: 'issued', ...invoiceDateMatch },
+              },
+              {
+                $group: {
+                  _id: {
+                    currency: '$currency',
+                    category: '$repair.category',
+                  },
+                  amount: { $sum: '$taxableAmount' },
+                },
+              },
+            ],
+            revenueTrend: [
+              {
+                $match: { invoiceStatus: 'issued', ...invoiceDateMatch },
+              },
+              {
+                $group: {
+                  _id: {
+                    currency: '$currency',
+                    date: {
+                      $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$invoiceDate',
+                        timezone: 'UTC',
+                      },
+                    },
+                  },
+                  amount: { $sum: '$taxableAmount' },
+                },
+              },
+              { $sort: { '_id.date': 1, '_id.currency': 1 } },
+            ],
+            recentTransactions: [
+              { $unwind: '$payments' },
+              {
+                $match: {
+                  invoiceStatus: { $in: ['issued', 'cancelled'] },
+                  ...paymentDateMatch,
+                },
+              },
+              { $sort: { 'payments.paymentDate': -1, _id: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'customerId',
+                  foreignField: '_id',
+                  as: 'customerUser',
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  transactionId: {
+                    $ifNull: [
+                      '$payments.stripePaymentIntentId',
+                      {
+                        $ifNull: [
+                          '$payments.reference',
+                          { $toString: '$payments._id' },
+                        ],
+                      },
+                    ],
+                  },
+                  repairRequestId: { $toString: '$repairRequestId' },
+                  invoiceNumber: 1,
+                  invoiceDate: 1,
+                  customerName: '$customer.name',
+                  profileImageUrl: {
+                    $ifNull: [
+                      { $arrayElemAt: ['$customerUser.profileImageData', 0] },
+                      null,
+                    ],
+                  },
+                  paymentDate: '$payments.paymentDate',
+                  method: '$payments.method',
+                  status: '$payments.status',
+                  currency: '$payments.currency',
+                  amount: '$payments.amount',
+                  invoiceAmount: '$grandTotal',
+                  amountPaid: 1,
+                  outstanding: '$balanceDue',
+                  reference: '$payments.reference',
+                },
+              },
+            ],
+            completedRepairs: [
+              {
+                $match: {
+                  invoiceStatus: 'issued',
+                  'repair.completedAt': {
+                    $type: 'date',
+                    ...this.dateRange(bounds),
+                  },
+                },
+              },
+              { $group: { _id: '$repairRequestId' } },
+              { $count: 'count' },
+            ],
+          },
+        },
+      ])
+      .exec();
+
+    return {
+      period: {
+        from: bounds.from?.toISOString() ?? null,
+        to: bounds.to?.toISOString() ?? null,
+      },
+      invoiceCounts: report?.invoiceCounts ?? [],
+      revenueByCurrency: report?.revenueByCurrency ?? [],
+      collectionsByMethod: report?.collectionsByMethod ?? [],
+      outstandingByCurrency: report?.outstandingByCurrency ?? [],
+      taxByRate: report?.taxByRate ?? [],
+      revenueByCategory: report?.revenueByCategory ?? [],
+      revenueTrend: report?.revenueTrend ?? [],
+      recentTransactions: report?.recentTransactions ?? [],
+      completedRepairs: report?.completedRepairs[0]?.count ?? 0,
+      refunds: {
+        trackingAvailable: false,
+        totals: [],
+        count: 0,
+      },
+    };
+  }
+
+  async listShopFinancialTransactions(
+    userId: string,
+    query: ShopFinancialTransactionsQueryDto,
+  ) {
+    const shop = await this.requireShop(userId);
+    const bounds = this.financialDateBounds(query.from, query.to);
+    const transactionMatch: Record<string, unknown> = {
+      ...this.dateMatch('payments.paymentDate', bounds),
+    };
+    if (query.method) transactionMatch['payments.method'] = query.method;
+    if (query.status) transactionMatch['payments.status'] = query.status;
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+      const expression = new RegExp(this.escapeRegExp(search), 'i');
+      const searchableFields: Record<string, unknown>[] = [
+        { invoiceNumber: expression },
+        { 'customer.name': expression },
+        { 'payments.reference': expression },
+        { 'payments.stripePaymentIntentId': expression },
+      ];
+      if (Types.ObjectId.isValid(search)) {
+        searchableFields.push({
+          repairRequestId: new Types.ObjectId(search),
+        });
+      }
+      transactionMatch.$or = searchableFields;
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const direction: 1 | -1 =
+      query.sortOrder === FinancialTransactionSortOrder.Ascending ? 1 : -1;
+    const sort: Record<string, 1 | -1> =
+      query.sortBy === FinancialTransactionSortBy.Amount
+        ? { 'payments.amount': direction, 'payments.paymentDate': -1 }
+        : { 'payments.paymentDate': direction, _id: -1 };
+    const [result] = await this.repairInvoices
+      .aggregate<{
+        transactions: Array<Record<string, unknown>>;
+        total: Array<{ count: number }>;
+      }>([
+        {
+          $match: {
+            shopId: shop._id,
+            invoiceStatus: { $in: ['issued', 'cancelled'] },
+          },
+        },
+        { $unwind: '$payments' },
+        { $match: transactionMatch },
+        {
+          $facet: {
+            transactions: [
+              { $sort: sort },
+              { $skip: (page - 1) * limit },
+              { $limit: limit },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'customerId',
+                  foreignField: '_id',
+                  as: 'customerUser',
+                },
+              },
+              {
+                $project: {
+                  _id: 0,
+                  transactionId: {
+                    $ifNull: [
+                      '$payments.stripePaymentIntentId',
+                      {
+                        $ifNull: [
+                          '$payments.reference',
+                          { $toString: '$payments._id' },
+                        ],
+                      },
+                    ],
+                  },
+                  repairRequestId: { $toString: '$repairRequestId' },
+                  invoiceNumber: 1,
+                  invoiceDate: 1,
+                  customerName: '$customer.name',
+                  profileImageUrl: {
+                    $ifNull: [
+                      { $arrayElemAt: ['$customerUser.profileImageData', 0] },
+                      null,
+                    ],
+                  },
+                  paymentDate: '$payments.paymentDate',
+                  method: '$payments.method',
+                  status: '$payments.status',
+                  currency: '$payments.currency',
+                  amount: '$payments.amount',
+                  invoiceAmount: '$grandTotal',
+                  amountPaid: 1,
+                  outstanding: '$balanceDue',
+                  reference: '$payments.reference',
+                },
+              },
+            ],
+            total: [{ $count: 'count' }],
+          },
+        },
+      ])
+      .exec();
+    const total = result?.total[0]?.count ?? 0;
+
+    return {
+      transactions: result?.transactions ?? [],
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async listShopInvoices(userId: string, query: ShopInvoiceListQueryDto) {
     const shop = await this.requireShop(userId);
     const filter: FilterQuery<RepairInvoice> = { shopId: shop._id };
     if (query.paymentStatus) filter['paymentStatus'] = query.paymentStatus;
+    if (query.outstandingOnly === 'true') {
+      filter['invoiceStatus'] = 'issued';
+      filter['balanceDue'] = { $gt: 0 };
+    }
     if (query.from || query.to) {
       const date: { $gte?: Date; $lte?: Date } = {};
       if (query.from) date.$gte = new Date(query.from);
@@ -390,8 +775,39 @@ export class RepairInvoicesService {
         .exec(),
       this.repairInvoices.countDocuments(filter).exec(),
     ]);
+    const customers = await this.users
+      .find({ _id: { $in: invoices.map((invoice) => invoice.customerId) } })
+      .select('_id firstName lastName fullName email profileImageData')
+      .lean()
+      .exec();
+    const customerProfiles = new Map(
+      customers.map((customer) => [customer._id.toString(), customer]),
+    );
     return {
-      invoices: invoices.map((invoice) => this.toView(invoice)),
+      invoices: invoices.map((invoice) => {
+        const view = this.toView(invoice);
+        const customer = customerProfiles.get(invoice.customerId.toString());
+        const snapshotName =
+          typeof view.customer.name === 'string'
+            ? view.customer.name.trim()
+            : '';
+        const hasSnapshotName =
+          snapshotName &&
+          !['customer', 'undefined'].includes(snapshotName.toLowerCase());
+        return {
+          ...view,
+          customer: {
+            ...view.customer,
+            name:
+              (hasSnapshotName ? snapshotName : '') ||
+              (customer && this.userName(customer)) ||
+              customer?.email ||
+              snapshotName ||
+              'Customer',
+            profileImageUrl: customer?.profileImageData ?? null,
+          },
+        };
+      }),
       page,
       limit,
       total,
@@ -1283,6 +1699,47 @@ export class RepairInvoicesService {
   ): RepairInvoice['paymentStatus'] {
     if (balanceDue <= 0) return 'PAID';
     return amountPaid > 0 ? 'PARTIALLY_PAID' : 'UNPAID';
+  }
+
+  private financialDateBounds(
+    from?: string,
+    to?: string,
+  ): { from?: Date; to?: Date } {
+    const start = from ? new Date(from) : undefined;
+    const end = to ? new Date(to) : undefined;
+    if (
+      (start && Number.isNaN(start.getTime())) ||
+      (end && Number.isNaN(end.getTime()))
+    ) {
+      throw new BadRequestException('The reporting date range is invalid.');
+    }
+    if (end && /^\d{4}-\d{2}-\d{2}$/.test(to ?? '')) {
+      end.setUTCHours(23, 59, 59, 999);
+    }
+    if (start && end && start > end) {
+      throw new BadRequestException(
+        'The reporting start date must be before the end date.',
+      );
+    }
+    return { from: start, to: end };
+  }
+
+  private dateMatch(
+    field: string,
+    bounds: { from?: Date; to?: Date },
+  ): Record<string, unknown> {
+    const range = this.dateRange(bounds);
+    return Object.keys(range).length ? { [field]: range } : {};
+  }
+
+  private dateRange(bounds: { from?: Date; to?: Date }): {
+    $gte?: Date;
+    $lte?: Date;
+  } {
+    const range: { $gte?: Date; $lte?: Date } = {};
+    if (bounds.from) range.$gte = bounds.from;
+    if (bounds.to) range.$lte = bounds.to;
+    return range;
   }
 
   private escapeRegExp(value: string): string {

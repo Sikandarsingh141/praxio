@@ -1,0 +1,859 @@
+<section class="financial-page" aria-labelledby="financial-page-title">
+  <app-admin-page-header>
+    <h1 adminPageTitle class="admin-page-title" id="financial-page-title">Financial Reporting</h1>
+    <p adminPageDescription class="admin-page-description">
+      Review repair revenue, recorded payments, invoices, and outstanding balances.
+    </p>
+    <div adminPageActions class="heading-actions">
+      <app-common-filter
+        [config]="filterConfig"
+        [appliedFilters]="appliedFilters()"
+        (filtersChange)="applyFilters($event)"
+      />
+      <button
+        type="button"
+        class="button button-secondary"
+        [disabled]="exportLoading()"
+        (click)="exportCsv()"
+      >
+        {{ exportLoading() ? 'Exporting…' : 'Export CSV' }}
+      </button>
+    </div>
+  </app-admin-page-header>
+
+  @if (reportError()) {
+    <div class="state-card error-state" role="alert">
+      <span>{{ reportError() }}</span>
+      <button class="button button-secondary" type="button" (click)="loadReport()">Retry</button>
+    </div>
+  }
+
+  @if (reportLoading() && !report()) {
+    <p class="state-card" role="status">Loading financial data…</p>
+  } @else if (report(); as financialReport) {
+    <nav class="report-tabs" role="tablist" aria-label="Financial report sections">
+      @for (tab of tabs; track tab.id) {
+        <button
+          type="button"
+          role="tab"
+          [id]="'financial-tab-' + tab.id"
+          [attr.aria-selected]="activeTab() === tab.id"
+          [attr.aria-controls]="'financial-panel-' + tab.id"
+          [class.active]="activeTab() === tab.id"
+          (click)="selectTab(tab.id)"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </nav>
+
+    @if (activeTab() === 'overview') {
+      <section
+        class="tab-panel"
+        role="tabpanel"
+        id="financial-panel-overview"
+        aria-labelledby="financial-tab-overview"
+      >
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span class="metric-icon revenue-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 5-7" /></svg>
+            </span>
+            <div class="metric-content">
+              <span>Total revenue</span>
+              @if (financialReport.revenueByCurrency.length) {
+                @for (entry of financialReport.revenueByCurrency; track entry._id) {
+                  <strong>{{ entry.amount | currency: entry._id }}</strong>
+                }
+              } @else {
+                <strong class="metric-empty">—</strong>
+              }
+              <small>Issued invoices, before tax</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon collected-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 7h18v12H3zM3 10h18M7 15h4" /></svg>
+            </span>
+            <div class="metric-content">
+              <span>Amount collected</span>
+              @if (collectionsByCurrency().length) {
+                @for (entry of collectionsByCurrency(); track entry.currency) {
+                  <strong>{{ entry.amount | currency: entry.currency }}</strong>
+                }
+              } @else {
+                <strong class="metric-empty">—</strong>
+              }
+              <small>Successful payment records only</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon outstanding-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3v18m6-14H9a3 3 0 0 0 0 6h6a3 3 0 0 1 0 6H6" />
+              </svg>
+            </span>
+            <div class="metric-content">
+              <span>Outstanding balance</span>
+              @if (financialReport.outstandingByCurrency.length) {
+                @for (entry of financialReport.outstandingByCurrency; track entry._id) {
+                  <strong>{{ entry.amount | currency: entry._id }}</strong>
+                }
+              } @else {
+                <strong class="metric-empty">—</strong>
+              }
+              <small>Balance due on issued invoices</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon tax-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 8h8M8 12h3m2 0h3m-8 4h8" /></svg>
+            </span>
+            <div class="metric-content">
+              <span>Recorded tax</span>
+              @if (financialReport.taxByRate.length) {
+                @for (entry of taxTotals(financialReport); track entry.currency) {
+                  <strong>{{ entry.amount | currency: entry.currency }}</strong>
+                }
+              } @else {
+                <strong class="metric-empty">—</strong>
+              }
+              <small>Tax recorded on issued invoices</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon refunds-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 7v5h5M5 12a7 7 0 1 0 2-5" /></svg>
+            </span>
+            <div class="metric-content">
+              <span>Total refunds</span>
+              <strong class="metric-empty">Not tracked</strong>
+              <small>Refund tracking is not configured</small>
+            </div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon repairs-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="m4 12 5 5L20 6M4 4h5M4 20h5" /></svg>
+            </span>
+            <div class="metric-content">
+              <span>Completed repairs</span>
+              <strong>{{ financialReport.completedRepairs }}</strong>
+              <small>Invoiced repairs with a completion date</small>
+            </div>
+          </article>
+        </div>
+
+        <div class="overview-grid">
+          <article class="report-card chart-card">
+            <div class="card-heading">
+              <div>
+                <h2>Revenue trend</h2>
+                <p>{{ trendInterval() | titlecase }} revenue by invoice issue date</p>
+              </div>
+              <div class="chart-controls">
+                @if (chartCurrencies().length > 1) {
+                  <label class="chart-currency">
+                    <select
+                      aria-label="Chart currency"
+                      [value]="chartCurrency()"
+                      (change)="setChartCurrency($any($event.target).value)"
+                    >
+                      @for (currency of chartCurrencies(); track currency) {
+                        <option [value]="currency">{{ currency }}</option>
+                      }
+                    </select>
+                  </label>
+                }
+                <div class="chart-toolbar" role="group" aria-label="Revenue chart interval">
+                  @for (interval of ['daily', 'weekly', 'monthly']; track interval) {
+                    <button
+                      type="button"
+                      [class.active]="trendInterval() === interval"
+                      [attr.aria-pressed]="trendInterval() === interval"
+                      (click)="selectTrendInterval($any(interval))"
+                    >
+                      {{ interval | titlecase }}
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+            @if (financialReport.revenueTrend.length && chartPoints().length) {
+              <div class="trend-chart">
+                <svg
+                  viewBox="0 0 780 250"
+                  role="img"
+                  [attr.aria-label]="'Revenue trend in ' + chartCurrency()"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="revenue-area-gradient" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#2c9b57" stop-opacity=".24" />
+                      <stop offset="100%" stop-color="#2c9b57" stop-opacity=".02" />
+                    </linearGradient>
+                  </defs>
+                  @for (tick of [0, 1, 2, 3, 4]; track tick) {
+                    <line
+                      class="chart-grid-line"
+                      x1="54"
+                      x2="758"
+                      [attr.y1]="chartTickY(tick)"
+                      [attr.y2]="chartTickY(tick)"
+                    />
+                    <text class="chart-axis-label" x="46" [attr.y]="chartTickY(tick) + 4">
+                      {{ chartTickValue(tick) | currency: chartCurrency() : 'symbol' : '1.0-0' }}
+                    </text>
+                  }
+                  <path class="chart-area" [attr.d]="chartAreaPath()" />
+                  <path class="chart-line" [attr.d]="chartLinePath()" />
+                  @for (point of chartPoints(); track point.key; let i = $index) {
+                    <circle class="chart-point" [attr.cx]="point.x" [attr.cy]="point.y" r="3.5">
+                      <title>
+                        {{ point.label }}:
+                        {{ point.amount | currency: chartCurrency() }}
+                      </title>
+                    </circle>
+                    @if (i % chartLabelStride() === 0 || i === chartPoints().length - 1) {
+                      <text class="chart-axis-label chart-date-label" [attr.x]="point.x" y="230">
+                        {{ point.label }}
+                      </text>
+                    }
+                  }
+                </svg>
+              </div>
+            } @else {
+              <p class="empty-state chart-empty">No issued invoice revenue in this period.</p>
+            }
+          </article>
+
+          <article class="report-card payment-method-card">
+            <div class="card-heading payment-heading">
+              <div class="payment-heading-title">
+                <span class="payment-heading-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 3a9 9 0 1 0 9 9h-9zM15 3.5V9h5.5A9 9 0 0 0 15 3.5Z" />
+                  </svg>
+                </span>
+                <div>
+                  <h2>Payments by Method</h2>
+                  <p>Successful collections by recorded method</p>
+                </div>
+              </div>
+              @if (paymentCurrencies().length > 1) {
+                <label class="chart-currency">
+                  <select
+                    aria-label="Payment currency"
+                    [value]="paymentCurrency()"
+                    (change)="setPaymentCurrency($any($event.target).value)"
+                  >
+                    @for (currency of paymentCurrencies(); track currency) {
+                      <option [value]="currency">{{ currency }}</option>
+                    }
+                  </select>
+                </label>
+              }
+            </div>
+            @if (paymentMethodSegments().length) {
+              <div class="payment-content">
+                <svg
+                  class="payment-donut"
+                  viewBox="0 0 190 190"
+                  role="img"
+                  aria-label="Payments by method"
+                >
+                  <circle
+                    class="donut-track"
+                    cx="95"
+                    cy="95"
+                    r="70"
+                    pathLength="100"
+                    transform="rotate(-90 95 95)"
+                  />
+                  @for (segment of paymentMethodSegments(); track segment.key) {
+                    <circle
+                      class="donut-segment"
+                      cx="95"
+                      cy="95"
+                      r="70"
+                      pathLength="100"
+                      [attr.stroke]="segment.color"
+                      [attr.stroke-dasharray]="segment.dasharray"
+                      [attr.stroke-dashoffset]="segment.dashoffset"
+                      transform="rotate(-90 95 95)"
+                    >
+                      <title>
+                        {{ segment.label }}:
+                        {{ segment.amount | currency: paymentCurrency() }}
+                      </title>
+                    </circle>
+                  }
+                  <text class="donut-title" x="95" y="89">Total Collected</text>
+                  <text class="donut-total" x="95" y="112">
+                    {{ paymentTotal() | currency: paymentCurrency() }}
+                  </text>
+                </svg>
+                <div class="payment-legend">
+                  @for (segment of paymentMethodSegments(); track segment.key) {
+                    <div class="payment-method-row">
+                      <span class="payment-method-label">
+                        <i [style.backgroundColor]="segment.color"></i>
+                        <span>{{ segment.label }}</span>
+                      </span>
+                      <strong>{{ segment.amount | currency: paymentCurrency() }}</strong>
+                      <span class="payment-method-percent">
+                        {{ segment.percent | number: '1.0-1' }}%
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+            } @else {
+              <p class="empty-state">No successful payment collections to report.</p>
+            }
+          </article>
+        </div>
+
+        <div class="overview-grid overview-bottom">
+          <article class="report-card recent-card">
+            <div class="card-heading">
+              <div>
+                <h2>Recent transactions</h2>
+                <p>Latest recorded payment activity</p>
+              </div>
+              <button type="button" class="text-action" (click)="selectTab('transactions')">
+                View all
+              </button>
+            </div>
+            @if (financialReport.recentTransactions.length) {
+              <div class="table-wrap" appTableScrollIndicators>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Transaction</th>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th>Method</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (
+                      transaction of financialReport.recentTransactions;
+                      track transaction.transactionId
+                    ) {
+                      <tr>
+                        <td>{{ transaction.invoiceNumber }}</td>
+                        <td>
+                          <div class="financial-customer-cell">
+                            @if (
+                              customerPhotoSource(
+                                'transaction-' + transaction.transactionId,
+                                transaction.profileImageUrl
+                              );
+                              as photo
+                            ) {
+                              <img
+                                class="financial-customer-avatar"
+                                [src]="photo"
+                                [alt]="(transaction.customerName || 'Customer') + ' profile photo'"
+                                (error)="
+                                  markCustomerImageUnavailable(
+                                    'transaction-' + transaction.transactionId
+                                  )
+                                "
+                              />
+                            } @else {
+                              <span class="financial-customer-avatar financial-customer-fallback">
+                                {{ customerInitials(transaction.customerName) }}
+                              </span>
+                            }
+                            <span class="financial-customer-name">{{
+                              transaction.customerName || 'Customer'
+                            }}</span>
+                          </div>
+                        </td>
+                        <td>{{ transaction.paymentDate | date: 'mediumDate' }}</td>
+                        <td>{{ methodLabel(transaction.method) }}</td>
+                        <td>{{ transaction.amount | currency: transaction.currency }}</td>
+                        <td>
+                          <span class="status-pill" [attr.data-status]="transaction.status">
+                            {{ statusLabel(transaction.status) }}
+                          </span>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="empty-state">No payment transactions recorded in this period.</p>
+            }
+          </article>
+
+          <article class="report-card quick-reports-card">
+            <div class="card-heading">
+              <div>
+                <h2>Quick reports</h2>
+                <p>Download a CSV for the selected period</p>
+              </div>
+            </div>
+            <div class="quick-report-list">
+              @for (quickReport of quickReports; track quickReport.id) {
+                <button
+                  type="button"
+                  class="quick-report"
+                  [disabled]="exportLoading()"
+                  (click)="downloadQuickReport(quickReport.id)"
+                >
+                  <span class="quick-report-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3v12m-5-5 5 5 5-5M4 19h16" />
+                    </svg>
+                  </span>
+                  <span class="quick-report-copy">
+                    <strong>{{ quickReport.title }}</strong>
+                    <small>{{ quickReport.description }}</small>
+                  </span>
+                  <span class="quick-report-arrow" aria-hidden="true">↓</span>
+                </button>
+              }
+            </div>
+          </article>
+        </div>
+      </section>
+    }
+
+    @if (activeTab() === 'revenue') {
+      <section
+        class="tab-panel report-grid"
+        role="tabpanel"
+        id="financial-panel-revenue"
+        aria-labelledby="financial-tab-revenue"
+      >
+        <article class="report-card">
+          <div class="card-heading">
+            <div>
+              <h2>Revenue by currency</h2>
+              <p>Service value on issued invoices, excluding tax</p>
+            </div>
+          </div>
+          @if (financialReport.revenueByCurrency.length) {
+            <div class="table-wrap" appTableScrollIndicators>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Currency</th>
+                    <th>Revenue</th>
+                    <th>Invoices</th>
+                    <th>Average invoice</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (entry of financialReport.revenueByCurrency; track entry._id) {
+                    <tr>
+                      <td>{{ entry._id }}</td>
+                      <td>{{ entry.amount | currency: entry._id }}</td>
+                      <td>{{ entry.invoiceCount }}</td>
+                      <td>{{ entry.averageInvoiceValue | currency: entry._id }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="empty-state">No issued invoice revenue in this period.</p>
+          }
+        </article>
+        <article class="report-card">
+          <div class="card-heading">
+            <div>
+              <h2>Revenue by repair category</h2>
+              <p>Based on invoice repair snapshots</p>
+            </div>
+          </div>
+          @if (financialReport.revenueByCategory.length) {
+            <div class="table-wrap" appTableScrollIndicators>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Currency</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (
+                    entry of financialReport.revenueByCategory;
+                    track entry._id.category + entry._id.currency
+                  ) {
+                    <tr>
+                      <td>{{ entry._id.category || 'Uncategorized' }}</td>
+                      <td>{{ entry._id.currency }}</td>
+                      <td>{{ entry.amount | currency: entry._id.currency }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="empty-state">No category revenue to report.</p>
+          }
+        </article>
+      </section>
+    }
+
+    @if (activeTab() === 'transactions' || activeTab() === 'payments') {
+      <section
+        class="tab-panel report-card financial-table-card"
+        role="tabpanel"
+        [id]="'financial-panel-' + activeTab()"
+        [attr.aria-labelledby]="'financial-tab-' + activeTab()"
+      >
+        <div class="financial-table-header">
+          <div class="card-heading">
+            <div>
+              <h2>
+                {{
+                  activeTab() === 'payments' ? 'Successful payment reports' : 'Repair transactions'
+                }}
+              </h2>
+              <p>
+                {{
+                  activeTab() === 'payments'
+                    ? 'Confirmed customer payments across supported methods'
+                    : 'Payment records associated with issued invoices'
+                }}
+              </p>
+            </div>
+          </div>
+        </div>
+        @if (listError()) {
+          <p class="inline-error financial-table-state" role="alert">{{ listError() }}</p>
+        } @else if (listLoading()) {
+          <p class="empty-state financial-table-state" role="status">Loading transactions…</p>
+        } @else if (transactions().length) {
+          <div class="financial-table-content">
+            <div class="table-wrap" appTableScrollIndicators>
+              <table class="financial-wide-table">
+                <thead>
+                  <tr>
+                    <th>Payment date</th>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th>Method</th>
+                    <th>Reference</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (transaction of transactions(); track transaction.transactionId) {
+                    <tr>
+                      <td>{{ transaction.paymentDate | date: 'mediumDate' }}</td>
+                      <td>{{ transaction.invoiceNumber }}</td>
+                      <td>
+                        <div class="financial-customer-cell">
+                          @if (
+                            customerPhotoSource(
+                              'transaction-' + transaction.transactionId,
+                              transaction.profileImageUrl
+                            );
+                            as photo
+                          ) {
+                            <img
+                              class="financial-customer-avatar"
+                              [src]="photo"
+                              [alt]="(transaction.customerName || 'Customer') + ' profile photo'"
+                              (error)="
+                                markCustomerImageUnavailable(
+                                  'transaction-' + transaction.transactionId
+                                )
+                              "
+                            />
+                          } @else {
+                            <span class="financial-customer-avatar financial-customer-fallback">
+                              {{ customerInitials(transaction.customerName) }}
+                            </span>
+                          }
+                          <span class="financial-customer-name">{{
+                            transaction.customerName || 'Customer'
+                          }}</span>
+                        </div>
+                      </td>
+                      <td>{{ methodLabel(transaction.method) }}</td>
+                      <td>{{ transaction.reference || transaction.transactionId }}</td>
+                      <td>{{ transaction.amount | currency: transaction.currency }}</td>
+                      <td>
+                        <span class="status-pill" [attr.data-status]="transaction.status">{{
+                          statusLabel(transaction.status)
+                        }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <app-job-pagination
+              variant="brand"
+              ariaLabel="Financial transactions"
+              [total]="totalRows()"
+              [page]="page()"
+              [pageSize]="pageSize()"
+              [disabled]="listLoading()"
+              (pageChange)="setPage($event)"
+              (pageSizeChange)="setPageSize($event)"
+            />
+          </div>
+        } @else {
+          <p class="empty-state financial-table-state">
+            No payment transactions match these filters.
+          </p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'invoices' || activeTab() === 'outstanding') {
+      <section
+        class="tab-panel report-card financial-table-card"
+        role="tabpanel"
+        [id]="'financial-panel-' + activeTab()"
+        [attr.aria-labelledby]="'financial-tab-' + activeTab()"
+      >
+        <div class="financial-table-header">
+          <div class="card-heading">
+            <div>
+              <h2>
+                {{ activeTab() === 'outstanding' ? 'Outstanding payments' : 'Repair invoices' }}
+              </h2>
+              <p>
+                {{
+                  activeTab() === 'outstanding'
+                    ? 'Issued invoices with a remaining balance'
+                    : 'Repair invoices matching the selected period and filters'
+                }}
+              </p>
+            </div>
+          </div>
+        </div>
+        @if (listError()) {
+          <p class="inline-error financial-table-state" role="alert">{{ listError() }}</p>
+        } @else if (listLoading()) {
+          <p class="empty-state financial-table-state" role="status">Loading invoices…</p>
+        } @else if (invoices().length) {
+          <div class="financial-table-content">
+            <div class="table-wrap" appTableScrollIndicators>
+              <table class="financial-wide-table">
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Repair</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Balance due</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (invoice of invoices(); track invoice.id) {
+                    <tr>
+                      <td>{{ invoice.invoiceNumber || 'Draft' }}</td>
+                      <td>
+                        {{ invoice.invoiceDate ? (invoice.invoiceDate | date: 'mediumDate') : '—' }}
+                      </td>
+                      <td>
+                        <div class="financial-customer-cell">
+                          @if (
+                            customerPhotoSource('invoice-' + invoice.id, invoice.customer.profileImageUrl);
+                            as photo
+                          ) {
+                            <img
+                              class="financial-customer-avatar"
+                              [src]="photo"
+                              [alt]="(invoice.customer.name || 'Customer') + ' profile photo'"
+                              (error)="markCustomerImageUnavailable('invoice-' + invoice.id)"
+                            />
+                          } @else {
+                            <span class="financial-customer-avatar financial-customer-fallback">
+                              {{ customerInitials(invoice.customer.name) }}
+                            </span>
+                          }
+                          <span class="financial-customer-name">{{
+                            invoice.customer.name || 'Customer'
+                          }}</span>
+                        </div>
+                      </td>
+                      <td>{{ invoice.repair.productName }} · {{ invoice.repair.category }}</td>
+                      <td>{{ invoice.grandTotal | currency: invoice.currency }}</td>
+                      <td>{{ invoice.amountPaid | currency: invoice.currency }}</td>
+                      <td>{{ invoice.balanceDue | currency: invoice.currency }}</td>
+                      <td>
+                        <span class="status-pill" [attr.data-status]="invoice.paymentStatus">{{
+                          statusLabel(invoice.paymentStatus)
+                        }}</span>
+                      </td>
+                      <td>
+                        <div class="row-actions">
+                          <a [routerLink]="['/shop/jobs/completed-jobs', invoice.repairRequestId]"
+                            >Details</a
+                          >
+                          @if (invoice.invoiceStatus !== 'draft' && invoice.pdfAvailable) {
+                            <button
+                              type="button"
+                              [disabled]="downloadingInvoiceId() === invoice.id"
+                              (click)="downloadInvoicePdf(invoice)"
+                            >
+                              {{ downloadingInvoiceId() === invoice.id ? 'Loading…' : 'PDF' }}
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <app-job-pagination
+              variant="brand"
+              ariaLabel="Repair invoices"
+              [total]="totalRows()"
+              [page]="page()"
+              [pageSize]="pageSize()"
+              [disabled]="listLoading()"
+              (pageChange)="setPage($event)"
+              (pageSizeChange)="setPageSize($event)"
+            />
+          </div>
+        } @else {
+          <p class="empty-state financial-table-state">No invoices match these filters.</p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'refunds') {
+      <section
+        class="tab-panel report-card empty-feature"
+        role="tabpanel"
+        id="financial-panel-refunds"
+        aria-labelledby="financial-tab-refunds"
+      >
+        <span class="metric-icon feature-icon" aria-hidden="true">↩</span>
+        <h2>Refund reporting is not available</h2>
+        <p>
+          This account does not currently record refunds or adjustments. No refund totals are
+          included in these reports.
+        </p>
+      </section>
+    }
+
+    @if (activeTab() === 'tax') {
+      <section
+        class="tab-panel report-card"
+        role="tabpanel"
+        id="financial-panel-tax"
+        aria-labelledby="financial-tab-tax"
+      >
+        <div class="card-heading">
+          <div>
+            <h2>Recorded tax details</h2>
+            <p>Tax amounts saved on issued invoice snapshots</p>
+          </div>
+        </div>
+        <p class="state-card report-notice">
+          Tax configuration is not available in this portal. This report only displays tax values
+          already recorded on invoices and does not estimate or add tax.
+        </p>
+        @if (financialReport.taxByRate.length) {
+          <div class="table-wrap" appTableScrollIndicators>
+            <table>
+              <thead>
+                <tr>
+                  <th>Tax type</th>
+                  <th>Rate</th>
+                  <th>Currency</th>
+                  <th>Tax amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (
+                  entry of financialReport.taxByRate;
+                  track entry._id.currency + entry._id.type + entry._id.rate
+                ) {
+                  <tr>
+                    <td>{{ entry._id.type }}</td>
+                    <td>{{ entry._id.rate }}%</td>
+                    <td>{{ entry._id.currency }}</td>
+                    <td>{{ entry.amount | currency: entry._id.currency }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="empty-state">No tax details are recorded on issued invoices in this period.</p>
+        }
+      </section>
+    }
+
+    @if (activeTab() === 'analytics') {
+      <section
+        class="tab-panel report-grid"
+        role="tabpanel"
+        id="financial-panel-analytics"
+        aria-labelledby="financial-tab-analytics"
+      >
+        <article class="report-card">
+          <div class="card-heading">
+            <div>
+              <h2>Invoice performance</h2>
+              <p>Issue and payment status in the selected period</p>
+            </div>
+          </div>
+          @if (financialReport.invoiceCounts.length) {
+            <div class="breakdown-list">
+              @for (
+                entry of financialReport.invoiceCounts;
+                track entry._id.invoiceStatus + entry._id.paymentStatus
+              ) {
+                <div class="breakdown-row">
+                  <span
+                    >{{ statusLabel(entry._id.invoiceStatus) }} ·
+                    {{ statusLabel(entry._id.paymentStatus) }}</span
+                  >
+                  <strong>{{ entry.count }}</strong>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-state">No issued invoices in this period.</p>
+          }
+        </article>
+        <article class="report-card">
+          <div class="card-heading">
+            <div>
+              <h2>Average invoice value</h2>
+              <p>Excludes cancelled invoices and recorded tax</p>
+            </div>
+          </div>
+          @if (financialReport.revenueByCurrency.length) {
+            <div class="breakdown-list">
+              @for (entry of financialReport.revenueByCurrency; track entry._id) {
+                <div class="breakdown-row">
+                  <span
+                    >{{ entry._id }} <small>{{ entry.invoiceCount }} invoice(s)</small></span
+                  >
+                  <strong>{{ entry.averageInvoiceValue | currency: entry._id }}</strong>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="empty-state">No invoice value data is available.</p>
+          }
+        </article>
+      </section>
+    }
+  }
+</section>

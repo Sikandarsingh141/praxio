@@ -8,6 +8,10 @@ import {
   RepairInvoice,
   RepairInvoiceListFilters,
   RepairInvoicePage,
+  ShopFinancialReport,
+  ShopFinancialReportFilters,
+  ShopFinancialTransactionsFilters,
+  ShopFinancialTransactionsPage,
 } from '../models/repair-invoice.models';
 
 @Injectable({ providedIn: 'root' })
@@ -67,6 +71,34 @@ export class RepairInvoicesService {
     });
     return this.http
       .get<ApiEnvelope<RepairInvoicePage>>(this.shopUrl, { params })
+      .pipe(map((response) => response.data));
+  }
+
+  getShopFinancialReport(filters: ShopFinancialReportFilters): Observable<ShopFinancialReport> {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+    return this.http
+      .get<ApiEnvelope<ShopFinancialReport>>(`${this.shopUrl}/financial-report`, { params })
+      .pipe(map((response) => response.data));
+  }
+
+  listShopFinancialTransactions(
+    filters: ShopFinancialTransactionsFilters,
+  ): Observable<ShopFinancialTransactionsPage> {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+    return this.http
+      .get<ApiEnvelope<ShopFinancialTransactionsPage>>(`${this.shopUrl}/financial-transactions`, {
+        params,
+      })
       .pipe(map((response) => response.data));
   }
 
