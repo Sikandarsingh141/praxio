@@ -1,3 +1,4 @@
+import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -61,6 +62,7 @@ interface FinancialDonutSegment {
   imports: [
     CommonModule,
     RouterLink,
+    OverlayModule,
     CommonFilterComponent,
     JobPaginationComponent,
     AdminPageHeaderComponent,
@@ -119,9 +121,22 @@ export class ShopFinancialReportingPage {
   readonly paymentStatus = signal<ShopFinancialTransaction['status'] | ''>('');
   readonly invoicePaymentStatus = signal<RepairInvoicePaymentStatus | ''>('');
   readonly downloadingInvoiceId = signal('');
+  readonly openActionsInvoiceId = signal<string | null>(null);
+  readonly actionMenuPositions: ConnectedPosition[] = [
+    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 6 },
+    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -6 },
+  ];
 
   constructor() {
     this.loadReport();
+  }
+
+  toggleActions(invoiceId: string): void {
+    this.openActionsInvoiceId.update((current) => (current === invoiceId ? null : invoiceId));
+  }
+
+  closeActions(): void {
+    this.openActionsInvoiceId.set(null);
   }
 
   get filterConfig(): FilterConfig {
@@ -589,6 +604,7 @@ export class ShopFinancialReportingPage {
           link.download = `${invoice.invoiceNumber || 'Fixora-invoice'}.pdf`;
           link.click();
           window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+          this.closeActions();
         },
         error: (error: unknown) =>
           this.listError.set(getAuthErrorMessage(error, 'Invoice PDF could not be downloaded.')),

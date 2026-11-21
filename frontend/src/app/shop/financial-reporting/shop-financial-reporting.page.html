@@ -696,19 +696,73 @@
                         }}</span>
                       </td>
                       <td>
-                        <div class="row-actions">
-                          <a [routerLink]="['/shop/jobs/completed-jobs', invoice.repairRequestId]"
-                            >Details</a
+                        <div class="action-menu-anchor">
+                          <button
+                            type="button"
+                            class="action-btn-icon action-btn-more"
+                            cdkOverlayOrigin
+                            #invoiceMenuOrigin="cdkOverlayOrigin"
+                            [attr.aria-label]="
+                              'Invoice actions for ' + (invoice.invoiceNumber || 'draft')
+                            "
+                            [attr.aria-expanded]="openActionsInvoiceId() === invoice.id"
+                            (click)="toggleActions(invoice.id)"
+                            title="Invoice actions"
                           >
-                          @if (invoice.invoiceStatus !== 'draft' && invoice.pdfAvailable) {
-                            <button
-                              type="button"
-                              [disabled]="downloadingInvoiceId() === invoice.id"
-                              (click)="downloadInvoicePdf(invoice)"
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                              <circle cx="12" cy="5" r="1.5" fill="currentColor" />
+                              <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                              <circle cx="12" cy="19" r="1.5" fill="currentColor" />
+                            </svg>
+                          </button>
+                          <ng-template
+                            cdkConnectedOverlay
+                            [cdkConnectedOverlayOrigin]="invoiceMenuOrigin"
+                            [cdkConnectedOverlayOpen]="openActionsInvoiceId() === invoice.id"
+                            [cdkConnectedOverlayPositions]="actionMenuPositions"
+                            [cdkConnectedOverlayPush]="true"
+                            (overlayOutsideClick)="closeActions()"
+                          >
+                            <div
+                              class="job-action-menu"
+                              role="group"
+                              [attr.aria-label]="
+                                'Actions for invoice ' + (invoice.invoiceNumber || 'draft')
+                              "
                             >
-                              {{ downloadingInvoiceId() === invoice.id ? 'Loading…' : 'PDF' }}
-                            </button>
-                          }
+                              <a
+                                class="job-action-menu-link"
+                                [routerLink]="['/shop/jobs/completed-jobs', invoice.repairRequestId]"
+                                (click)="closeActions()"
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                View Details
+                              </a>
+                              @if (
+                                (invoice.invoiceStatus === 'issued' ||
+                                  invoice.invoiceStatus === 'cancelled') &&
+                                invoice.pdfAvailable
+                              ) {
+                                <button
+                                  type="button"
+                                  class="job-action-menu-link menu-action-button"
+                                  [disabled]="downloadingInvoiceId() === invoice.id"
+                                  (click)="downloadInvoicePdf(invoice)"
+                                >
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 3v12m0 0 4-4m-4 4-4-4" />
+                                    <path d="M5 17v3h14v-3" />
+                                  </svg>
+                                  {{
+                                    downloadingInvoiceId() === invoice.id ? 'Downloading�?�' : 'Download PDF'
+                                  }}
+                                </button>
+                              }
+                            </div>
+                          </ng-template>
                         </div>
                       </td>
                     </tr>
