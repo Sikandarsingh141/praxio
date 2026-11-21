@@ -39,7 +39,7 @@ export class DashboardPage implements OnInit {
       note: "All requests you've created",
     },
     {
-      label: 'Open Requests',
+      label: 'New Requests',
       value: 0,
       icon: 'open',
       tone: 'open',
@@ -91,7 +91,7 @@ export class DashboardPage implements OnInit {
         note: "All requests you've created",
       },
       {
-        label: 'Open Requests',
+        label: 'New Requests',
         value: requests.filter((request) => request.status === 'open' && !request.repairJob).length,
         icon: 'open',
         tone: 'open',

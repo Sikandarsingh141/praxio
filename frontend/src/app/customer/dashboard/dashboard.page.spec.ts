@@ -105,7 +105,7 @@ describe('DashboardPage', () => {
     );
     expect(stats).toEqual([
       { label: 'Total requests', value: '4' },
-      { label: 'Open requests', value: '1' },
+      { label: 'New requests', value: '1' },
       { label: 'Active repairs', value: '2' },
       { label: 'Completed', value: '1' },
     ]);

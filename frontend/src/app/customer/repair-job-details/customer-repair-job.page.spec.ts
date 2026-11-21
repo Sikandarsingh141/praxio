@@ -303,7 +303,7 @@ describe('CustomerRepairJobPage', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(portal.getRepairJob).toHaveBeenCalledWith(request._id);
     expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain(
-      'New Repair Request Detail',
+      'New Request Details',
     );
     expect(text).not.toContain('REPAIR REQUEST DETAILS');
     expect(text).toContain('Request ID:');

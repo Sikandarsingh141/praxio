@@ -144,7 +144,7 @@ export class CustomerRepairJobPage implements OnInit {
 
   pageTitle(repair: CustomerRepairRequest): string {
     if (repair.repairJob) return 'Repair Job Details';
-    return repair.status === 'open' ? 'New Repair Request Detail' : 'Repair Request Details';
+    return repair.status === 'open' ? 'New Request Details' : 'Repair Request Details';
   }
 
   statusLabel(repair: CustomerRepairRequest): string {

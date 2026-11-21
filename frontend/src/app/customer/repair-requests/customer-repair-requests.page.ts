@@ -43,7 +43,7 @@ export class CustomerRepairRequestsPage implements OnInit {
   readonly completedOnly = signal(false);
   readonly statusTabs: Array<{ key: RequestStatusTab; label: string }> = [
     { key: 'all', label: 'All Requests' },
-    { key: 'open', label: 'Open Requests' },
+    { key: 'open', label: 'New Requests' },
     { key: 'in_progress', label: 'Active Repairs' },
     { key: 'completed', label: 'Completed Repairs' },
   ];
