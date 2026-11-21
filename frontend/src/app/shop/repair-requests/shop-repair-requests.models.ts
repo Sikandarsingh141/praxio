@@ -264,8 +264,7 @@ export interface ShopDashboardOverview {
   };
   revenue: {
     available: boolean;
-    amount?: number;
-    currency?: string;
+    amounts: Array<{ currency: string; amount: number }>;
     reason?: string;
   };
 }

@@ -30,6 +30,10 @@ import {
   ShopSubscriptionInvoice,
   ShopSubscriptionInvoiceSchema,
 } from '../payments/schemas/shop-subscription-invoice.schema';
+import {
+  RepairInvoice,
+  RepairInvoiceSchema,
+} from '../invoices/repair-invoice.schema';
 
 @Module({
   imports: [
@@ -47,6 +51,7 @@ import {
         name: ShopSubscriptionInvoice.name,
         schema: ShopSubscriptionInvoiceSchema,
       },
+      { name: RepairInvoice.name, schema: RepairInvoiceSchema },
     ]),
   ],
   controllers: [AdminController, AdminMapController],

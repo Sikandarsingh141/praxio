@@ -14,6 +14,7 @@ import { isObjectIdOrHexString, Model, Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { User } from '../users/schemas/user.schema';
 import { formatUserName, userNameParts } from '../users/user-name';
+import { RepairInvoice } from '../invoices/repair-invoice.schema';
 import {
   NotificationsService,
   type CreateUserNotification,
@@ -265,6 +266,8 @@ export class CustomerPortalService {
     private readonly quotations: Model<RepairQuotation>,
     @InjectModel(RepairReview.name)
     private readonly reviews: Model<RepairReview>,
+    @InjectModel(RepairInvoice.name)
+    private readonly repairInvoices: Model<RepairInvoice>,
     private readonly config: ConfigService,
     private readonly notifications: NotificationsService,
   ) {}
@@ -1283,7 +1286,20 @@ export class CustomerPortalService {
     if (to) createdAt.$lte = to;
     const dateMatch = Object.keys(createdAt).length ? { createdAt } : {};
 
-    const [requestFacets, repairFacets, quotationFacets, reviewFacets] =
+    const paymentDate: Record<string, Date> = {};
+    if (from) paymentDate.$gte = from;
+    if (to) paymentDate.$lte = to;
+    const paymentDateMatch = Object.keys(paymentDate).length
+      ? { 'payments.paymentDate': paymentDate }
+      : {};
+
+    const [
+      requestFacets,
+      repairFacets,
+      quotationFacets,
+      reviewFacets,
+      revenueByCurrency,
+    ] =
       await Promise.all([
         this.repairRequests
           .aggregate<Record<string, unknown>>([
@@ -1782,6 +1798,30 @@ export class CustomerPortalService {
             },
           ])
           .exec(),
+        this.repairInvoices
+          .aggregate<{ _id: string; amount: number }>([
+            {
+              $match: {
+                shopId: shop._id,
+                invoiceStatus: 'issued',
+              },
+            },
+            { $unwind: '$payments' },
+            {
+              $match: {
+                'payments.status': 'succeeded',
+                ...paymentDateMatch,
+              },
+            },
+            {
+              $group: {
+                _id: '$currency',
+                amount: { $sum: '$payments.amount' },
+              },
+            },
+            { $sort: { _id: 1 } },
+          ])
+          .exec(),
       ]);
 
     const requestData = requestFacets[0] ?? {};
@@ -1894,8 +1934,11 @@ export class CustomerPortalService {
         recent: reviewData.recent ?? [],
       },
       revenue: {
-        available: false,
-        reason: 'Repair payment and settlement records are not configured.',
+        available: true,
+        amounts: (revenueByCurrency ?? []).map(({ _id, amount }) => ({
+          currency: _id,
+          amount,
+        })),
       },
     };
   }

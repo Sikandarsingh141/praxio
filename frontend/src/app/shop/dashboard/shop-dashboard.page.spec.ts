@@ -119,7 +119,7 @@ describe('ShopDashboardPage', () => {
             },
           ],
         },
-        revenue: { available: false, reason: 'Repair transactions are not configured.' },
+        revenue: { available: true, amounts: [] },
       },
     });
     fixture.detectChanges();
@@ -148,7 +148,9 @@ describe('ShopDashboardPage', () => {
       Array.from(
         fixture.nativeElement.querySelectorAll('.metric-content > strong') as NodeListOf<HTMLElement>,
       ).map((value) => value.textContent?.trim()),
-    ).toEqual(['0', '0', '0', '0', '—', 'Not available']);
+    ).toEqual(['0', '0', '0', '0', '—', '—']);
+    expect(fixture.nativeElement.textContent).toContain('No recorded repair payments yet');
+    expect(fixture.nativeElement.textContent).not.toContain('Payment tracking is not configured');
     expect(fixture.componentInstance.quotationChartData().every((bar) => bar.count === 0)).toBeTrue();
     expect(fixture.nativeElement.querySelector('.dashboard-columns')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.pipeline-grid')).toBeTruthy();
@@ -176,6 +178,10 @@ describe('ShopDashboardPage', () => {
     const dashboard = fixture.componentInstance.dashboard()!;
     fixture.componentInstance.dashboard.set({
       ...dashboard,
+      revenue: {
+        available: true,
+        amounts: [{ currency: 'INR', amount: 2500 }],
+      },
       quotations: {
         ...dashboard.quotations,
         trend: [
@@ -201,6 +207,7 @@ describe('ShopDashboardPage', () => {
       },
     });
     fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('₹2,500');
     const chartData = fixture.componentInstance.quotationChartData();
     expect(chartData.at(-1)).toEqual(
       jasmine.objectContaining({

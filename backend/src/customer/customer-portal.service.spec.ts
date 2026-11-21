@@ -6,6 +6,7 @@ import { Types } from 'mongoose';
 import { RegistrationRequest } from '../registrations/schemas/registration-request.schema';
 import { User } from '../users/schemas/user.schema';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RepairInvoice } from '../invoices/repair-invoice.schema';
 import { CustomerPortalService } from './customer-portal.service';
 import {
   RepairQuotation,
@@ -94,6 +95,9 @@ describe('CustomerPortalService', () => {
     create: jest.fn(),
     deleteOne: jest.fn().mockReturnValue(createQuery({ deletedCount: 1 })),
   };
+  const repairInvoiceModel = {
+    aggregate: jest.fn().mockReturnValue(createQuery([])),
+  };
   const notificationsService = { notifyUsers: jest.fn() };
 
   beforeEach(async () => {
@@ -104,6 +108,7 @@ describe('CustomerPortalService', () => {
       createQuery({ modifiedCount: 0 }),
     );
     quotationModel.findOne.mockReturnValue(createQuery(null));
+    repairInvoiceModel.aggregate.mockReturnValue(createQuery([]));
     registrationModel.find.mockReturnValue(
       createQuery([{ userId: nearShopId }, { userId: farShopId }]),
     );
@@ -124,6 +129,10 @@ describe('CustomerPortalService', () => {
           useValue: quotationModel,
         },
         { provide: getModelToken(RepairReview.name), useValue: reviewModel },
+        {
+          provide: getModelToken(RepairInvoice.name),
+          useValue: repairInvoiceModel,
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -840,7 +849,7 @@ describe('CustomerPortalService', () => {
     expect(repairRequestModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
-  it('returns shop-scoped dashboard counts without inventing repair revenue', async () => {
+  it('returns shop-scoped dashboard counts and successful invoice revenue', async () => {
     quotationModel.find.mockReturnValue(createQuery([]));
     userModel.findById.mockReturnValue(
       createQuery({
@@ -888,6 +897,12 @@ describe('CustomerPortalService', () => {
         },
       ]),
     );
+    repairInvoiceModel.aggregate.mockReturnValueOnce(
+      createQuery([
+        { _id: 'INR', amount: 1250 },
+        { _id: 'USD', amount: 40 },
+      ]),
+    );
 
     const result = await service.getShopDashboardOverview(
       nearShopId.toString(),
@@ -898,8 +913,31 @@ describe('CustomerPortalService', () => {
       quotations: { total: 1, pending: 1 },
       repairs: { total: 7, readyForPickup: 1, disputed: 1, active: 1 },
       reviews: { averageRating: 4.5, total: 2 },
-      revenue: { available: false },
+      revenue: {
+        available: true,
+        amounts: [
+          { currency: 'INR', amount: 1250 },
+          { currency: 'USD', amount: 40 },
+        ],
+      },
     });
+    expect(repairInvoiceModel.aggregate).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        { $match: { shopId: nearShopId, invoiceStatus: 'issued' } },
+        { $unwind: '$payments' },
+        {
+          $match: {
+            'payments.status': 'succeeded',
+          },
+        },
+        {
+          $group: {
+            _id: '$currency',
+            amount: { $sum: '$payments.amount' },
+          },
+        },
+      ]),
+    );
     expect(repairRequestModel.aggregate).toHaveBeenNthCalledWith(
       1,
       expect.arrayContaining([{ $match: { shopIds: nearShopId } }]),

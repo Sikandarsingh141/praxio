@@ -120,8 +120,15 @@
         </div>
         <div class="metric-content">
           <span class="metric-label">Repair Revenue</span>
-          <strong>{{ data.revenue.available && data.revenue.amount !== undefined ? (data.revenue.amount | currency: (data.revenue.currency || 'INR') : 'symbol' : '1.0-0') : 'Not available' }}</strong>
-          <span class="metric-trend rating-note">{{ data.revenue.available ? 'Recorded repair payments' : 'Payment tracking is not configured' }}</span>
+          @if (data.revenue.available && data.revenue.amounts.length) {
+            @for (revenue of data.revenue.amounts; track revenue.currency) {
+              <strong>{{ revenue.amount | currency: revenue.currency : 'symbol' : '1.0-0' }}</strong>
+            }
+            <span class="metric-trend rating-note">Recorded repair payments</span>
+          } @else {
+            <strong>—</strong>
+            <span class="metric-trend rating-note">No recorded repair payments yet</span>
+          }
         </div>
       </article>
     </div>
