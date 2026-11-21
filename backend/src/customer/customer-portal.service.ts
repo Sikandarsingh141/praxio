@@ -47,6 +47,14 @@ import {
   RepairRequest,
 } from './repair-request.schema';
 
+const CUSTOMER_PRE_REPAIR_STATUSES = [
+  'confirmed',
+  'pickup_scheduled',
+  'pickup_in_progress',
+  'item_picked_up',
+  'inspection_pending',
+];
+
 function mongoCustomerDisplayName(
   firstName: unknown,
   lastName: unknown,
@@ -1025,8 +1033,53 @@ export class CustomerPortalService {
     } else if (filters.status) {
       requestFilter.status = filters.status;
     }
+    if (filters.jobCategory === 'new') {
+      requestFilter.status = 'open';
+      requestConditions.push({
+        $or: [{ repairJob: { $exists: false } }, { repairJob: null }],
+      });
+    } else if (filters.jobCategory === 'pending') {
+      requestFilter.status = 'open';
+      requestConditions.push({
+        $or: [
+          { repairJob: { $exists: false } },
+          { repairJob: null },
+          {
+            'repairJob.status': {
+              $in: [...CUSTOMER_PRE_REPAIR_STATUSES, 'repair_declined'],
+            },
+          },
+        ],
+      });
+    } else if (filters.jobCategory === 'active') {
+      requestFilter.status = 'open';
+      requestConditions.push({
+        'repairJob.status': {
+          $exists: true,
+          $type: 'string',
+          $nin: [
+            ...CUSTOMER_PRE_REPAIR_STATUSES,
+            'repair_declined',
+            'picked_up',
+            'completed',
+            'disputed',
+          ],
+        },
+      });
+    } else if (filters.jobCategory === 'completed') {
+      requestConditions.push({
+        $or: [
+          { status: 'completed' },
+          { 'repairJob.status': { $in: ['picked_up', 'completed'] } },
+        ],
+      });
+    }
     if (filters.repairStatus) {
-      requestFilter['repairJob.status'] = filters.repairStatus;
+      if (filters.jobCategory) {
+        requestConditions.push({ 'repairJob.status': filters.repairStatus });
+      } else {
+        requestFilter['repairJob.status'] = filters.repairStatus;
+      }
     }
     if (requestConditions.length) {
       requestFilter.$and = requestConditions;
@@ -1052,14 +1105,82 @@ export class CustomerPortalService {
       .sort({ createdAt: -1 })
       .lean()
       .exec();
+    const requestIds = requests.map((request) => request._id);
+    const requestQuotations = requestIds.length
+      ? await this.quotations
+          .find({ repairRequestId: { $in: requestIds } })
+          .sort({ createdAt: -1 })
+          .lean()
+          .exec()
+      : [];
+    const quotationsByRequest = new Map<string, typeof requestQuotations>();
+    for (const quotation of requestQuotations) {
+      const requestId = quotation.repairRequestId.toString();
+      const quotations = quotationsByRequest.get(requestId) ?? [];
+      quotations.push(quotation);
+      quotationsByRequest.set(requestId, quotations);
+    }
+    const categorizedRequests = filters.jobCategory
+      ? requests.filter((request) => {
+          const quotations = quotationsByRequest.get(request._id.toString()) ?? [];
+          const status = request.repairJob?.status;
+          const hasAcceptedQuotation =
+            quotations.some((quotation) => quotation.status === 'accepted') ||
+            request.shopResponses?.some(
+              (shop) => shop.status === 'customer_accepted',
+            ) === true;
+          const hasResponse =
+            hasAcceptedQuotation ||
+            quotations.length > 0 ||
+            request.shopResponses?.some((shop) =>
+              ['quotation_submitted', 'customer_accepted', 'customer_rejected'].includes(
+                shop.status,
+              ),
+            ) === true;
+
+          switch (filters.jobCategory) {
+            case 'new':
+              return request.status === 'open' && !request.repairJob;
+            case 'pending':
+              return (
+                request.status === 'open' &&
+                ((!request.repairJob && hasResponse) ||
+                  (hasAcceptedQuotation &&
+                    (status === 'confirmed' ||
+                      (!!status && CUSTOMER_PRE_REPAIR_STATUSES.includes(status)))) ||
+                  status === 'repair_declined')
+              );
+            case 'active':
+              return (
+                request.status === 'open' &&
+                !!status &&
+                ![
+                  ...CUSTOMER_PRE_REPAIR_STATUSES,
+                  'repair_declined',
+                  'picked_up',
+                  'completed',
+                  'disputed',
+                ].includes(status)
+              );
+            case 'completed':
+              return (
+                request.status === 'completed' ||
+                status === 'picked_up' ||
+                status === 'completed'
+              );
+          }
+        })
+      : requests;
     const shopIds = [
-      ...new Set(requests.flatMap((request) => request.shopIds)),
+      ...new Set(categorizedRequests.flatMap((request) => request.shopIds)),
     ];
-    const shopRecords = await this.users
-      .find({ _id: { $in: shopIds } })
-      .select('shopDetails.shopName shopDetails.shopImageData')
-      .lean()
-      .exec();
+    const shopRecords = shopIds.length
+      ? await this.users
+          .find({ _id: { $in: shopIds } })
+          .select('shopDetails.shopName shopDetails.shopImageData')
+          .lean()
+          .exec()
+      : [];
     const shopDirectory = new Map(
       shopRecords.map((shop) => [
         shop._id.toString(),
@@ -1069,8 +1190,7 @@ export class CustomerPortalService {
         },
       ]),
     );
-    return Promise.all(
-      requests.map(async (request) => ({
+    return categorizedRequests.map((request) => ({
         ...request,
         shops: request.shopIds.map((id) => {
           const response = request.shopResponses?.find(
@@ -1085,13 +1205,8 @@ export class CustomerPortalService {
             declineReason: response?.declineReason,
           };
         }),
-        quotations: await this.quotations
-          .find({ repairRequestId: request._id })
-          .sort({ createdAt: -1 })
-          .lean()
-          .exec(),
-      })),
-    );
+        quotations: quotationsByRequest.get(request._id.toString()) ?? [],
+      }));
   }
 
   async getCustomerQuotations(
@@ -1970,6 +2085,8 @@ export class CustomerPortalService {
     const shop = await this.requireApprovedShop(shopId);
     this.validateDateRange(filters.from, filters.to);
     const now = new Date();
+    const expirableStatuses =
+      filters.status === 'new' ? ['new'] : ['new', 'pending'];
     await this.repairRequests
       .updateMany(
         {
@@ -1977,7 +2094,7 @@ export class CustomerPortalService {
           shopResponses: {
             $elemMatch: {
               shopId: shop._id,
-              status: { $in: ['new', 'pending'] },
+              status: { $in: expirableStatuses },
               responseDeadline: { $lte: now },
             },
           },
@@ -1992,35 +2109,152 @@ export class CustomerPortalService {
           arrayFilters: [
             {
               'response.shopId': shop._id,
-              'response.status': { $in: ['new', 'pending'] },
+              'response.status': { $in: expirableStatuses },
               'response.responseDeadline': { $lte: now },
             },
           ],
         },
       )
       .exec();
-    let rawRequests = await this.repairRequests
-      .find({ shopIds: shop._id })
-      .sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 })
-      .lean()
-      .exec();
-    const requestsWithoutShopResponse = rawRequests.filter(
-      (request) =>
-        !request.shopResponses?.some(
-          (response) => response.shopId.toString() === shop._id.toString(),
-        ),
-    );
-    if (requestsWithoutShopResponse.length) {
-      await Promise.all(
-        requestsWithoutShopResponse.map((request) =>
-          this.initializeShopResponse(request._id, shop._id),
-        ),
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    const canFilterNewRequestsInDatabase =
+      filters.status === 'new' &&
+      !filters.jobCategory &&
+      !filters.search &&
+      !filters.appliance &&
+      !filters.from &&
+      !filters.to &&
+      !filters.repairStatus;
+    const newRequestQuery = {
+      shopIds: shop._id,
+      status: 'open',
+      acceptedQuotationId: null,
+      shopResponses: {
+        $elemMatch: { shopId: shop._id, status: 'new' },
+      },
+    };
+    const shopRequestAccessQuery = {
+      $or: [
+        { shopResponses: { $elemMatch: { shopId: shop._id } } },
+        { acceptedQuotationId: { $exists: true } },
+        {
+          shopResponses: {
+            $not: { $elemMatch: { shopId: shop._id } },
+          },
+        },
+      ],
+    };
+    const shopJobCategoryQuery =
+      filters.jobCategory === 'pending'
+        ? {
+            $and: [
+              { shopIds: shop._id, status: 'open' },
+              {
+                $or: [
+                  {
+                    shopResponses: {
+                      $elemMatch: {
+                        shopId: shop._id,
+                        status: {
+                          $in: ['pending', 'quotation_submitted', 'customer_accepted'],
+                        },
+                      },
+                    },
+                  },
+                  { acceptedQuotationId: { $exists: true } },
+                  {
+                    shopResponses: {
+                      $not: { $elemMatch: { shopId: shop._id } },
+                    },
+                  },
+                ],
+              },
+            ],
+          }
+        : filters.jobCategory === 'active'
+          ? {
+              $and: [
+                {
+                  shopIds: shop._id,
+                  status: 'open',
+                  'repairJob.status': {
+                    $exists: true,
+                    $type: 'string',
+                    $nin: [
+                      'confirmed',
+                      'pickup_scheduled',
+                      'pickup_in_progress',
+                      'item_picked_up',
+                      'inspection_pending',
+                      'repair_declined',
+                      'picked_up',
+                      'completed',
+                      'disputed',
+                    ],
+                  },
+                },
+                shopRequestAccessQuery,
+              ],
+            }
+          : filters.jobCategory === 'completed'
+            ? {
+                $and: [
+                  {
+                    shopIds: shop._id,
+                    $or: [
+                      { status: 'completed' },
+                      { 'repairJob.status': { $in: ['picked_up', 'completed'] } },
+                    ],
+                  },
+                  shopRequestAccessQuery,
+                ],
+              }
+            : undefined;
+    const canFilterShopJobCategoryInDatabase =
+      shopJobCategoryQuery !== undefined;
+    const rawRequestQuery = canFilterNewRequestsInDatabase
+      ? this.repairRequests
+          .find(newRequestQuery)
+          .sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+      : canFilterShopJobCategoryInDatabase
+        ? this.repairRequests
+            .find(shopJobCategoryQuery)
+            .sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 })
+        : this.repairRequests
+          .find({ shopIds: shop._id })
+          .sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 });
+    let [rawRequests, optimizedTotal] = await Promise.all([
+      rawRequestQuery.lean().exec(),
+      canFilterNewRequestsInDatabase
+        ? this.repairRequests.countDocuments(newRequestQuery).exec()
+        : Promise.resolve(undefined),
+    ]);
+    if (!canFilterNewRequestsInDatabase) {
+      const requestsWithoutShopResponse = rawRequests.filter(
+        (request) =>
+          !request.shopResponses?.some(
+            (response) => response.shopId.toString() === shop._id.toString(),
+          ),
       );
-      rawRequests = await this.repairRequests
-        .find({ shopIds: shop._id })
-        .sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 })
-        .lean()
-        .exec();
+      if (requestsWithoutShopResponse.length) {
+        await Promise.all(
+          requestsWithoutShopResponse.map((request) =>
+            this.initializeShopResponse(request._id, shop._id),
+          ),
+        );
+        rawRequests = await this.repairRequests
+          .find(
+            canFilterShopJobCategoryInDatabase
+              ? shopJobCategoryQuery
+              : { shopIds: shop._id },
+          )
+          .sort({ createdAt: filters.sort === 'oldest' ? 1 : -1 })
+          .lean()
+          .exec();
+      }
     }
     const acceptedQuotationIds = rawRequests
       .map((request) => request.acceptedQuotationId)
@@ -2072,6 +2306,47 @@ export class CustomerPortalService {
       }
       const status = responseStatusForRequest(request);
       if (!status) return false;
+      if (filters.jobCategory) {
+        const repairStatus = request.repairJob?.status;
+        let matchesJobCategory: boolean;
+        if (filters.jobCategory === 'pending') {
+          matchesJobCategory =
+            request.status === 'open' &&
+            (status === 'pending' ||
+              status === 'quotation_submitted' ||
+              (status === 'customer_accepted' &&
+                !request.repairJob?.activeAssignment &&
+                (!repairStatus ||
+                  [
+                    'confirmed',
+                    'pickup_scheduled',
+                    'pickup_in_progress',
+                    'item_picked_up',
+                    'inspection_pending',
+                  ].includes(repairStatus))));
+        } else if (filters.jobCategory === 'active') {
+          matchesJobCategory =
+            request.status === 'open' &&
+            !!repairStatus &&
+            ![
+              'confirmed',
+              'pickup_scheduled',
+              'pickup_in_progress',
+              'item_picked_up',
+              'inspection_pending',
+              'repair_declined',
+              'picked_up',
+              'completed',
+              'disputed',
+            ].includes(repairStatus);
+        } else {
+          matchesJobCategory =
+            request.status === 'completed' ||
+            repairStatus === 'picked_up' ||
+            repairStatus === 'completed';
+        }
+        if (!matchesJobCategory) return false;
+      }
       const statusMatches =
         !filters.status ||
         filters.status === 'all' ||
@@ -2114,9 +2389,10 @@ export class CustomerPortalService {
           .includes(search)
       );
     });
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 10;
-    const pageRequests = matching.slice((page - 1) * limit, page * limit);
+    const pageRequests =
+      optimizedTotal === undefined
+        ? matching.slice((page - 1) * limit, page * limit)
+        : matching;
     const assignedTechnicianIds = [
       ...new Set(
         pageRequests
@@ -2230,24 +2506,35 @@ export class CustomerPortalService {
           : shopResponse,
       };
     });
-    const statuses = accessibleRequests.map(
-      (request) => responseStatusForRequest(request),
+    const summaryRequests = filters.jobCategory ? matching : accessibleRequests;
+    const statuses = summaryRequests.map((request) =>
+      responseStatusForRequest(request),
     );
     return {
       requests,
       page,
       limit,
-      total: matching.length,
-      summary: {
-        total: accessibleRequests.length,
-        new: statuses.filter((status) => status === 'new').length,
-        pending: statuses.filter((status) => status === 'pending').length,
-        accepted: statuses.filter((status) =>
-          ['quotation_submitted', 'customer_accepted'].includes(status ?? ''),
-        ).length,
-        declined: statuses.filter((status) => status === 'declined').length,
-        expired: statuses.filter((status) => status === 'expired').length,
-      },
+      total: optimizedTotal ?? matching.length,
+      summary:
+        optimizedTotal === undefined
+          ? {
+              total: summaryRequests.length,
+              new: statuses.filter((status) => status === 'new').length,
+              pending: statuses.filter((status) => status === 'pending').length,
+              accepted: statuses.filter((status) =>
+                ['quotation_submitted', 'customer_accepted'].includes(status ?? ''),
+              ).length,
+              declined: statuses.filter((status) => status === 'declined').length,
+              expired: statuses.filter((status) => status === 'expired').length,
+            }
+          : {
+              total: optimizedTotal,
+              new: optimizedTotal,
+              pending: 0,
+              accepted: 0,
+              declined: 0,
+              expired: 0,
+            },
     };
   }
 

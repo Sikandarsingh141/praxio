@@ -160,6 +160,7 @@ export function customerRepairRequestStatusLabel(request: CustomerRepairRequest)
 }
 
 export interface CustomerRepairRequestFilters {
+  jobCategory?: 'new' | 'pending' | 'active' | 'completed';
   status?: 'open' | 'cancelled' | 'completed';
   repairStatus?:
     | 'confirmed'

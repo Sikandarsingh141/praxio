@@ -18,11 +18,15 @@ function createQuery<T>(value: T) {
   const query = {
     select: jest.fn(),
     sort: jest.fn(),
+    skip: jest.fn(),
+    limit: jest.fn(),
     lean: jest.fn(),
     exec: jest.fn().mockResolvedValue(value),
   };
   query.select.mockReturnValue(query);
   query.sort.mockReturnValue(query);
+  query.skip.mockReturnValue(query);
+  query.limit.mockReturnValue(query);
   query.lean.mockReturnValue(query);
   return query;
 }
@@ -74,6 +78,7 @@ describe('CustomerPortalService', () => {
   const repairRequestModel = {
     aggregate: jest.fn().mockReturnValue(createQuery([])),
     find: jest.fn(),
+    countDocuments: jest.fn(),
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
     updateMany: jest.fn(),
@@ -107,6 +112,7 @@ describe('CustomerPortalService', () => {
     repairRequestModel.updateMany.mockReturnValue(
       createQuery({ modifiedCount: 0 }),
     );
+    repairRequestModel.countDocuments.mockReturnValue(createQuery(0));
     quotationModel.findOne.mockReturnValue(createQuery(null));
     repairInvoiceModel.aggregate.mockReturnValue(createQuery([]));
     registrationModel.find.mockReturnValue(
@@ -265,6 +271,161 @@ describe('CustomerPortalService', () => {
     });
     expect(result.summary.accepted).toBe(1);
   });
+
+  it('filters and paginates new shop requests in the database', async () => {
+    const requestId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const request = {
+      _id: requestId,
+      customerId,
+      shopIds: [nearShopId],
+      shopResponses: [{ shopId: nearShopId, status: 'new' }],
+      appliance: 'Laptop',
+      description: 'Screen repair',
+      status: 'open',
+      createdAt: new Date('2026-11-20T09:00:00.000Z'),
+    };
+    userModel.findById.mockReturnValue(
+      createQuery({
+        ...shops[0],
+        accountType: 'shop',
+        accountStatus: 'active',
+      }),
+    );
+    userModel.find.mockReturnValue(createQuery([]));
+    const requestQuery = createQuery([request]);
+    repairRequestModel.find.mockReturnValue(requestQuery);
+    repairRequestModel.countDocuments.mockReturnValue(createQuery(1));
+    quotationModel.find.mockReturnValue(createQuery([]));
+
+    const result = await service.getShopRepairRequests(nearShopId.toString(), {
+      status: 'new',
+      page: 1,
+      limit: 10,
+    });
+
+    expect(repairRequestModel.find).toHaveBeenCalledWith({
+      shopIds: nearShopId,
+      status: 'open',
+      acceptedQuotationId: null,
+      shopResponses: {
+        $elemMatch: { shopId: nearShopId, status: 'new' },
+      },
+    });
+    expect(repairRequestModel.countDocuments).toHaveBeenCalledWith({
+      shopIds: nearShopId,
+      status: 'open',
+      acceptedQuotationId: null,
+      shopResponses: {
+        $elemMatch: { shopId: nearShopId, status: 'new' },
+      },
+    });
+    expect(requestQuery.skip).toHaveBeenCalledWith(0);
+    expect(requestQuery.limit).toHaveBeenCalledWith(10);
+    expect(result.total).toBe(1);
+    expect(result.summary).toEqual({
+      total: 1,
+      new: 1,
+      pending: 0,
+      accepted: 0,
+      declined: 0,
+      expired: 0,
+    });
+  });
+
+  it('filters pending requests by their shop job category', async () => {
+    const requestId = new Types.ObjectId();
+    const customerId = new Types.ObjectId();
+    const request = {
+      _id: requestId,
+      customerId,
+      shopIds: [nearShopId],
+      shopResponses: [{ shopId: nearShopId, status: 'pending' }],
+      appliance: 'Laptop',
+      description: 'Screen repair',
+      status: 'open',
+      createdAt: new Date('2026-11-20T09:00:00.000Z'),
+    };
+    userModel.findById.mockReturnValue(
+      createQuery({
+        ...shops[0],
+        accountType: 'shop',
+        accountStatus: 'active',
+      }),
+    );
+    userModel.find.mockReturnValue(createQuery([]));
+    repairRequestModel.find.mockReturnValue(createQuery([request]));
+    quotationModel.find.mockReturnValue(createQuery([]));
+
+    const result = await service.getShopRepairRequests(nearShopId.toString(), {
+      jobCategory: 'pending',
+      page: 1,
+      limit: 10,
+    });
+
+    expect(repairRequestModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        $and: [
+          { shopIds: nearShopId, status: 'open' },
+          expect.objectContaining({
+            $or: expect.arrayContaining([
+              expect.objectContaining({
+                shopResponses: {
+                  $elemMatch: {
+                    shopId: nearShopId,
+                    status: {
+                      $in: ['pending', 'quotation_submitted', 'customer_accepted'],
+                    },
+                  },
+                },
+              }),
+            ]),
+          }),
+        ],
+      }),
+    );
+    expect(result.total).toBe(1);
+    expect(result.requests).toHaveLength(1);
+  });
+
+  it.each([
+    ['active', 'open', 'inspection_in_progress'],
+    ['completed', 'completed', 'completed'],
+  ] as const)(
+    'filters %s requests by their shop job category',
+    async (jobCategory, requestStatus, repairStatus) => {
+      const request = {
+        _id: new Types.ObjectId(),
+        customerId: new Types.ObjectId(),
+        shopIds: [nearShopId],
+        shopResponses: [{ shopId: nearShopId, status: 'customer_accepted' }],
+        appliance: 'Laptop',
+        description: 'Screen repair',
+        status: requestStatus,
+        repairJob: { status: repairStatus },
+        createdAt: new Date('2026-11-20T09:00:00.000Z'),
+      };
+      userModel.findById.mockReturnValue(
+        createQuery({
+          ...shops[0],
+          accountType: 'shop',
+          accountStatus: 'active',
+        }),
+      );
+      userModel.find.mockReturnValue(createQuery([]));
+      repairRequestModel.find.mockReturnValue(createQuery([request]));
+      quotationModel.find.mockReturnValue(createQuery([]));
+
+      const result = await service.getShopRepairRequests(nearShopId.toString(), {
+        jobCategory,
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result.total).toBe(1);
+      expect(result.requests).toHaveLength(1);
+    },
+  );
 
   it('lists accepted pickup requests even when their shop response is missing and quotation status is stale', async () => {
     const requestId = new Types.ObjectId();
@@ -541,6 +702,64 @@ describe('CustomerPortalService', () => {
     });
     expect(filter.createdAt.$gte).toEqual(new Date(from));
     expect(filter.createdAt.$lte).toBeInstanceOf(Date);
+  });
+
+  it('filters pending customer requests and batches their quotations', async () => {
+    const customerId = new Types.ObjectId();
+    const requestId = new Types.ObjectId();
+    const pendingRequest = {
+      _id: requestId,
+      customerId,
+      shopIds: [],
+      shopResponses: [],
+      status: 'open',
+      appliance: 'Laptop',
+      description: 'Screen repair',
+      createdAt: new Date('2026-11-20T09:00:00.000Z'),
+    };
+    const quotation = {
+      _id: new Types.ObjectId(),
+      repairRequestId: requestId,
+      status: 'sent',
+      createdAt: new Date('2026-11-20T09:30:00.000Z'),
+    };
+    userModel.findById.mockReturnValue(
+      createQuery({
+        _id: customerId,
+        accountType: 'customer',
+        accountStatus: 'active',
+      }),
+    );
+    repairRequestModel.find.mockReturnValue(createQuery([pendingRequest]));
+    quotationModel.find.mockReturnValue(createQuery([quotation]));
+
+    const result = await service.getMyRepairRequests(customerId.toString(), {
+      jobCategory: 'pending',
+    });
+
+    expect(repairRequestModel.find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customerId,
+        status: 'open',
+        $and: [
+          expect.objectContaining({
+            $or: expect.arrayContaining([
+              { repairJob: { $exists: false } },
+              { repairJob: null },
+            ]),
+          }),
+        ],
+      }),
+    );
+    expect(quotationModel.find).toHaveBeenCalledTimes(1);
+    expect(quotationModel.find).toHaveBeenCalledWith({
+      repairRequestId: { $in: [requestId] },
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      _id: requestId,
+      quotations: [quotation],
+    });
   });
 
   it('includes legacy completed repair jobs in the completed filter', async () => {

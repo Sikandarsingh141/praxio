@@ -262,6 +262,10 @@ export class RepairRequestListQueryDto {
   status?: 'all' | 'new' | 'pending' | 'accepted' | 'declined' | 'expired';
 
   @IsOptional()
+  @IsIn(['pending', 'active', 'completed'])
+  jobCategory?: 'pending' | 'active' | 'completed';
+
+  @IsOptional()
   @IsString()
   @MaxLength(150)
   search?: string;
@@ -304,6 +308,10 @@ export class RepairRequestListQueryDto {
 }
 
 export class CustomerRepairRequestListQueryDto {
+  @IsOptional()
+  @IsIn(['new', 'pending', 'active', 'completed'])
+  jobCategory?: 'new' | 'pending' | 'active' | 'completed';
+
   @IsOptional()
   @IsIn(['open', 'cancelled', 'completed'])
   status?: 'open' | 'cancelled' | 'completed';

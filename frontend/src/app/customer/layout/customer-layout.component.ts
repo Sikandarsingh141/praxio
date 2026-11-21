@@ -192,6 +192,8 @@ export class CustomerLayout implements OnInit, OnDestroy {
   }
 
   private loadRequestCounts(): void {
+    if (this.isRequestListRouteActive()) return;
+
     const requestId = ++this.requestCountsRequestId;
     if (!this.requestCounts()) this.requestCountsLoading.set(true);
     this.requestCountsError.set('');

@@ -26,7 +26,10 @@ describe('ShopLayout', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([{ path: 'shop/jobs/new-jobs', component: RequestListStub }]),
+        provideRouter([
+          { path: 'shop/jobs/new-jobs', component: RequestListStub },
+          { path: 'shop/jobs/pending-jobs', component: RequestListStub },
+        ]),
         {
           provide: JobSharedService,
           useValue: {
@@ -165,12 +168,15 @@ describe('ShopLayout', () => {
     );
     await router.navigateByUrl('/shop/jobs/new-jobs');
     fixture.detectChanges();
-    expect(refreshedCounts).toHaveBeenCalledTimes(1);
+    expect(refreshedCounts).not.toHaveBeenCalled();
     expect(
       Array.from(
         fixture.nativeElement.querySelectorAll('.nav-request-count') as NodeListOf<HTMLElement>,
       ).map((element) => element.textContent?.trim()),
-    ).toEqual(['8', '3', '4', '5', '6', '7']);
+    ).toEqual(['2', '3', '4', '5', '6', '7']);
+    await router.navigateByUrl('/shop/jobs/pending-jobs');
+    fixture.detectChanges();
+    expect(refreshedCounts).not.toHaveBeenCalled();
 
     const updatedPhoto = 'data:image/jpeg;base64,bmV3';
     const image = new File([new Uint8Array([1, 2, 3])], 'profile.jpg', {

@@ -239,6 +239,13 @@ describe('JobSharedService', () => {
       expect(lists.active.map((item) => item.id)).toEqual(['active']);
       expect(lists.completed.map((item) => item.id)).toEqual(['picked-up', 'completed']);
       expect(customerApi.getRepairRequests).toHaveBeenCalledTimes(5);
+      expect(customerApi.getRepairRequests.calls.allArgs()).toEqual([
+        [{ jobCategory: 'new' }],
+        [{ jobCategory: 'pending' }],
+        [],
+        [{ jobCategory: 'active' }],
+        [{ jobCategory: 'completed' }],
+      ]);
       done();
     });
   });
@@ -384,6 +391,53 @@ describe('JobSharedService', () => {
     }).subscribe((lists) => {
       expect(lists.active).toEqual([]);
       expect(lists.completed.map((item) => item.id)).toEqual(['picked-up']);
+      done();
+    });
+  });
+
+  it('loads only new repair requests for the New Requests list', (done) => {
+    const request = shopRequest('new-request', 'new');
+    shopApi.list.and.returnValue(of(shopPage([request], 1, 1)));
+
+    service.shopJobs('new').subscribe((requests) => {
+      expect(requests.map((item) => item.id)).toEqual(['new-request']);
+      expect(shopApi.list).toHaveBeenCalledOnceWith({
+        status: 'new',
+        limit: 50,
+        page: 1,
+      });
+      expect(technicianApi.assignments).not.toHaveBeenCalled();
+      expect(disputesApi.list).not.toHaveBeenCalled();
+      done();
+    });
+  });
+
+  it('loads pending, active, and completed requests through category filters', (done) => {
+    shopApi.list.and.returnValues(
+      of(shopPage([shopRequest('pending-request', 'pending')], 1, 1)),
+      of(shopPage(
+        [shopRequest('active-request', 'customer_accepted', 'inspection_in_progress')],
+        1,
+        1,
+      )),
+      of(shopPage([shopRequest('completed-request', 'customer_accepted', 'completed')], 1, 1)),
+    );
+
+    forkJoin({
+      pending: service.shopJobs('pending'),
+      active: service.shopJobs('active'),
+      completed: service.shopJobs('completed'),
+    }).subscribe((lists) => {
+      expect(lists.pending.map((item) => item.id)).toEqual(['pending-request']);
+      expect(lists.active.map((item) => item.id)).toEqual(['active-request']);
+      expect(lists.completed.map((item) => item.id)).toEqual(['completed-request']);
+      expect(shopApi.list.calls.allArgs()).toEqual([
+        [{ jobCategory: 'pending', limit: 50, page: 1 }],
+        [{ jobCategory: 'active', limit: 50, page: 1 }],
+        [{ jobCategory: 'completed', limit: 50, page: 1 }],
+      ]);
+      expect(technicianApi.assignments).not.toHaveBeenCalled();
+      expect(disputesApi.list).not.toHaveBeenCalled();
       done();
     });
   });

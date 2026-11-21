@@ -2,8 +2,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { EMPTY, Observable, expand, forkJoin, map, reduce } from 'rxjs';
 import { CustomerPortalService } from '../../customer/services/customer-portal.service';
-import { CustomerRepairRequest } from '../../customer/models/customer-portal.models';
-import { ShopRepairRequest } from '../../shop/repair-requests/shop-repair-requests.models';
+import {
+  CustomerRepairRequest,
+  CustomerRepairRequestFilters,
+} from '../../customer/models/customer-portal.models';
+import {
+  ShopRepairRequest,
+  ShopRequestFilters,
+} from '../../shop/repair-requests/shop-repair-requests.models';
 import { ShopRepairRequestsService } from '../../shop/repair-requests/shop-repair-requests.service';
 import { RepairRoute } from '../models/repair-route.models';
 import {
@@ -69,7 +75,18 @@ export class JobSharedService {
       return this.allDisputes('customer').pipe(map((items) => items.map(disputeToJobListItem)));
     }
 
-    return this.customer.getRepairRequests().pipe(
+    const requestFilters: CustomerRepairRequestFilters =
+      category === 'new' || category === 'pending' || category === 'active' ||
+      category === 'completed'
+        ? { jobCategory: category }
+        : {};
+
+    const requestList =
+      requestFilters.jobCategory
+        ? this.customer.getRepairRequests(requestFilters)
+        : this.customer.getRepairRequests();
+
+    return requestList.pipe(
       map((requests) =>
         requests
           .filter((request) => this.matchesCustomerCategory(request, category))
@@ -131,7 +148,14 @@ export class JobSharedService {
         .pipe(map((assignments) => this.assignedShopItems(assignments)));
     }
 
-    return this.allShopRequests().pipe(
+    const requestFilters =
+      category === 'new'
+        ? { status: 'new' as const }
+        : category === 'pending' || category === 'active' || category === 'completed'
+          ? { jobCategory: category }
+          : { status: 'all' as const };
+
+    return this.allShopRequests(requestFilters).pipe(
       map((requests) =>
         requests
           .filter((request) => this.matchesShopCategory(request, category))
@@ -359,8 +383,12 @@ export class JobSharedService {
       : fallback;
   }
 
-  private allShopRequests(): Observable<ShopRepairRequest[]> {
-    const filters = { status: 'all' as const, limit: PAGE_LIMIT };
+  private allShopRequests(
+    requestFilters: Pick<ShopRequestFilters, 'status' | 'jobCategory'> = {
+      status: 'all',
+    },
+  ): Observable<ShopRepairRequest[]> {
+    const filters = { ...requestFilters, limit: PAGE_LIMIT };
     return this.shop.list({ ...filters, page: 1 }).pipe(
       expand((result) =>
         result.page * result.limit < result.total

@@ -297,6 +297,7 @@ export interface ShopReviewSummary {
 
 export interface ShopRequestFilters {
   status?: 'all' | 'new' | 'pending' | 'accepted' | 'declined' | 'expired';
+  jobCategory?: 'pending' | 'active' | 'completed';
   search?: string;
   appliance?: string;
   repairStatus?:

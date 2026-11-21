@@ -86,6 +86,7 @@ describe('CustomerPortalService', () => {
   it('passes customer repair-request filters to the list API', () => {
     service
       .getRepairRequests({
+        jobCategory: 'active',
         status: 'open',
         repairStatus: 'in_progress',
         appliance: 'Refrigerator',
@@ -98,6 +99,7 @@ describe('CustomerPortalService', () => {
       (candidate) => candidate.url === `${environment.apiBaseUrl}/customer/repair-requests`,
     );
     expect(request.request.params.get('status')).toBe('open');
+    expect(request.request.params.get('jobCategory')).toBe('active');
     expect(request.request.params.get('repairStatus')).toBe('in_progress');
     expect(request.request.params.get('appliance')).toBe('Refrigerator');
     expect(request.request.params.get('from')).toBe('2026-10-01');
